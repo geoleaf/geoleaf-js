@@ -1,0 +1,48 @@
+/* ======================================================================
+   GeoLeaf — feuille du KERNEL.
+
+   Ce fichier n'importe QUE du kernel. Le CSS d'une capacité vit à côté de
+   son `install.ts` (`capabilities/<id>/css/`) et entre dans le bundle par
+   le GRAPHE JS — `install.ts` fait `import "./css/<id>.css"`. C'est ce qui
+   rend le CSS tree-shakeable au même titre que le code : une entrée qui ne
+   liste pas `filter` n'embarque ni son JS, ni sa barre de proximité.
+
+   Avant S6, ce fichier `@import`ait les 24 feuilles, capacités comprises, et
+   le CSS était produit par un pipeline PostCSS entièrement PARALLÈLE au graphe
+   de modules (`postcss src/css/geoleaf-main.css -o …`). Aucun découpage de
+   dossiers n'aurait rien changé : tant que le CSS n'est pas DANS le graphe JS,
+   rien ne peut le tree-shaker.
+   ====================================================================== */
+
+/* ----------------------------------------------------------------------
+   L'ORDRE DE LA CASCADE — déclaré une fois, ici, et nulle part ailleurs.
+
+   Il ne dépend plus de l'ordre des @import ni de l'ordre dans lequel un
+   bundler concatène les fichiers. C'est la condition SINE QUA NON du point
+   précédent : `rollup-plugin-postcss` concatène le CSS extrait dans l'ordre
+   de parcours du GRAPHE de modules, pas dans l'ordre d'auteur. Sans @layer,
+   faire entrer le CSS dans le graphe JS aurait silencieusement détruit une
+   cascade réglée à la main (ce fichier portait encore le commentaire
+   « feature-info chargé en dernier pour garder l'ordre »).
+
+   `gl.overrides` est vide et le restera : c'est le point d'entrée offert à
+   l'intégrateur. Une règle qu'il y place gagne sans `!important` et sans
+   guerre de spécificité.
+   ---------------------------------------------------------------------- */
+@layer gl.reset, gl.tokens, gl.kernel, gl.capabilities, gl.overrides;
+
+/* Tokens — variables de thème. Consommées par le kernel ET par les capacités. */
+@import url("./geoleaf-theme.css") layer(gl.tokens);
+
+/* Kernel — la coquille : page, header, contrôles, panneaux, toolbar, couches. */
+@import url("./geoleaf-core.css") layer(gl.kernel);
+@import url("./geoleaf-controls.css") layer(gl.kernel);
+@import url("./geoleaf-ui-base.css") layer(gl.kernel);
+@import url("../kernel/ui/mobile/css/mobile-toolbar-bar.css") layer(gl.kernel);
+@import url("../kernel/ui/mobile/css/mobile-toolbar-responsive.css") layer(gl.kernel);
+@import url("./geoleaf-baselayers.css") layer(gl.kernel);
+@import url("../kernel/layer-manager/css/layer-manager-panel.css") layer(gl.kernel);
+@import url("../kernel/layer-manager/css/layer-manager-controls.css") layer(gl.kernel);
+@import url("./geoleaf-geojson.css") layer(gl.kernel);
+@import url("./geoleaf-desktop-panel.css") layer(gl.kernel);
+@import url("./geoleaf-loader.css") layer(gl.kernel);

@@ -1,0 +1,101 @@
+/**
+ * GeoLeaf — Theme palette (capability `theme-palette`).
+ *
+ * The two palette blocks are pulled in here, so a single `import "./css/theme-palette.css"`
+ * in `install.ts` carries the whole capability's styling into the JS module graph.
+ * They are ALREADY wrapped in `@layer gl.capabilities` (each file wraps itself), hence
+ * the plain `@import` below rather than an `@import … layer()`.
+ */
+
+@import url("./palettes/green.css");
+@import url("./palettes/blue.css");
+
+@layer gl.capabilities {
+    /* ── Button ──────────────────────────────────────────────────────────────────
+     Reuses the tab strip's `.gl-rp-tab-btn` base (28×28, muted, accent on hover);
+     only its own overrides live here.
+
+     ⚠️ Every class below must exist as a string LITERAL in the TypeScript sources —
+     purgecss scans statically. The `:root[data-gl-palette=…]` selectors of the two
+     palette files are a different matter: they carry NO class, so the purgecss gate
+     never looks at them.
+
+     ⚠️ Requalified 27/07/2026: this header used to claim they were "safelisted in
+     `scripts/lib/purgecss-config.cjs`". They are not — that file holds no palette
+     entry, and neither does `scripts/verify-purgecss.baseline.json`. What actually
+     ships them is that purgecss is NOT part of the CSS build (rollup + postcss-import
+     + cssnano only); it is a reporting gate. Both blocks are present in
+     `dist/geoleaf-main.min.css`, measured. See `css/palettes/blue.css` for the full
+     account and the residual risk. */
+
+    /* Hidden on desktop — the tab strip variant takes over. */
+    @media (min-width: 1440px) {
+        .gl-rp-palette-btn[data-variant="mobile"] {
+            display: none !important;
+        }
+    }
+
+    /* ── Popover ─────────────────────────────────────────────────────────────── */
+
+    .gl-palette-popover {
+        position: absolute;
+        right: 44px;
+        bottom: 8px;
+        z-index: 1200; /* above the side panel (950), below the POI sidepanel (1100) */
+        display: flex;
+        flex-direction: column;
+        min-width: 150px;
+        padding: 4px;
+        border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+        border-radius: 8px;
+        background: var(--gl-color-bg-surface, #fff);
+        box-shadow: var(--gl-shadow-panel, 0 8px 24px rgba(15, 23, 42, 0.18));
+    }
+
+    .gl-palette-popover__item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--gl-color-text-main, #0f172a);
+        font-size: 0.8rem;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .gl-palette-popover__item:hover {
+        background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
+    }
+
+    .gl-palette-popover__item:focus-visible {
+        outline: 2px solid var(--gl-color-accent, #f97316);
+        outline-offset: -2px;
+    }
+
+    /* Styling the aria attribute itself, not a parallel class: the visual state and the
+     accessible state cannot drift apart. */
+    .gl-palette-popover__item[aria-current="true"] {
+        font-weight: 700;
+    }
+
+    .gl-palette-popover__item[aria-current="true"] .gl-palette-popover__swatch {
+        box-shadow:
+            0 0 0 2px var(--gl-color-bg-surface, #fff),
+            0 0 0 4px var(--gl-color-text-main, #0f172a);
+    }
+
+    /* The dot's `background` is written per-property through the CSSOM (config data,
+     and a `style` attribute would fall under the CSP `style-src` directive). */
+    .gl-palette-popover__swatch {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.12));
+    }
+}

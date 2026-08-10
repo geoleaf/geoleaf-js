@@ -1,0 +1,4 @@
+{
+    "_comment": "S4 capacités-extraction — modules.labels (in-core capability capabilities/labels). Capability gate only; per-layer label styling lives in the layer style files under the `label` key.",
+    "enabled": true
+}

@@ -1,0 +1,355 @@
+---
+type: spec-plugin
+title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, persistance à trois régimes
+plugin_id: editor
+package: "@geoleaf-plugins/editor"
+statut: gelé — se met à jour en même temps que le code qu'il décrit
+verifie_contre: f21f1113+B-190
+date: 8 août 2026
+---
+
+# editor — le plugin d'édition UNIQUE
+
+**Type :** plugin publié · **Paquet :** `@geoleaf-plugins/editor` ·
+**Code :** `packages/plugins/editor/` · **Vérifié contre :** `5978cf58` + la tranche S5b (05/08/2026)
+
+> 🛑 **`addpoi` A FUSIONNÉ ICI (Sprint 5, tranches S5a et S5b).** Il n'existe plus qu'un plugin
+> d'édition, et `GeoLeaf.AddPOI` a disparu **sans alias** (décision **V2**). Ce que la fusion a
+> absorbé, ce qu'elle a délibérément laissé tomber, et pourquoi — §Ce que la fusion a absorbé.
+
+> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+>
+> 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
+> 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
+>    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+
+> ⚠️ **C'est le seul plugin du dépôt qui embarque un moteur de dessin tiers.** Il en dépend en
+> production, et l'adapte au moteur cartographique par un adaptateur dédié. C'est ce qui le sépare
+> de [`measure`](CDC_measure.md), qui dessine avec ses propres outils parce qu'il ne produit pas de
+> données.
+
+---
+
+## Périmètre
+
+### Ce que le plugin fait
+
+Il permet de **créer, déplacer et supprimer des géométries** sur les couches déclarées éditables —
+point, ligne, polygone —, de remplir leurs attributs, et de **persister** le résultat selon trois
+régimes : en ligne, hors ligne, ou automatique.
+
+Il porte **deux stratégies de capture**, choisies selon le besoin et non selon le paquet installé
+(décision **A12**) :
+
+| Stratégie      | Ce qu'elle couvre                              | Coût                                      |
+| -------------- | ---------------------------------------------- | ----------------------------------------- |
+| **point**      | un marqueur natif, sans Terra Draw             | **zéro** dépendance de dessin             |
+| **Terra Draw** | ligne, polygone, sélection, édition de sommets | chargé **à la demande**, au premier outil |
+
+⚠️ **Le « Terra Draw lite » n'a pas été écrit : il existait déjà** dans `addpoi`, sous la forme
+d'un placement par marqueur MapLibre natif. La fusion l'a **gardé** comme stratégie « point »
+(`drawing/poi-snap.ts`, `placement-mode.ts`, `placement-api.ts`).
+
+### Ce qu'il ne fait pas
+
+- **Il ne mesure pas.** Le cousin éphémère est [`measure`](CDC_measure.md) : ce qu'il produit ne
+  rejoint aucune couche.
+- **Il ne rejoue pas la file hors ligne lui-même.** Il l'alimente ; le rejeu appartient au moteur du
+  core — fiche [`offline.md`](../capacites/offline.md).
+- **Il n'a pas d'onglet de bureau.** Créneau mobile seul, comme [`measure`](CDC_measure.md).
+
+---
+
+## Manifeste d'enregistrement
+
+Ce que `src/entry.ts` déclare réellement. **Table gatée** par
+`packages/core/__tests__/guards/doc-plugin-manifest.guard.test.js`.
+
+| Champ        | Valeur                    |
+| ------------ | ------------------------- |
+| `name`       | `editor`                  |
+| `label`      | `Éditeur géométrique`     |
+| `requires`   | `[]`                      |
+| `optional`   | `["offline-ui"]`          |
+| `namespace`  | `GeoLeaf.Editor`          |
+| `paquet npm` | `@geoleaf-plugins/editor` |
+
+✅ **`optional` citait `storage`, renommé `offline-ui`** — corrigé le 29/07/2026 (**B-66**). La
+dépendance qu'il exprime est réelle : c'est bien [`offline-ui`](CDC_offline-ui.md) qui donne à ce
+plugin son régime de persistance dégradé. Elle est donc désormais nommée **juste**, et le garde de
+cette fiche vérifie que l'identifiant existe.
+
+---
+
+## Surface d'événements — TYPÉE depuis la tâche 7.3
+
+Les **neuf** `geoleaf:editor:*` sont déclarés dans `GeoLeafEventMap`
+(`core/src/contracts/event-bus.contract.ts`). C'est le **premier plugin du dépôt** dont la
+surface d'événements est déclarée : les 39 noms qui restent en baseline
+`event-map-coverage` (12 `ws`, 6 `cache`, 3 `storage`…) suivent le précédent posé ici.
+
+⚠️ **Sept des neuf n'ont aucun écouteur dans ce dépôt**, et c'est légitime — ce sont des
+événements d'API publique destinés à l'hôte intégrateur. Mais cette défense n'était **pas
+opposable tant qu'ils n'étaient pas typés** : un intégrateur ne pouvait ni les découvrir ni
+vérifier leur charge utile. C'était la réserve **B-142**, soldée par le typage, jamais par la
+suppression des émissions.
+
+🛑 **Un point d'émission UNIQUE — `src/editor-events.ts`.** Le typage a d'abord été posé sur
+le `_dispatch` local d'`events.ts`, et une mutation l'a pris en défaut : **trois des neuf
+émetteurs n'y passaient pas** et construisaient leur `CustomEvent` à la main, donc retirer un
+champ du contrat sortait **VERT**. Un quatrième émetteur écrit à la main rouvrirait le trou —
+c'est ce que `__tests__/editor-events.guard.test.ts` refuse, en confrontant aussi contrat ↔
+émissions **dans les deux sens**.
+
+⚠️ **Le canal reste un `CustomEvent` brut.** Appartenir à `GeoLeafEventMap` dit que la charge
+est JSON-clonable, **pas** qu'elle transite par le bus assainissant du core :
+`dispatchGeoLeafEvent` n'est exporté à aucun plugin.
+
+---
+
+## Les étapes de `src/entry.ts` — numérotées à partir de ZÉRO
+
+Seul `entry.ts` du dépôt à porter une **étape 0**, et elle est porteuse : elle doit précéder
+l'ouverture de toute fenêtre.
+
+| Étape  | Ce qu'elle fait                                                                               |
+| ------ | --------------------------------------------------------------------------------------------- |
+| **0**  | Enregistre les composants de champ de `@geoleaf/field-renderer` — **avant** toute fenêtre     |
+| 1      | Enregistre les six dictionnaires sous l'espace `editor`                                       |
+| 2      | Monte `GeoLeaf.Editor`                                                                        |
+| 3      | S'enregistre au registre de plugins                                                           |
+| 4 et 5 | Déclare le créneau de barre d'outils **et** câble les écouteurs — sous condition d'activation |
+
+⚠️ **Les crochets de cycle de vie déclarés au registre sont des NO-OP.** `init` et `destroy` y sont
+des fonctions vides. Le démarrage réel se fait sur `geoleaf:map:ready`, avec un repli si la carte
+existe déjà ; le démontage réel passe par un crochet de destruction posé séparément et déclenché par
+l'API publique. **Un lecteur du registre ne verrait donc pas où ce plugin s'initialise.**
+
+⚠️ **Même patron de gate que [`print`](CDC_print.md) et [`measure`](CDC_measure.md)** : éteindre le
+plugin par configuration ne cache pas seulement le bouton — le créneau n'est jamais déclaré et les
+écouteurs jamais posés.
+
+---
+
+## Fonctionnalités
+
+| ID     | Fonctionnalité                                                        | Entrée                                          | Sortie observable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Code                                                                                                        |
+| ------ | --------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| ED-01  | Dessin par moteur tiers, adapté à la carte                            | Outil sélectionné                               | Point, ligne, polygone, plus les modes de sélection et de modification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `drawing/terra-draw-adapter.ts`, `drawing/modes.ts`                                                         |
+| ED-02  | Couches éditables déclarées                                           | bloc `edition` d'une couche (`create`/`update`) | Seules ces couches sont proposées, filtrées par type de géométrie                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `config.ts` → `getEditableLayers`                                                                           |
+| ED-03  | Sélecteur de couche cible                                             | Plusieurs couches éditables                     | Une liste déroulante, plutôt qu'un choix implicite                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `modal/layer-dropdown.ts`, `selection/layer-picker.ts`                                                      |
+| ED-04  | Menu flottant d'outils                                                | Action de barre d'outils                        | Positionné sur le bouton, comme celui de [`measure`](CDC_measure.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `sub-menu/floating-menu.ts`                                                                                 |
+| ED-05  | Accrochage aux sommets                                                | `snapPx`                                        | Le tracé s'aimante dans un rayon en pixels. ⚠️ Câblé sur le **seul mode polygone** (`modes.ts`) — ni le point, ni la ligne                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `drawing/snap.ts`                                                                                           |
+| ED-05b | **Garde-fou de doublon à la saisie**                                  | `poiSnapMeters`, capture d'un point             | Toucher la carte à moins de N **mètres** d'une entité existante d'une couche point éditable accroche dessus et remonte son **identité**, pour proposer de la modifier au lieu d'en créer un doublon. ⚠️ **Autre chose qu'ED-05** : distance au sol contre pixels, et il rend une identité. Absorbé d'`addpoi` (5.1-a), où le réglage vivait en `layer.snapTolerance` — clé qu'aucun schéma ne déclare, donc **inatteignable**                                                                                                                                                                                                                                                                                                                                                                              | `drawing/poi-snap.ts`                                                                                       |
+| ED-05c | **Placement programmatique d'un point**                               | `activate()` appelé par un hôte                 | Une seule touche sur la carte résout la position, puis un marqueur **draggable** permet de corriger — chaque déplacement **rejoue** ED-05b. ⚠️ Distinct de l'outil « point » de Terra Draw, qui est un outil de tracé armé depuis le menu : c'est ce que pilote la pilule mobile du core                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `drawing/placement-mode.ts`                                                                                 |
+| ED-06  | Poignées de sommet et de milieu                                       | Géométrie sélectionnée                          | Deux tailles distinctes, toutes deux bornées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `drawing/styles.ts`, `config.ts`                                                                            |
+| ED-07  | Minimums de sommets par géométrie                                     | Tracé incomplet                                 | Une ligne et un polygone ont chacun leur seuil, tous deux bornés par le bas                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `config.ts`                                                                                                 |
+| ED-08  | Annulation / rétablissement                                           | Raccourcis clavier                              | Une pile bornée en profondeur                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `history/undo-stack.ts`, `history/shortcuts.ts`                                                             |
+| ED-09  | Formulaire d'attributs                                                | Géométrie créée ou éditée                       | Construit par `@geoleaf/field-renderer`, dans une fenêtre responsive. ⚠️ Ses champs sont une **projection** de `attributes.fields[]` depuis la tâche 7.2 (`modal/attributes-to-form.ts`) : un champ est saisi quand il porte `edit`, et seulement alors. La clé `formSchema` qui les déclarait à part **n'existe plus** — le schéma la refuse                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `modal/editor-form-modal.ts`                                                                                |
+| ED-10  | Confirmation de suppression                                           | Suppression                                     | Une fenêtre dédiée, activable ou non                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `modal/delete-confirm-modal.ts`                                                                             |
+| ED-11  | Confirmation d'abandon si modifié                                     | Fermeture d'un formulaire modifié               | Le travail n'est pas perdu sans un geste explicite                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `modal/delete-confirm-modal.ts`, `config.ts`                                                                |
+| ED-12  | **Trois régimes de persistance**                                      | `persistence.mode`                              | En ligne, hors ligne, ou automatique — choisis par une fabrique                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `persistence/adapter-factory.ts`                                                                            |
+| ED-13  | Deux dialectes de service HTTP                                        | `persistence.dialect`                           | Ressource simple ou collection, avec une correspondance de champs dédiée                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `persistence/rest-adapter.ts`, `persistence/collection-rest-adapter.ts`, `persistence/rest-wire-mapping.ts` |
+| ED-14  | Mise en file hors ligne                                               | Réseau absent                                   | 🛑 L'**entrée** rejoint la file et le signal part — **mais la charge utile est jetée en route**. La couche de compat `capabilities/offline/db/indexeddb.ts:319-337` construit son entrée en mappant `operation.data → poiData` et **ne transporte pas `payload`** ; `profileId`, envoyé ici en clé d'objet, y est un **2ᵉ argument positionnel**. Résultat stocké : type et couche justes, **attributs `null`**, profil `"default"`                                                                                                                                                                                                                                                                                                                                                                        | `persistence/storage-queue-adapter.ts`                                                                      |
+| ED-15  | Rejeu et **résolution de conflit**                                    | Retour du réseau                                | ✅ **Vérifié exact le 02/08/2026** — trois stratégies réellement implémentées : `client-wins`, `server-wins`, et `prompt` (garder le local, garder le serveur, ou fusionner champ à champ)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `persistence/editor-sync-replay.ts`, `persistence/conflict-resolution.ts`                                   |
+| ED-16  | Pastille de file en attente                                           | Écritures en file                               | 🛑 Un compteur et une fenêtre, **mais une entrée `failed` disparaît des DEUX**. La file est lue par `index.getAll("pending")` (`db/sync.ts`) : le statut `failed` n'est jamais dans le résultat, et rien ne l'y ramène. Une écriture qui échoue une fois cesse d'être comptée, donc cesse d'être visible                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `sub-menu/pending-queue-modal.ts`                                                                           |
+| ED-17  | Réconciliation avec l'hôte                                            | Écriture confirmée                              | La couche affichée est remise d'accord avec ce que le serveur a retenu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `selection/host-reconcile.ts`                                                                               |
+| ED-18  | Calculs géométriques                                                  | Tracé                                           | Longueurs, aires, centroïdes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `drawing/geo-compute.ts`                                                                                    |
+| ED-19  | **Capture de POI** — le bouton et son flux                            | Action `poi-add` de la barre d'outils           | Le flux résout une position (point GPS si `poiAddDefaultPosition: "geolocation"`, sinon un tap sur la carte avec garde-fou de doublon), puis ouvre le formulaire d'attributs sur un `Point` neuf. ⚠️ **Le bouton est un créneau PARESSEUX** déclaré dans `init.js`, pas un bouton du core : le core le dessinait en sondant `GeoLeaf.AddPOI` au boot, ce qui ne tenait que sur un plugin eager. ⚠️ **Le marqueur temporaire est glissable et rejoue le rappel** — la position se corrige sans rouvrir le formulaire                                                                                                                                                                                                                                                                                        | `add-form/placement-form.ts`, `drawing/placement-mode.ts`                                                   |
+| ED-24  | **Export GeoJSON de la session**                                      | Bouton de barre d'outils                        | Télécharge les entités **créées depuis le chargement de la page**, propriétés internes retirées, avec réconciliation `localId → serverId` pour qu'une entité synchronisée reste dans l'export. ⚠️ **« Session » = jusqu'au rechargement** : le suivi est en mémoire. Le filet qui survit à un rechargement ou à une purge d'origine, c'est l'export d'outbox d'[`offline-ui`](CDC_offline-ui.md). ⚠️ Piloté par `modules.editor.showExport` — **déclaré**, contrairement aux `ui.showPoi*` d'`addpoi` qui rendaient leurs boutons ni masquables ni affichables                                                                                                                                                                                                                                             | `persistence/session-export.ts`                                                                             |
+| ED-22  | **Téléversement d'image hors ligne**                                  | Champ `image` ou `gallery`                      | Réseau d'abord ; en cas d'échec ou hors ligne, l'image est **mise de côté localement** et une data-URL est rendue pour que l'aperçu peigne tout de suite. Jeton CSRF posé quand le core en fournit un. ⚠️ Se branche par **stratégie injectable** (`setImageUploadStrategy`), **pas** par surcharge de composant : celle d'`addpoi` faisait 229 lignes pour changer 4 appels                                                                                                                                                                                                                                                                                                                                                                                                                               | `persistence/image-store.ts`                                                                                |
+| ED-23  | **Reprise des images en attente, ET la purge de ce qui est acquitté** | Retour du réseau                                | Les photos mises de côté sont re-téléversées et marquées, **puis le magasin est purgé de ce que le serveur a acquitté**. ⚠️ **Capacité NEUVE** : `addpoi` avait la fonction mais **aucun appelant**, donc ses photos hors ligne ne repartaient jamais. Une reprise qui échoue **laisse l'entrée en attente** ; une image sans point d'entrée est **sautée**, jamais détruite. 🛑 **La purge n'a été branchée que le 08/08/2026 (B-190)** : `cleanUploadedImages` existait dans le core sans appelant, **sans relais de façade et sans exposition au namespace** — donc inatteignable —, pendant que ce plugin écrivait des photos. Le magasin avait un écrivain et aucune purge. Elle n'est appelée que si **au moins une image a été acquittée**, et un échec de purge **ne fait pas échouer la reprise** | `persistence/image-store.ts`                                                                                |
+| ED-21  | **Handler `"poi"` du seam `Sync`**                                    | Chargement du plugin                            | L'éditeur s'enregistre sur `GeoLeaf.Sync` sous l'identifiant que lit `offline-ui`, et sert les deux méthodes de son bouton de rejeu : le décompte des saisies dues (`Storage.DB.listPendingEdits`) et le drain (`Storage.pushOutbox`). ⚠️ **L'enregistrement est INCONDITIONNEL depuis 5.1-f.** Il cédait la place tant qu'`addpoi` vivait, et la reprise vivait dans le pont — parti avec le paquet. Garder la cession aurait laissé un `return false` qu'aucun repreneur ne rattrape, donc un bouton de rejeu mort **sans un mot**. ✅ Ferme un trou réel : la variante `deploy-full` n'avait aucun handler                                                                                                                                                                                              | `persistence/sync-handler.ts`                                                                               |
+| ED-20  | Neuf signaux de cycle d'édition                                       | Chaque geste                                    | Création, déplacement, sauvegarde, suppression, ajout et retrait de sommet, conflit, mise en file, ouverture de menu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `events.ts`, `entry.ts`                                                                                     |
+
+Les tests qui couvrent ces lignes : `packages/plugins/editor/src/__tests__/`, plus un scénario
+navigateur dédié sous `e2e/`.
+
+---
+
+## Configuration
+
+Bloc `modules.editor` d'un profil. ⚠️ **Cette table n'est PAS gatée** — le garde de cette fiche ne
+lit que le manifeste. Les défauts sont **validés et bornés**, comme ceux de
+[`measure`](CDC_measure.md).
+
+| Clé                     | Type      | Défaut                                                                         | Rôle                                                                                           |
+| ----------------------- | --------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `enabled`               | `boolean` | `true`                                                                         | Commande la surface d'interface                                                                |
+| `showButton`            | `boolean` | `true`                                                                         | Avec repli sur `ui.showEditor`                                                                 |
+| `menuPosition`          | `string`  | `"top-right"`                                                                  | Position du menu flottant                                                                      |
+| `enabledTools`          | `array`   | les huit outils                                                                | Point, ligne, polyligne, polygone, sélection, annuler, rétablir, supprimer                     |
+| `snapPx`                | `number`  | `12`                                                                           | Rayon d'accrochage **en pixels**, borné par le bas                                             |
+| `poiSnapMeters`         | `number`  | `50`                                                                           | Rayon du garde-fou de doublon **en mètres**, `0` le désactive                                  |
+| `showExport`            | `boolean` | `true`                                                                         | Affiche le bouton d'export de la session                                                       |
+| `showAddPoi`            | `boolean` | `true`                                                                         | Affiche le bouton « ajouter un POI ». ⚠️ Remplace `ui.showAddPoi`, que le CORE lisait          |
+| `poiAddDefaultPosition` | `string`  | `"placement-mode"`                                                             | `"geolocation"` part du point GPS quand il existe. Absorbé de `modules.addpoi.defaultPosition` |
+| `vertexHandleSize`      | `number`  | `8`                                                                            | Taille des poignées de sommet, bornée des deux côtés                                           |
+| `midpointHandleSize`    | `number`  | `5`                                                                            | Idem pour les milieux                                                                          |
+| `minVerticesLineString` | `number`  | `2`                                                                            | Minimum pour une ligne                                                                         |
+| `minVerticesPolygon`    | `number`  | `3`                                                                            | Minimum pour un polygone                                                                       |
+| `api`                   | `object`  | `{ baseUrl: "", authHeader: null, timeoutMs: 8000, geometryProperty: "geom" }` | Le service HTTP                                                                                |
+| `persistence`           | `object`  | `{ mode: "auto", conflictResolution: "prompt", dialect: "rest" }`              | Les trois régimes — voir ci-dessous                                                            |
+| `undoStackSize`         | `number`  | `100`                                                                          | Profondeur de la pile d'annulation                                                             |
+| `modal`                 | `object`  | `{ desktopBreakpointPx: 768, maxWidthPx: 640 }`                                | Seuil et largeur de la fenêtre                                                                 |
+| `confirmDelete`         | `boolean` | `true`                                                                         | Confirmer les suppressions                                                                     |
+| `confirmCancelOnDirty`  | `boolean` | `true`                                                                         | Confirmer l'abandon d'un formulaire modifié                                                    |
+| `defaultLayer`          | —         | `null`                                                                         | Couche cible par défaut                                                                        |
+| `eventNamespace`        | `string`  | `"editor"`                                                                     | Préfixe des signaux émis                                                                       |
+
+### Les trois régimes de persistance
+
+| Régime    | Comportement                                          |
+| --------- | ----------------------------------------------------- |
+| `online`  | Écriture directe au service                           |
+| `offline` | Mise en file, rejouée plus tard par le moteur du core |
+| `auto`    | **Défaut** — en ligne si possible, file sinon         |
+
+Et trois stratégies de conflit : `client-wins`, `server-wins`, `prompt` (**défaut**).
+
+⚠️ **Le défaut `auto` + `prompt` est le plus prudent des deux axes** : on écrit tout de suite quand
+on peut, on met en file sinon, et on ne tranche **jamais** un conflit à la place de l'utilisateur.
+
+⚠️ **La clé racine `editorConfig` n'est PLUS acceptée — et le code du plugin affirme le
+contraire.** `config.ts` porte, juste au-dessus de sa lecture, ceci : « le miroir S0 du core la
+garde synchronisée avec la clé racine héritée `editorConfig` pendant la fenêtre de dépréciation, de
+sorte que les profils non migrés résolvent encore ». **Mesuré :**
+
+```bash
+grep -rn "editorConfig" packages/core/src/    # → 0
+```
+
+La fenêtre de dépréciation est **fermée**, le miroir a disparu, et un profil resté sur `editorConfig`
+est ignoré **en silence** — exactement comme pour [`print`](CDC_print.md) et
+[`measure`](CDC_measure.md). La différence, ici, est que l'énoncé périmé n'est pas dans un vieux
+document : il est **dans le code**, à l'endroit même qui gouverne la lecture, et `src/` **est**
+publié sur npm. C'est **B-72** du registre.
+
+---
+
+## Contrat exposé
+
+### API publique — `GeoLeaf.Editor`
+
+| Membre                                   | Rend / fait                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `toggleMenu(anchorEl?)`                  | Ouvre / ferme le menu d'outils                                                             |
+| `setActiveTool(...)` · `getActiveTool()` | L'outil courant                                                                            |
+| `updateUndoRedoState()`                  | Rafraîchit l'état des deux commandes                                                       |
+| `destroy()`                              | Démontage réel — c'est **lui** qui agit, pas le registre                                   |
+| `PlacementMode`                          | `activate` / `deactivate` / `isActive` / `clearMarker` — la capture point, sans Terra Draw |
+| `AddForm.openAddForm(latlng)`            | Ouvre le formulaire d'attributs sur un Point neuf                                          |
+
+⚠️ **`PlacementMode` et `AddForm` sont des GETTERS**, pas des propriétés : `check-facade-purity.cjs`
+n'accepte dans `public-api.ts` qu'un délégué mince, jamais un littéral imbriqué.
+
+### Événements émis
+
+Neuf, sous le préfixe configurable : entité créée, déplacée, sauvegardée, supprimée, en conflit,
+mise en file de synchronisation ; sommet ajouté, sommet supprimé ; et l'ouverture du sous-menu.
+
+**Écoutés** : `geoleaf:toolbar:action`, `geoleaf:map:ready`, et les deux signaux de file
+(mise en file, vidage) pour la pastille.
+
+---
+
+## Ce que la fusion a absorbé — et ce qu'elle a laissé tomber
+
+Le tri du Sprint 5 a mesuré **avant** de porter, et **six énoncés sur six** se sont révélés faux :
+le code était bien là, la ligne le décrivait correctement, et c'est le **motif** qui était tombé.
+
+### Absorbé
+
+| Élément                        | Où il vit maintenant                              | Ce que la mesure a corrigé au passage                                                                                    |
+| ------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| capture point + accrochage     | `drawing/{poi-snap,placement-mode,placement-api}` | Le réglage absorbé était **inatteignable** (`layer.snapTolerance`, refusé par un schéma strict) → `poiSnapMeters`        |
+| handler `"poi"` du seam `Sync` | `persistence/sync-handler.ts`                     | **Rien ne se transférait** : ~130 lignes écrites, pas 689 déplacées. Et `deploy-full` n'avait **aucun** handler          |
+| téléversement d'image          | `persistence/image-store.ts` + la lib             | Un défaut de **perte silencieuse** corrigé (sans canvas, la promesse ne se réglait jamais)                               |
+| export de session              | `persistence/session-export.ts`                   | **Un seul** des deux boutons était atteignable — l'autre l'était par aucun profil                                        |
+| formulaire de saisie           | `add-form/placement-form.ts`                      | 🛑 **Rien n'a été transféré** des 2 373 lignes d'`addpoi` : le formulaire d'`editor` existait, il lui manquait une porte |
+
+### Délibérément NON reproduit
+
+- **La capture mobile** (`capture` sur l'`input` fichier) — **zéro appelant** dans la source, y
+  compris chez `addpoi` : la capacité n'existait pas. L'ajouter serait une fonctionnalité neuve.
+- **Le toast de synchronisation** et l'événement `geoleaf:poi:sync-completed` — le premier faisait
+  doublon avec celui d'`offline-ui`, le second n'avait qu'un écouteur, mort avec le plugin.
+- **La barre de progression XHR** — 60 lignes pour un indicateur que le composant de rendu de
+  champs n'affiche pas.
+
+### Le point de casse que la fusion devait éviter, et comment
+
+🛑 **La pilule mobile « ajouter un POI » était dessinée par le CORE**, derrière une sonde
+`GeoLeaf.AddPOI.AddForm` évaluée **une seule fois, au boot**. Cela ne tenait que parce qu'`addpoi`
+était chargé en balise `<script>` **eager**. `editor` est **paresseux** : repointer la sonde vers
+`.Editor` l'aurait rendue fausse **pour toujours**, et le bouton aurait disparu **en silence** — le
+garde d'erreur censé le signaler vivant lui-même derrière un bouton jamais créé.
+
+Le bouton est donc devenu un **créneau paresseux**, déclaré dans `apps/geoleaf-app/init.js` par
+`registerLazyForAction("poi-add", "editor", …)` : il s'affiche **avant** le téléchargement du
+bundle, et le clic charge le plugin. Les 180 lignes du seam `poi-addform-seam.ts` + son contrat ont
+été **supprimées** du core, pas repointées.
+
+⚠️ **Aucune gate ne voit cette classe de défaut** : `ci:local` et l'E2E complet étaient verts quand
+le bouton d'export de 5.1-e était enregistré et invisible. La preuve est une **sonde navigateur**,
+plus les trois tests `5.1-f` d'`e2e/09-editor.spec.js`.
+
+---
+
+## Décisions de conception
+
+| Décision                                                        | Pourquoi                                                                                                                                              | Alternative écartée                 |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| **Un moteur de dessin tiers, adapté**                           | L'édition de géométrie — poignées, sommets intermédiaires, modes — est un problème résolu et coûteux à refaire. L'adaptateur isole le choix           | Écrire le moteur                    |
+| **Étape 0 avant tout le reste**                                 | Le formulaire d'attributs se construit depuis le registre de composants : ouvrir une fenêtre avant l'enregistrement rendrait les champs en texte brut | Enregistrer à la première ouverture |
+| **Trois régimes de persistance, pas deux**                      | `auto` est le seul qui serve le terrain : on écrit quand on peut et on met en file sinon, sans que l'utilisateur ait à choisir son régime             | En ligne / hors ligne seulement     |
+| **Le conflit demande par défaut**                               | Trancher à la place de l'utilisateur fait perdre du travail silencieusement, dans un sens ou dans l'autre                                             | Un gagnant par défaut               |
+| **Deux dialectes de service**                                   | Ressource simple et collection ne se réduisent pas l'une à l'autre ; la correspondance de champs les sépare proprement                                | Un seul dialecte                    |
+| **La file est celle du CORE**                                   | Une file propre au plugin aurait dupliqué le rejeu, la sauvegarde et la résolution de conflit que le moteur hors ligne porte déjà                     | Une file interne                    |
+| **Le démontage réel est un crochet, pas `destroy` du registre** | Le cycle de vie du registre est synchrone et précoce ; le démontage du dessin doit suivre l'API publique                                              | Un `destroy` de registre effectif   |
+| **Un pont explicite vers `addpoi`**                             | Les deux plugins veulent la carte. Lire `disable` sur le namespace de l'autre évite qu'ils se la disputent, sans arête d'import                       | Les laisser coexister               |
+| **Les mêmes clés i18n qu'`addpoi`**                             | Les deux affichent des formulaires et des fenêtres de confirmation. Deux jeux de clés auraient donné deux traductions à maintenir pour le même texte  | Un espace de clés propre            |
+
+---
+
+## Dépendances et frontières
+
+| Dépendance                                           | Nature         | Note                                      |
+| ---------------------------------------------------- | -------------- | ----------------------------------------- |
+| `@geoleaf/core`                                      | production     | —                                         |
+| `@geoleaf/field-renderer`                            | **production** | Le formulaire d'attributs et les fenêtres |
+| **le moteur de dessin tiers + son adaptateur carte** | **production** | Deux paquets — le seul cas du dépôt       |
+| `maplibre-gl`                                        | **pair**       | Hors paquet                               |
+| `@geoleaf/host-runtime`                              | développement  | Regroupé à la construction                |
+
+**Frontière avec le moteur hors ligne : par le core.** Le plugin écrit dans la file au travers d'un
+seam de stockage, sans importer la capacité.
+
+**Frontière avec `addpoi` : ELLE N'EXISTE PLUS.** Le pont (`compat/addpoi-bridge.ts`) et sa moitié
+symétrique (`addpoi/src/disable.ts`) n'existaient que l'un pour l'autre ; les deux sont partis avec
+la fusion. ⚠️ Le pont portait **l'unique appelant** de la reprise du handler de synchronisation :
+c'est pourquoi ED-21 est devenu inconditionnel dans le même commit.
+
+---
+
+## Écarts au CDC source
+
+Le CDC `CDC_plugin-editor.md` a été **consommé** en écrivant cette fiche, puis **supprimé** du
+dossier de tri — ligne au §Journal des décisions de
+`roadmap_documentation-v3.md`.
+
+| Énoncé du CDC                                                | Ce que dit le code                                                                                                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `optional: ["storage"]`                                      | **Pointe dans le vide** — le paquet s'appelle `offline-ui` (**B-66**)                                                        |
+| Les crochets `init` / `destroy` du registre                  | **Ce sont des no-op.** Le démarrage réel est sur `geoleaf:map:ready`, le démontage réel passe par un crochet posé séparément |
+| Les trois régimes de persistance et la résolution de conflit | ✅ **Vérifiés exacts**, défauts compris (`auto`, `prompt`)                                                                   |
+| Les deux dialectes de service                                | ✅ **Vérifiés exacts**                                                                                                       |
+| Le formulaire construit par `@geoleaf/field-renderer`        | ✅ **Vérifié exact**, y compris l'ordre imposé de l'étape 0                                                                  |
+
+⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : le commentaire de `config.ts` affirme un
+miroir du core pour `editorConfig` qui **n'existe plus** (**B-72**) ; le créneau est **mobile seul** ;
+et les clés i18n sont **partagées avec `addpoi`**.
+
+Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif du choix d'un moteur de
+dessin tiers, le parcours d'édition, les limites connues, et les alternatives écartées de la table
+§Décisions.

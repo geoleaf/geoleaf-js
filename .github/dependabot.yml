@@ -1,0 +1,95 @@
+# Dependabot — mises à jour de dépendances automatisées.
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+#
+# Deux écosystèmes : les dépendances npm du monorepo, et les actions du workflow CI.
+#
+# 🛑 LA RÈGLE D'EXPLOITATION, avant toute autre : **ne jamais merger le `package-lock.json`
+# d'une PR Dependabot.** Reprendre les seuls deltas de `package.json`, régénérer le lock par
+# `npm install` en local, et vérifier par `npm run ci:push` (qui fait un `npm ci` réel) avant
+# de pousser.
+#
+# Le motif est mécanique et il se reproduira : Dependabot régénère le lock EN ENTIER, y compris
+# les binaires optionnels de toutes les plateformes (`cpu: ["wasm32"]` et consorts), et il
+# déplace certains de leurs nœuds hors de la racine. `npm ci` re-résout alors une plage vers une
+# version absente du lock et sort en `EUSAGE` :
+#
+#     npm error code EUSAGE
+#     npm error `npm ci` can only install packages when your package.json and
+#               package-lock.json are in sync.
+#
+# ⚠️ Le symptôme ne désigne PAS le paquet monté dans la PR. Une PR qui ne touche qu'une
+# dépendance sans rapport rend la même erreur, parce que la cause est la régénération du lock,
+# pas la montée. Chercher le coupable dans le diff de `package.json` fait perdre le fil.
+
+version: 2
+updates:
+    # ── npm ──────────────────────────────────────────────────────────────────────────────
+    - package-ecosystem: "npm"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+      open-pull-requests-limit: 10
+      labels:
+          - "dependencies"
+          - "security"
+      # ⚠️ Un label absent du dépôt est ignoré EN SILENCE par Dependabot — la PR arrive nue et
+      # rien ne le signale. Les deux ci-dessus doivent exister dans les labels du dépôt.
+      #
+      # 📌 Aucun `reviewers:` ici, délibérément. La désignation des relecteurs vit dans
+      # `.github/CODEOWNERS`, qui est le mécanisme natif de GitHub et couvre **toutes** les PR,
+      # pas seulement celles de Dependabot. Une seconde liste écrite à la main serait un second
+      # encodage du même fait, libre de diverger du premier.
+
+      ignore:
+          # ── typescript : majeures ignorées ────────────────────────────────────────────
+          # 🛑 BLOQUANT, pas risqué : la majeure suivante casse deux contrats de pair.
+          #   • `@typescript-eslint/*` déclare une plage qui s'arrête avant
+          #   • `typedoc` — y compris sa DERNIÈRE version publiée — ne la supporte pas
+          # Sans TypeDoc compatible, la gate `docs:api` n'a plus de sortie du tout.
+          #
+          # Rouvrir cette ligne le jour où les deux publient leur support, et le vérifier
+          # plutôt que le supposer :
+          #     npm view typedoc peerDependencies
+          #     npm view @typescript-eslint/eslint-plugin peerDependencies
+          - dependency-name: "typescript"
+            update-types:
+                - "version-update:semver-major"
+
+          # ── @types/node : majeures ignorées ───────────────────────────────────────────
+          # Les types doivent décrire le Node qu'on EXÉCUTE. Le dépôt fixe sa version dans
+          # `.nvmrc` et dans `engines.node` ; typer contre une majeure supérieure fait accepter
+          # par `tsc` des API absentes à l'exécution — un typecheck vert qui ment, et aucune
+          # gate ne peut le voir.
+          #
+          # Cette ligne se lève en même temps que la majeure de Node, jamais avant.
+          - dependency-name: "@types/node"
+            update-types:
+                - "version-update:semver-major"
+
+      # Regroupe les mineures et correctifs pour réduire le bruit de PR.
+      groups:
+          dev-dependencies:
+              dependency-type: "development"
+              update-types:
+                  - "minor"
+                  - "patch"
+          production-dependencies:
+              dependency-type: "production"
+              update-types:
+                  - "minor"
+                  - "patch"
+
+    # ── GitHub Actions ───────────────────────────────────────────────────────────────────
+    # ⚠️ Les `uses:` du workflow sont épinglés par SHA, pas par étiquette de version — une
+    # étiquette est mutable, un SHA ne l'est pas. Dependabot sait monter un SHA épinglé et
+    # réécrit le commentaire de version qui le suit ; c'est ce qui rend l'épinglage tenable.
+    - package-ecosystem: "github-actions"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+          day: "monday"
+      open-pull-requests-limit: 5
+      labels:
+          - "dependencies"
+          - "ci"

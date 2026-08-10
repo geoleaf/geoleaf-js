@@ -1,0 +1,6 @@
+{
+    "_comment": "B2 features.json — exhaustive fixture for the config-contract regression-lock tests. poiConfig removed with the S9 POI-subsystem dissolution (a POI is now a generic point layer); cluster config migrated to modules.cluster (config/plugins/cluster.json, family B7) with the S3 cluster-capability extraction. Dead top-level clusteringConfig purged (was never read — ANO-027/ANO-031 regression-locks retired with the key).",
+    "mapOptions": {
+        "preserveDrawingBuffer": true
+    }
+}

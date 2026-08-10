@@ -1,0 +1,62 @@
+{
+    "name": "@geoleaf-plugins/websocket",
+    "version": "1.0.1",
+    "type": "module",
+    "license": "MIT",
+    "description": "GeoLeaf WebSocket Plugin — Generic real-time transport infrastructure for GeoLeaf JS",
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/websocket"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
+    "main": "dist/geoleaf-websocket.plugin.js",
+    "module": "dist/geoleaf-websocket.plugin.js",
+    "types": "dist/types/entry.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/entry.d.ts",
+            "import": "./dist/geoleaf-websocket.plugin.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/",
+        "src/",
+        "test-utils/",
+        "LICENSE"
+    ],
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@geoleaf/core": "^3.0.0"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@geoleaf/host-runtime": "*",
+        "@types/node": "^22.19.20",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    }
+}

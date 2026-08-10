@@ -1,0 +1,183 @@
+{
+    "_comment": "Base geoleaf-db en v3 COMPLÈTE — schéma + données. Le schéma vit ICI et non dans e2e/helpers/db-seed.js : un mirroir en code dérive en silence le jour où la production change, et le Sprint 3 va justement réécrire ce schéma en v4. Ajouter la v4 = ajouter db-v4-dump.json, pas éditer le helper. Re-dériver le schéma : sed -n '/_upgradeDatabase(/,/^    },$/p' packages/core/src/capabilities/offline/db/indexeddb.ts | grep -E 'createObjectStore|createIndex'",
+    "version": 3,
+    "stores": [
+        {
+            "name": "layers",
+            "keyPath": "id",
+            "indexes": [
+                { "name": "profileId", "keyPath": "profileId" },
+                { "name": "timestamp", "keyPath": "timestamp" }
+            ]
+        },
+        { "name": "preferences", "keyPath": "key", "indexes": [] },
+        {
+            "name": "sync_queue",
+            "keyPath": "id",
+            "indexes": [
+                { "name": "profileId", "keyPath": "profileId" },
+                { "name": "status", "keyPath": "status" },
+                { "name": "timestamp", "keyPath": "timestamp" }
+            ]
+        },
+        { "name": "metadata", "keyPath": "key", "indexes": [] },
+        {
+            "name": "sync_backups",
+            "keyPath": "id",
+            "autoIncrement": true,
+            "indexes": [
+                { "name": "timestamp", "keyPath": "timestamp" },
+                { "name": "profileId", "keyPath": "profileId" }
+            ]
+        },
+        {
+            "name": "local_images",
+            "keyPath": "id",
+            "indexes": [
+                { "name": "uploaded", "keyPath": "uploaded" },
+                { "name": "timestamp", "keyPath": "timestamp" }
+            ]
+        }
+    ],
+    "data": {
+        "sync_queue": [
+            {
+                "_comment": "LES TROIS SUIVANTES PORTENT L'ORDRE DE SAISIE, à la milliseconde près. Elles portaient jusqu'à la tâche 3.10 des suffixes ALÉATOIRES choisis pour que l'ordre lexicographique soit l'INVERSE de la saisie (zzz > mmm > aaa) — c'était la reproduction de B-03. La clé porte désormais un compteur monotone (`_mintKey`, db/sync.ts) et ces trois entrées sont écrites au format courant : relues, elles doivent rendre 1,2,3. ⚠️ La REPRODUCTION du défaut vit désormais dans l'unitaire (`sync-queue-order.test.js`), qui pilote Math.random et a été vu rouge par mutation ; ici on éprouve que l'ordre traverse un boot réel.",
+                "id": "sync_1785600000000_000001_fixt01",
+                "profileId": "tourism",
+                "type": "add_poi",
+                "status": "pending",
+                "timestamp": 1785600000000,
+                "retryCount": 0,
+                "poiData": {
+                    "id": "poi-saisie-1",
+                    "_ordre_de_saisie": 1,
+                    "layerId": "poi_tourisme",
+                    "properties": { "nom": "Premier point", "categorie": "belvedere" },
+                    "geometry": { "type": "Point", "coordinates": [55.45, -21.1] }
+                }
+            },
+            {
+                "id": "sync_1785600000000_000002_fixt01",
+                "profileId": "tourism",
+                "type": "add_poi",
+                "status": "pending",
+                "timestamp": 1785600000000,
+                "retryCount": 0,
+                "poiData": {
+                    "id": "poi-saisie-2",
+                    "_ordre_de_saisie": 2,
+                    "layerId": "poi_tourisme",
+                    "properties": { "nom": "Deuxième point", "categorie": "cascade" },
+                    "geometry": { "type": "Point", "coordinates": [55.46, -21.11] }
+                }
+            },
+            {
+                "id": "sync_1785600000000_000003_fixt01",
+                "profileId": "tourism",
+                "type": "add_poi",
+                "status": "pending",
+                "timestamp": 1785600000000,
+                "retryCount": 0,
+                "poiData": {
+                    "id": "poi-saisie-3",
+                    "_ordre_de_saisie": 3,
+                    "layerId": "poi_tourisme",
+                    "properties": { "nom": "Troisième point", "categorie": "sentier" },
+                    "geometry": { "type": "Point", "coordinates": [55.47, -21.12] }
+                }
+            },
+            {
+                "_comment": "Vestige v3 conservé DÉLIBÉRÉMENT : cette fixture décrit une base v3 RÉELLE, et c'est son seul usage — 27-offline-idb prouve qu'une telle base migre encore. ⚠️ Le CRITÈRE 4 qu'elle portait a déménagé sur l'outbox (28-offline-queue, tâche 4.11) et ne lit plus rien d'ici.",
+                "id": "sync_1785600000001_000004_fixt01",
+                "profileId": "tourism",
+                "type": "update_poi",
+                "status": "failed",
+                "timestamp": 1785600000001,
+                "retryCount": 1,
+                "error": "HTTP 503 — service indisponible",
+                "poiData": {
+                    "id": "poi-en-echec",
+                    "layerId": "poi_tourisme",
+                    "properties": { "nom": "Point qui a échoué trois fois" },
+                    "geometry": { "type": "Point", "coordinates": [55.48, -21.13] }
+                }
+            },
+            {
+                "_comment": "La forme que produit l'ÉDITEUR aujourd'hui, via storage-queue-adapter.ts. Ni `poiData` ni `data` : le seam écrase la charge utile, l'entrée part SANS ses attributs. C'est le défaut que 3.3 corrige — la fixture le porte pour que la correction soit observable.",
+                "id": "sync_1785600000002_000005_fixt01",
+                "profileId": "tourism",
+                "type": "editor.save",
+                "status": "pending",
+                "timestamp": 1785600000002,
+                "retryCount": 0,
+                "poiData": null,
+                "payload": null
+            }
+        ],
+        "sync_backups": [
+            {
+                "_comment": "CRITÈRE 5 / BUG 2 — le store est `autoIncrement`, donc la clé mintée est un NOMBRE. sync-manager.ts la relit en CHAÎNE (getAttribute rend toujours une chaîne) et ne trouve rien. Aucun `id` n'est fourni ici : c'est le moteur qui doit le minter, sinon la fixture masquerait le défaut qu'elle sert à exposer.",
+                "profileId": "tourism",
+                "timestamp": 1785599000000,
+                "reason": "avant rejeu de la file",
+                "entries": [
+                    { "id": "sync_1785599000000_bbbb00001", "type": "add_poi", "status": "pending" }
+                ]
+            },
+            {
+                "profileId": "tourism",
+                "timestamp": 1785599500000,
+                "reason": "avant rejeu de la file",
+                "entries": []
+            }
+        ],
+        "local_images": [
+            {
+                "_comment": "CRITÈRE 6 — la forme CORRECTE : un vrai Blob. Les octets sont un PNG 1×1 valide et décodable, pas un remplissage : readBinary doit rendre kind='blob' et un byteLength non nul.",
+                "id": "img-correcte-blob",
+                "blob": {
+                    "__blob__": {
+                        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                        "type": "image/png"
+                    }
+                },
+                "filename": "photo-terrain.png",
+                "type": "image/png",
+                "size": 70,
+                "uploaded": 0,
+                "timestamp": 1785600000000
+            },
+            {
+                "_comment": "BUG 3 — la forme que produit image-upload.ts aujourd'hui : une chaîne base64 là où db/images.ts déclare un Blob. readBinary doit rendre kind='string', isDataUrl=true. Le store est inexploitable dans cet état.",
+                "id": "img-defectueuse-base64",
+                "blob": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                "filename": "photo-terrain-cassee.png",
+                "type": "image/png",
+                "size": 70,
+                "uploaded": 0,
+                "timestamp": 1785600000001
+            }
+        ],
+        "layers": [
+            {
+                "_comment": "CRITÈRE 2 — une tuile déjà en base, à relire PAR LE CHEMIN DU SW après migration. keyPath est `id`, et deux producteurs y écrivent deux vocabulaires : downloader.ts écrit l'URL, theme-cache.ts écrit l'identifiant de couche. Ici l'URL, la forme du chemin de tuiles.",
+                "id": "https://demo.geoleaf.local.test/tiles/5/10/19.png",
+                "profileId": "tourism",
+                "resourceType": "tile",
+                "contentType": "image/png",
+                "timestamp": 1785600000000,
+                "data": {
+                    "__arraybuffer__": {
+                        "base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                    }
+                }
+            }
+        ],
+        "metadata": [
+            { "key": "profile:tourism:cachedAt", "value": 1785600000000 },
+            { "key": "schemaSeededBy", "value": "e2e/fixtures/offline/db-v3-dump.json" }
+        ],
+        "preferences": [{ "key": "gl-selected-profile", "value": "tourism" }]
+    }
+}

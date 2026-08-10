@@ -1,0 +1,24 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# T6.5 — le bloc `[*.{json,yml,yaml}] indent_size = 2` a été SUPPRIMÉ ici. Il ne pouvait
+# que perdre, et deux fois :
+#   · sur json/md, `.prettierrc.json` (`tabWidth: 4`, aucun bloc `overrides`) l'écrase à
+#     chaque commit via lint-staged — dont la glob `*.{json,md}`, sans `/`, est en
+#     `matchBase` et couvre donc TOUT le dépôt, pas seulement la racine ;
+#   · sur yml, Prettier ne passe même pas — `.editorconfig` y était seule autorité, et
+#     `ci.yml` comme `docker-compose.dev.yml` l'ignoraient tous deux, indentés en 4.
+# Une règle qui ne gagne nulle part est une décoration. `[*]` pose déjà `indent_size = 4`,
+# ce qui est l'état réel du disque : supprimer et aligner étaient le même geste.
+
+[*.md]
+trim_trailing_whitespace = false

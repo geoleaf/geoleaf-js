@@ -1,0 +1,182 @@
+{
+    "id": "aires_protegees_nationales_sib",
+    "label": "Parcs nationaux – Aires protégées",
+    "type": "geojson",
+    "geometry": "polygon",
+    "zIndex": 53,
+    "interactiveShape": true,
+    "data": {
+        "directory": "data",
+        "file": "aires_protegees_nationales_sib.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.Name",
+                "label": "Nom",
+                "sortable": true,
+                "width": "60%"
+            },
+            {
+                "field": "properties.categoryId",
+                "label": "Catégorie",
+                "sortable": true,
+                "width": "20%"
+            },
+            {
+                "field": "properties.subCategoryId",
+                "label": "Sous-catégorie",
+                "sortable": true,
+                "width": "20%"
+            }
+        ],
+        "defaultSort": {
+            "field": "properties.Name",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": false
+    },
+    "attributes": {
+        "titleField": "properties.Name",
+        "fields": [
+            {
+                "field": "properties.Name",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "attributes.photo",
+                "label": "Image principale",
+                "primitive": "string",
+                "widget": "image",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "hero": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.short_desc",
+                "label": "Résumé",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "accordion": true,
+                        "defaultOpen": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.categoryId",
+                "label": "Catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "category"
+                    }
+                }
+            },
+            {
+                "field": "attributes.subCategoryId",
+                "label": "Sous-catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "subcategory"
+                    }
+                }
+            },
+            {
+                "field": "attributes.informations",
+                "label": "Informations",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.highlights",
+                "label": "Points forts",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.gallery",
+                "label": "Galerie photos",
+                "primitive": "string[]",
+                "widget": "gallery",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.link_official",
+                "label": "Site officiel",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.link_wikipedia",
+                "label": "Wikipedia",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.tags",
+                "label": "Tags",
+                "primitive": "string[]",
+                "widget": "tags",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            }
+        ]
+    }
+}

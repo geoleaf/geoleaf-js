@@ -1,0 +1,377 @@
+@layer gl.capabilities {
+    /* ==========================================================================
+   SECTION 1 — POI accordion / gallery / tags
+   (was poi-accordion-gallery.css, folded in and deleted at S9 — it was loaded
+   NEXT TO this file with byte-identical content, so every rule below shipped
+   twice in geoleaf-main.min.css)
+   ========================================================================== */
+
+    /* ==========================================================================
+   Sidepanel accordions
+   ========================================================================== */
+
+    .gl-accordion {
+        border: 1px solid var(--gl-color-border-soft);
+        border-radius: 8px;
+        margin: 8px 0;
+        overflow: hidden;
+        background: var(--gl-color-bg-surface-muted);
+        transition: border-color 0.2s ease;
+    }
+
+    .gl-accordion:hover {
+        border-color: var(--gl-color-accent);
+    }
+
+    .gl-accordion__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px 12px 16px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        list-style: none;
+        background: var(--gl-color-bg-surface);
+        color: var(--gl-color-text-main);
+        user-select: none;
+        transition: background 0.2s ease;
+        gap: 15px;
+    }
+
+    /* Hide the summary's default marker. */
+    .gl-accordion__header::-webkit-details-marker {
+        display: none;
+    }
+
+    .gl-accordion__header::marker {
+        display: none;
+    }
+
+    .gl-accordion__header:hover {
+        background: var(--gl-color-bg-surface-elevated);
+    }
+
+    /* Custom arrow, provided in the HTML. */
+    .gl-accordion__arrow {
+        font-size: 0.8rem;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: var(--gl-color-accent);
+        flex-shrink: 0;
+        display: inline-block;
+        margin-left: auto;
+        margin-right: 8px;
+    }
+
+    details[open] > .gl-accordion__header .gl-accordion__arrow {
+        transform: rotate(180deg);
+    }
+
+    /* Legacy ::after rule, kept as a fallback. */
+    .gl-accordion__header::after {
+        content: "";
+    }
+
+    .gl-accordion__panel {
+        padding: 0 16px;
+        color: var(--gl-color-text-main);
+        line-height: 1.6;
+        overflow: hidden;
+        transition:
+            opacity 0.3s ease,
+            transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Opening animation. */
+    details[open] .gl-accordion__panel {
+        animation: accordionOpen 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes accordionOpen {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Inner wrapper carrying the animated padding. */
+    .gl-accordion__panel-content {
+        padding: 16px 0;
+    }
+
+    .gl-accordion__panel p {
+        margin: 0 0 12px 0;
+    }
+
+    .gl-accordion__panel p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Tags styling */
+    .gl-poi-sidepanel__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .gl-poi-tag {
+        display: inline-block;
+        padding: 4px 10px;
+        background: var(--gl-color-accent-soft);
+        color: var(--gl-color-accent);
+        border-radius: 16px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    /* Gallery — main image + thumbnails layout. */
+    .gl-poi-gallery {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .gl-poi-gallery__main {
+        width: 100%;
+        aspect-ratio: 16/10;
+        overflow: hidden;
+        border-radius: 8px;
+        cursor: pointer;
+        position: relative;
+        background: var(--gl-color-bg-surface-muted);
+    }
+
+    .gl-poi-gallery__main img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.3s ease;
+    }
+
+    .gl-poi-gallery__main:hover img {
+        transform: scale(1.05);
+    }
+
+    .gl-poi-gallery__main::after {
+        content: "🔍";
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: var(--gl-color-overlay-strong);
+        color: var(--gl-color-text-inverse);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .gl-poi-gallery__main:hover::after {
+        opacity: 1;
+    }
+
+    .gl-poi-gallery__thumbnails {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 0;
+        scrollbar-width: thin;
+        scrollbar-color: var(--gl-color-accent) transparent;
+    }
+
+    .gl-poi-gallery__thumbnails::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    .gl-poi-gallery__thumbnails::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .gl-poi-gallery__thumbnails::-webkit-scrollbar-thumb {
+        background: var(--gl-color-accent);
+        border-radius: 3px;
+    }
+
+    .gl-poi-gallery__thumb {
+        flex: 0 0 80px;
+        height: 60px;
+        overflow: hidden;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition:
+            border-color 0.2s ease,
+            transform 0.2s ease;
+    }
+
+    .gl-poi-gallery__thumb:hover {
+        border-color: var(--gl-color-accent);
+        transform: translateY(-2px);
+    }
+
+    .gl-poi-gallery__thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .gl-poi-gallery__thumb.active {
+        border-color: var(--gl-color-accent);
+        box-shadow: var(--gl-shadow-medium);
+    }
+
+    /* ==========================================================================
+   SECTION 2 — POI lightbox
+   (was poi-lightbox.css, folded in and deleted at S9 — same duplication as
+   SECTION 1 above)
+   ========================================================================== */
+
+    /* ==========================================================================
+   Full-screen GLOBAL lightbox (covers the whole page, not just the panel).
+   Built by render/lightbox.ts:51.
+
+   ⚠️ Ours is `.gl-poi-lightbox*`. A `.gl-lightbox*` block used to sit below,
+   labelled "old styles, kept for compatibility" — it was neither ours nor
+   dead: `.gl-lightbox` is @geoleaf/field-renderer's image viewer (image.ts,
+   gallery.ts, and plugin-addpoi's image-component.ts). Its `opacity: 0` was
+   the only declaration on that class anywhere, so field-renderer's viewer
+   faded in then vanished. Removed at S9 — do not reintroduce a `.gl-lightbox`
+   rule here: that namespace belongs to another package.
+   ========================================================================== */
+
+    .gl-poi-lightbox-global {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: var(--gl-color-overlay-stronger);
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__overlay {
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__content {
+        position: relative;
+        width: 90%;
+        height: 90%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 4px;
+        transition: transform 0.2s ease;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: var(--gl-color-text-main);
+        color: var(--gl-color-bg-surface);
+        border: none;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        font-size: 32px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        z-index: 2;
+        transition:
+            background 0.2s ease,
+            opacity 0.2s ease;
+        opacity: 0.85;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__close:hover {
+        opacity: 1;
+        background: var(--gl-color-text-main);
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__prev,
+    .gl-poi-lightbox-global .gl-poi-lightbox__next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--gl-color-text-main);
+        color: var(--gl-color-bg-surface);
+        border: none;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        font-size: 32px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+        transition:
+            opacity 0.2s ease,
+            transform 0.2s ease;
+        opacity: 0.85;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__prev:hover,
+    .gl-poi-lightbox-global .gl-poi-lightbox__next:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__prev {
+        left: 40px;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__next {
+        right: 40px;
+    }
+
+    .gl-poi-lightbox-global .gl-poi-lightbox__counter {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--gl-color-text-main);
+        color: var(--gl-color-bg-surface);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 2;
+        opacity: 0.85;
+    }
+
+    /* ── Mobile: sidepanel must appear above theme bar (1490) + search bar (1500) ── */
+    @media (max-width: 768px) {
+        .gl-poi-sidepanel-overlay {
+            z-index: 1510 !important;
+        }
+        .gl-poi-sidepanel {
+            z-index: 1511 !important;
+        }
+    }
+}

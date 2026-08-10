@@ -1,0 +1,546 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   @geoleaf/field-renderer — Responsive modal / drawer
+   Fully theme-aware: uses GeoLeaf core CSS variables defined in geoleaf-theme.css.
+   Light theme  → white panel, dark text.
+   Dark theme   → dark panel, light text.
+   Variables:
+     --gl-color-bg-surface       modal / input background
+     --gl-color-bg-surface-muted subtle elevated surface
+     --gl-color-text-main        primary text (follows theme)
+     --gl-color-text-muted       secondary / label text
+     --gl-color-border-strong    visible border on any background
+     --gl-color-accent           primary action colour
+     --gl-border-radius          shared radius token
+     --gl-font-size-base / sm    shared font-size tokens
+     --gl-shadow-medium          panel shadow
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: gl-modal-fade-in 0.15s ease;
+    touch-action: none;
+}
+
+.gl-form-modal-panel {
+    position: relative;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Follows the active GeoLeaf theme */
+    background: var(--gl-color-bg-surface, #ffffff);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    /* Modal container corners are intentionally larger than the shared
+       --gl-border-radius (6px, buttons/inputs) — kept as a literal so the
+       PLUGINS S10 token realignment does not shrink them. */
+    border-radius: 10px;
+    box-shadow: var(--gl-shadow-medium, 0 4px 16px rgba(15, 23, 42, 0.18));
+    animation: gl-modal-fade-in 0.18s ease;
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-form-modal-panel--drawer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100% !important;
+    max-height: 85vh;
+    /* Drawer top corners — larger than the shared token on purpose (see panel). */
+    border-radius: 12px 12px 0 0;
+    border-bottom: none;
+    animation: gl-modal-slide-up 0.22s ease;
+}
+
+.gl-form-modal__header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.1));
+    flex-shrink: 0;
+}
+
+.gl-form-modal__title {
+    flex: 1;
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-weight: 600;
+    color: var(--gl-color-text-main, #0f172a);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: inherit;
+}
+
+.gl-form-modal__layer {
+    flex-shrink: 0;
+    min-width: 0;
+    max-width: 180px;
+    margin-bottom: 0;
+}
+
+.gl-form-modal__layer .gl-form-label {
+    display: none;
+}
+
+.gl-form-modal__layer .gl-form-input {
+    padding: 4px 6px;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+}
+
+.gl-form-modal__body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px;
+}
+
+.gl-form-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.1));
+    flex-shrink: 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+/* PLUGINS S10: this base was named `.gl-editor-action-btn` — an editor-prefixed
+   class that plugin-editor ALSO defined, differently (a 44×44 round icon button
+   for its floating menu). Both stylesheets ship their own copy, so which one won
+   depended on bundle load order. Renamed to the BEM base of its own modifiers
+   (`__btn-cancel/save/delete`, `--close`); plugin-editor keeps `gl-editor-action-btn`
+   for its floating menu, and its modal buttons adopt this base. */
+.gl-form-modal__btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: var(--gl-border-radius, 6px);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        opacity 0.15s;
+    font-family: inherit;
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-form-modal__btn svg {
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+}
+
+.gl-form-modal__btn:hover:not(:disabled),
+.gl-form-modal__btn:focus-visible:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    outline: none;
+}
+
+.gl-form-modal__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.gl-form-modal__btn--close {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-form-modal__btn-cancel,
+.gl-form-modal__btn-save,
+.gl-form-modal__btn-delete {
+    width: auto;
+    padding: 0 18px;
+    height: 36px;
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-family: inherit;
+    border-radius: var(--gl-border-radius, 6px);
+}
+
+.gl-form-modal__btn-cancel {
+    color: var(--gl-color-text-muted, #6b7280);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+}
+
+.gl-form-modal__btn-cancel:hover:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+}
+
+/*
+ * `color` is the per-theme token, not a literal. Hard-coding #ffffff put white on the
+ * brand orange (#f97316) at ~2.6:1, under the 4.5:1 of WCAG AA — the deviation the E2E
+ * a11y allowlist used to carry. `--gl-color-accent-contrast` is what every other accent
+ * surface in the repo already reads (ui-base, theme-selector, geolocation, plugin-table,
+ * connector), and each theme sets it to whatever is readable on ITS accent: #020617 on
+ * the default orange (~8:1), #ffffff on the dark theme's deeper #b75708 (~5.6:1).
+ */
+.gl-form-modal__btn-save {
+    background: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-contrast, #020617);
+    border: 1px solid var(--gl-color-accent, #f97316);
+    font-weight: 500;
+}
+
+.gl-form-modal__btn-save:hover:not(:disabled) {
+    background: var(--gl-color-accent, #f97316);
+    opacity: 0.88;
+}
+
+.gl-form-modal__btn-save:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Busy state while persistence (onSave) is pending — inline spinner. */
+.gl-form-modal__btn-save--busy {
+    position: relative;
+    color: transparent !important;
+}
+
+.gl-form-modal__btn-save--busy::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: gl-form-modal-spin 0.6s linear infinite;
+}
+
+@keyframes gl-form-modal-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.gl-form-modal__btn-delete {
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    /* Pushed to the far left of the flex-end footer: an irreversible action must
+       not sit flush against Save, where a mis-click costs the record. */
+    margin-right: auto;
+}
+
+.gl-form-modal__btn-delete:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.08);
+}
+
+/* ── Delete confirm dialog ── */
+
+.gl-form-modal__delete-title {
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-weight: 600;
+    color: #dc2626;
+    margin: 0 0 8px;
+    font-family: inherit;
+}
+
+.gl-form-modal__delete-body {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: var(--gl-color-text-muted, #6b7280);
+    margin: 0 0 16px;
+    line-height: 1.5;
+}
+
+/* Compact panel for the styled confirm dialog (replaces window.confirm). */
+.gl-form-modal-panel.gl-form-modal-confirm {
+    width: min(420px, calc(100vw - 32px));
+    max-width: 420px;
+    padding: 20px;
+    gap: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Form field shared styles — theme-aware, no colour overrides needed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+}
+
+.gl-form-label {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-weight: 500;
+    color: var(--gl-color-text-muted, #6b7280);
+    user-select: none;
+    font-family: inherit;
+}
+
+.gl-form-label[data-required="true"]::after {
+    content: " *";
+    color: var(--gl-color-accent, #f97316);
+}
+
+.gl-form-input {
+    width: 100%;
+    padding: 7px 10px;
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    color: var(--gl-color-text-main, #0f172a);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-radius: var(--gl-border-radius, 6px);
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-family: inherit;
+    line-height: 1.4;
+    box-sizing: border-box;
+    transition:
+        border-color 0.12s ease,
+        box-shadow 0.12s ease;
+}
+
+.gl-form-input:focus {
+    outline: none;
+    border-color: var(--gl-color-accent, #f97316);
+    box-shadow: 0 0 0 3px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+}
+
+.gl-form-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--gl-color-bg-surface, #ffffff);
+}
+
+.gl-form-error {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: #dc2626;
+    font-family: inherit;
+}
+
+.gl-form-hint {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: var(--gl-color-text-muted, #6b7280);
+    text-align: right;
+}
+
+/* Secondary label (link.ts — the optional "label" input under a URL field) */
+.gl-form-label--secondary {
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Option groups, metric and dropdown spinner — PLUGINS S4.
+
+   These classes are emitted by radio.ts / checkbox.ts / metric.ts / dropdown.ts
+   / link.ts, but until S4 they were styled ONLY in plugin-editor's stylesheet.
+   Any host loading field-renderer without plugin-editor rendered them unstyled —
+   an addpoi-only page, for instance, registers dropdownComponent and got a
+   spinner with no dimensions. Moved here, next to the components that emit them,
+   and re-expressed with the theme tokens so they follow light/dark like the rest
+   of this file (the editor copies hard-coded a dark palette).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-radio-group,
+.gl-form-checkbox-group {
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-radius: var(--gl-border-radius, 6px);
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.gl-form-radio__item,
+.gl-form-checkbox__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+}
+
+.gl-form-metric__row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gl-form-metric__prefix,
+.gl-form-metric__suffix {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: var(--gl-color-text-muted, #6b7280);
+    white-space: nowrap;
+}
+
+.gl-form-dropdown__spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-top-color: var(--gl-color-accent, #f97316);
+    border-radius: 50%;
+    animation: gl-spin 0.6s linear infinite;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+/* Redefined rather than inherited: this package must style its own components
+   without assuming a host stylesheet is present. Byte-identical to the copies in
+   core's geoleaf-loader.css and plugin-table. PLUGINS S10 reviewed consolidating
+   them and DECLINED: a plain `@keyframes gl-spin { to { rotate(360deg) } }` is a
+   universal idiom, and sharing it would couple three independently-shippable
+   bundles to one host stylesheet — the opposite of the self-sufficiency above.
+   The name collision is harmless: all three definitions are identical. */
+@keyframes gl-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Coordinates component layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-coordinates__row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gl-form-coordinates__capture {
+    appearance: none;
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 5px 12px;
+    background: none;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-radius: var(--gl-border-radius, 6px);
+    color: var(--gl-color-text-muted, #6b7280);
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+        background 0.12s,
+        color 0.12s;
+}
+
+.gl-form-coordinates__capture:hover:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-form-coordinates__capture:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.gl-form-coordinates__capture.is-capturing {
+    opacity: 0.6;
+}
+
+/* ── Animations ── */
+
+@keyframes gl-modal-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes gl-modal-slide-up {
+    from {
+        transform: translateY(24px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Image component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-image__preview-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.gl-form-image__preview {
+    display: block;
+    max-width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: var(--gl-border-radius, 6px);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    cursor: zoom-in;
+}
+
+.gl-form-image__remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+}
+
+.gl-form-image__remove:hover {
+    background: rgba(220, 38, 38, 0.85);
+}
+
+.gl-form-image__drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px;
+    border: 2px dashed var(--gl-color-border-strong, rgba(15, 23, 42, 0.2));
+    border-radius: var(--gl-border-radius, 6px);
+    color: var(--gl-color-text-muted, #6b7280);
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition:
+        border-color 0.15s,
+        background 0.15s;
+}
+
+.gl-form-image__drop-zone:hover,
+.gl-form-image__drop-zone:focus-visible {
+    border-color: var(--gl-color-accent, #f97316);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    outline: none;
+}
+
+.gl-form-image__file-input {
+    display: none;
+}

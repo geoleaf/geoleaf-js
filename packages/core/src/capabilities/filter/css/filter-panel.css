@@ -1,0 +1,547 @@
+@layer gl.capabilities {
+    /*
+ * GeoLeaf — filter: the floating filter panel (left-hand strip).
+ *
+ * Extracted from css/components/ui/ui-sidepanel-filters.css at S6 (see the twin note in
+ * capabilities/feature-info/css/feature-info-panel-content.css).
+ */
+
+    /* ------------------------------------------------------------
+   LEFT-HAND SIDE PANEL — FILTERS (FLOATING STRIP)
+   ------------------------------------------------------------ */
+
+    /* Filter panel root container.
+   - Floats above the map
+   - Stacked above the whole page
+   - Shown/hidden through the .gl-is-open class
+   - Uses flexbox so it adapts properly
+*/
+    #gl-filter-panel.gl-filter-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 1100;
+
+        width: min(320px, calc(100% - 2rem));
+        height: 100vh;
+
+        display: flex;
+        flex-direction: column;
+
+        background: var(--gl-color-bg-surface);
+        color: var(--gl-color-text-main);
+        border-right: 1px solid var(--gl-color-border-soft);
+        box-shadow: var(--gl-shadow-medium);
+
+        opacity: 0;
+        transform: translateX(-110%);
+        visibility: hidden;
+
+        transition:
+            opacity 160ms ease-out,
+            transform 160ms ease-out,
+            visibility 0ms linear 160ms;
+    }
+
+    /* Open state: the panel slides in and becomes visible. */
+    #gl-filter-panel.gl-filter-panel.gl-is-open {
+        opacity: 1;
+        transform: translateX(0);
+        visibility: visible;
+        transition:
+            opacity 160ms ease-out,
+            transform 160ms ease-out,
+            visibility 0ms linear;
+    }
+
+    /* Shift the map controls while the panel is open. */
+    body:has(#gl-filter-panel.gl-is-open) .maplibregl-ctrl-top-left {
+        margin-left: 320px;
+        transition: margin-left 160ms ease-out;
+    }
+
+    /* Panel inner layout. */
+    .gl-filter-panel__header,
+    .gl-filter-panel__body,
+    .gl-filter-panel__footer {
+        padding-inline: 1rem;
+    }
+
+    /* Panel header (title + close button). */
+    .gl-filter-panel__header {
+        padding-top: 0.75rem;
+        padding-bottom: 0.4rem;
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+
+        border-bottom: 1px solid var(--gl-color-border-soft);
+    }
+
+    .gl-filter-panel__title {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* Arrow toggle button that closes the panel. */
+    .gl-filter-panel__toggle-btn {
+        border: 1px solid var(--gl-color-border-soft);
+        background: var(--gl-color-bg-surface);
+        color: var(--gl-color-text-main);
+        padding: 0.35rem 0.5rem;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        transition: all 120ms ease;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+
+    .gl-filter-panel__toggle-btn:hover {
+        background: var(--gl-color-bg-surface-muted);
+        border-color: var(--gl-color-border-main);
+    }
+
+    /* Hide the external toggle button while the panel is open. */
+    body:has(#gl-filter-panel.gl-is-open) .gl-filter-toggle {
+        display: none;
+    }
+
+    /* Desktop mode (right panel active): the toggle/close buttons serve no purpose. */
+    body.gl-right-panel-open .gl-filter-panel__toggle-btn,
+    body.gl-right-panel-open .gl-filter-toggle {
+        display: none;
+    }
+
+    /* Body: the list of filter groups. */
+    .gl-filter-panel__body {
+        padding-top: 0.65rem;
+        padding-bottom: 0.65rem;
+
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1; /* fill the space between header and footer */
+        min-height: 0; /* lets the flex item shrink properly */
+    }
+
+    /* Custom scrollbar (WebKit). */
+    .gl-filter-panel__body::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .gl-filter-panel__body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .gl-filter-panel__body::-webkit-scrollbar-thumb {
+        background: var(--gl-color-border-main);
+        border-radius: 4px;
+        transition: background 140ms ease;
+    }
+
+    .gl-filter-panel__body::-webkit-scrollbar-thumb:hover {
+        background: var(--gl-color-text-muted);
+    }
+
+    /* The shared pill widget — slightly softer shadow when embedded in the panel */
+    .gl-filter-panel__search.gl-pill-search {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Filter group (label + control). */
+    .gl-filter-panel__group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    /* Base controls (select, input, …). */
+    .gl-filter-panel__control {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 0.85rem;
+        line-height: 1.3;
+
+        border-radius: 999px;
+        border: 1px solid var(--gl-color-border-soft);
+        background: var(--gl-color-bg-surface-muted);
+        color: var(--gl-color-text-main);
+
+        padding: 0.35rem 0.7rem;
+
+        outline: none;
+        transition:
+            border-color 140ms ease,
+            box-shadow 140ms ease,
+            background-color 140ms ease;
+    }
+
+    .gl-filter-panel__control:focus-visible {
+        border-color: var(--gl-color-accent);
+        box-shadow:
+            0 0 0 1px var(--gl-color-accent),
+            var(--gl-shadow-soft);
+    }
+
+    /* Range + valeur visible */
+    .gl-filter-panel__range-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .gl-filter-panel__control--range {
+        flex: 1;
+        border-radius: 999px;
+        background: transparent;
+        border: none;
+        padding: 0;
+    }
+
+    .gl-filter-panel__range-value {
+        min-width: 2.2rem;
+        text-align: right;
+        font-size: 0.8rem;
+        color: var(--gl-color-text-muted);
+    }
+
+    /* Tags rendered as clickable badges. */
+    .gl-filter-panel__tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.3rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 40px;
+    }
+
+    .gl-filter-panel__tag-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border-radius: 12px;
+        border: 1px solid var(--gl-color-border-soft);
+        background: var(--gl-color-bg-surface-muted);
+        color: var(--gl-color-text-main);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+
+    .gl-filter-panel__tag-badge:hover {
+        background: var(--gl-color-bg-surface);
+        border-color: var(--gl-color-accent);
+    }
+
+    .gl-filter-panel__tag-badge.gl-is-selected {
+        background: var(--gl-color-accent);
+        color: var(--gl-color-accent-contrast);
+        border-color: var(--gl-color-accent);
+    }
+
+    /* Footer : boutons d’action */
+    .gl-filter-panel__footer {
+        padding-top: 0.4rem;
+        padding-bottom: 0.75rem;
+
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+
+        border-top: 1px solid var(--gl-color-border-soft);
+    }
+
+    /* Filter group section title (Categories, Tags…) — filter capability renderer (S5). */
+    .gl-filter-panel__group-title {
+        margin: 0 0 0.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--gl-color-text-main);
+    }
+
+    /* Apply / Reset action buttons — filter capability renderer (S5). */
+    .gl-filter-panel__action {
+        flex: 1;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 999px;
+        border: 1px solid var(--gl-color-border-soft);
+        cursor: pointer;
+        transition:
+            background-color 140ms ease,
+            border-color 140ms ease,
+            filter 140ms ease;
+    }
+
+    .gl-filter-panel__action--apply {
+        background: var(--gl-color-accent);
+        color: var(--gl-color-accent-contrast);
+        border-color: var(--gl-color-accent);
+    }
+
+    .gl-filter-panel__action--apply:hover {
+        filter: brightness(0.96);
+    }
+
+    .gl-filter-panel__action--reset {
+        background: var(--gl-color-bg-surface-muted);
+        color: var(--gl-color-text-main);
+    }
+
+    .gl-filter-panel__action--reset:hover {
+        background: var(--gl-color-bg-surface);
+    }
+
+    /* ==========================================================================
+   Responsive — moved out of mobile-toolbar-responsive.css and
+   mobile-toolbar-bar.css at S6. The kernel provides the sheet; the filter says
+   how it renders inside it, and owns ITS proximity bar.
+   ========================================================================== */
+
+    /* The floating toggle is superseded by the toolbar icon.
+   ⚠️ `!important` KEPT (S9): the opponent is filter-controls.css `.gl-filter-toggle
+   { display: flex }` at the SAME specificity (0,1,0), and it is imported AFTER this
+   file (install.ts:25 then :26), so source order would hand it the win. This is a
+   kill-switch — without the flag the button reappears everywhere. */
+    .gl-filter-toggle,
+    #gl-filter-toggle {
+        display: none !important;
+    }
+
+    /* In-panel proximity: hidden — the toolbar icon owns it.
+   Same kill-switch situation as above, against filter-controls.css
+   `.gl-filter-panel__proximity { display: flex }`. */
+    .gl-filter-panel__proximity {
+        display: none !important;
+    }
+
+    /* The filter panel once injected into the mobile sheet
+   (moved verbatim from css/components/mobile-toolbar/mobile-toolbar-bar.css).
+
+   S9 — the `!important` of the four rules below were dropped. They were redundant
+   by SPECIFICITY alone: `.gl-sheet-panel__body #gl-filter-panel.gl-sheet-content`
+   scores (1,2,0) against the (1,1,0) of `#gl-filter-panel.gl-filter-panel` at the
+   top of this file, and the three descendant rules score (1,3,0) against a bare
+   (0,1,0). Unlike the kill-switches above, no equal-specificity opponent exists,
+   so nothing here depended on the flag. */
+    .gl-sheet-panel__body #gl-filter-panel.gl-sheet-content {
+        display: flex;
+        flex-direction: column;
+        position: static;
+        width: 100%;
+        height: auto;
+        min-height: 200px;
+        max-height: none;
+        border: none;
+        box-shadow: none;
+        background: transparent;
+        border-radius: 0;
+        transform: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Hide the filter panel header — the sheet already provides one. */
+    .gl-sheet-panel__body #gl-filter-panel.gl-sheet-content .gl-filter-panel__header {
+        display: none;
+    }
+
+    /* Body: transparent background, continuous layout. */
+    .gl-sheet-panel__body #gl-filter-panel.gl-sheet-content .gl-filter-panel__body {
+        overflow-y: visible;
+        border: none;
+        box-shadow: none;
+        background: transparent;
+        padding: 0;
+        flex: 1 1 auto;
+    }
+
+    /* Filter footer, flush with the sheet. */
+    .gl-sheet-panel__body #gl-filter-panel.gl-sheet-content .gl-filter-panel__footer {
+        border-top: 1px solid var(--gl-color-border-soft);
+        background: transparent;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        box-shadow: none;
+    }
+
+    /* ==========================================================================
+   Proximity-search configuration strip
+   Appears at the top of the map while proximity mode is active
+   ========================================================================== */
+
+    .gl-proximity-bar {
+        position: absolute;
+        top: 0.65rem;
+        left: 50%;
+        transform: translateX(-50%) scale(0.96);
+        z-index: 1499; /* just under the floating search pill (1500) */
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.45rem 0.35rem 0.75rem;
+        border-radius: 9999px;
+        background: var(--gl-color-bg-surface);
+        border: 1px solid var(--gl-color-border-soft);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+        width: min(92%, 440px);
+        opacity: 0;
+        transition:
+            opacity 0.2s ease,
+            transform 0.2s ease;
+        pointer-events: auto;
+    }
+
+    .gl-proximity-bar.gl-is-visible {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+
+    /* 15" desktop: sits under the top-left search pill.
+   ⚠️ `!important` KEPT (S9), unlike the sheet block above. Here the flags are load
+   bearing on `transform`: `.gl-proximity-bar` scores (0,1,0) while the visible-state
+   rule `.gl-proximity-bar.gl-is-visible` above scores (0,2,0), so the bare selector
+   CANNOT win on specificity — the two `transform` lines below would be overridden
+   the moment the bar becomes visible. The other three properties are only redundant
+   as long as the pair stays together; they were left as a block so the two rules
+   keep behaving identically. Re-check with a real browser at ≥1440px before
+   touching them (E2E is suspended for this roadmap). */
+    @media (min-width: 1440px) {
+        .gl-proximity-bar {
+            top: calc(12px + 2.6rem + 0.4rem) !important;
+            left: 3.75rem !important;
+            transform: scale(0.96) !important;
+            width: min(360px, 26vw) !important;
+        }
+        .gl-proximity-bar.gl-is-visible {
+            transform: scale(1) !important;
+        }
+    }
+
+    .gl-proximity-bar__instruction {
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: var(--gl-color-text-muted);
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .gl-proximity-bar__instruction.point-placed {
+        color: var(--gl-color-accent, #2563eb);
+    }
+
+    .gl-proximity-bar__slider {
+        flex: 1;
+        min-width: 0;
+        accent-color: var(--gl-color-accent, #2563eb);
+        height: 4px;
+        cursor: pointer;
+        touch-action: manipulation;
+    }
+
+    .gl-proximity-bar__radius-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gl-color-text-main);
+        white-space: nowrap;
+        min-width: 3rem;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    /* Confirm button — accent circle, same shape as .gl-pill-search__submit. */
+    .gl-proximity-bar__validate {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 34px;
+        height: 34px;
+        border-radius: 9999px;
+        border: none;
+        background: var(--gl-color-accent, #2563eb);
+        color: #fff;
+        cursor: pointer;
+        transition:
+            background 0.15s ease,
+            opacity 0.15s ease,
+            transform 0.1s ease;
+        touch-action: manipulation;
+    }
+
+    .gl-proximity-bar__validate:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .gl-proximity-bar__validate:not(:disabled):hover {
+        filter: brightness(1.1);
+    }
+
+    .gl-proximity-bar__validate:not(:disabled):active {
+        transform: scale(0.92);
+    }
+
+    /* Cancel button — a discreet cross. */
+    .gl-proximity-bar__cancel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 9999px;
+        border: none;
+        background: transparent;
+        color: var(--gl-color-text-muted);
+        cursor: pointer;
+        transition:
+            color 0.15s ease,
+            background 0.15s ease,
+            transform 0.1s ease;
+        touch-action: manipulation;
+        padding: 0;
+    }
+
+    .gl-proximity-bar__cancel:hover {
+        background: var(--gl-color-bg-surface-muted, #f1f5f9);
+        color: var(--gl-color-text-main);
+    }
+
+    .gl-proximity-bar__cancel:active {
+        transform: scale(0.9);
+    }
+
+    /* WCAG 2.1 SC 2.3.3 (AAA) / RGAA 13.8 */
+    @media (prefers-reduced-motion: reduce) {
+        .gl-proximity-bar,
+        .gl-proximity-bar__validate,
+        .gl-proximity-bar__cancel {
+            transition: none;
+        }
+
+        .gl-proximity-bar__validate:not(:disabled):active,
+        .gl-proximity-bar__cancel:active {
+            transform: none;
+        }
+
+        .gl-proximity-bar,
+        .gl-proximity-bar.gl-is-visible {
+            transform: translateX(-50%);
+        }
+    }
+}

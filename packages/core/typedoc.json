@@ -1,0 +1,27 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": ["src"],
+    "entryPointStrategy": "expand",
+    "exclude": ["**/__tests__/**", "**/__mocks__/**", "**/*.test.ts", "**/*.spec.ts"],
+    "out": "docs/api",
+    "tsconfig": "tsconfig.json",
+    "name": "GeoLeaf Core API",
+    "includeVersion": true,
+    "readme": "none",
+    "projectDocuments": ["docs/pwa.md"],
+    "excludeExternals": true,
+    "excludePrivate": true,
+    "excludeProtected": false,
+    "excludeInternal": true,
+    "visibilityFilters": {
+        "protected": false,
+        "private": false,
+        "inherited": true,
+        "external": false
+    },
+    "categorizeByGroup": true,
+    "categoryOrder": ["Core", "Modules", "Utilities", "*"],
+    "sort": ["source-order"],
+    "plugin": [],
+    "searchInComments": true
+}

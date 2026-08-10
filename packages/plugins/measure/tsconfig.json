@@ -1,0 +1,10 @@
+{
+    "extends": "@geoleaf/build-config/tsconfig.package.json",
+    "compilerOptions": {
+        "paths": {
+            "@geoleaf/host-runtime": ["../../libs/host-runtime/dist/types/index.d.ts"]
+        }
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "dist", "src/__tests__"]
+}

@@ -1,0 +1,41 @@
+# CODEOWNERS — qui GitHub demande en relecture, et sur quoi.
+#
+# Syntaxe : <motif de chemin> <propriétaire…>. La DERNIÈRE règle qui matche gagne, contrairement
+# à `.gitignore` — d'où l'ordre du fichier : le général d'abord, le sensible en dernier.
+#
+# ⚠️ Le propriétaire doit être un compte ou une équipe GitHub RÉELS, avec accès en écriture au
+# dépôt. Un nom qui ne résout pas n'est pas une erreur : GitHub l'ignore EN SILENCE, et la règle
+# cesse de demander qui que ce soit sans que rien ne le signale. Ne jamais y écrire un nom
+# d'organisation « à venir ».
+#
+# 📌 `@mattpottier-ship-it` est le compte qui porte le dépôt aujourd'hui. Il change en même temps
+# que l'URL du dépôt, au moment de la bascule publique — pas avant, et pas ici tout seul : les
+# `repository.url` des 14 manifestes portent la même chaîne, et les deux doivent tourner ensemble.
+
+# ─── Défaut : tout le dépôt ──────────────────────────────────────────────────────────────
+*                                   @mattpottier-ship-it
+
+# ─── Frontière lib/app et sources livrées ────────────────────────────────────────────────
+# `apps/geoleaf-app/` est la source UNIQUE des variantes déployées : `index.html` et `init.js`
+# y portent six paires de marqueurs que le build patche par expression régulière. Un
+# reformatage anodin y casse le build sans casser aucun test.
+/apps/geoleaf-app/                  @mattpottier-ship-it
+
+# ─── Ce qui part chez un intégrateur ou sur un registre ──────────────────────────────────
+# Les manifestes décident du contenu des tarballs. Une ligne de `files[]` ajoutée ou retirée
+# est une modification de surface publiée, irréversible une fois la version publiée.
+/packages/*/package.json            @mattpottier-ship-it
+/packages/*/*/package.json          @mattpottier-ship-it
+/profiles/                          @mattpottier-ship-it
+
+# ─── Les gates, et ce qui décide de ce qu'elles voient ───────────────────────────────────
+# Une gate affaiblie ne rougit pas : elle sort VERTE en ayant moins scanné. C'est la classe de
+# défaut la plus coûteuse du dépôt, et la seule que la relecture humaine puisse attraper.
+/scripts/                           @mattpottier-ship-it
+/.github/workflows/                 @mattpottier-ship-it
+/eslint.config.mjs                  @mattpottier-ship-it
+/knip.js                            @mattpottier-ship-it
+
+# ─── Surface de sécurité ─────────────────────────────────────────────────────────────────
+/packages/core/src/kernel/security/ @mattpottier-ship-it
+/.github/SECURITY.md                @mattpottier-ship-it

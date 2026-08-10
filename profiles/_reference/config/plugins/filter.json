@@ -1,0 +1,60 @@
+{
+    "_comment": "B7 modules.filter — fixture EXHAUSTIVE (capacité in-core filter, S5). Un champ par kind (text/proximity/taxonomy/tag/range/boolean) exerçant tous les attributs de descripteur + toutes les feuilles modules.filter.* (enabled/title/fields/actions.*). TEST-ONLY (jamais déployé). B.22 : `searchPlaceholder` retiré — la clé était déclarée et écrite par 8 profils livrés, sans aucun site de lecture ; le panneau S5 n'a pas de champ de recherche global, seul le descripteur `kind:\"text\"` porte un placeholder (`fields[].placeholder`, panel/render.ts:147).",
+    "enabled": true,
+    "title": "Filtrer",
+    "fields": [
+        {
+            "id": "searchText",
+            "kind": "text",
+            "label": "Recherche textuelle",
+            "placeholder": "Rechercher...",
+            "searchFields": ["title", "properties.name", "description"]
+        },
+        {
+            "id": "proximity",
+            "kind": "proximity",
+            "label": "Recherche par proximité",
+            "radiusMin": 1,
+            "radiusMax": 200,
+            "radiusStep": 5,
+            "radiusDefault": 20,
+            "buttonLabel": "Activer",
+            "instructionText": "Cliquez sur la carte pour définir le point central"
+        },
+        {
+            "id": "categories",
+            "kind": "taxonomy",
+            "label": "Catégories",
+            "field": "categoryId",
+            "subField": "subcategoryId",
+            "taxonomyRef": "poi-cat",
+            "layers": ["reference-points"]
+        },
+        {
+            "id": "tags",
+            "kind": "tag",
+            "label": "Tags",
+            "field": "attributes.tags",
+            "options": ["free", "paid"]
+        },
+        {
+            "id": "elevation",
+            "kind": "range",
+            "label": "Altitude",
+            "field": "properties.elevation",
+            "min": 0,
+            "max": 3000,
+            "step": 50
+        },
+        {
+            "id": "accessible",
+            "kind": "boolean",
+            "label": "Accessible PMR",
+            "field": "properties.accessible"
+        }
+    ],
+    "actions": {
+        "applyLabel": "Appliquer",
+        "resetLabel": "Réinitialiser"
+    }
+}

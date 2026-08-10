@@ -1,0 +1,12 @@
+{
+    "_comment": "B7 modules.cluster — exhaustive fixture (all cluster capability keys) for the config-contract coverage/regression-lock tests. Cluster is an in-core capability (native MapLibre clustering), opt-out.",
+    "enabled": true,
+    "clustering": true,
+    "clusterStrategy": "unified",
+    "clusterRadius": 80,
+    "disableClusteringAtZoom": 12,
+    "clusterStrategies": {
+        "by-source": { "sources": { "geojson": true } },
+        "json-only": { "geojsonClustering": true }
+    }
+}

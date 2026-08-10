@@ -1,0 +1,7 @@
+{
+    "enabled": true,
+    "cache": {
+        "enableProfileCache": true,
+        "enableTileCache": true
+    }
+}

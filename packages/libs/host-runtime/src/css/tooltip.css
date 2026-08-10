@@ -1,0 +1,55 @@
+/*! @geoleaf/host-runtime — © 2026 Mattieu Pottier — MIT License */
+
+/* Présentation partagée du tooltip flottant.
+ *
+ * ⚠️ La bannière ci-dessus est volontairement COURTE. cssnano préserve les commentaires
+ * `/*!` — ce sont les bannières de licence — donc tout ce qui y est écrit part dans
+ * CHAQUE bundle consommateur. Mesuré à STRUCT S2 (F8) : 15 lignes de prose y coûtaient
+ * ~0,7 KB gz par plugin, soit plus que le CSS extrait. Le rationnel vit donc dans un
+ * bloc ordinaire, que cssnano supprime.
+ *
+ * Consolidée à STRUCT S2 (F8) depuis les blocs strictement identiques de `plugin-editor`
+ * (`geoleaf-editor.css`) et `plugin-measure` (`geoleaf-measure.css`) — 19 déclarations
+ * chacun, seul le préfixe de classe différait.
+ *
+ * Clé sur `.gl-tooltip`, une classe PARTAGÉE que les plugins ajoutent à côté de la leur
+ * (`gl-editor-tooltip`, `gl-measure-tooltip`), qu'ils conservent pour le ciblage et les
+ * surcharges. L'alternative — lister ici les deux sélecteurs plugin — recablerait des
+ * noms de plugins dans la bibliothèque partagée et grossirait à chaque plugin.
+ *
+ * `gl-is-visible` n'est pas une invention de ce fichier : `src/ui/tooltip.ts` l'écrit
+ * déjà (`showTooltip` / `hideTooltip`). La classe et son style vivent désormais dans le
+ * même paquet — c'est ce qui a fait de ce bloc le seul des quatre candidats à valoir
+ * l'extraction. */
+
+.gl-tooltip {
+    position: fixed;
+    z-index: 1010;
+    background: var(--gl-color-tooltip-bg, rgba(0, 0, 0, 0.78));
+    color: var(--gl-color-tooltip-text, #ffffff);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    pointer-events: none;
+    white-space: nowrap;
+    line-height: 1.4;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.gl-tooltip.gl-is-visible {
+    opacity: 1;
+}
+
+/* Respecte la préférence système : sans cela, la transition d'opacité reste active pour
+   qui a demandé de réduire les animations. ⚠️ Cette règle vivait dans
+   `geoleaf-measure.css` seul — editor n'en avait PAS. La partager la donne aux deux, et
+   surtout la met dans la même feuille que la transition qu'elle annule : la laisser côté
+   plugin ferait dépendre l'accessibilité de l'ordre d'adoption des feuilles. */
+@media (prefers-reduced-motion: reduce) {
+    .gl-tooltip {
+        transition: none;
+    }
+}

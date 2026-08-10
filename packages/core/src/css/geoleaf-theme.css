@@ -1,0 +1,255 @@
+/* =======================================================================
+   GeoLeaf – Fichier de thème centralisé (Theme v1 harmonisé)
+   ======================================================================= */
+
+/* -----------------------------------------------------------------------
+   Palette par défaut (fallback) – très proche du thème LIGHT
+   ----------------------------------------------------------------------- */
+:root {
+    /* Breakpoints responsive (Mobile Friendly) – utiliser ces valeurs en JS ou en référence ;
+       les media queries CSS utilisent les mêmes valeurs en px (var() non supporté dans @media). */
+    --gl-bp-sm: 480px; /* Smartphone */
+    --gl-bp-md: 640px; /* Grande phablet / transition */
+    --gl-bp-lg: 768px; /* Tablette 6″ – seuil « icônes seules » barre pill mobile */
+    --gl-bp-xl: 1024px; /* PC 10″ / 13″ */
+
+    /* Couleurs générales */
+    --gl-color-bg-page: #f3f4f6;
+    --gl-color-bg-surface: #ffffff;
+    --gl-color-bg-surface-muted: #f9fafb;
+    --gl-color-bg-overlay: rgba(255, 255, 255, 0.78);
+
+    --gl-color-text-main: #0f172a;
+    --gl-color-text-muted: #6b7280;
+    --gl-color-text-inverse: #f9fafb;
+
+    --gl-color-border-soft: rgba(15, 23, 42, 0.08);
+    --gl-color-border-strong: rgba(15, 23, 42, 0.22);
+
+    /* Accent (boutons, icônes, toggles actifs) */
+    --gl-color-accent: #f97316; /* Orange chaud GeoLeaf/MyLatinTrip */
+    --gl-color-accent-soft: rgba(249, 115, 22, 0.14);
+
+    /* POI */
+    --gl-color-poi-fill: #1d4ed8; /* Bleu marqueur */
+    --gl-color-poi-stroke: #ffffff;
+    --gl-color-poi-fill-default: #4a90e5; /* Couleur par défaut si aucune catégorie */
+    --gl-color-poi-stroke-default: #ffffff; /* Contour par défaut si aucune catégorie */
+
+    /* Badges POI par défaut */
+    --gl-color-badge-category-bg: rgba(249, 115, 22, 0.12);
+    --gl-color-badge-category-border: rgba(249, 115, 22, 0.25);
+    --gl-color-badge-subcategory-bg: rgba(0, 0, 0, 0.04);
+    --gl-color-badge-subcategory-border: rgba(0, 0, 0, 0.08);
+
+    /* Panneau latéral POI */
+    --gl-sidepanel-width: 420px;
+
+    /* Itinéraire */
+    --gl-color-route-line: #2563eb;
+
+    /* Légende */
+    --gl-color-legend-bg: rgba(255, 255, 255, 0.7);
+    --gl-color-legend-border: rgba(209, 213, 219, 0.85);
+    --gl-color-legend-text: #111827;
+
+    /* Popup POI */
+    --gl-color-popup-bg: rgba(255, 255, 255, 0.7);
+    --gl-color-popup-border: rgba(209, 213, 219, 0.75);
+    --gl-color-popup-text: #111827;
+    /* Trait sous le titre de la popup POI (fallback ≈ light) */
+    --gl-poi-title-border: #2f2f2f;
+
+    /* Focus ring (accessibilité) */
+    --gl-color-focus-ring: #2684ff;
+
+    /* Ombres */
+    --gl-shadow-soft: 0 1px 3px rgba(15, 23, 42, 0.12);
+    --gl-shadow-medium: 0 2px 6px rgba(15, 23, 42, 0.18);
+
+    /* Additional theme-aware variables used across the UI */
+    --gl-shadow-panel: -8px 0 30px rgba(2, 6, 23, 0.35);
+    --gl-color-gallery-item-bg: rgba(0, 0, 0, 0.04);
+    --gl-color-accent-contrast: #020617;
+    --gl-color-accent-hover: #ff9d57;
+
+    /* Aliases utilitaires pour harmoniser toutes les couches UI */
+    --gl-color-text: var(--gl-color-text-main);
+    --gl-color-text-secondary: var(--gl-color-text-muted);
+    --gl-color-border: var(--gl-color-border-soft);
+    --gl-color-border-subtle: var(--gl-color-border-soft);
+    --gl-panel-border: var(--gl-color-border-soft);
+    --gl-color-surface-elevated: var(--gl-color-bg-surface-muted);
+
+    /* Opacités / overlays génériques dérivés du thème */
+    --gl-color-overlay-soft: color-mix(in srgb, var(--gl-color-bg-overlay) 50%, transparent);
+    --gl-color-overlay-strong: color-mix(in srgb, var(--gl-color-bg-overlay) 85%, transparent);
+    --gl-color-overlay-stronger: color-mix(in srgb, var(--gl-color-bg-overlay) 95%, transparent);
+
+    /* Accent en alpha réutilisable (focus, halos) */
+    --gl-color-accent-alpha: color-mix(in srgb, var(--gl-color-accent) 20%, transparent);
+
+    /* Accordion shared design tokens */
+    --gl-accordion-border-radius: 6px;
+    --gl-accordion-border-color: var(--gl-color-border-soft);
+    --gl-accordion-header-bg: var(--gl-color-bg-surface-muted);
+    --gl-accordion-header-bg-hover: var(--gl-color-bg-surface);
+    --gl-accordion-header-padding: 0 0.75rem;
+    --gl-accordion-header-min-height: 36px;
+    --gl-accordion-arrow-size: 0.75rem;
+    --gl-accordion-body-padding: 0.8rem;
+
+    /* Largeur partagée des panneaux contrôle flottants (layer manager, légende) */
+    --gl-panel-control-width: 270px;
+
+    /* Tooltips (barre pill + sous-menus plugins) */
+    --gl-color-tooltip-bg: rgba(0, 0, 0, 0.78);
+    --gl-color-tooltip-text: #ffffff;
+
+    /* PLUGINS S10 — jetons partagés par les plugins de formulaire (field-renderer,
+       editor, measure, storage). Ils étaient référencés `var(--gl-…)` par ~45 sites
+       sans être définis nulle part : chacun retombait sur son fallback en dur, et
+       ces fallbacks avaient DÉRIVÉ (le `--gl-font-size-sm` couvrait 6 valeurs de
+       0,75 à 0,85rem). Définis ici, ils sont désormais la source unique — les
+       fallbacks des sites deviennent dormants. Invariants au thème (une taille de
+       police ne change pas en dark) → déclarés dans :root uniquement.
+       Valeurs canoniques = pluralité mesurée sur les sites existants. */
+    --gl-font-size-sm: 0.78rem;
+    --gl-font-size-base: 0.875rem;
+    --gl-border-radius: 6px;
+    --gl-color-danger: #d32f2f;
+    --gl-color-danger-alpha: rgba(211, 47, 47, 0.1);
+}
+
+/* PC 10″ (769–1024px) : side panel légèrement réduit pour laisser plus de carte visible */
+@media (min-width: 769px) and (max-width: 1024px) {
+    :root {
+        --gl-sidepanel-width: 360px;
+    }
+}
+
+/* -----------------------------------------------------------------------
+   Thème LIGHT – appliqué quand le <body> a la classe .gl-theme-light
+   Aussi disponible directement sur .gl-theme-light pour support fullscreen
+   ----------------------------------------------------------------------- */
+body.gl-theme-light,
+.gl-theme-light {
+    --gl-color-bg-page: #f3f4f6;
+    --gl-color-bg-surface: #ffffff;
+    --gl-color-bg-surface-muted: #f9fafb;
+    --gl-color-bg-overlay: rgba(255, 255, 255, 0.78);
+
+    --gl-color-text-main: #0f172a;
+    --gl-color-text-muted: #6b7280;
+    --gl-color-text-inverse: #f9fafb;
+
+    --gl-color-border-soft: rgba(15, 23, 42, 0.08);
+    --gl-color-border-strong: rgba(15, 23, 42, 0.22);
+
+    /* Accent chaud mais discret */
+    --gl-color-accent: #f4cfb4;
+    --gl-color-accent-soft: rgba(249, 115, 22, 0.14);
+
+    /* POI / itinéraire identiques dans les deux thèmes pour la lisibilité */
+    --gl-color-poi-fill: #1d4ed8;
+    --gl-color-poi-stroke: #ffffff;
+    --gl-color-poi-fill-default: #4a90e5;
+    --gl-color-poi-stroke-default: #ffffff;
+
+    --gl-color-route-line: #2563eb;
+
+    --gl-color-legend-bg: rgba(255, 255, 255, 0.7);
+    --gl-color-legend-border: rgba(209, 213, 219, 0.85);
+    --gl-color-legend-text: #111827;
+
+    --gl-color-popup-bg: rgba(255, 255, 255, 0.7);
+    --gl-color-popup-border: rgba(209, 213, 219, 0.75);
+    --gl-color-popup-text: #111827;
+    /* Gris anthracite en light */
+    --gl-poi-title-border: #2f2f2f;
+
+    /* Badges POI */
+    --gl-color-badge-category-bg: rgba(249, 115, 22, 0.2);
+    --gl-color-badge-category-border: rgba(249, 115, 22, 0.25);
+    --gl-color-badge-subcategory-bg: rgba(0, 0, 0, 0.2);
+    --gl-color-badge-subcategory-border: rgba(0, 0, 0, 0.25);
+
+    /* Focus ring (accessibilité) */
+    --gl-color-focus-ring: #2684ff;
+
+    /* Accordion shared design tokens */
+    --gl-accordion-border-radius: 6px;
+    --gl-accordion-border-color: var(--gl-color-border-soft);
+    --gl-accordion-header-bg: var(--gl-color-bg-surface-muted);
+    --gl-accordion-header-bg-hover: var(--gl-color-bg-surface);
+    --gl-accordion-header-padding: 0 0.75rem;
+    --gl-accordion-header-min-height: 36px;
+    --gl-accordion-arrow-size: 0.75rem;
+    --gl-accordion-body-padding: 0.8rem;
+}
+
+/* -----------------------------------------------------------------------
+   Thème DARK – appliqué quand le <body> a la classe .gl-theme-dark
+   Aussi disponible directement sur .gl-theme-dark pour support fullscreen
+   ----------------------------------------------------------------------- */
+body.gl-theme-dark,
+.gl-theme-dark {
+    --gl-color-bg-page: #000000;
+    --gl-color-bg-surface: #000000;
+    --gl-color-bg-surface-muted: #121212;
+    --gl-color-bg-overlay: rgba(15, 23, 42, 0.7);
+
+    --gl-color-text-main: #e5e7eb;
+    --gl-color-text-muted: #9ca3af;
+    --gl-color-text-inverse: #eaeaea;
+
+    --gl-color-border-soft: rgba(148, 163, 184, 0.35);
+    --gl-color-border-strong: rgba(148, 163, 184, 0.55);
+
+    /* POI / itinéraire identiques dans les deux thèmes pour la lisibilité */
+    --gl-color-poi-fill: #1d4ed8;
+    --gl-color-poi-stroke: #ffffff;
+    --gl-color-poi-fill-default: #4a90e5;
+    --gl-color-poi-stroke-default: #ffffff;
+    --gl-color-border-strong: rgba(148, 163, 184, 0.55);
+
+    /* Accent chaud mais légèrement adouci pour le dark */
+    --gl-color-accent: #b75708;
+    --gl-color-accent-soft: rgba(251, 146, 60, 0.2);
+    /* Text on accent background: white gives 4.8:1 on #b75708 (WCAG AA ✓) */
+    --gl-color-accent-contrast: #ffffff;
+
+    --gl-color-poi-fill: #3b82f6; /* bleu légèrement plus clair */
+    --gl-color-poi-stroke: #ffffff;
+
+    --gl-color-route-line: #60a5fa;
+
+    --gl-color-legend-bg: rgba(15, 23, 42, 0.7);
+    --gl-color-legend-border: rgba(55, 65, 81, 0.9);
+    --gl-color-legend-text: #e5e7eb;
+
+    --gl-color-popup-bg: rgba(15, 23, 42, 0.7);
+    --gl-color-popup-border: rgba(55, 65, 81, 0.7);
+    --gl-color-popup-text: #e5e7eb;
+    /* Blanc en dark */
+    --gl-poi-title-border: #ffffff;
+
+    /* Badges POI */
+    --gl-color-badge-category-bg: rgba(249, 115, 22, 0.5);
+    --gl-color-badge-category-border: rgba(249, 115, 22, 0.5);
+    --gl-color-badge-subcategory-bg: rgba(139, 138, 138, 0.5);
+    --gl-color-badge-subcategory-border: rgba(0, 0, 0, 0.5);
+
+    /* Focus ring (accessibilité) - same as light */
+    --gl-color-focus-ring: #2684ff;
+
+    /* Accordion shared design tokens */
+    --gl-accordion-border-radius: 6px;
+    --gl-accordion-border-color: var(--gl-color-border-soft);
+    --gl-accordion-header-bg: var(--gl-color-bg-surface-muted);
+    --gl-accordion-header-bg-hover: var(--gl-color-bg-surface);
+    --gl-accordion-header-padding: 0 0.75rem;
+    --gl-accordion-header-min-height: 36px;
+    --gl-accordion-arrow-size: 0.75rem;
+    --gl-accordion-body-padding: 0.8rem;
+}

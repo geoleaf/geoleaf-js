@@ -1,0 +1,59 @@
+{
+    "_comment": "Test-only fixture (never deployed — build-deploy skips `_`-prefixed dirs). Taxonomy v3: the capability owns the POINT SYMBOL only — icon, iconColor, and the marker disc (fill/stroke/strokeWidth). Geometry colour and point SIZE belong to each layer's styleRules. The former `hydro-type` taxonomy (colorStroke on the riviere-* layers) is gone with the painter it fed: those layers exist only as layerTemplates instances, with no data and no style on disk.",
+    "enabled": true,
+    "icons": {
+        "spriteUrl": "../profiles/_reference/icons/sprite_reference.svg",
+        "symbolPrefix": "ref-poi-cat-",
+        "defaultIcon": "activity-generic"
+    },
+    "render": {
+        "popup": { "showIconCategory": true, "showIconSubcategory": false, "colorBadges": true },
+        "tooltip": { "showIconCategory": false, "showIconSubcategory": false },
+        "sidepanel": {
+            "showIconCategory": true,
+            "showIconSubcategory": true,
+            "colorBadges": true
+        }
+    },
+    "taxonomies": {
+        "poi-cat": {
+            "categoryField": "categoryId",
+            "subCategoryField": "subCategoryId",
+            "categories": {
+                "activites": {
+                    "svgId": "activity-generic",
+                    "iconColor": "#ffffff",
+                    "marker": { "fill": "#2e7d32", "stroke": "#1b5e20", "strokeWidth": 2 },
+                    "label": "Activités",
+                    "subcategories": {
+                        "randonnee": {
+                            "svgId": "activity-mountain",
+                            "iconColor": "#ffffff",
+                            "marker": { "fill": "#43a047", "stroke": "#1b5e20", "strokeWidth": 2 },
+                            "label": "Randonnée"
+                        },
+                        "velo": { "svgId": "activity-vehicle", "label": "Vélo" }
+                    }
+                },
+                "culture": {
+                    "svgId": "culture-building",
+                    "iconColor": "#ffffff",
+                    "marker": { "fill": "#6a1b9a", "stroke": "#38006b", "strokeWidth": 2 },
+                    "label": "Culture",
+                    "subcategories": {
+                        "musee": { "svgId": "culture-building", "label": "Musée" }
+                    }
+                },
+                "nature": {
+                    "svgId": "nature-forest",
+                    "iconColor": "#00695c",
+                    "marker": false,
+                    "label": "Nature"
+                }
+            }
+        }
+    },
+    "layers": {
+        "reference-points": { "use": "poi-cat" }
+    }
+}

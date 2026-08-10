@@ -1,0 +1,287 @@
+/**
+ * @geoleaf-plugins/geocoding — Address Search Control styles
+ * ---------------------------------------------------------
+ * Self-contained styles for the `.gl-geocoding-ctrl` widget AND the
+ * `.gl-pill-search` input it uses. The plugin must not depend on core CSS
+ * files (the shared pill component stays in core for the POI filter), so the
+ * needed pill rules are duplicated here.
+ *
+ * Theme variables (`--gl-color-*`) are provided by the core theme on :root;
+ * every `var()` carries a fallback so the plugin renders even if a variable
+ * is missing. Injected at runtime via CSSOM (cspStyleInject, INV-CSS).
+ */
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Pill-shaped search input (.gl-pill-search) — duplicated subset
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.gl-pill-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.45rem 0.35rem 1rem;
+    border-radius: 9999px;
+    background: var(--gl-color-bg-surface, #fff);
+    border: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+    box-sizing: border-box;
+}
+
+.gl-pill-search:focus-within {
+    box-shadow:
+        0 0 0 2px var(--gl-color-focus-ring, #2563eb),
+        0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* Active-search highlight when the input is not empty */
+.gl-pill-search:has(.gl-pill-search__input:not(:placeholder-shown)) {
+    border-color: var(--gl-color-accent, #2563eb);
+    box-shadow:
+        0 0 0 2px var(--gl-color-accent-alpha, rgba(37, 99, 235, 0.25)),
+        0 2px 12px rgba(0, 0, 0, 0.18);
+}
+
+.gl-pill-search__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--gl-color-text-main, #1e293b);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    padding: 0.2rem 0;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.gl-pill-search__input::placeholder {
+    color: var(--gl-color-text-muted, #94a3b8);
+    opacity: 0.7;
+}
+
+/* Remove native clear button on type=search (Chrome/Safari) */
+.gl-pill-search__input::-webkit-search-cancel-button {
+    display: none;
+}
+
+/* ── Submit (magnifier) button ────────────────────────────────────────────── */
+
+.gl-pill-search__submit {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--gl-color-accent, #2563eb);
+    color: #fff;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        transform 0.1s ease,
+        filter 0.15s ease;
+    touch-action: manipulation;
+    padding: 0;
+}
+
+.gl-pill-search__submit:hover {
+    filter: brightness(1.1);
+}
+
+.gl-pill-search__submit:active {
+    transform: scale(0.9);
+}
+
+.gl-pill-search__submit svg {
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+}
+
+/* ── Clear (×) button ────────────────────────────────────────────────────── */
+
+.gl-pill-search__clear {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--gl-color-text-muted, #94a3b8);
+    cursor: pointer;
+    transition:
+        color 0.15s ease,
+        background 0.15s ease,
+        transform 0.1s ease;
+    touch-action: manipulation;
+    padding: 0;
+}
+
+.gl-pill-search__clear:hover {
+    background: var(--gl-color-bg-surface-muted, #f1f5f9);
+    color: var(--gl-color-text-main, #1e293b);
+}
+
+.gl-pill-search__clear:active {
+    transform: scale(0.9);
+}
+
+.gl-pill-search__clear svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+}
+
+/* Submit button is only useful on mobile (virtual keyboard needs explicit submit).
+   On desktop the search triggers automatically on input (debounce). */
+@media (min-width: 769px) {
+    .gl-pill-search__submit {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gl-pill-search__submit,
+    .gl-pill-search__clear {
+        transition: none;
+    }
+    .gl-pill-search__submit:active,
+    .gl-pill-search__clear:active {
+        transform: none;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Geocoding control (.gl-geocoding-ctrl)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.gl-geocoding-ctrl {
+    position: absolute;
+    z-index: 1500;
+    width: 320px;
+    max-width: calc(100% - 2rem);
+    font-family: inherit;
+}
+
+/* Position variants */
+.gl-geocoding-ctrl--top-right {
+    top: 0.75rem;
+    right: 3rem; /* leaves room for MapLibre zoom controls */
+}
+
+.gl-geocoding-ctrl--top-left {
+    top: 0.75rem;
+    left: 3rem;
+}
+
+.gl-geocoding-ctrl--bottom-right {
+    bottom: 0.75rem;
+    right: 3rem;
+}
+
+.gl-geocoding-ctrl--bottom-left {
+    bottom: 0.75rem;
+    left: 3rem;
+}
+
+/* Mobile toggle visibility — the pill is hidden by default in the mobile
+   breakpoint (see @media below) and revealed by the toolbar geocoding button
+   (registry.open → control.reveal) via .gl-geocoding-ctrl--mobile-visible. */
+
+/* Pill stretches to full wrapper width */
+.gl-geocoding-ctrl .gl-pill-search {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Results dropdown ────────────────────────────────────────────────────── */
+
+.gl-geocoding-results {
+    list-style: none;
+    margin: 0.35rem 0 0 0;
+    padding: 0;
+    width: 100%;
+    background: var(--gl-color-bg-surface, #fff);
+    border: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.gl-geocoding-result-item {
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--gl-color-text-main, #1e293b);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.1s;
+}
+
+.gl-geocoding-result-item:last-child {
+    border-bottom: none;
+}
+
+.gl-geocoding-result-item:hover,
+.gl-geocoding-result-item[aria-selected="true"] {
+    background: var(--gl-color-accent-soft, var(--gl-color-bg-surface-muted, #eef2ff));
+    color: var(--gl-color-text-main, #1e293b);
+}
+
+/* ── Loading indicator ───────────────────────────────────────────────────── */
+/* Inline SVG spinner injected as background-image on the input to avoid
+   adding extra DOM nodes. */
+
+.gl-geocoding-ctrl--loading .gl-pill-search__input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='10' opacity='.25'/%3E%3Cpath d='M12 2a10 10 0 0 1 10 10'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 12 12' to='360 12 12' dur='0.7s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.45rem center;
+    background-size: 14px;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    /* Hide by default on mobile — toggled by the geocoding toolbar button */
+    .gl-geocoding-ctrl:not(.gl-geocoding-ctrl--mobile-visible) {
+        display: none;
+    }
+
+    .gl-geocoding-ctrl--top-right,
+    .gl-geocoding-ctrl--top-left {
+        top: 0.5rem;
+        left: 4rem; /* leaves room for the mobile pill toolbar (left side) */
+        right: 0.5rem;
+        width: auto;
+        max-width: none;
+    }
+
+    .gl-geocoding-ctrl--bottom-right,
+    .gl-geocoding-ctrl--bottom-left {
+        bottom: 0.5rem;
+        left: 4rem;
+        right: 0.5rem;
+        width: auto;
+        max-width: none;
+    }
+}
+
+/* On desktop the search bar is always visible (see @media above), so the pill
+   toolbar button is redundant — hide it. This is the exact inverse of the bar:
+   button shown ⟺ bar hidden (≤ 768px); button hidden ⟺ bar shown (≥ 769px).
+   `!important` mirrors the core pattern (`[data-gl-desktop-slot]`). */
+@media (min-width: 769px) {
+    .gl-map-toolbar__btn[data-gl-sheet="geocoding"] {
+        display: none !important;
+    }
+}

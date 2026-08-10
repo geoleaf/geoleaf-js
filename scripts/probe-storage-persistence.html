@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <title>GeoLeaf — sonde de persistance du stockage</title>
+
+        <!--
+      Standalone probe for B-113 (backlog_technique.md) — storage persistence on a REAL device.
+
+      WHY THIS FILE EXISTS. `navigator.storage.persisted()` was measured twice on the same origin
+      the same day with OPPOSITE results: refused in headless Chromium (~800 MB quota), granted in
+      real Chrome (~10 GB) — outside an installed PWA. Chrome grants on ENGAGEMENT with the origin,
+      not on any property of the app. The iOS half of that measurement was never taken, and on a
+      MIXED fleet it is the one that decides: WebKit purges script-writable storage after 7 days of
+      inactivity for a site that is not on the Home Screen.
+
+      The 7-day purge cannot be observed in one sitting. What CAN be observed, and what actually
+      decides the design of the v4 IndexedDB schema (task 3.4 of roadmap_collecte-terrain-offline),
+      is whether "Add to Home Screen" flips `persisted()` to true on the target iOS version.
+
+      HOW TO USE IT. Serve this single file over HTTPS from an origin the phone can reach — the
+      Storage API requires a secure context, so `file://` and plain http over LAN will not do, and
+      the dev vhosts point at 127.0.0.1. Then read it TWICE on the same origin:
+        1. plain Safari tab;
+        2. after "Add to Home Screen", opened from the Home Screen icon.
+      Report both blocks into B-113, in the same shape as the Chrome reading of f4d3e282.
+
+      NOT WIRED TO ANY GATE, and deliberately so: it measures the browser's relationship with an
+      origin, which no CI runner can stand in for. Zero dependency, zero network access, safe to
+      copy anywhere.
+    -->
+
+        <style>
+            :root {
+                color-scheme: light dark;
+                --ok: #1a7f37;
+                --no: #b3261e;
+                --unk: #7a5c00;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 1rem;
+                font:
+                    15px/1.5 system-ui,
+                    -apple-system,
+                    sans-serif;
+                max-width: 44rem;
+            }
+            h1 {
+                font-size: 1.15rem;
+                margin: 0 0 0.25rem;
+            }
+            p.sub {
+                margin: 0 0 1rem;
+                opacity: 0.7;
+                font-size: 0.85rem;
+            }
+            .verdict {
+                font-size: 1.4rem;
+                font-weight: 700;
+                padding: 0.6rem 0.8rem;
+                border-radius: 0.5rem;
+                border: 2px solid currentColor;
+                margin-bottom: 1rem;
+            }
+            .verdict.ok {
+                color: var(--ok);
+            }
+            .verdict.no {
+                color: var(--no);
+            }
+            .verdict.unk {
+                color: var(--unk);
+            }
+            button {
+                font: inherit;
+                padding: 0.7rem 1rem;
+                width: 100%;
+                margin-bottom: 1rem;
+                border-radius: 0.5rem;
+                border: 1px solid currentColor;
+                background: transparent;
+                color: inherit;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+                background: rgba(127, 127, 127, 0.12);
+                padding: 0.8rem;
+                border-radius: 0.5rem;
+                font-size: 13px;
+                user-select: all;
+                -webkit-user-select: all;
+            }
+            footer {
+                margin-top: 1rem;
+                font-size: 0.8rem;
+                opacity: 0.7;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>Sonde de persistance du stockage</h1>
+        <p class="sub">
+            B-113 — relever sur appareil réel, deux fois : onglet simple, puis depuis l'écran
+            d'accueil.
+        </p>
+
+        <div id="verdict" class="verdict unk">…</div>
+        <button id="ask" type="button">Demander la persistance (persist())</button>
+        <pre id="out">Mesure en cours…</pre>
+
+        <footer>
+            Le bloc ci-dessus est sélectionnable d'un appui long — le recopier tel quel dans B-113.
+        </footer>
+
+        <script>
+            (function () {
+                "use strict";
+
+                var outEl = document.getElementById("out");
+                var verdictEl = document.getElementById("verdict");
+                var askEl = document.getElementById("ask");
+
+                /** Human-readable byte size; returns "?" when the browser withholds the figure. */
+                function mb(n) {
+                    if (typeof n !== "number" || !isFinite(n)) return "?";
+                    if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(2) + " Go";
+                    return (n / 1024 / 1024).toFixed(1) + " Mo";
+                }
+
+                /**
+                 * Which display-mode the page is running under. On iOS this is THE discriminator
+                 * between a plain Safari tab and a Home Screen launch, so it is reported first.
+                 */
+                function displayMode() {
+                    var modes = ["standalone", "fullscreen", "minimal-ui", "browser"];
+                    for (var i = 0; i < modes.length; i++) {
+                        if (window.matchMedia("(display-mode: " + modes[i] + ")").matches)
+                            return modes[i];
+                    }
+                    // iOS < 16.4 does not support the display-mode query; the legacy flag still works.
+                    if (window.navigator.standalone === true)
+                        return "standalone (navigator.standalone)";
+                    return "inconnu";
+                }
+
+                function setVerdict(state) {
+                    var map = {
+                        true: ["ok", "PERSISTANT — le stockage ne sera pas évincé automatiquement"],
+                        false: ["no", "BEST-EFFORT — le stockage est ÉVINÇABLE"],
+                        unknown: ["unk", "INDÉTERMINÉ — API de persistance indisponible"],
+                    };
+                    var e = map[String(state)] || map.unknown;
+                    verdictEl.className = "verdict " + e[0];
+                    verdictEl.textContent = e[1];
+                }
+
+                async function measure(note) {
+                    var lines = [];
+                    var st = navigator.storage;
+
+                    lines.push("── RELEVÉ DE PERSISTANCE ──────────────────────");
+                    if (note) lines.push("contexte        : " + note);
+                    lines.push("origine         : " + location.origin);
+                    lines.push(
+                        "contexte sûr    : " +
+                            (window.isSecureContext ? "oui" : "NON — l'API sera indisponible")
+                    );
+                    lines.push("display-mode    : " + displayMode());
+
+                    var persisted = "unknown";
+                    if (st && typeof st.persisted === "function") {
+                        try {
+                            persisted = await st.persisted();
+                        } catch (err) {
+                            persisted = "erreur: " + err;
+                        }
+                    }
+                    lines.push("persisted()     : " + persisted);
+                    setVerdict(persisted);
+
+                    if (st && typeof st.estimate === "function") {
+                        try {
+                            var e = await st.estimate();
+                            lines.push(
+                                "quota           : " + mb(e.quota) + "  (" + e.quota + " o)"
+                            );
+                            lines.push(
+                                "usage           : " + mb(e.usage) + "  (" + e.usage + " o)"
+                            );
+                        } catch (err) {
+                            lines.push("estimate()      : erreur — " + err);
+                        }
+                    } else {
+                        lines.push("estimate()      : indisponible");
+                    }
+
+                    lines.push("persist() dispo : " + !!(st && typeof st.persist === "function"));
+                    lines.push("IndexedDB       : " + ("indexedDB" in window));
+                    lines.push("ServiceWorker   : " + ("serviceWorker" in navigator));
+                    lines.push("Cache API       : " + ("caches" in window));
+                    lines.push("");
+                    lines.push("userAgent       : " + navigator.userAgent);
+                    lines.push("plateforme      : " + (navigator.platform || "?"));
+                    lines.push("points tactiles : " + (navigator.maxTouchPoints || 0));
+                    lines.push("───────────────────────────────────────────────");
+
+                    outEl.textContent = lines.join("\n");
+                }
+
+                askEl.addEventListener("click", async function () {
+                    var st = navigator.storage;
+                    if (!st || typeof st.persist !== "function") {
+                        // Reported rather than swallowed: "the API is absent" is itself a reading.
+                        await measure("persist() INDISPONIBLE sur ce navigateur");
+                        return;
+                    }
+                    var granted;
+                    try {
+                        granted = await st.persist();
+                    } catch (err) {
+                        granted = "erreur: " + err;
+                    }
+                    await measure("après appel EXPLICITE à persist() → " + granted);
+                });
+
+                measure("état passif, sans appel à persist()");
+            })();
+        </script>
+    </body>
+</html>

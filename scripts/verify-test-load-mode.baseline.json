@@ -1,0 +1,5 @@
+{
+    "_comment": "Sites `require()` de module source CONNUS dans les tests — état figé, PAS une liste d'exemptions. Chaque entrée est un endroit où la couverture est attribuée aux mauvaises lignes et aux mauvaises fonctions (roadmap COUVERTURE, sprints 2 à 5). Le gate ne bloque que sur un site ABSENT d'ici : la baseline ne peut que DESCENDRE. Régénérer via `--update-baseline` après avoir converti un lot — jamais pour faire taire un site neuf, qui doit être converti et non figé.",
+    "generatedCount": 0,
+    "sites": []
+}

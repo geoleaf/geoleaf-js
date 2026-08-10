@@ -1,0 +1,97 @@
+/**
+ * GeoLeaf Storage - Sync accordion styles
+ *
+ * The "ENTERED DATA" section of the offline cache modal (pending POI operations),
+ * built by sync/sync-manager.ts. Split out of cache-control.css
+ * at PLUGINS S7: adding this block pushed that file to 751 lines, over the 700
+ * cap enforced by PC-08 (verify-plugin-contract.cjs).
+ *
+ * The section's shared accordion chrome (header, title, icon, label, toggle)
+ * stays in cache-control.css, folded into the grouped selectors it shares with
+ * the status / layers / zone accordions.
+ */
+
+/* ========================================================================
+   Sync accordion ("ENTERED DATA" — pending POI operations)
+   ------------------------------------------------------------------------
+   PLUGINS S7. This section is built by sync/sync-manager.ts and is the FOURTH
+   collapsible of this panel, structurally identical to status / layers / zone.
+   Until S7 it carried its `gl-cache-sync*` class names but NOT ONE of them
+   existed in any stylesheet: every visual came from `applyCssText()` with
+   hard-coded light-theme hex, so the whole section ignored the dark theme that
+   §1.7 of the CDC promises. The shared chrome (header, title, icon, label,
+   toggle) is folded into the grouped selectors above; what follows is the
+   content proper.
+   ======================================================================== */
+.gl-cache-sync {
+    margin-bottom: 16px;
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.gl-cache-sync__content {
+    padding: 12px;
+}
+
+/* Placeholder lines: loading, "no pending change", module unavailable. */
+.gl-cache-sync__placeholder {
+    margin: 0;
+    color: var(--gl-color-text-muted, #6b7280);
+    text-align: center;
+    padding: 10px;
+}
+
+.gl-cache-sync__placeholder--error {
+    color: #ef4444;
+}
+
+body.gl-theme-dark .gl-cache-sync__placeholder--error {
+    color: #fca5a5;
+}
+
+/* Pending-operations recap box. */
+.gl-cache-sync__summary {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid #0ea5e9;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+body.gl-theme-dark .gl-cache-sync__summary {
+    background: rgba(14, 165, 233, 0.15);
+}
+
+.gl-cache-sync__summary-title {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    color: #0c4a6e;
+}
+
+.gl-cache-sync__summary-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #0c4a6e;
+}
+
+body.gl-theme-dark .gl-cache-sync__summary-title,
+body.gl-theme-dark .gl-cache-sync__summary-list {
+    color: #bae6fd;
+}
+
+/* "You are about to …" caution line above the sync button. */
+.gl-cache-sync__warning {
+    margin: 0 0 10px 0;
+    color: #b91c1c;
+    font-weight: 500;
+    text-align: center;
+    padding: 8px;
+    background: rgba(239, 68, 68, 0.12);
+    border-radius: 6px;
+}
+
+body.gl-theme-dark .gl-cache-sync__warning {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.18);
+}

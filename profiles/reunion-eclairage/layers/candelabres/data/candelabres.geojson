@@ -1,0 +1,1151 @@
+{
+    "type": "FeatureCollection",
+    "name": "candelabres",
+    "crs": {
+        "type": "name",
+        "properties": {
+            "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+        }
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-001",
+                "secteur": "Nord",
+                "commune": "Saint-Denis",
+                "altitude": 12,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2018,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-001 installé avenue de la Victoire, Saint-Denis (secteur Nord). Équipement LED de 150 W posé en 2018 dans le cadre du plan de modernisation de l'éclairage public.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2018",
+                        "Altitude : 12 m",
+                        "Commune : Saint-Denis",
+                        "Secteur : Nord"
+                    ],
+                    "highlights": [
+                        "Zone urbaine dense — chef-lieu de La Réunion",
+                        "Axe principal de circulation",
+                        "Rénové dans le cadre du plan LED 2018"
+                    ],
+                    "tags": ["LED", "actif", "Nord"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4504, -20.8823]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-002",
+                "secteur": "Nord",
+                "commune": "Saint-Denis",
+                "altitude": 45,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2019,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-002 situé rue Juliette Dodu, Saint-Denis (secteur Nord). Lampe LED 100 W installée en 2019 — axe résidentiel du centre-ville.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2019",
+                        "Altitude : 45 m",
+                        "Commune : Saint-Denis",
+                        "Secteur : Nord"
+                    ],
+                    "highlights": [
+                        "Zone résidentielle du centre-ville",
+                        "Axe piétonnier fréquenté",
+                        "Modernisation 2019"
+                    ],
+                    "tags": ["LED", "actif", "Nord"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4612, -20.8901]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-003",
+                "secteur": "Nord",
+                "commune": "Saint-Denis",
+                "altitude": 8,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2020,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-003 sur le front de mer de Saint-Denis (secteur Nord). Équipement LED 150 W — zone littorale à forte fréquentation.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2020",
+                        "Altitude : 8 m",
+                        "Commune : Saint-Denis",
+                        "Secteur : Nord"
+                    ],
+                    "highlights": [
+                        "Zone littorale — front de mer",
+                        "Fort trafic touristique",
+                        "Protection saline renforcée (IP66)"
+                    ],
+                    "tags": ["LED", "actif", "Nord", "littoral"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4380, -20.8744]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-004",
+                "secteur": "Nord",
+                "commune": "Sainte-Marie",
+                "altitude": 28,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "Sodium",
+                "annee_pose": 2015,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-004 à Sainte-Marie (secteur Nord). Lampe à vapeur de sodium 100 W de 2015 — candidat au remplacement LED dans le cadre du plan de décarbonation.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 100 W",
+                        "Année de pose : 2015",
+                        "Altitude : 28 m",
+                        "Commune : Sainte-Marie",
+                        "Secteur : Nord"
+                    ],
+                    "highlights": [
+                        "Zone péri-urbaine nord",
+                        "Remplacement par LED programmé (plan décarbonation)"
+                    ],
+                    "tags": ["Sodium", "actif", "Nord", "remplacement-prévu"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5333, -20.8951]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-005",
+                "secteur": "Nord",
+                "commune": "Sainte-Suzanne",
+                "altitude": 60,
+                "puissance_w": 150,
+                "statut": "défaillant",
+                "type_lampe": "Sodium",
+                "annee_pose": 2013,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-005 à Sainte-Suzanne (secteur Nord). Lampe sodium 150 W en panne — signalement reçu, intervention planifiée semaine 20/2026.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 150 W",
+                        "Année de pose : 2013",
+                        "Altitude : 60 m",
+                        "Commune : Sainte-Suzanne",
+                        "Secteur : Nord"
+                    ],
+                    "highlights": [
+                        "Signalement reçu le 02/05/2026",
+                        "Intervention planifiée — semaine 20/2026",
+                        "Remplacement LED envisagé lors de l'intervention"
+                    ],
+                    "tags": ["Sodium", "défaillant", "Nord", "intervention-programmée"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5926, -20.9218]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-006",
+                "secteur": "Est",
+                "commune": "Saint-André",
+                "altitude": 35,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2021,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-006 à Saint-André (secteur Est). LED 150 W posé en 2021 — axe principal de la côte Est.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2021",
+                        "Altitude : 35 m",
+                        "Commune : Saint-André",
+                        "Secteur : Est"
+                    ],
+                    "highlights": [
+                        "Côte Est — zone à fort taux de pluviométrie",
+                        "Axe de circulation principal Est",
+                        "Équipement récent 2021"
+                    ],
+                    "tags": ["LED", "actif", "Est"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.6498, -20.9639]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-007",
+                "secteur": "Est",
+                "commune": "Saint-Benoît",
+                "altitude": 22,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2020,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-007 à Saint-Benoît (secteur Est). LED 100 W — sous-préfecture de la côte Est, zone commerciale.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2020",
+                        "Altitude : 22 m",
+                        "Commune : Saint-Benoît",
+                        "Secteur : Est"
+                    ],
+                    "highlights": [
+                        "Sous-préfecture de la côte Est",
+                        "Zone commerciale active",
+                        "Pluviométrie élevée — indice IP65"
+                    ],
+                    "tags": ["LED", "actif", "Est"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.7133, -21.0333]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-008",
+                "secteur": "Est",
+                "commune": "Saint-Benoît",
+                "altitude": 55,
+                "puissance_w": 100,
+                "statut": "entretien",
+                "type_lampe": "Sodium",
+                "annee_pose": 2014,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-008 à Saint-Benoît (secteur Est). Lampe sodium 100 W en maintenance préventive — contrôle du ballast et des connexions en cours.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 100 W",
+                        "Année de pose : 2014",
+                        "Altitude : 55 m",
+                        "Commune : Saint-Benoît",
+                        "Secteur : Est"
+                    ],
+                    "highlights": [
+                        "Maintenance préventive en cours",
+                        "Contrôle périodique du ballast et des connexions",
+                        "Remplacement LED évalué pour le prochain cycle"
+                    ],
+                    "tags": ["Sodium", "entretien", "Est"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.7280, -21.0512]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-009",
+                "secteur": "Est",
+                "commune": "Sainte-Anne",
+                "altitude": 130,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2022,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-009 à Sainte-Anne (secteur Est). LED 100 W installé en 2022 — zone rurale côtière à 130 m d'altitude.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2022",
+                        "Altitude : 130 m",
+                        "Commune : Sainte-Anne",
+                        "Secteur : Est"
+                    ],
+                    "highlights": [
+                        "Zone rurale côtière Est",
+                        "Équipement récent 2022",
+                        "Secteur touristique — sentier du littoral"
+                    ],
+                    "tags": ["LED", "actif", "Est"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.7498, -21.0694]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-010",
+                "secteur": "Est",
+                "commune": "Sainte-Rose",
+                "altitude": 18,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2018,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-010 à Sainte-Rose (secteur Est). LED 70 W — commune proche du Piton de la Fournaise, faible densité urbaine.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2018",
+                        "Altitude : 18 m",
+                        "Commune : Sainte-Rose",
+                        "Secteur : Est"
+                    ],
+                    "highlights": [
+                        "Zone côtière proche du Piton de la Fournaise",
+                        "Faible densité urbaine",
+                        "Axe touristique vers le volcan"
+                    ],
+                    "tags": ["LED", "actif", "Est"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.7958, -21.1282]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-011",
+                "secteur": "Sud",
+                "commune": "Saint-Pierre",
+                "altitude": 14,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2019,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-011 à Saint-Pierre (secteur Sud). LED 150 W — 2ème ville de La Réunion, centre commercial et touristique.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2019",
+                        "Altitude : 14 m",
+                        "Commune : Saint-Pierre",
+                        "Secteur : Sud"
+                    ],
+                    "highlights": [
+                        "2ème ville de La Réunion",
+                        "Zone commerciale du centre-ville",
+                        "Fort trafic diurne et nocturne"
+                    ],
+                    "tags": ["LED", "actif", "Sud"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4784, -21.3393]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-012",
+                "secteur": "Sud",
+                "commune": "Saint-Pierre",
+                "altitude": 42,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2021,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-012 à Saint-Pierre (secteur Sud). LED 150 W installé en 2021 — quartier des Casernes, zone résidentielle dense.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2021",
+                        "Altitude : 42 m",
+                        "Commune : Saint-Pierre",
+                        "Secteur : Sud"
+                    ],
+                    "highlights": [
+                        "Quartier résidentiel dense",
+                        "Équipement récent 2021",
+                        "Proximité du front de mer Sud"
+                    ],
+                    "tags": ["LED", "actif", "Sud"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4902, -21.3480]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-013",
+                "secteur": "Sud",
+                "commune": "Saint-Louis",
+                "altitude": 32,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2020,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-013 à Saint-Louis (secteur Sud). LED 100 W — commune au pied du cirque de Cilaos, carrefour entre côte et Hauts.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2020",
+                        "Altitude : 32 m",
+                        "Commune : Saint-Louis",
+                        "Secteur : Sud"
+                    ],
+                    "highlights": [
+                        "Carrefour côte Sud / accès cirque de Cilaos",
+                        "Zone de transit",
+                        "Modernisation 2020"
+                    ],
+                    "tags": ["LED", "actif", "Sud"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4458, -21.2731]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-014",
+                "secteur": "Sud",
+                "commune": "Saint-Joseph",
+                "altitude": 25,
+                "puissance_w": 100,
+                "statut": "défaillant",
+                "type_lampe": "Sodium",
+                "annee_pose": 2012,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-014 à Saint-Joseph (secteur Sud). Lampe sodium 100 W de 2012 en panne — vétusté diagnostiquée, remplacement LED prioritaire.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 100 W",
+                        "Année de pose : 2012",
+                        "Altitude : 25 m",
+                        "Commune : Saint-Joseph",
+                        "Secteur : Sud"
+                    ],
+                    "highlights": [
+                        "Équipement vétuste (pose 2012)",
+                        "Signalement reçu le 03/05/2026",
+                        "Remplacement LED prioritaire lors de l'intervention"
+                    ],
+                    "tags": ["Sodium", "défaillant", "Sud", "intervention-programmée"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.6158, -21.3791]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-015",
+                "secteur": "Sud",
+                "commune": "Le Tampon",
+                "altitude": 520,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2018,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-015 au Tampon (secteur Sud), à 520 m d'altitude. LED 100 W — commune des Hauts du Sud, conditions météo variables.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2018",
+                        "Altitude : 520 m",
+                        "Commune : Le Tampon",
+                        "Secteur : Sud"
+                    ],
+                    "highlights": [
+                        "Zone semi-urbaine des Hauts du Sud",
+                        "Altitude élevée — brouillard fréquent",
+                        "Proche de la RN3 — axe Tampon / Plaine des Cafres"
+                    ],
+                    "tags": ["LED", "actif", "Sud", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5187, -21.2693]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-016",
+                "secteur": "Ouest",
+                "commune": "Saint-Paul",
+                "altitude": 10,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2019,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-016 à Saint-Paul (secteur Ouest). LED 150 W — commune la plus étendue de La Réunion, zone balnéaire de Saint-Gilles.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2019",
+                        "Altitude : 10 m",
+                        "Commune : Saint-Paul",
+                        "Secteur : Ouest"
+                    ],
+                    "highlights": [
+                        "Zone balnéaire — Saint-Gilles-les-Bains",
+                        "Fort trafic touristique estival",
+                        "Protection saline IP65 — proximité mer"
+                    ],
+                    "tags": ["LED", "actif", "Ouest", "littoral"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.2756, -21.0015]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-017",
+                "secteur": "Ouest",
+                "commune": "Saint-Paul",
+                "altitude": 28,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2022,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-017 à Saint-Paul (secteur Ouest). LED 100 W installé en 2022 — quartier résidentiel récemment équipé.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 100 W",
+                        "Année de pose : 2022",
+                        "Altitude : 28 m",
+                        "Commune : Saint-Paul",
+                        "Secteur : Ouest"
+                    ],
+                    "highlights": [
+                        "Quartier résidentiel de Saint-Paul",
+                        "Équipement récent 2022",
+                        "Couverture éclairage nouveau lotissement"
+                    ],
+                    "tags": ["LED", "actif", "Ouest"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.2893, -21.0187]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-018",
+                "secteur": "Ouest",
+                "commune": "Saint-Leu",
+                "altitude": 15,
+                "puissance_w": 150,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2021,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/356830/pexels-photo-356830.jpeg",
+                    "short_desc": "Candélabre CND-018 à Saint-Leu (secteur Ouest). LED 150 W — commune touristique réputée pour sa plage et ses spots de surf.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 150 W",
+                        "Année de pose : 2021",
+                        "Altitude : 15 m",
+                        "Commune : Saint-Leu",
+                        "Secteur : Ouest"
+                    ],
+                    "highlights": [
+                        "Station balnéaire réputée — surf et plongée",
+                        "Axe touristique côtier Ouest",
+                        "Modernisation 2021"
+                    ],
+                    "tags": ["LED", "actif", "Ouest", "littoral"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.2836, -21.1544]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-019",
+                "secteur": "Ouest",
+                "commune": "Les Trois-Bassins",
+                "altitude": 92,
+                "puissance_w": 100,
+                "statut": "actif",
+                "type_lampe": "Sodium",
+                "annee_pose": 2016,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-019 aux Trois-Bassins (secteur Ouest). Lampe sodium 100 W de 2016 — petite commune entre Saint-Leu et Saint-Paul.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 100 W",
+                        "Année de pose : 2016",
+                        "Altitude : 92 m",
+                        "Commune : Les Trois-Bassins",
+                        "Secteur : Ouest"
+                    ],
+                    "highlights": [
+                        "Commune rurale côtière Ouest",
+                        "Remplacement LED programmé (plan décarbonation)",
+                        "Faible densité de population"
+                    ],
+                    "tags": ["Sodium", "actif", "Ouest", "remplacement-prévu"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.3104, -21.1050]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-020",
+                "secteur": "Ouest",
+                "commune": "Saint-Paul",
+                "altitude": 165,
+                "puissance_w": 100,
+                "statut": "entretien",
+                "type_lampe": "Sodium",
+                "annee_pose": 2015,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-020 à Saint-Paul mi-hauteur (secteur Ouest), à 165 m. Lampe sodium 100 W en maintenance — contrôle du câblage et nettoyage optique.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 100 W",
+                        "Année de pose : 2015",
+                        "Altitude : 165 m",
+                        "Commune : Saint-Paul",
+                        "Secteur : Ouest"
+                    ],
+                    "highlights": [
+                        "Zone de mi-hauteur Ouest",
+                        "Maintenance en cours — contrôle câblage",
+                        "Nettoyage optique et vérification de l'étanchéité"
+                    ],
+                    "tags": ["Sodium", "entretien", "Ouest"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.3420, -21.0580]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-021",
+                "secteur": "Hauts Nord",
+                "commune": "La Montagne",
+                "altitude": 385,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2020,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-021 à La Montagne (Hauts Nord), à 385 m. LED 70 W basse consommation — zone semi-rurale des Hauts Nord de Saint-Denis.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2020",
+                        "Altitude : 385 m",
+                        "Commune : La Montagne",
+                        "Secteur : Hauts Nord"
+                    ],
+                    "highlights": [
+                        "Zone semi-rurale des Hauts Nord",
+                        "Altitude modérée — brouillard occasionnel",
+                        "Équipement LED basse consommation"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Nord", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4170, -20.9280]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-022",
+                "secteur": "Hauts Nord",
+                "commune": "Saint-Denis",
+                "altitude": 480,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2021,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-022 dans les Hauts de Saint-Denis (secteur Hauts Nord), à 480 m d'altitude. LED 70 W — route de montagne vers Salazie.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2021",
+                        "Altitude : 480 m",
+                        "Commune : Saint-Denis",
+                        "Secteur : Hauts Nord"
+                    ],
+                    "highlights": [
+                        "Route de montagne vers Salazie",
+                        "Conditions météo variables — brouillard fréquent",
+                        "LED basse consommation adapté à la zone isolée"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Nord", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4350, -20.9620]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-023",
+                "secteur": "Hauts Ouest",
+                "commune": "Salazie",
+                "altitude": 620,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "Sodium",
+                "annee_pose": 2016,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-023 à Salazie (Hauts Ouest), à 620 m. Lampe sodium 70 W — cirque de Salazie, zone encaissée soumise aux fortes pluies.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 70 W",
+                        "Année de pose : 2016",
+                        "Altitude : 620 m",
+                        "Commune : Salazie",
+                        "Secteur : Hauts Ouest"
+                    ],
+                    "highlights": [
+                        "Cirque de Salazie — zone encaissée",
+                        "Pluviométrie parmi les plus fortes de l'île",
+                        "Remplacement LED envisagé — accès technique complexe"
+                    ],
+                    "tags": ["Sodium", "actif", "Hauts-Ouest", "cirque", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5272, -21.0333]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-024",
+                "secteur": "Hauts Ouest",
+                "commune": "Salazie",
+                "altitude": 780,
+                "puissance_w": 70,
+                "statut": "défaillant",
+                "type_lampe": "Sodium",
+                "annee_pose": 2013,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-024 à Salazie (Hauts Ouest), à 780 m. Lampe sodium défaillante — accès difficile, intervention programmée en priorité.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 70 W",
+                        "Année de pose : 2013",
+                        "Altitude : 780 m",
+                        "Commune : Salazie",
+                        "Secteur : Hauts Ouest"
+                    ],
+                    "highlights": [
+                        "Signalement reçu le 04/05/2026",
+                        "Accès difficile — intervention logistique à planifier",
+                        "Remplacement LED prévu lors de l'intervention"
+                    ],
+                    "tags": ["Sodium", "défaillant", "Hauts-Ouest", "cirque", "intervention-programmée"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5080, -21.0450]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-025",
+                "secteur": "Hauts Ouest",
+                "commune": "Cilaos",
+                "altitude": 1230,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2017,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-025 à Cilaos (Hauts Ouest), à 1230 m. LED 70 W — cirque de Cilaos, commune thermale en altitude, équipement adapté au froid.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2017",
+                        "Altitude : 1 230 m",
+                        "Commune : Cilaos",
+                        "Secteur : Hauts Ouest"
+                    ],
+                    "highlights": [
+                        "Cirque de Cilaos — commune thermale",
+                        "Altitude > 1 200 m — températures basses",
+                        "LED basse consommation performant en milieu froid"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Ouest", "cirque", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4741, -21.1344]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-026",
+                "secteur": "Hauts Ouest",
+                "commune": "Cilaos",
+                "altitude": 1450,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2019,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-026 à Cilaos (Hauts Ouest), à 1450 m — le plus haut candélabre du profil. LED 70 W — zone de randonnée vers les pitons.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2019",
+                        "Altitude : 1 450 m",
+                        "Commune : Cilaos",
+                        "Secteur : Hauts Ouest"
+                    ],
+                    "highlights": [
+                        "Point le plus haut du réseau — 1 450 m",
+                        "Zone de randonnée vers les pitons",
+                        "Brouillard quasi-permanent au-dessus de 1 400 m"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Ouest", "cirque", "altitude", "point-haut"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.4620, -21.1520]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-027",
+                "secteur": "Hauts Ouest",
+                "commune": "Les Makes",
+                "altitude": 920,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "Sodium",
+                "annee_pose": 2015,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-027 aux Makes (Hauts Ouest), à 920 m. Lampe sodium 70 W — village des Hauts réputé pour son observatoire astronomique.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 70 W",
+                        "Année de pose : 2015",
+                        "Altitude : 920 m",
+                        "Commune : Les Makes",
+                        "Secteur : Hauts Ouest"
+                    ],
+                    "highlights": [
+                        "Village des Hauts — observatoire astronomique",
+                        "Pollution lumineuse réduite requise",
+                        "Remplacement LED à spectre réduit envisagé"
+                    ],
+                    "tags": ["Sodium", "actif", "Hauts-Ouest", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.3950, -21.1870]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-028",
+                "secteur": "Hauts Sud",
+                "commune": "Le Tampon",
+                "altitude": 1200,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2022,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-028 au Tampon (Hauts Sud), à 1200 m. LED 70 W installé en 2022 — Plaine des Cafres, zone d'accès au Piton de la Fournaise.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2022",
+                        "Altitude : 1 200 m",
+                        "Commune : Le Tampon",
+                        "Secteur : Hauts Sud"
+                    ],
+                    "highlights": [
+                        "Plaine des Cafres — accès Piton de la Fournaise",
+                        "Zone touristique volcanique",
+                        "Équipement récent 2022 — froid et humidité"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Sud", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5378, -21.2070]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-029",
+                "secteur": "Hauts Sud",
+                "commune": "Le Tampon",
+                "altitude": 1580,
+                "puissance_w": 70,
+                "statut": "actif",
+                "type_lampe": "LED",
+                "annee_pose": 2022,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/1004409/pexels-photo-1004409.jpeg",
+                    "short_desc": "Candélabre CND-029 au Tampon (Hauts Sud), à 1580 m — Plaine des Sables, aux abords du Piton de la Fournaise. LED 70 W — conditions extrêmes.",
+                    "informations": [
+                        "Type de lampe : LED",
+                        "Puissance : 70 W",
+                        "Année de pose : 2022",
+                        "Altitude : 1 580 m",
+                        "Commune : Le Tampon",
+                        "Secteur : Hauts Sud"
+                    ],
+                    "highlights": [
+                        "Plaine des Sables — abords du volcan",
+                        "Conditions extrêmes : vent, froid, gaz volcaniques",
+                        "Matériaux anti-corrosion renforcés"
+                    ],
+                    "tags": ["LED", "actif", "Hauts-Sud", "altitude", "volcan"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.5440, -21.2280]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "CND-030",
+                "secteur": "Hauts Sud",
+                "commune": "Saint-Joseph",
+                "altitude": 840,
+                "puissance_w": 70,
+                "statut": "entretien",
+                "type_lampe": "Sodium",
+                "annee_pose": 2014,
+                "categoryId": "eclairage",
+                "subCategoryId": "candelabres",
+                "attributes": {
+                    "photo": "https://images.pexels.com/photos/167699/pexels-photo-167699.jpeg",
+                    "short_desc": "Candélabre CND-030 à Saint-Joseph (Hauts Sud), à 840 m. Lampe sodium 70 W en maintenance — remplacement du starter et vérification du mât.",
+                    "informations": [
+                        "Type de lampe : Sodium haute pression",
+                        "Puissance : 70 W",
+                        "Année de pose : 2014",
+                        "Altitude : 840 m",
+                        "Commune : Saint-Joseph",
+                        "Secteur : Hauts Sud"
+                    ],
+                    "highlights": [
+                        "Zone rurale des Hauts du Sud",
+                        "Maintenance en cours — remplacement du starter",
+                        "Remplacement LED évalué pour le prochain cycle"
+                    ],
+                    "tags": ["Sodium", "entretien", "Hauts-Sud", "altitude"],
+                    "link_official": "https://www.geoleaf.dev/"
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [55.6020, -21.3250]
+            }
+        }
+    ]
+}

@@ -1,0 +1,105 @@
+/*
+ * GeoLeaf — mobile toolbar, responsive rules. KERNEL ONLY.
+ *
+ * S6 emptied this file of everything it did not own. It used to carry, in one place, the
+ * responsive rules of five different capabilities — legend, filter (the whole proximity bar),
+ * theme-selector, geolocation (the GPS recenter button) — plus ~150 lines that styled two
+ * controls that do not exist any more (`.geoleaf-ctrl-zoom`, `.geoleaf-ctrl-fullscreen`: dead
+ * since the move to MapLibre; they appear in zero shipped JS artifact).
+ *
+ * What is left is what the toolbar itself owns: its own buttons, its own tooltip, and the
+ * built-in layer-manager. The rest moved next to the code that creates the DOM it styles.
+ * A bundle without `filter` no longer downloads the proximity bar's CSS.
+ */
+
+/* Le gestionnaire de couches est rendu dans le sheet / le panneau droit, pas en flottant */
+.gl-layer-manager {
+    display: none !important;
+}
+
+/* ========================================================================== */
+/* Tablette + Desktop (≥ 769px) — masquer les icônes toolbar redondantes      */
+/* car les barres thèmes et la barre de recherche sont rendues nativement     */
+/* ========================================================================== */
+@media (min-width: 769px) {
+    /* Barres thèmes primaire/secondaire visibles en permanence → bouton inutile */
+    .gl-map-toolbar__btn[data-gl-toolbar-action="themes"] {
+        display: none !important;
+    }
+}
+
+/* ========================================================================== */
+/* Desktop 15" (≥ 1440px) — ajustements spécifiques PC grand écran            */
+/* ========================================================================== */
+@media (min-width: 1440px) {
+    /* Icône thèmes dans la pill (barre secondaire visible en permanence) */
+    .gl-map-toolbar__btn[data-gl-toolbar-action="themes"] {
+        display: none !important;
+    }
+
+    /* Légende, Couches, Filtres : affichés dans le panneau droit — icônes masquées.
+       Ce sont les BOUTONS de la toolbar (kernel) ; le CSS des panneaux eux-mêmes vit
+       dans la capacité correspondante. */
+    .gl-map-toolbar__btn[data-gl-sheet="legend"],
+    .gl-map-toolbar__btn[data-gl-sheet="layers"],
+    .gl-map-toolbar__btn[data-gl-sheet="filters"],
+    .gl-map-toolbar__btn[data-gl-toolbar-action="reset-filters"] {
+        display: none !important;
+    }
+}
+
+/* ========================================================================== */
+/* Tooltip flottant (div JS dans glMain, hors de la pill)                     */
+/* Les ::after ne fonctionnent pas : .gl-map-toolbar a overflow:hidden        */
+/* ========================================================================== */
+
+.gl-toolbar-tooltip {
+    position: absolute;
+    z-index: 9999;
+    background: var(--gl-color-tooltip-bg, rgba(0, 0, 0, 0.78));
+    color: var(--gl-color-tooltip-text, #ffffff);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    pointer-events: none;
+    white-space: nowrap;
+    line-height: 1.4;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    /* display togglé via JS */
+}
+
+.gl-toolbar-tooltip.gl-is-visible {
+    opacity: 1;
+}
+
+/* ======================================================================
+   Prefers-reduced-motion — disable non-essential animations
+   WCAG 2.1 SC 2.3.3 (AAA) / RGAA 13.8
+
+   Chaque capacité porte le sien pour ses propres éléments (proximity bar →
+   filter, bouton de recentrage → geolocation, barres de thèmes →
+   theme-selector). Ici : les éléments de la toolbar, et rien d'autre.
+   ====================================================================== */
+@media (prefers-reduced-motion: reduce) {
+    .gl-map-toolbar__nav,
+    .gl-map-toolbar__btn,
+    .gl-map-toolbar__reset,
+    .gl-sheet-overlay,
+    .gl-sheet-panel,
+    .gl-sheet-panel__close,
+    .gl-toolbar-tooltip {
+        transition: none;
+    }
+
+    .gl-map-toolbar__nav:hover,
+    .gl-map-toolbar__nav:active,
+    .gl-map-toolbar__btn:hover,
+    .gl-map-toolbar__btn--active:hover,
+    .gl-map-toolbar__btn--active-muted:hover,
+    .gl-map-toolbar__reset:hover {
+        transform: none;
+    }
+}

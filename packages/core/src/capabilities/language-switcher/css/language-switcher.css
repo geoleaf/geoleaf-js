@@ -1,0 +1,85 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf — Language switcher (capability `language-switcher`).
+ *
+ * The button reuses the tab strip's shared `.gl-rp-tab-btn` base (28×28, muted, accent
+ * on hover); only its own overrides live here — it renders TEXT (a flag emoji or a
+ * two-letter code) where its neighbours render an SVG.
+ *
+ * ⚠️ Every selector below must exist as a string LITERAL in the TypeScript sources.
+ * purgecss scans statically: a class it cannot read is stripped from the production CSS,
+ * and the control renders unstyled while every test stays green.
+ */
+
+    .gl-rp-lang-btn {
+        /* No SVG here: size the glyph itself. `1` line-height keeps the emoji centred in
+       the 28px box the base class defines. */
+        font-size: 15px;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    /* The theme toggle is the last element of the stack and drops its bottom margin;
+     the language button sits above it and keeps the shared rhythm. */
+    .gl-rp-lang-btn[data-variant="mobile"] {
+        font-size: 16px;
+    }
+
+    /* Hidden on desktop — the tab strip variant takes over (same rule the theme toggle
+     applies to its own mobile variant). */
+    @media (min-width: 1440px) {
+        .gl-rp-lang-btn[data-variant="mobile"] {
+            display: none !important;
+        }
+    }
+
+    /* ── Popover ─────────────────────────────────────────────────────────────── */
+
+    .gl-lang-popover {
+        position: absolute;
+        right: 44px;
+        bottom: 8px;
+        z-index: 1200; /* above the side panel (950), below the POI sidepanel (1100)… */
+        display: flex;
+        flex-direction: column;
+        min-width: 160px;
+        padding: 4px;
+        border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+        border-radius: 8px;
+        background: var(--gl-color-bg-surface, #fff);
+        box-shadow: var(--gl-shadow-panel, 0 8px 24px rgba(15, 23, 42, 0.18));
+    }
+
+    .gl-lang-popover__item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--gl-color-text-main, #0f172a);
+        font-size: 0.8rem;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s ease;
+    }
+
+    .gl-lang-popover__item:hover {
+        background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
+    }
+
+    .gl-lang-popover__item:focus-visible {
+        outline: 2px solid var(--gl-color-accent, #f97316);
+        outline-offset: -2px;
+    }
+
+    /* The active language is marked by aria-current — style the attribute itself rather
+     than a parallel class, so the visual state cannot drift from the accessible one. */
+    .gl-lang-popover__item[aria-current="true"] {
+        font-weight: 700;
+        color: var(--gl-color-accent, #f97316);
+    }
+}

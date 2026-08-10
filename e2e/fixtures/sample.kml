@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>GeoLeaf e2e KML</name>
+    <Placemark>
+      <name>POI Paris</name>
+      <Point><coordinates>2.3522,48.8566,0</coordinates></Point>
+    </Placemark>
+    <Placemark>
+      <name>Chemin</name>
+      <LineString><coordinates>2.35,48.85 2.36,48.86 2.37,48.87</coordinates></LineString>
+    </Placemark>
+  </Document>
+</kml>

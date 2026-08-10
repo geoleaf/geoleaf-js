@@ -1,0 +1,27 @@
+# Révisions à ignorer dans `git blame` — reformatages mécaniques, sans changement
+# de comportement. Une entrée ici ne dispense JAMAIS de justifier le commit : elle
+# dit seulement que l'attribuer ligne à ligne n'apprend rien.
+#
+# Activation (locale, une fois par clone) :
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub et GitLab lisent ce fichier automatiquement.
+#
+# ⚠️ N'y mettre qu'un commit dont on peut PROUVER la neutralité. Pour un
+# reformatage CSS, la preuve est que `dist/geoleaf-main.min.css` sort identique
+# byte à byte (cssnano supprime toute mise en forme) — c'est ce qui a été mesuré
+# pour l'entrée ci-dessous.
+
+# Formatage prettier des 38 CSS sources du monorepo (S9, 21/07/2026).
+# Preuve : sha256 du CSS minifié inchangé — 930a6ada6b7527e66913a5437ff026bc1fb71371e37a02bbed36046a2244852d
+# (97 267 o) avant ET après. `*.css` ajouté à lint-staged dans le même commit pour
+# que le formatage ne rediverge pas.
+22449f5a0a97c5d4ae3a6f9fe504c374db5ed3ea
+
+# Formatage prettier des 40 sources de `apps/` et `e2e/` (T6.5, 25/07/2026).
+# Preuve : `npx playwright test --list` sort « Total: 202 tests in 36 files » AVANT
+# et APRÈS — chaque spec parse toujours et enregistre exactement les mêmes tests, ce
+# qu'un reformatage qui aurait changé du comportement ne pourrait pas garantir. Plus
+# `eslint apps e2e` = 0. `apps/**/*.js` et `e2e/**/*.{js,cjs}` ajoutés à lint-staged
+# dans le même commit pour que le formatage ne rediverge pas — c'est ce couple, et non
+# le reformatage seul, qui ferme l'angle mort ouvert par T2.
+7c98836c66bc6dd27bee9786db4b407eb6bc76ff

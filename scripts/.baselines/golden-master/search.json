@@ -1,0 +1,24 @@
+{
+    "before": {
+        "capability": "search",
+        "match": "optional/search",
+        "bootGz": 188.1,
+        "leanFullGz": 510.8,
+        "leanLiteGz": 347.8,
+        "ownedFiles": 3,
+        "ownedLoc": 520,
+        "refLines": 3,
+        "coreTestFiles": 366
+    },
+    "after": {
+        "capability": "search",
+        "match": "optional/search",
+        "bootGz": 180.1,
+        "leanFullGz": 498,
+        "leanLiteGz": 347.3,
+        "ownedFiles": 0,
+        "ownedLoc": 0,
+        "refLines": 0,
+        "coreTestFiles": 363
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "_comment": "API publique S4.2 — clés de EXPECTED_FACADE_KEYS que GeoLeafGlobal (packages/core/src/global.d.ts) ne type pas, ou type de façon VIDE (unknown/any/object/{}/Record<string, unknown> — HOST-06). Cette liste ne peut que RÉTRÉCIR (HOST-05) : déclarez le membre, puis retirez sa ligne. Ne jamais y ajouter à la main — une clé neuve doit naître typée (HOST-04). Les clés `_` restantes relèvent de la dette D-14 (service-locator) et sortent du namespace, elles ne se typent pas.",
+    "_generated": "node scripts/check-namespace-typing-coverage.cjs --update-baseline",
+    "count": 16,
+    "keys": [
+        "_APIController",
+        "_Cluster",
+        "_ConfigLoader",
+        "_DataConverter",
+        "_GeoJSONLayerConfig",
+        "_GeoJSONLayerManager",
+        "_GeoJSONLoader",
+        "_LabelButtonManager",
+        "_LabelRenderer",
+        "_LayerManagerControl",
+        "_LayerManagerStyleSelector",
+        "_OfflineDetector",
+        "_UIComponents",
+        "_Validators",
+        "_app",
+        "_registry"
+    ]
+}

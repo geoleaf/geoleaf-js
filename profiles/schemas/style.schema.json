@@ -1,0 +1,356 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/style",
+    "title": "GeoLeaf Layer Style",
+    "description": "Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.json. Hardened in Sprint S1 (PRF-SCHEMA). `id` is no longer required (filename acts as id for ~20% of style files). The MapLibre pass-through key is `paint` (kept open); `style.extends` enables style inheritance. Known anomalies tolerated-but-flagged: `condition` alias of `when`, and root-level `paint`/`type` (misplaced) — see anomaly registry. (`labelScale` is NOT a duplicate of `scaleConfig`: same unit, but it gates the labels, not the layer.)",
+    "type": "object",
+    "additionalProperties": false,
+    "patternProperties": { "^_comment": {} },
+    "properties": {
+        "$schema": { "type": "string" },
+        "id": {
+            "type": "string",
+            "description": "Unique identifier for this style (optional — defaults to the file name)."
+        },
+        "label": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "description": "Display label shown in the style selector."
+                },
+                {
+                    "type": "object",
+                    "description": "Label/text configuration for map features of this layer.",
+                    "required": ["enabled"],
+                    "additionalProperties": false,
+                    "patternProperties": { "^_comment": {} },
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enable/disable labels for this style."
+                        },
+                        "visibleByDefault": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Labels visible on layer load without user action."
+                        },
+                        "field": {
+                            "type": "string",
+                            "description": "GeoJSON properties field name to display as label text."
+                        },
+                        "font": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "patternProperties": { "^_comment": {} },
+                            "properties": {
+                                "family": { "type": "string", "default": "Arial" },
+                                "sizePt": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 72,
+                                    "default": 12,
+                                    "description": "Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer."
+                                },
+                                "weight": {
+                                    "type": "number",
+                                    "minimum": 1,
+                                    "maximum": 100,
+                                    "default": 50
+                                },
+                                "bold": { "type": "boolean", "default": false },
+                                "italic": { "type": "boolean", "default": false }
+                            }
+                        },
+                        "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "default": "#000000"
+                        },
+                        "opacity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 1
+                        },
+                        "buffer": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "patternProperties": { "^_comment": {} },
+                            "properties": {
+                                "enabled": { "type": "boolean", "default": false },
+                                "noFill": { "type": "boolean" },
+                                "color": {
+                                    "type": "string",
+                                    "pattern": "^#[0-9a-fA-F]{6}$",
+                                    "default": "#ffffff"
+                                },
+                                "opacity": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                    "default": 1
+                                },
+                                "sizePx": { "type": "number", "minimum": 0, "default": 2 }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "description": {
+            "type": "string",
+            "description": "Optional description for this style."
+        },
+        "scaleConfig": {
+            "type": "object",
+            "description": "Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (roadmap_nettoyage S5, N-1).",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "minScale": {
+                    "type": ["number", "null"],
+                    "description": "Widest view allowed, as a scale denominator (e.g. 9222148 for 1:9 222 148 ≈ zoom 6 at lat 4°). Hidden when zoomed out past it. null or 0 = no lower bound."
+                },
+                "maxScale": {
+                    "type": ["number", "null"],
+                    "description": "Closest view allowed, as a scale denominator (e.g. 2252 for 1:2 252 ≈ zoom 18 at lat 4°). Hidden when zoomed in past it. null or 0 = no upper bound."
+                }
+            }
+        },
+        "labelScale": {
+            "type": "object",
+            "description": "Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate. Cleanup of no-op {null,null} + reconciliation in S8.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "minScale": { "type": ["number", "null"] },
+                "maxScale": { "type": ["number", "null"] }
+            }
+        },
+        "style": {
+            "$ref": "#/definitions/flatStyle"
+        },
+        "styleRules": {
+            "type": "array",
+            "description": "Data-driven style rules applied in order. First matching rule wins.",
+            "items": {
+                "$ref": "#/definitions/styleRule"
+            }
+        },
+        "legend": {
+            "type": "object",
+            "description": "Legend entry for this style.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "label": { "type": "string" }
+            }
+        }
+    },
+    "definitions": {
+        "flatStyle": {
+            "type": "object",
+            "description": "Flat GeoLeaf style (v2 format). Hardened in S1 (additionalProperties:false) — the `paint` and `expressionPaint` blocks stay open for native MapLibre properties.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "extends": {
+                    "type": "string",
+                    "description": "Style id this rule-style inherits from (style inheritance)."
+                },
+                "fillColor": {
+                    "type": "string",
+                    "description": "Fill color (hex/CSS). Polygon layers."
+                },
+                "fillOpacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Fill opacity (0–1)."
+                },
+                "color": { "type": "string", "description": "Stroke/line color (hex/CSS)." },
+                "weight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Stroke width in pixels."
+                },
+                "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Stroke opacity (0–1)."
+                },
+                "dashArray": {
+                    "type": ["string", "null"],
+                    "description": "Dash pattern, e.g. \"5 10\". null = solid line."
+                },
+                "lineCap": {
+                    "type": "string",
+                    "enum": ["butt", "round", "square"],
+                    "description": "Line cap style."
+                },
+                "lineJoin": {
+                    "type": "string",
+                    "enum": ["bevel", "miter", "round"],
+                    "description": "Line join style."
+                },
+                "radius": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Circle radius in pixels. Point layers."
+                },
+                "shape": {
+                    "type": "string",
+                    "enum": ["circle"],
+                    "description": "Point shape. ONLY \"circle\" is supported. The key is currently inert — nothing reads it — and is kept as a reserved extension point. Previously typed as free-form text advertising \"square\", which the engine never rendered: MapLibre's `circle` layer draws circles only, and a square would require a whole second render path (a `symbol` layer over a generated SDF icon), plus re-implementing taxonomy paint, the pending-sync badge and styleRules on that path. Restricted so the schema stops promising a capability that does not exist."
+                },
+                "hatch": {
+                    "type": "object",
+                    "description": "Canvas-based hatch fill pattern.",
+                    "additionalProperties": false,
+                    "patternProperties": { "^_comment": {} },
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "type": { "type": "string" },
+                        "spacingPx": { "type": "number" },
+                        "angleDeg": { "type": ["number", "null"] },
+                        "renderMode": { "type": "string", "enum": ["overlay", "pattern_only"] },
+                        "stroke": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "patternProperties": { "^_comment": {} },
+                            "properties": {
+                                "color": { "type": "string" },
+                                "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+                                "widthPx": { "type": "number", "minimum": 0 }
+                            }
+                        }
+                    }
+                },
+                "casing": {
+                    "type": "object",
+                    "description": "Double-line casing effect (thick outline rendered behind the main stroke).",
+                    "additionalProperties": false,
+                    "patternProperties": { "^_comment": {} },
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "color": { "type": "string" },
+                        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+                        "widthPx": { "type": "number", "minimum": 0 },
+                        "dashArray": {
+                            "type": ["string", "null"],
+                            "description": "Dash pattern for the casing, e.g. \"2 2\". null = solid."
+                        },
+                        "lineCap": {
+                            "type": "string",
+                            "enum": ["butt", "round", "square"],
+                            "description": "Casing line cap style."
+                        },
+                        "lineJoin": {
+                            "type": "string",
+                            "enum": ["bevel", "miter", "round"],
+                            "description": "Casing line join style."
+                        }
+                    }
+                },
+                "paint": {
+                    "type": "object",
+                    "description": "Native MapLibre GL paint properties passed through as-is. Keys are MapLibre property names (e.g. \"fill-color\", \"circle-radius\").",
+                    "additionalProperties": true
+                },
+                "expressionPaint": {
+                    "type": "object",
+                    "description": "Native MapLibre GL paint properties (expression form) passed through as-is.",
+                    "additionalProperties": true
+                },
+                "fillExtrusionColor": {
+                    "type": "string",
+                    "description": "Fill-extrusion face color (hex/CSS). Required for fill-extrusion layers."
+                },
+                "fillExtrusionOpacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Fill-extrusion global opacity (0–1). Default: 1.0."
+                },
+                "fillExtrusionHeight": {
+                    "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "string" }],
+                    "description": "Fill-extrusion height in metres. Number = fixed value, string = feature field name. Required for fill-extrusion layers."
+                },
+                "fillExtrusionBase": {
+                    "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "string" }],
+                    "description": "Fill-extrusion base height in metres. Default: 0."
+                }
+            }
+        },
+        "styleRule": {
+            "type": "object",
+            "required": ["style"],
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "when": {
+                    "$ref": "#/definitions/styleCondition"
+                },
+                "label": {
+                    "type": "string",
+                    "description": "Optional human-readable rule label."
+                },
+                "style": {
+                    "$ref": "#/definitions/flatStyle"
+                },
+                "legend": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": { "^_comment": {} },
+                    "properties": {
+                        "label": { "type": "string" },
+                        "order": { "type": "number" }
+                    }
+                }
+            }
+        },
+        "styleCondition": {
+            "type": "object",
+            "description": "Style rule condition. Either a single field/operator/value check, or an \"all\" compound.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "description": "Feature property path, e.g. \"properties.type\"."
+                },
+                "operator": {
+                    "type": "string",
+                    "enum": [
+                        "==",
+                        "===",
+                        "eq",
+                        "!=",
+                        "!==",
+                        "neq",
+                        ">",
+                        ">=",
+                        "<",
+                        "<=",
+                        "contains",
+                        "startsWith",
+                        "endsWith",
+                        "in",
+                        "notIn",
+                        "between"
+                    ],
+                    "description": "Comparison operator."
+                },
+                "value": {
+                    "description": "Value to compare against. Can be string, number, boolean, or array (for in/notIn/between)."
+                },
+                "all": {
+                    "type": "array",
+                    "description": "Compound AND condition.",
+                    "items": { "$ref": "#/definitions/styleCondition" }
+                }
+            }
+        }
+    }
+}

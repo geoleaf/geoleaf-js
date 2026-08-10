@@ -1,0 +1,252 @@
+{
+    "id": "sites_rosario",
+    "label": "Sites touristiques – Rosario",
+    "zIndex": 97,
+    "geometry": "point",
+    "geometryType": "point",
+    "edition": { "create": true, "update": true, "delete": true },
+    "editableGeometryTypes": ["Point"],
+    "_comment_offline": "PREMIÈRE couche du dépôt à déclarer une lecture hors-ligne (tâche 4.3), et la première à déclarer une SOURCE DE RAPATRIEMENT (tâche 4.1). `enabled: true` fait lire au chargeur les entités du store `features` au lieu de refetcher ; `source` dit à `GeoLeaf.Storage.pullLayer()` où aller les chercher. ⚠️ Déclare une LECTURE et rien d'autre — invariant S6 : le rapatriement ne confère JAMAIS l'éditabilité, décidée par le bloc `edition` seul. Sûr à déclarer avant le premier rapatriement : un store vide retombe sur le réseau, parce que `getLayerFeatureCollection` rend `null` et non une collection vide. ⚠️ Une fois le rapatriement fait, c'est le store qui sert cette couche — `data.file` ci-dessous devient le repli, pas la source.",
+    "_comment_offline_source": "🛑 La source de pull n'est PAS `data.ogcApi`, et c'est mesuré : l'early-exit `data.ogcApi` du chargeur rend la main AVANT la branche de lecture locale de 4.3, ce qui court-circuiterait en silence le store que ce pull remplit. `data.*` est la source d'AFFICHAGE, `offline.source` la source de RAPATRIEMENT. `collectionId` est omis : il vaut l'identifiant de couche par défaut. Backend de preuve : docker/backend/README.md.",
+    "offline": {
+        "enabled": true,
+        "maxFeatures": 5000,
+        "source": {
+            "url": "https://qgis.geoleaf.dev/ogc"
+        }
+    },
+    "_comment_write": "Première couche du dépôt à renseigner ce bloc — il était lu par addpoi (paquet supprimé au Sprint 5 ; lecteur vivant : core push-engine.ts) en quatre sites et posé par 0 couche sur 48 (point 7 du contrat de synchronisation). Cible le backend de preuve monté par la tâche 4.H. `collection` = POST {endpoint} avec un corps PLAT {...properties, geom}, ce que sert PostgREST. `properties` est une liste blanche : ce qui n'y figure pas n'est jamais envoyé, et les colonnes que personne ne capture (id, local_id, updated_at) appartiennent au serveur. ⚠️ Cette phrase disait « les colonnes hors formSchema » jusqu'à la tâche 7.2 : `formSchema` n'existe plus, et la liste des champs capturés se lit désormais sur `attributes.fields[].edit` — même ensemble, autre déclaration. Les 11 entrées ci-dessous en sont l'image exacte, et la garde `write-capture-parity.guard.test.js` du core le vérifie dans les DEUX sens plutôt que de le promettre.",
+    "write": {
+        "enabled": true,
+        "endpoint": "https://qgis.geoleaf.dev/sites_rosario",
+        "dialect": "collection",
+        "auth": "bearer",
+        "geometryProperty": "geom",
+        "properties": [
+            "title",
+            "description",
+            "description_longue",
+            "adresse",
+            "statut",
+            "mots_cles",
+            "services",
+            "horaires",
+            "site_web",
+            "photo_principale",
+            "galerie"
+        ]
+    },
+    "interactiveShape": true,
+    "showIconsOnMap": true,
+    "data": {
+        "directory": "data",
+        "file": "sites_rosario.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.title",
+        "fields": [
+            {
+                "field": "properties.title",
+                "label": "title",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                },
+                "edit": {
+                    "required": true
+                }
+            },
+            {
+                "field": "properties.adresse",
+                "label": "Adresse",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "_comment": "🛑 Le SEUL champ du dépôt dont les deux projections divergent, et le cas qui a motivé l'ouverture d'`edit` à sa propre paire (widget, options) à la tâche 7.2. En lecture, `badge` rend une pastille dont la couleur vient du seam taxonomie (`resolveBadgeStyle`). En saisie, le composant `badge` de field-renderer ÉMET `{label, color}` — un objet — qui partirait à plat dans `write.properties` vers une colonne scalaire. La valeur est bien un scalaire (`\"Ouvert\"`). La règle A17 exige donc que ce champ NOMME son widget de capture : sans elle, `edit` sans `widget` héritait de `badge` et personne ne l'aurait vu.",
+                "field": "properties.statut",
+                "label": "Statut",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                },
+                "edit": {
+                    "widget": "dropdown",
+                    "options": {
+                        "options": [
+                            {
+                                "value": "Ouvert",
+                                "label": "Ouvert"
+                            },
+                            {
+                                "value": "Fermé",
+                                "label": "Fermé"
+                            },
+                            {
+                                "value": "Temporairement fermé",
+                                "label": "Temporairement fermé"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "_comment": "Champ CAPTURE SEULE — il n'a pas de bloc `display`, et c'est légal : le schéma exige `display` OU `edit`, pas les deux. Il n'existait que dans `formSchema` avant 7.2 et n'était affiché nulle part ; le migrer en lui inventant une surface de lecture aurait ajouté un rendu que personne n'avait demandé.",
+                "field": "properties.description",
+                "label": "Description courte",
+                "primitive": "string",
+                "widget": "longtext",
+                "options": {
+                    "rows": 3
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.description_longue",
+                "label": "Description détaillée",
+                "primitive": "string",
+                "widget": "longtext",
+                "options": {
+                    "rows": 6
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.services",
+                "label": "Services disponibles",
+                "primitive": "string[]",
+                "widget": "list",
+                "options": {
+                    "maxItems": 12
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.mots_cles",
+                "label": "Mots-clés",
+                "primitive": "string[]",
+                "widget": "tags",
+                "options": {
+                    "options": [
+                        {
+                            "value": "patrimoine",
+                            "label": "Patrimoine"
+                        },
+                        {
+                            "value": "histoire",
+                            "label": "Histoire"
+                        },
+                        {
+                            "value": "nature",
+                            "label": "Nature"
+                        },
+                        {
+                            "value": "culture",
+                            "label": "Culture"
+                        },
+                        {
+                            "value": "gratuit",
+                            "label": "Gratuit"
+                        },
+                        {
+                            "value": "enfants",
+                            "label": "Enfants"
+                        }
+                    ]
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.horaires",
+                "label": "Horaires d'ouverture",
+                "primitive": "object[]",
+                "widget": "table",
+                "options": {
+                    "columns": [
+                        {
+                            "key": "jour",
+                            "label": "Jour"
+                        },
+                        {
+                            "key": "horaire",
+                            "label": "Horaire"
+                        }
+                    ]
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "_comment": "⚠️ Ce champ portait `widget: \"link\"` avant 7.2, et le passage à `url` est ISO-COMPORTEMENT en lecture — mesuré, pas supposé : `widget-dispatch.ts` route `link` ET `url` vers le MÊME `renderSchemeLink(field, value, \"\")` et leur donne le même `textOfLink`. Ce que le changement gagne est côté capture : `link` saisit `{href, label?}`, un objet, alors que la donnée est une chaîne et que `write.properties` l'expédie à plat. Le champ ne portait aucune option, donc le rétrécissement `LinkOptions` → `PlaceholderOnlyOptions` ne perd rien.",
+                "field": "properties.site_web",
+                "label": "Site web",
+                "primitive": "string",
+                "widget": "url",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.photo_principale",
+                "label": "Photo principale",
+                "primitive": "string",
+                "widget": "image",
+                "options": {
+                    "uploadEndpoint": "/api/upload",
+                    "maxSizeMb": 5
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            },
+            {
+                "field": "properties.galerie",
+                "label": "Galerie photos",
+                "primitive": "string[]",
+                "widget": "gallery",
+                "options": {
+                    "uploadEndpoint": "/api/upload",
+                    "maxCount": 8,
+                    "maxSizeMb": 5
+                },
+                "display": {
+                    "surfaces": ["sidepanel"]
+                },
+                "edit": {}
+            }
+        ]
+    }
+}

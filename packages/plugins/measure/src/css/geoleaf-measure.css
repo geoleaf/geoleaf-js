@@ -1,0 +1,447 @@
+/*!
+ * @geoleaf-plugins/measure — Styles
+ * © 2026 Mattieu Pottier — MIT License
+ *
+ * Sprint 2: floating menu, recap box.
+ * Sprint 5: GPS status + close modal.
+ * Sprint 6: pill layout identical to left toolbar bar; unit cycle buttons; tooltips; theme-aware CSS vars.
+ */
+
+/* ---------------------------------------------------------------------------
+   Root container — fixed-position host inside map.getContainer()
+--------------------------------------------------------------------------- */
+.gl-measure-root {
+    position: fixed;
+    top: var(--gl-measure-top, 10px);
+    left: var(--gl-measure-left, 10px);
+    z-index: 980;
+    pointer-events: none;
+    font-family: inherit;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* ---------------------------------------------------------------------------
+   Floating pill sub-menu — identical to .gl-map-toolbar__pill in core
+--------------------------------------------------------------------------- */
+.gl-measure-menu {
+    position: relative;
+    pointer-events: auto;
+    background: var(--gl-color-bg-surface, #ffffff);
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 9999px;
+    box-shadow: var(--gl-shadow-medium, 0 4px 12px rgba(0, 0, 0, 0.12));
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    max-height: var(--gl-measure-max-h, calc(100dvh - 96px));
+    overflow: hidden;
+}
+
+.gl-measure-menu--hidden {
+    display: none;
+}
+
+/* Drag handle — rounded top, cursor grab */
+.gl-measure-menu__handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 24px;
+    cursor: grab;
+    border-radius: 9999px;
+    color: var(--gl-color-text-muted, #aaa);
+}
+
+.gl-measure-menu__handle:active {
+    cursor: grabbing;
+}
+
+.gl-measure-menu__grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-muted, #ccc);
+}
+
+.gl-measure-menu__grip svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Scrollable content area — hides native scrollbar */
+.gl-measure-menu__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 0;
+}
+
+.gl-measure-menu__scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* Nav up / down scroll arrows — hidden until overflow detected */
+.gl-measure-menu__nav {
+    appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    width: 32px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-muted, #9ca3af);
+    flex-shrink: 0;
+    border-radius: 9999px;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 0.15s,
+        visibility 0.15s,
+        color 0.15s;
+    padding: 0;
+}
+
+.gl-measure-menu__nav svg {
+    width: 14px;
+    height: 14px;
+}
+
+.gl-measure-menu__nav:hover {
+    color: var(--gl-color-accent, #2563eb);
+}
+
+.gl-measure-menu__nav.gl-is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Group separator */
+.gl-measure-menu__sep {
+    width: 60%;
+    height: 1px;
+    background: var(--gl-color-border-soft, #e5e7eb);
+    margin: 2px 0;
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Icon tool buttons — identical to .gl-map-toolbar__btn in core
+--------------------------------------------------------------------------- */
+.gl-measure-tool-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-main, #111827);
+    position: relative;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+
+.gl-measure-tool-btn svg {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+}
+
+.gl-measure-tool-btn:hover {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.gl-measure-tool-btn--active {
+    background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
+    color: var(--gl-color-accent, #2563eb);
+}
+
+/* ---------------------------------------------------------------------------
+   Unit cycle buttons — compact text buttons inside the pill
+--------------------------------------------------------------------------- */
+.gl-measure-unit-btn {
+    appearance: none;
+    background: none;
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 50%;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gl-color-text-main, #111827);
+    position: relative;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        transform 0.15s;
+}
+
+.gl-measure-unit-btn:hover {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+}
+
+/* ---------------------------------------------------------------------------
+   Action buttons (clear, export) — same style as tool buttons
+--------------------------------------------------------------------------- */
+.gl-measure-action-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-main, #111827);
+    position: relative;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        transform 0.15s;
+}
+
+.gl-measure-action-btn svg {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+}
+
+.gl-measure-action-btn:hover {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+}
+
+.gl-measure-action-btn[data-action="clear"]:hover {
+    background: var(--gl-color-danger-alpha, rgba(211, 47, 47, 0.1));
+    color: var(--gl-color-danger, #d32f2f);
+}
+
+/* ---------------------------------------------------------------------------
+   Recap box — summary table under the menu (PLUGINS S5)
+   Sibling of .gl-measure-menu inside the column-flex root, so it lands under the
+   menu with no positioning of its own. The root is pointer-events:none — the box
+   must opt back in to be scrollable.
+--------------------------------------------------------------------------- */
+.gl-measure-recap {
+    pointer-events: auto;
+    margin-top: 6px;
+    /* Wide enough for the three columns at 5-decimal coordinates
+       ("-66.04980 ; -37.92687" is 21 characters) — below this the length column is
+       pushed out of view, which is the column the user came for. */
+    max-width: 340px;
+    max-height: 40vh;
+    overflow-x: auto;
+    overflow-y: auto;
+    background: var(--gl-color-bg-surface, #ffffff);
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 8px;
+    box-shadow: var(--gl-shadow-medium, 0 4px 12px rgba(0, 0, 0, 0.12));
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: var(--gl-color-text-main, #111827);
+}
+
+.gl-measure-recap--hidden {
+    display: none;
+}
+
+.gl-measure-recap__table {
+    border-collapse: collapse;
+    /* max-content, not 100%: the box is an overflow container, so a 100%-wide table
+       would resolve against the box and let the cells overflow instead of widening it.
+       min-width keeps the header row flush when the content is narrower than the box. */
+    width: max-content;
+    min-width: 100%;
+}
+
+.gl-measure-recap__table th,
+.gl-measure-recap__table td {
+    padding: 3px 8px;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.gl-measure-recap__table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-text-muted, #6b7280);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* Coordinates and lengths are numeric — tabular figures keep the columns aligned. */
+.gl-measure-recap__table tbody td {
+    font-variant-numeric: tabular-nums;
+}
+
+.gl-measure-recap__table tbody tr:nth-child(even) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+}
+
+.gl-measure-recap__total {
+    font-weight: 700;
+    border-top: 1px solid var(--gl-color-border-soft, #e5e7eb);
+}
+
+.gl-measure-recap__total td {
+    background: var(--gl-color-bg-surface, #ffffff);
+}
+
+/* ---------------------------------------------------------------------------
+   Tooltip — JS-positioned floating div (same pattern as core .gl-toolbar-tooltip).
+   The menu container has overflow:hidden so ::after pseudo-elements are clipped.
+--------------------------------------------------------------------------- */
+/* Présentation du tooltip : extraite vers @geoleaf/host-runtime
+   (src/css/tooltip.css), adoptée par le module qui écrit `gl-is-visible`.
+   Les 19 déclarations étaient STRICTEMENT identiques à celles de l'autre plugin —
+   seul le préfixe de classe différait (STRUCT S2, F8). L'élément porte désormais
+   `gl-tooltip` en plus de sa classe locale, qui reste disponible pour surcharger. */
+
+/* ---------------------------------------------------------------------------
+   GPS — close-as-polygon modal
+   (PLUGINS S10: `.gl-measure-gps-status` banner removed — no producer; the
+   GPS modal below is live.)
+--------------------------------------------------------------------------- */
+.gl-measure-gps-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 995;
+}
+
+.gl-measure-gps-modal {
+    background: var(--gl-color-bg-surface, #fff);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    padding: 16px 18px 14px;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 12px;
+}
+
+.gl-measure-gps-modal-msg {
+    font-size: 13px;
+    color: var(--gl-color-text-main, #111827);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.gl-measure-gps-modal-btn {
+    appearance: none;
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 7px 14px;
+    font-size: 13px;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #111827);
+    transition: background 0.1s;
+}
+
+.gl-measure-gps-modal-btn:hover {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+}
+
+.gl-measure-gps-modal-btn.--primary {
+    background: var(--gl-color-accent, #f97316);
+    border-color: var(--gl-color-accent, #f97316);
+    color: #fff;
+}
+
+/* PLUGINS S10: hover used `--gl-color-accent-dark` (undefined) → fell back to
+   #1d4ed8, a BLUE left over from before the accent became orange — so this
+   button rendered orange at rest and blue on hover. Realigned to the theme's
+   canonical `--gl-color-accent-hover`. The base fallbacks above (were #2563eb,
+   also blue) are dormant (the token is defined) but fixed to the orange for
+   honesty. */
+.gl-measure-gps-modal-btn.--primary:hover {
+    background: var(--gl-color-accent-hover, #ff9d57);
+    border-color: var(--gl-color-accent-hover, #ff9d57);
+}
+
+/* ---------------------------------------------------------------------------
+   Annotation overlays — Sprint 6
+--------------------------------------------------------------------------- */
+
+.gl-measure-annot-tooltip {
+    background: var(--gl-color-bg-surface, #fff);
+    border: 1px solid var(--gl-color-border-soft, #d1d5db);
+    border-radius: 3px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    cursor: grab;
+    pointer-events: all;
+    z-index: 900;
+    overflow: hidden;
+    resize: both;
+    transform: translate(-50%, calc(-100% - 10px));
+    user-select: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.gl-measure-annot-tooltip.is-editing {
+    cursor: default;
+    user-select: text;
+}
+
+.gl-measure-annot-tooltip::after {
+    content: "";
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 9px solid transparent;
+    border-top-color: var(--gl-color-border-soft, #d1d5db);
+    border-bottom: none;
+    pointer-events: none;
+}

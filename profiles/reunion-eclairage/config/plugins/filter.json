@@ -1,0 +1,27 @@
+{
+    "_comment": "S5 F4.3 — modules.filter (capacité in-core). Migration de searchConfig + ui.showFilterPanel. searchConfig = recherche + categories (ni proximité ni tags). Catégories portées à la seule couche 'candelabres' (elle porte categoryId/subCategoryId ; 'armoires' ne les porte pas — Option A).",
+    "enabled": true,
+    "title": "Filtrer",
+    "fields": [
+        {
+            "id": "searchText",
+            "kind": "text",
+            "label": "Recherche textuelle",
+            "placeholder": "Candélabre, secteur…",
+            "searchFields": ["properties.id", "properties.secteur", "properties.adresse"]
+        },
+        {
+            "id": "categories",
+            "kind": "taxonomy",
+            "taxonomyRef": "poi-cat",
+            "label": "Catégories",
+            "field": "categoryId",
+            "subField": "subCategoryId",
+            "layers": ["candelabres"]
+        }
+    ],
+    "actions": {
+        "applyLabel": "Appliquer",
+        "resetLabel": "Réinitialiser"
+    }
+}

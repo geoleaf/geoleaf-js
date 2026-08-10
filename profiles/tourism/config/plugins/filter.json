@@ -1,0 +1,51 @@
+{
+    "_comment": "S5 F4.2 — modules.filter (capacité in-core filter). Migration cassante de searchConfig + ui.showFilterPanel. Pilote tourism : categories inférées de la taxonomie core (categoryId/subcategoryId, 2 niveaux) portée aux couches POI.",
+    "enabled": true,
+    "title": "Filtrer",
+    "fields": [
+        {
+            "id": "searchText",
+            "kind": "text",
+            "label": "Recherche textuelle",
+            "placeholder": "Rechercher un POI…",
+            "searchFields": [
+                "title",
+                "properties.name",
+                "description",
+                "attributes.description_long",
+                "properties.description_long"
+            ]
+        },
+        {
+            "id": "proximity",
+            "kind": "proximity",
+            "label": "Recherche par proximité",
+            "radiusMin": 1,
+            "radiusMax": 200,
+            "radiusStep": 1,
+            "radiusDefault": 10,
+            "buttonLabel": "Activer",
+            "instructionText": "Cliquez sur la carte pour définir le point central"
+        },
+        {
+            "id": "categories",
+            "kind": "taxonomy",
+            "taxonomyRef": "poi-cat",
+            "label": "Catégories",
+            "field": "categoryId",
+            "subField": "subcategoryId",
+            "layers": ["hebergements", "cultures", "sites_rosario"]
+        },
+        {
+            "id": "tags",
+            "kind": "tag",
+            "label": "Tags",
+            "field": "attributes.tags",
+            "options": "auto"
+        }
+    ],
+    "actions": {
+        "applyLabel": "Appliquer",
+        "resetLabel": "Réinitialiser"
+    }
+}

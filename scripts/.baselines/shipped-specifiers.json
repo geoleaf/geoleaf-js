@@ -1,0 +1,21 @@
+{
+    "_comment": [
+        "Specifiers NUS non déclarés, CONNUS, de SHIP-SPEC-01 — un permis daté, pas un droit acquis.",
+        "",
+        "⚠️ SHIP-SPEC-02 n'a PAS de baseline et n'en aura pas : un workspace `private` ne sera",
+        "jamais sur le registre, donc aucune entrée ne pourrait être autre chose qu'un renoncement.",
+        "",
+        "Cette liste ne peut que RÉTRÉCIR. Régénérer avec --update-baseline APRÈS correction,",
+        "jamais pour faire taire. Chaque entrée doit nommer son propriétaire ci-dessous —",
+        "`_proprietaires` est REPRIS de ce fichier à chaque régénération, et élagué des",
+        "specifiers qui n'ont plus d'entrée. Un motif écrit ici survit donc à l'outil.",
+        "",
+        "📌 Elle est tombée à ZÉRO le 10/08/2026 (B-212) : la classe `geojson` — 6 `.d.ts`",
+        "publiés d'editor, file-import et flatgeobuf — a été soldée en déclarant",
+        "`@types/geojson` en `dependencies` sur les trois manifestes. Une entrée qui",
+        "réapparaîtrait ici serait donc une RÉGRESSION, pas une première observation."
+    ],
+    "_proprietaires": {},
+    "_generated": "node scripts/check-shipped-specifiers.cjs --update-baseline",
+    "entries": []
+}

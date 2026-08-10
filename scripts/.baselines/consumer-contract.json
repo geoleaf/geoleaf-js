@@ -1,0 +1,37 @@
+{
+    "_comment": "Contrat inverse S1.8 — les TROIS listes NÉGATIVES du manifeste de consommation. Elles ne peuvent que RÉTRÉCIR (CC-04 entrant, CC-05 sortant). Ajouter une entrée à la main ici est le geste qui désarme la gate : une entrée n'en sort que quand le défaut qu'elle nomme est réparé. Régénérer AVEC --update-baseline, et jamais pour faire passer un rouge.",
+    "_generated": "GEOLEAF_CONSUMERS=<dir> node scripts/verify-consumer-contract.cjs --update-baseline",
+    "_consumer": "odoo-geoleaf",
+    "_manifest_version": "1.4.0",
+    "lists": {
+        "private_tolerated": [
+            "_GeoJSONLayerConfig",
+            "_GeoJSONLayerManager",
+            "_GeoJSONLoader._loadSingleLayer",
+            "_LabelButtonManager.syncImmediate",
+            "_LayerVisibilityManager",
+            "_app.initApp"
+        ],
+        "requested": [
+            "Capabilities.declareUnavailable",
+            "Capabilities.onUnavailable",
+            "Core.isAttached",
+            "Core.reattach",
+            "Layers.setPopupBinding",
+            "UI.closePanel",
+            "UI.dispatchToolbarAction",
+            "UI.getOpenPanel",
+            "UI.openPanel"
+        ],
+        "broken_since_v3": [
+            "GeoJSON.addData",
+            "POI.showPoiDetails",
+            "Popup.registerActionHandler",
+            "ThemeSelector.getActiveTheme",
+            "_ConfigTaxonomy",
+            "_GeoJSONPopupTooltip",
+            "_GeoJSONShared",
+            "_ThemeLoader"
+        ]
+    }
+}

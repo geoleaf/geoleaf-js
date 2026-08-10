@@ -1,0 +1,268 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf Scale Control Styles
+ * A single "pill" grouping: graphic scale | numeric scale | zoom level.
+ *
+ * ── On `!important` (S9) ────────────────────────────────────────────────────
+ * This file used to carry 139 `!important` on 159 declarations (87 %). They were
+ * removed: they defended against nothing.
+ *
+ *   - MapLibre's own `.maplibregl-ctrl-scale` rule never applies. The control is
+ *     100 % home-made (`scale-control.ts:120,144,146` build `.gl-scale-*` nodes)
+ *     and is handed to `addControl` UNWRAPPED, so MapLibre adds no class of its
+ *     own (`maplibre-adapter.ts:585-590` returns the element as-is). The two
+ *     `.geoleaf-ctrl-scale*` selectors that survived here were Leaflet-era
+ *     leftovers, dead since v2.0.0 — also removed.
+ *   - The kernel targets neither `.gl-scale-*` nor `.maplibregl-ctrl-bottom-left`.
+ *   - `@layer` already settles the rest: `gl.kernel` < `gl.capabilities`.
+ *
+ * The three that REMAIN are real, and each is marked below: `branding.css` owns
+ * the shared `.maplibregl-ctrl-bottom-left` container and applies
+ * `> * { margin: 0 !important; flex-shrink: 0 !important }` to this wrapper,
+ * which is a direct child of it. Same specificity (0,1,0), same layer — so
+ * dropping `!important` here would hand those three properties to branding and
+ * lose the mobile left margin.
+ */
+
+    /* Root container: one pill holding every scale element. */
+    .gl-scale-main-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0;
+        margin: 0 !important; /* beats branding.css `> * { margin: 0 !important }` */
+        padding: 0;
+        height: 22px;
+        flex-shrink: 0 !important; /* beats branding.css `> * { flex-shrink: 0 !important }` */
+        background: var(--gl-color-legend-bg);
+        border: 1px solid var(--gl-color-legend-border);
+        border-radius: 11px;
+        box-shadow: var(--gl-shadow-soft);
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    /* Keep the pill off the screen edge on mobile. */
+    @media (max-width: 768px) {
+        .gl-scale-main-wrapper {
+            /* Same fight as `margin` above — branding.css resets the margin of every
+       direct child with `!important`, at equal specificity. Without this the
+       left margin silently disappears on mobile. */
+            margin-left: 0.5rem !important;
+        }
+    }
+
+    /* Graphic scale */
+    .gl-scale-graphic-wrapper {
+        display: flex;
+        align-items: flex-end;
+        height: 100%;
+        margin: 0;
+        padding: 0 8px;
+        pointer-events: auto;
+    }
+
+    .gl-scale-graphic-wrapper .gl-scale-graphic {
+        margin: 0;
+        background: transparent;
+        border: none;
+        padding: 2px 0;
+        height: 100%;
+        display: flex;
+        align-items: flex-end;
+        box-shadow: none;
+    }
+
+    .gl-scale-graphic-wrapper .gl-scale-graphic-line {
+        border: 2px solid var(--gl-color-text-main);
+        border-top: none;
+        background: transparent;
+        color: var(--gl-color-text-main);
+        font-size: 10px;
+        font-weight: 300;
+        line-height: 1.1;
+        padding: 1px 5px 0;
+        white-space: nowrap;
+        text-align: center;
+        margin: 0;
+        height: auto;
+        box-sizing: border-box;
+        text-shadow: none;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Vertical separator between the graphic scale and the custom block. */
+    .gl-scale-graphic-wrapper::after {
+        content: "";
+        width: 1px;
+        height: 14px;
+        background: var(--gl-color-legend-border);
+        margin-left: 8px;
+        opacity: 0.5;
+    }
+
+    /* Separator before the coordinates. */
+    .gl-scale-separator {
+        width: 1px;
+        height: 14px;
+        background: var(--gl-color-legend-border);
+        opacity: 0.5;
+        flex-shrink: 0;
+        pointer-events: none;
+    }
+
+    /* Coordinates, embedded in the pill. */
+    .gl-scale-coordinates {
+        background: transparent;
+        color: var(--gl-color-text-main);
+        border: none;
+        padding: 0 10px;
+        font-size: 10px;
+        font-weight: 600;
+        margin: 0;
+        line-height: 1;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        height: 100%;
+        flex-shrink: 0;
+        pointer-events: auto;
+    }
+
+    /* Custom block (numeric scale + zoom). */
+    .gl-scale-control {
+        background: transparent;
+        color: var(--gl-color-legend-text);
+        border: none;
+        box-shadow: none;
+        padding: 0 10px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        height: 100%;
+        font-size: 10px;
+        font-family: monospace;
+        white-space: nowrap;
+        margin: 0;
+        flex-shrink: 0;
+        pointer-events: auto;
+    }
+
+    /* Numeric scale */
+    .gl-scale-numeric {
+        background: transparent;
+        color: var(--gl-color-text-main);
+        border: none;
+        padding: 0;
+        font-size: 10px;
+        font-weight: 600;
+        margin: 0;
+        line-height: 1;
+        user-select: none;
+    }
+
+    /* Editable numeric scale — container */
+    .gl-scale-numeric-editable {
+        display: inline-flex;
+        align-items: center;
+        position: relative;
+        gap: 0;
+    }
+
+    /* The scale's "1:" prefix */
+    .gl-scale-prefix {
+        background: transparent;
+        color: var(--gl-color-text-main);
+        border: none;
+        padding: 0;
+        margin: 0;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1;
+        user-select: none;
+    }
+
+    /* Clickable numeric scale (span) */
+    .gl-scale-numeric-clickable {
+        background: transparent;
+        color: var(--gl-color-text-main);
+        border: none;
+        padding: 0;
+        font-size: 10px;
+        font-weight: 600;
+        margin: 0;
+        line-height: 1;
+        cursor: pointer;
+        text-decoration: underline;
+        user-select: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .gl-scale-numeric-clickable:hover {
+        opacity: 0.7;
+    }
+
+    /* Numeric scale input */
+    .gl-scale-numeric-input {
+        font-family: monospace;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 4px;
+        border: 1px solid var(--gl-color-border-soft, #ddd);
+        border-radius: 3px;
+        background: var(--gl-color-bg-surface, #fff);
+        color: var(--gl-color-text-main);
+        width: 80px;
+    }
+
+    /* Separator between elements */
+    .gl-scale-control > *:not(:last-child)::after {
+        content: "•";
+        margin-left: 8px;
+        opacity: 0.4;
+        font-weight: normal;
+    }
+
+    /* ==========================================================================
+   Mobile: the pill wraps onto two rows
+   Row 1: GPS position (.gl-scale-coordinates)
+   Row 2: graphic + numeric scale + zoom
+   ========================================================================== */
+    @media (max-width: 768px) {
+        .gl-scale-main-wrapper {
+            flex-direction: row;
+            flex-wrap: wrap;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        /* GPS — row 1, full width */
+        .gl-scale-main-wrapper .gl-scale-coordinates {
+            order: 0;
+            width: 100%;
+            height: 22px;
+            border-bottom: 1px solid var(--gl-color-legend-border);
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Separator between GPS and scale: hidden, the border-bottom replaces it. */
+        .gl-scale-main-wrapper .gl-scale-separator {
+            display: none;
+        }
+
+        /* Scale elements — row 2 */
+        .gl-scale-main-wrapper .gl-scale-graphic-wrapper {
+            order: 1;
+            height: 22px;
+        }
+
+        .gl-scale-main-wrapper .gl-scale-control {
+            order: 2;
+            height: 22px;
+        }
+    }
+}

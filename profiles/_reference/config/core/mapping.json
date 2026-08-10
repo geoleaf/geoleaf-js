@@ -1,0 +1,14 @@
+{
+    "_comment": "Test-only mapping.json fixture (config-contract S15 / B7). Exhaustive on mapping.schema.json leaves. ALWAYS multi-source: a named per-source block `reference`. Its `mapping` is FLAT (string→string, dotted target paths) so it drives Normalization.normalizePoiWithMapping cleanly. coordinateFields/filter/categoryMapping/subcategoryMapping are present to lock ANO-082 (schema-accepted but never read at runtime — only `mapping` is consumed).",
+    "reference": {
+        "source": "reference-source",
+        "description": "Reference mapping for the test-only _reference profile (S15).",
+        "mapping": {
+            "id": "ref_id",
+            "title": "ref_name",
+            "location.lat": "lat",
+            "location.lng": "lon",
+            "attributes.kind": "kind"
+        }
+    }
+}

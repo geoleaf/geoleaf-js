@@ -1,0 +1,687 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    # ⚠️ Déclencheur MANUEL — c'est lui qui porte les étapes E2E.
+    # Elles tournaient à chaque push et c'était la SEULE raison pour laquelle « ci:local vert »
+    # n'impliquait pas « push vert » : `ci:local` ne lance l'E2E que sous `--e2e`, un drapeau
+    # que GitHub ne connaît pas. Les trois étapes concernées portent désormais
+    # `if: github.event_name == 'workflow_dispatch'` — voir leur commentaire pour le prix payé.
+    workflow_dispatch:
+
+# ⚠️ SEUL UN ÉVÉNEMENT `pull_request` RÉEL POUVAIT L'APPRENDRE.
+#
+# Passer `GITHUB_TOKEN` à `gitleaks-action` (cf. l'étape « Secret scan ») était NÉCESSAIRE
+# MAIS PAS SUFFISANT. Le symptôme, sur la première PR à atteindre cette étape — les
+# précédentes mouraient à `npm ci` bien avant :
+#
+#     GET https://api.github.com/repos/…/pulls/<n>/commits
+#     403 — "Resource not accessible by integration"
+#
+# Le jeton était bien présent (`authorization: bearer …` dans la trace). Ce qui manquait est sa
+# PORTÉE : le dépôt est en `default_workflow_permissions: "read"`, ce qui n'accorde que
+# `contents` et `packages` — **pas `pull-requests`**. Or sur une PR, l'action énumère les
+# commits par l'API, là où sur un `push` elle lit la plage dans le clone local. Les deux chemins
+# de la MÊME étape ont donc DEUX prérequis différents, et cet écart a coûté deux runs : le
+# premier pour le jeton, le second pour sa portée.
+#
+# ⚠️ Un bloc `permissions:` explicite met à `none` TOUT ce qu'il ne nomme pas. Les deux lignes
+# ci-dessous sont donc la liste complète de ce dont ce workflow a besoin, vérifiée action par
+# action : `checkout` veut `contents: read` ; `gitleaks-action` veut les deux ;
+# `setup-node` et `upload-artifact` n'ont besoin d'aucune portée (l'upload passe par le jeton
+# de runtime, pas par `GITHUB_TOKEN`).
+#
+# 🛑 Ne PAS « corriger » ça en basculant le défaut du dépôt en read/write : ce réglage élargit
+# TOUS les workflows d'un coup, alors que le besoin est de deux portées dans celui-ci.
+permissions:
+    contents: read
+    pull-requests: read
+
+jobs:
+    build-and-test:
+        runs-on: ubuntu-latest
+        steps:
+            # ⚠️ `fetch-depth: 0` est EXIGÉ par la gate « Secret scan (gitleaks) », et son absence
+            # a un mode d'échec particulièrement trompeur — mesuré le 29/07/2026.
+            #
+            # Le défaut de `actions/checkout` est un clone SUPERFICIEL (profondeur 1).
+            # `gitleaks-action` scanne, lui, la plage de la poussée : `<avant>^..<après>`. Sur toute
+            # poussée de plus d'un commit, `<avant>^` n'existe pas dans le clone, git rend
+            # « unknown revision », et l'étape sort en erreur.
+            #
+            # ⚠️ Le piège n'est pas l'échec, c'est CE QUE DIT le journal juste avant : gitleaks
+            # imprime « no leaks found in partial scan » après avoir annoncé « scanned ~0 bytes ».
+            # La gate a donc rougi **sans avoir rien scanné** — et elle aurait affiché le même
+            # « aucune fuite » en sortant verte si le code de sortie avait été avalé. Une gate qui
+            # ne voit rien ne garde rien, quelle que soit sa couleur.
+            #
+            # ⚠️ Les 7 `uses:` de ce fichier sont épinglés par SHA en v7/v3, et le motif n'est
+            # pas l'hygiène : **Node 20 quitte les runners GitHub le 16/09/2026**. Chaque run
+            # l'annonçait déjà — « The following actions target Node.js 20 but are being
+            # forced to run on Node.js 24 ». Après cette date, les actions restées en Node 20
+            # ne démarrent plus, et rien dans ce dépôt ne peut le compenser. Les quatre montées
+            # sont des migrations de runtime : `gitleaks-action` v3 l'écrit noir sur blanc,
+            # « No changes to inputs, outputs, or behavior ».
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+
+            # ⚠️ `cache: "npm"` est EXPLICITE et doit le rester. Depuis setup-node v5, la
+            # présence d'un champ `packageManager` dans `package.json` (ici `npm@11.6.2`)
+            # active un cache AUTOMATIQUE ; v6 l'a restreint à npm. La valeur explicite
+            # gouverne, donc le comportement ne change pas — mais retirer cette ligne ne
+            # désactiverait plus le cache, elle en changerait seulement le pilote.
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: ".nvmrc"
+                  cache: "npm"
+
+            - run: npm ci
+
+            - run: npx turbo run build
+
+            - name: Bundle exports validation (post-build)
+              run: npm run test:bundle --workspace=@geoleaf/core
+
+            # A plugin's bundle is asserted in the plugin's own package — that is where the
+            # artefact ships. The core's rollup used to build a second, divergent copy of these
+            # two and assert on THAT; the copy was consumed by nobody, shipped ~660 KB of plugin
+            # code inside the public @geoleaf/core npm package, and carried the
+            # CSP-violating styleInject. Deleted — @geoleaf/core:bundle now gates its absence.
+            - name: Bundle validation — plugin Storage (post-build)
+              run: npm run test:bundle --workspace=@geoleaf-plugins/offline-ui
+
+            # Tree-shaking gate. Reads the SOURCEMAPS of the eager static closure and asserts
+            # that not one file of a capability the example entry leaves out is in its bundle.
+            # Catches the one thing that silently un-does the work: a static import from a
+            # kernel module into capabilities/*.
+            - name: Tree-shaking proof (excluded capabilities are out of the bundle)
+              run: npm run size:example
+
+            # The gate above proves the SOURCE graph tree-shakes. It builds from `../../src/`,
+            # paths that exist only in this repo, so it can say nothing about the PUBLISHED
+            # package. The two below check the artifact an integrator downloads: `sideEffects`
+            # (which a third-party bundler OBEYS — node-resolve returns it from resolveId, where
+            # it overrides the consumer's own treeshake setting), and a witness bundle built
+            # through the real npm subpaths. Both went red on a real defect:
+            # `import { Config } from "@geoleaf/core"` was shipping a Config with no `.get()`,
+            # because dist/esm was built with a moduleSideEffects heuristic that dropped the
+            # modules mutating the singleton.
+            - name: sideEffects declaration is honest
+              run: npm run check:side-effects
+
+            - name: Published-package proof (the documented recipe, built from npm subpaths)
+              run: npm run size:consumer
+
+            - name: The published recipe typechecks through the exports map
+              run: npm run typecheck:consumer
+
+            # Structural complement to the step above: the core's types are compiled there,
+            # but every OTHER package's declarations were unreachable (11 packages shipped
+            # .d.ts with no `types` condition → TS7016 for consumers). The gate also holds a
+            # "types first" CONVENTION, which is uniformity only — TypeScript resolves the
+            # condition wherever it sits (measured).
+            # Keep in sync with scripts/ci-local.cjs.
+            - name: Published types are reachable (PUB-TYPES)
+              run: node scripts/verify-published-types.cjs
+
+            # La question que ni PUB-TYPES ni typecheck:consumer ne peuvent poser : un specifier
+            # du tarball se résout-il HORS de ce monorepo ? Les symlinks de workspace masquent la
+            # classe entière — `@geoleaf/host-runtime` est `private` et 404 sur npm, et il
+            # résolvait vert des deux côtés. Six `.d.ts` publiables le nommaient.
+            # SHIP-SPEC-02 est sans baseline : un workspace privé n'ira jamais sur le registre.
+            # Keep in sync with scripts/ci-local.cjs.
+            - name: Shipped specifiers resolve off-monorepo (SHIP-SPEC)
+              run: node scripts/check-shipped-specifiers.cjs
+
+            # La notice de licence, sur les SOURCES et sur ce qui PART.
+            # Mesuré avant correctif : 405 des 540 `.js` expédiés n'en portaient aucune, et le
+            # seul paquet qui DÉCLARAIT une bannière ne la livrait pas (`legalComments: "none"`
+            # la supprimait au minify). LIC-05 garde la VALEUR du champ `license`, là où PC-05
+            # n'exige qu'une chaîne non vide. Aucune baseline, la règle tient à zéro.
+            # ⚠️ Après le build : LIC-04 lit `dist/`. Keep in sync with scripts/ci-local.cjs.
+            - name: License headers & notice (LIC-HEADERS)
+              run: node scripts/check-license-headers.cjs
+
+            # The commented tree and its source. The first gates the SOURCE (a new file may
+            # not arrive without a module header; the 318-file baseline may only shrink); the
+            # second gates the ARTEFACT (the committed markdown must equal what the generator
+            # emits now). Keep in sync with ci-local.cjs.
+            - name: Module headers (new files must be documented)
+              run: npm run check:module-headers
+
+            # EXACT-OPTIONAL-DEBT — interdit de solder une erreur
+            # `exactOptionalPropertyTypes` en élargissant la cible en `?: T | undefined`,
+            # ce qui lui rendrait la sémantique d'avant l'option. Baseline 0, elle ne peut
+            # que rétrécir. Keep in sync with ci-local.cjs.
+            - name: Exact-optional debt (aucun type élargi pour faire taire tsc)
+              run: npm run check:exact-optional-debt
+
+            # NONNULL-ASSERTION-DEBT — interdit de solder une erreur
+            # `noUncheckedIndexedAccess` par un `arr[i]!`, qui la fait taire au lieu de la
+            # corriger. NNA-04 n'a pas de baseline ; les 302 autres assertions (dette
+            # `strictNullChecks`) sont gelées et ne peuvent que rétrécir.
+            # Keep in sync with ci-local.cjs.
+            - name: Non-null assertion debt (aucune erreur Q5 soldée par un `!`)
+              run: npm run check:nonnull-debt
+
+            # JS-TEST-DEBT — une suite de test neuve s'écrit en TypeScript, la baseline gelée
+            # ne peut que rétrécir. 🛑 Mais la règle qui compte est JTD-04, sans baseline :
+            # zéro suite que vitest ne collecte pas. Les `include` portent l'extension dans
+            # leur motif, donc une conversion `.js` → `.ts` sans élargir le motif rend le test
+            # invisible — vert avec un test de moins. Keep in sync with ci-local.cjs.
+            - name: JS-test debt (D-23/D-24 gelées, et aucune suite invisible au runner)
+              run: npm run check:js-test-debt
+
+            # DIST-INTEGRITY — le déployé embarquait DEUX jeux de chunks. Deux causes : turbo
+            # restaure son cache sans vider `dist/` (prouvé par canari sur 2.9.18), ET
+            # `build-deploy-coverage.cjs` appelait `npx rollup -c` en court-circuitant le
+            # `rimraf dist &&` du script du core. Mesuré au correctif : le déployé perd
+            # ~1 Mo. Un chunk orphelin partirait aussi dans le tarball npm.
+            # Keep in sync with ci-local.cjs.
+            - name: Intégrité de dist/ (DIST-INTEGRITY — 0 chunk en double, 0 orphelin)
+              run: npm run check:dist-integrity
+
+            # ESM-PURITY — un spécificateur NU dans un `dist/` est irrésoluble en navigateur :
+            # sans import map, `from 'gtfs-realtime-bindings'` n'a pas d'URL. Le témoin
+            # historique était réel et copié dans les 4 variantes de `deploy/`. La ligne de
+            # partage est `peerDependencies` (external voulu, cas de `maplibre-gl`) contre
+            # `dependencies` (fuite) ; l'allowlist en dérive, paquet par paquet. Scanner et non
+            # grep : deux faux positifs vivent sur le disque (un `@example` TSDoc, une chaîne
+            # d'erreur) et un vert doit les traverser.
+            # Keep in sync with ci-local.cjs.
+            - name: Pureté ESM de dist/ (ESM-PURITY — 0 spécificateur nu hors allowlist)
+              run: npm run check:esm-purity
+
+            # DOC-CONFIG-EXAMPLES — les exemples ```json de la doc produit sont-ils validables
+            # par les schémas de profil ? Les schémas sont `additionalProperties: false`, donc
+            # une clé retirée mais laissée dans un exemple est copiable-collable et fait
+            # échouer `validate:profiles` chez l'intégrateur. Baseline décroissante.
+            # Keep in sync with ci-local.cjs.
+            - name: Exemples de config JSON de la doc produit (DOC-CONFIG-EXAMPLES)
+              run: npm run check:doc-config-examples
+
+            # CINQ gates de documentation tournaient dans `ci:local` et n'étaient dans AUCUN
+            # workflow : `check:docs-examples`, `check:tsdoc`, `gen:config-reference:check`,
+            # `check:docs-typecheck` et `docs:build`. ⚠️ Leur absence était STRUCTURELLEMENT
+            # invisible : `verify-ci-parity.cjs` ne vérifie que `ci.yml ⊆ ci:local`, jamais
+            # l'inverse. C'est le même trou par lequel `docs:build` a échoué cinq jours sans
+            # témoin. La classe reste ouverte — câbler cinq gates ne garde pas contre la
+            # sixième qui manquera demain.
+            - name: Docs examples (phantom APIs, stale package names)
+              run: npm run check:docs-examples
+
+            # ⛔ Règle documentaire — `@param` ↔ signature, `@throws` adossé à un `throw`.
+            # Baseline DÉCROISSANTE, à 0. Keep in sync with ci-local.cjs.
+            - name: TSDoc conformity (@param ↔ signature)
+              run: npm run check:tsdoc
+
+            # La PROSE des TSDoc : un renvoi vers un fichier déplacé reste lisible et
+            # convaincant longtemps après. Baseline décroissante de 84, deux axes (chemin mort
+            # neuf · entrée périmée). ⚠️ Sa baseline n'est PAS une file de dette : la majorité
+            # de ses entrées nomme un chemin PARCE QU'il est mort (provenance de migration).
+            # Keep in sync with ci-local.cjs.
+            - name: Chemins cités par la prose des TSDoc (TSDOC-PATHS)
+              run: npm run check:tsdoc-paths
+
+            # Tout nom d'événement `geoleaf:*` relevé dans les sources doit être typé dans
+            # `contracts/event-bus.contract.ts`. Baseline de 53, qui ne peut que rétrécir
+            # (EM-02). Keep in sync with ci-local.cjs.
+            - name: Événements typés (EVENT-MAP)
+              run: npm run check:event-map
+
+            # `GeoLeafHost` ⊆ `GeoLeafGlobal` ⊆ oracle post-boot. Les deux contrats décrivent
+            # le même objet sans lien de compilation (host-runtime n'importe rien du core),
+            # d'où la dérive mesurée à l'audit. Keep in sync with ci-local.cjs.
+            - name: Contrats du namespace synchronisés (HOST-SYNC)
+              run: npm run check:host-sync
+
+            # L'invariant inverse de HOST-SYNC : toute clé du namespace est DÉCLARÉE dans
+            # `GeoLeafGlobal`, sinon elle tombe dans la traîne `[key: string]: unknown` et le
+            # compilateur ne vérifie plus son affectation. Liste nominative qui ne peut que
+            # rétrécir ; HOST-06 refuse les déclarations vides (`unknown`, `any`,
+            # `Record<string, unknown>` nu), sans quoi la baseline se solderait sans rien typer.
+            # Keep in sync with ci-local.cjs.
+            - name: Namespace GeoLeaf typé sous cliquet (NAMESPACE-TYPING)
+              run: npm run check:namespace-typing
+
+            # Les gates ci-dessus tiennent que ce que NOUS déclarons existe ; celle-ci tient
+            # que ce dont l'aval DÉPEND n'a pas disparu. Neuf clés du namespace sont parties
+            # parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était dehors.
+            # ⚠️ Ici comme sur le clone public, elle SAUTE avec un motif nommé : le manifeste
+            # vit chez le consommateur (il nomme un client, un contact et des chemins Odoo) et
+            # le crochet `GEOLEAF_CONSUMERS` n'est pas défini sur le runner. Ce qui l'empêche
+            # d'avaler est `probe-gate-visibility.cjs`, qui plante un manifeste de FIXTURE et
+            # exige de la voir rougir dessus. Keep in sync with ci-local.cjs.
+            - name: Contrat inverse — ce dont l'aval dépend (CONSUMER-CONTRACT)
+              run: npm run check:consumer-contract
+
+            - name: Commented tree is up to date (docs:tree)
+              run: npm run docs:tree:check
+
+            # La référence d'API dérivée cesse d'être un fossile (sa sortie avait un jour de
+            # retard sur le core, et `docs:api` n'était câblé nulle part). Gate le MANIFESTE et
+            # non le rendu : celui-ci grave le SHA de HEAD, donc il n'a pas de point fixe.
+            # Motif complet dans l'en-tête du script. Keep in sync with scripts/ci-local.cjs.
+            - name: API surface manifest is up to date (gen:api-surface)
+              run: npm run gen:api-surface:check
+
+            # Le 2ᵉ générateur. La référence de profil rédigée documente 128 paramètres pour
+            # 381 portés par les schémas : incomplète, pas seulement périmée. Cette gate garde
+            # la référence dérivée fraîche. Keep in sync with scripts/ci-local.cjs.
+            - name: Profile schema reference is up to date (gen:profile-schema)
+              run: npm run gen:profile-schema:check
+
+            # TPL-CFG — une couche produite par `layerTemplates` ne doit pas porter de
+            # `_config.json`. `expandLayerTemplates` construit un `inlineConfig` qui « skips
+            # the fetch entirely » : le fichier n'est lu ni par le loader ni par le bundle
+            # déployé, mais il se fait éditer et la divergence est silencieuse. 24 fantômes
+            # (16 104 o) retirés au correctif. Keep in sync with ci-local.cjs.
+            - name: Template layer configs (TPL-CFG — aucune config fantôme)
+              run: npm run check:template-layer-configs
+
+            # L'inventaire des paramètres intégrateur est DÉRIVÉ des schémas de profil ; sans
+            # ce `--check` le fichier généré diverge en silence.
+            - name: Config reference is up to date (gen:config-reference)
+              run: npm run gen:config-reference:check
+
+            # Les exemples de la doc et les `@example` du TSDoc sont COMPILÉS (arité, exports
+            # fantômes), y compris ceux de `global.d.ts`. Baseline à 0. Se place avant
+            # `docs:build` : un exemple qui ne compile pas est plus urgent qu'un lien mort.
+            # Keep in sync with ci-local.cjs.
+            - name: Docs examples typecheck (arité, exports fantômes)
+              run: npm run check:docs-typecheck
+
+            # Le site VitePress se construit ICI aussi, et plus seulement en local.
+            # `ignoreDeadLinks: false` fait ÉCHOUER le build sur un lien mort ; ce filet ne
+            # protégeait que les runs manuels, et le build a échoué cinq jours sans témoin.
+            # ⚠️ Pré-vol du clone frais VÉRIFIÉ : `packages/core/docs/api/` est gitignoré
+            # (TypeDoc l'écrit, git ne le suit pas) et `docs:api` n'est câblé dans AUCUNE CI —
+            # donc ce répertoire est absent d'un runner. Mesuré en le déplaçant hors du dépôt :
+            # le build sort **vert en 8,2 s, 0 lien mort**, `srcExclude: ["api/**"]` faisant son
+            # office. Pas besoin d'ajouter `docs:api` avant, ce qui aurait coûté un run TypeDoc
+            # complet à chaque push.
+            - name: Docs site build (VitePress — liens morts)
+              run: npm run docs:build -w @geoleaf/core
+
+            # La tâche existait, les 18 packages l'implémentaient, rien ne l'invoquait. Son
+            # premier run a remonté 45 erreurs. Ne pas confondre avec `typecheck:consumer`
+            # ci-dessus, qui ne vérifie que la recette publiée du core.
+            # Keep in sync with scripts/ci-local.cjs.
+            - name: Typecheck — all packages (turbo)
+              run: npx turbo run typecheck
+
+            # Le nom actait « warnings allowed », et c'était vrai : aucun
+            # `--max-warnings` nulle part. `no-console`, `max-depth`,
+            # `max-lines-per-function` et `security/detect-non-literal-regexp` étaient
+            # donc purement décoratives. `npm run lint` porte désormais
+            # `--max-warnings 0` : 0 erreur ET 0 avertissement.
+            - name: Lint (0 errors, 0 warnings enforced)
+              run: npm run lint
+
+            # Production dependency audit gate. Fails on High/Critical prod vulnerabilities;
+            # dev-only advisories are excluded via --omit=dev.
+            - name: Security audit — production dependencies (High/Critical fail)
+              run: node scripts/audit-ci.cjs
+
+            # Full dependency tree (prod+dev), visibility only. Some dev-only advisories
+            # (vite/esbuild via vitepress) have no available fix; blocking on them would
+            # leave this gate permanently red.
+            #
+            # ⚠️ « non-blocking » est tenu PAR LE SCRIPT, pas par un `continue-on-error`, et
+            # ça n'a pas toujours été le cas. `audit-dev-report.cjs` sortait en 1 sur un
+            # incident d'infrastructure (registre injoignable, proxy, timeout), donc cette
+            # étape déclarée informative faisait ÉCHOUER le job, pendant que le poste — servi
+            # par son `~/.npm/_cacache` — sortait 0. Le libellé disait l'intention, le code
+            # disait l'inverse.
+            #
+            # `continue-on-error: true` n'est délibérément PAS posé : il rendrait le libellé
+            # vrai, mais masquerait aussi un vrai plantage du script. Un incident réseau ne
+            # doit pas bloquer ; un bug, si.
+            - name: Security audit — full dependency tree (informational, non-blocking)
+              run: node scripts/audit-dev-report.cjs
+
+            # Secret scanning. Pinned by SHA.
+            - name: Secret scan (gitleaks)
+              uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+              env:
+                  GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+                  # ⚠️ EXIGÉ pour les événements `pull_request` — changement cassant de
+                  # `gitleaks-action` v2, mesuré le 29/07/2026 :
+                  #
+                  #     event type: pull_request
+                  #     🛑 GITHUB_TOKEN is now required to scan pull requests
+                  #
+                  # Sur un `push`, l'action lit la plage de commits dans le dépôt local et n'a
+                  # besoin de rien. Sur une `pull_request`, elle interroge l'API pour énumérer les
+                  # commits de la PR — d'où le jeton. Les deux chemins de la MÊME étape ont donc
+                  # deux prérequis différents, ce qui est exactement pourquoi le défaut a survécu :
+                  # `main` passait (une fois `fetch-depth` réglé) pendant qu'AUCUNE PR ne pouvait
+                  # passer. Dix PR dependabot s'accumulaient sur ce seul motif.
+                  #
+                  # Jeton automatique du run, aucun secret à provisionner.
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Unit tests — all packages (workspace mode, JSON reporter)
+              run: npx vitest run --reporter=json --outputFile=test-results.json --reporter=verbose
+
+            - name: Check zero test failures
+              run: node scripts/check-test-failures.cjs
+
+            - name: Upload test results
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              if: always()
+              with:
+                  name: test-results
+                  path: test-results.json
+                  if-no-files-found: warn
+
+            # Miroir local obligatoire : `ci:local` porte la même étape (« Coverage gate »).
+            # 34 tâches (17 paquets). Un seul provider : **istanbul partout**. 4 paquets ont un
+            # seuil calibré au lieu de 75 (core, addpoi, storage, field-renderer — seuils à
+            # cliqueter vers le haut).
+            # Passe par `scripts/run-tests.cjs`, comme `ci:local`. Le `--concurrency=4` était
+            # écrit en dur ICI et dans `ci-local.cjs` : deux copies d'un même réglage, dont une
+            # seule des deux bornait la moitié du produit (concurrence turbo × workers vitest).
+            # Le runner pose les deux facteurs.
+            - name: Coverage gate — turbo test:coverage (34 tâches, seuils par package)
+              run: npm run test:coverage:all
+
+            - name: Upload coverage report (HTML Istanbul — core)
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              if: always()
+              with:
+                  name: coverage-report
+                  path: packages/core/coverage/
+                  if-no-files-found: warn
+
+            - run: node scripts/smoke-test.cjs
+
+            # L'étape qui vivait ici (`node scripts/benchmark.cjs --ci`) portait 3 assertions,
+            # 3 inertes. Sa baseline `.benchmark-baseline.json` datait de l'ère Leaflet :
+            # `geoleaf.esm.js` figé à 1 928 560 o contre ~948 o mesurés aujourd'hui, soit
+            # −99,95 % pour un seuil de +5 %. Les deux autres nommaient `geoleaf-lite.esm.js`,
+            # artefact supprimé depuis : `liteGzip` valait `undefined` et le bloc était sauté.
+            # Seul mode d'échec restant : la disparition de son propre fichier de référence.
+            #
+            # ⚠️ C'est un REMPLACEMENT, pas un retrait. `check-bundle-size.cjs` mesure la
+            # vraie métrique — clôture transitive des imports statiques depuis l'entrée,
+            # budget dur 300 Ko gz / alerte 270, plus le budget CSS — mais il n'était étape
+            # NULLE PART : il n'était atteint que par `build-deploy.cjs`, donc à la dernière
+            # étape du job. Retirer sans remplacer aurait laissé le job sans budget.
+            - name: Bundle size — boot payload gz (dur 300 Ko / alerte 270) + CSS
+              run: npm run size
+
+            # ── Le poids de l'APPLICATION ────────────────────────────────────────
+            #
+            # L'étape ci-dessus mesure la clôture des imports statiques du CORE — 12 % de ce
+            # qu'une page charge. Les données du profil, les plugins eager, le CSS et les
+            # icônes n'étaient pesés par RIEN, et une favicon de 172,7 Ko gz (plus lourde que
+            # le bundle core entier) a vécu sur le chemin critique sans qu'aucun instrument
+            # ne la voie.
+            #
+            # ⚠️ Ces deux étapes sont dans le chemin de PUSH, pas sous `workflow_dispatch`.
+            # Le budget a besoin d'un `deploy/` bâti, ce qui coûte 8 s ; le réserver au
+            # déclencheur manuel l'aurait rendu quasi jamais exécuté. L'étape E2E plus bas
+            # rebâtit le déployé pour son propre compte — le doublon est assumé, et il est le
+            # prix d'une gate réelle à chaque push.
+            - name: Build deploy variants (sujet du budget applicatif)
+              run: npm run build:deploy:all
+
+            - name: App payload — première page par variante (budget dur)
+              run: npm run size:app
+
+            # Aucun secret dans ce qu'on LIVRE. Placée ICI parce qu'elle scanne l'artefact que
+            # l'étape « Build deploy variants » vient de produire — la déplacer avant lui la
+            # ferait rendre un verdict sur un `deploy/` d'âge inconnu, ou sur rien.
+            #
+            # ⚠️ gitleaks (plus haut) ne peut PAS la remplacer : il scanne des plages de
+            # commits, et `deploy/` est git-ignoré. Mesuré le 09/08/2026 — un JWT
+            # `geoleaf_editor` non expiré vivait à la racine de `deploy-core` et `deploy-full`,
+            # plus dans leurs `.gz`/`.br`, sans qu'aucune des deux gates de secret ne puisse le
+            # voir.
+            - name: Aucun secret dans les variantes livrables (DEPLOY-SECRETS)
+              run: node scripts/verify-deploy-no-secrets.cjs
+
+            # Ce qu'on livre DIT ce qu'il exige. Même position et même couplage que la gate
+            # ci-dessus : elle lit l'artefact que « Build deploy variants » vient de produire.
+            #
+            # ⚠️ Elle ferme un trou de DIFFUSION, pas de connaissance. « Sans le type MIME de
+            # `.mjs`, rien ne boote » était déjà écrit dans `docker/nginx.dev.conf`, assorti de
+            # l'aveu qu'aucune gate ne pouvait le vérifier chez l'intégrateur — ce qui s'est
+            # vérifié le 09/08/2026 sur une prod nginx, en spinner infini.
+            - name: Le livrable emporte son contrat serveur (DEPLOY-SERVER-CONTRACT)
+              run: node scripts/verify-deploy-server-contract.cjs
+
+            # Fichiers morts, dépendances déclarées non importées, imports non déclarés, et
+            # config knip morte (bloquante, non baselinable). PAS les exports du core : la
+            # catégorie exports/types y est coupée (`ignoreIssues` dans knip.js), après triage
+            # un par un des 159 symboles — 116 faux positifs de baril, 0 actionnable.
+            # Baseline : 1 signal.
+            - name: Dead code — fichiers, dépendances, config (knip — bloquant)
+              run: npm run dead-code
+
+            # Cherche les consommateurs d'un export core dans TOUT le monorepo pour éviter les
+            # faux positifs sur l'API core consommée par les plugins. Il cherche par token —
+            # y compris les VALEURS littérales des const de type chaîne (clés de registre, noms
+            # d'événements) — là où knip raisonne sur le graphe de modules. ⚠️ Depuis le
+            # resserrage de knip il n'est plus complémentaire mais SEUL sur cet angle : il
+            # couvrait 51 des 74 candidats de sa baseline (mesure 25/07/2026), il les couvre
+            # maintenant tous les 74. Le désactiver ne dégraderait pas la couverture des exports
+            # du core, il la supprimerait. Chacun porte sa classe A/C/D (CLS-01/CLS-02).
+            # N.B. le motif d'origine (« knip est aveugle sur packages/core/src ») est PÉRIMÉ :
+            # la cause était le sous-chemin "./dist/*" du exports du core, retiré depuis.
+            - name: Dead-code filet B3 (core orphan exports — repo-wide)
+              run: npm run check-orphan-exports
+
+            # contracts/*.contract.ts must stay a pure type surface: no runtime value export,
+            # no non-type import, no top-level statement. Stops the "membrane" drift
+            # (LegendContract/POIAddFormContract) from recurring. Green at wiring ⇒ no baseline.
+            # Mirrored in ci-local.cjs + pre-commit.
+            - name: Contracts purity (type-only surface)
+              run: npm run check:contracts-pure
+
+            # The 29 `modules/geoleaf.*.ts` are the public surface: they delegate, they do not
+            # implement. Broken twice before (geoleaf.config.ts self-registration,
+            # geoleaf.storage.ts holding ~430 L of orchestration). Green at wiring ⇒ no
+            # baseline. Mirrored in ci-local.cjs + pre-commit.
+            - name: Facade purity (geoleaf.*.ts)
+              run: npm run check:facade-purity
+
+            # Prototype-pollution ratchet. Every `X[k] = …` with a non-literal key must call
+            # the canonical blocklist (utils/general/object-path-guard), be allowlisted in the
+            # script with a reason, or sit in the baseline. The hole that motivated it was a
+            # sink an earlier hardening sweep had simply not reached; this blocks the next one
+            # at the door. Mirrored in ci-local.cjs + pre-commit.
+            - name: Dynamic-key writes (prototype pollution)
+              run: npm run check:dynamic-key-writes
+
+            # Le gate existait dans `package.json` (`check:links`) et n'était câblé NULLE PART :
+            # c'est le trou par lequel un commit a supprimé MIGRATION_V1_V2.md par accident en
+            # laissant ses 4 liens derrière — 404 en production pendant des semaines. VitePress
+            # ne rattrapait rien (`ignoreDeadLinks: true`, désormais à false).
+            # Vert (0 lien mort / 64 fichiers) au câblage ⇒ pas de baseline.
+            - name: Dead links (public docs)
+              run: npm run check:links
+
+            # Code-quality gates. Complexity ceiling (≤ 20) is enforced by `npm run lint`
+            # above (eslint.config.mjs `complexity: ["error", 20]`, 0-error mode).
+            - name: Code duplication (jscpd — threshold 3%)
+              run: npm run dup:check
+
+            # La table i18n du cœur est PLATE : getLabel n'éclate jamais les points. Un dico
+            # de plugin imbriqué rend ses clés inatteignables sans rien casser, et le fallback
+            # en dur du plugin masque la panne — plugin-geocoding a servi du français en `en`
+            # pendant des semaines. Le filet i18n existant ne balaie que src/lang/ du cœur.
+            - name: i18n dict shape (flat keys — all workspaces)
+              run: npm run check-i18n-shape
+
+            - name: Dead CSS (purgecss — 0 rejected selectors)
+              run: npm run verify:purgecss
+
+            - name: No Leaflet references (gate migration MapLibre)
+              run: node scripts/verify-no-leaflet.cjs
+
+            # `packages/core/src/` must never import `@geoleaf-plugins/*`. Architecture
+            # boundary (the core stays autonomous and tree-shakeable), NOT a licence one: it
+            # survived the all-MIT switch untouched. This gate once ran ONLY in a mirror
+            # workflow, and on push:main only, so it never blocked a PR. That workflow is gone;
+            # this job is now the primary enforcement. Keep in sync with scripts/ci-local.cjs
+            # and .husky/pre-commit.
+            - name: Core is standalone (no plugin reference in core)
+              run: node scripts/verify-core-standalone.cjs
+
+            # Frontière symétrique de la précédente : plugins → core. Elle n'était surveillée
+            # par RIEN, d'où 404 Ko de core recopié dans un plugin et quatre chemins lisant une
+            # instance jamais initialisée.
+            # Keep in sync with scripts/ci-local.cjs and .husky/pre-commit.
+            - name: Plugin → core boundary (no deep import outside baseline)
+              run: node scripts/verify-plugin-core-boundary.cjs
+
+            # Troisième frontière : interdit de RE-DÉFINIR un utilitaire canonique de
+            # @geoleaf/host-runtime au lieu de l'importer (la régression par laquelle
+            # coreConfigGet avait dérivé de ses 9 copies). Keep in sync with
+            # scripts/ci-local.cjs and .husky/pre-commit.
+            - name: Plugin shared-util fork (no host-runtime re-copy outside baseline)
+              run: node scripts/verify-plugin-shared-fork.cjs
+
+            # Le namespace GeoLeaf a UN propriétaire : le boot. C'est le contrat public que
+            # les plugins lisent. Keep in sync with scripts/ci-local.cjs.
+            - name: Globals ownership (namespace GeoLeaf)
+              run: node scripts/verify-globals-ownership.cjs
+
+            # npm silently drops a files[] entry that points at nothing: 10 packages declared
+            # a LICENSE absent from disk, and one listed "LICENCE" (FR spelling), an entry that
+            # could never match. Build outputs are exempt (git-ignored). Keep in sync with
+            # scripts/ci-local.cjs and .husky/pre-commit.
+            - name: Package files[] entries exist on disk
+              run: node scripts/check-package-files.cjs
+
+            # Config inventory coverage gate. Already enforced locally (.husky/pre-commit);
+            # mirrored here so a key declared in a schema OR read by code (families B1→B7)
+            # without an inventory row also fails CI — pre-commit alone is bypassable via
+            # --no-verify.
+            - name: Config coverage (inventory completeness B1→B7)
+              run: npm run verify:config-coverage
+
+            # The other direction of the same contract. Coverage (above) proves every key has
+            # a row; this proves each row's "Consommateur (file:line)" citation still points at
+            # real code. NO baseline any more: the 67 drifts inherited from earlier refactors
+            # were all resolved and scripts/check-config-consumers.baseline.json was deleted
+            # deliberately — the gate now fails on ANY broken citation, not just a new one (see
+            # that script's docblock). --no-report is required (the run would otherwise rewrite
+            # a report deliberately deleted from the repo). Mirrored in pre-commit and ci-local.
+            - name: Config consumers (citation drift)
+              run: npm run verify:config-consumers
+
+            # Inter-package version consistency. Versioning is independent per published
+            # package (root is a private orchestrator, version not significant). This catches
+            # invalid semver, unresolved internal deps, and a private/unpublished package
+            # wrongly declared as a runtime dependency.
+            - name: Version consistency (inter-package)
+              run: npm run versions:check
+
+            - name: Repo hygiene — no throwaway scripts or build artifacts
+              run: node scripts/verify-repo-hygiene.cjs
+
+            # Contrat HTML/JS de apps/geoleaf-app. Plusieurs de ses invariants portent sur des
+            # formes que build-deploy.cjs patche par regex `/gm` sans `/s` : un retour à la
+            # ligne les faisait manquer, en exit 0. Le décompte fait foi côté script (il est
+            # DÉRIVÉ de la liste des noms) et s'imprime en fin de run — ne pas le recopier ici.
+            # Ce commentaire a dit « trois de ses cinq » alors qu'ils étaient dix.
+            - name: App template contract (APP-TEMPLATE)
+              run: node scripts/verify-app-template.cjs
+
+            - name: Plugin Contract v1 conformity (PC-01…PC-12, fail mode)
+              run: node scripts/verify-plugin-contract.cjs --fail
+
+            # Le gabarit est hors des globs `workspaces` ET dans les `ignores` d'ESLint —
+            # deux exclusions légitimes qui, ensemble, laissent sans lecteur le fichier dont
+            # naît tout plugin futur. Cette gate scaffolde et éprouve la SORTIE. Elle exige
+            # `packages/core/dist/types/`, produit par le `turbo run build` en tête de job.
+            - name: Plugin scaffold contract (SCAFFOLD)
+              run: node scripts/verify-plugin-scaffold.cjs
+
+            - name: Upload bundle stats (stats.html)
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              if: always()
+              with:
+                  name: bundle-stats
+                  path: packages/core/dist/stats.html
+                  if-no-files-found: ignore
+
+            # Scénarios critiques : chargement carte (01), storage/offline (02), POI (03)
+            #
+            # ⚠️ MANUELLE, et c'est un choix assumé, pas un oubli.
+            #
+            # Cette étape était la seule cause structurelle de « ci:local vert, push rouge » :
+            # `ci-local.cjs` ne lance l'E2E que sous `--e2e` (12 min ici), alors que ce workflow
+            # la lançait à CHAQUE push (1 h là-bas). Le drapeau est local, GitHub ne le connaît
+            # pas — l'écart n'était donc pas réductible par de la discipline. Le run qui l'a
+            # établi : 65 étapes vertes, 1 rouge, et c'était celle-ci.
+            #
+            # ⚠️ CE QUE CE CHOIX FAIT PERDRE, à savoir avant de s'y fier : ce runner est le SEUL
+            # endroit qui éprouve la suite sur un CLONE FRAIS et sur 2-4 cœurs. Les trois défauts
+            # qui ont motivé cet avertissement n'étaient visibles QUE là. `npm run ci:push -- --e2e`
+            # rend le clone frais, pas les 2 cœurs : pour cette dimension-là, il faut déclencher
+            # ce workflow à la main, ou reproduire localement avec `taskset -c 0,1`
+            # (cf. `playwright.config.js`).
+            #
+            # Se déclenche depuis l'onglet Actions → « Run workflow ».
+            - name: E2E Playwright (carte, storage offline, POI)
+              if: github.event_name == 'workflow_dispatch'
+              run: npm run build:deploy && node scripts/build-deploy-coverage.cjs && npx playwright install --with-deps chromium && npm run test:e2e
+
+            # Chaque run E2E écrivait 2,8 Mo dans `.nyc_output/` que RIEN ne lisait :
+            # `report:e2e` n'était appelé ni ici, ni par ci-local.cjs, ni par le hook. La
+            # donnée était produite puis jetée.
+            #
+            # ⚠️ Ce n'est PAS « la couverture E2E » — c'est ce qu'UN chargement de page
+            # exécute du bundle livré (1 spec sur 36 la produit ; capabilities/** n'est pas
+            # instrumenté). Ne pas la comparer aux 92 % de couverture unitaire : deux objets.
+            #
+            # ⚠️ Ne jamais remplacer par `npm run report:e2e` nu : `nyc report` sort VERT sur
+            # un `.nyc_output/` vide ('Unknown' < seuil vaut false), donc l'étape serait verte
+            # exactement quand la mesure a échoué. Le wrapper pose un plancher de témoin.
+            #
+            # ⚠️ Manuelle elle aussi, et ce n'est PAS un choix indépendant : elle lit le
+            # `.nyc_output/` que l'étape E2E ci-dessus produit. La laisser au push la ferait
+            # rougir sur une mesure absente — un faux rouge, exactement ce que son plancher de
+            # témoin est censé empêcher. Les deux se déclenchent ensemble ou pas du tout.
+            - name: Couverture du boot du bundle livré (plancher + seuils nyc)
+              if: github.event_name == 'workflow_dispatch'
+              run: node scripts/verify-e2e-coverage.cjs
+
+            # L'étape E2E est la DERNIÈRE du job, et RIEN n'uploadait son rapport : le dernier
+            # `upload-artifact` (bundle stats) est AVANT elle. Sur un compte à quota rare, un
+            # E2E rouge était donc un run brûlé pour ZÉRO information — ni trace, ni capture,
+            # ni vidéo à lire.
+            #
+            # `if: failure()` — on n'uploade que ce qui sert à diagnostiquer. Un run vert
+            # n'a rien à faire lire.
+            #
+            # ⚠️ `artifacts/` est SANS point, et c'est un choix : `.artifacts/` aurait exigé
+            # `include-hidden-files: true` (actions/upload-artifact ≥ v4.4 exclut les
+            # fichiers cachés par défaut), sinon l'étape serait sortie VERTE en n'uploadant
+            # rien — le profil de défaut exact que ce regroupement traque. C'est le seul geste
+            # qu'on ne peut pas prouver en local ; on prend donc la forme qui n'a pas de piège.
+            # Le regroupement retire quand même 4 entrées de la racine (coverage/,
+            # playwright-report/, test-results/, coverage-e2e/) pour 1 ajoutée.
+            #
+            # ⚠️ `failure()` SEUL ne suffit pas : les deux étapes E2E étant manuelles, un rouge
+            # sur n'importe quelle AUTRE gate d'un push déclencherait cet upload sur un
+            # `artifacts/playwright/` qui n'existe pas. La condition doit donc porter les deux
+            # termes.
+            - name: Upload Playwright report + traces (E2E, sur échec seulement)
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              if: failure() && github.event_name == 'workflow_dispatch'
+              with:
+                  name: playwright-e2e
+                  path: |
+                      artifacts/playwright/report/
+                      artifacts/playwright/results/
+                  retention-days: 7
+                  if-no-files-found: warn

@@ -1,0 +1,409 @@
+/*
+ * GeoLeaf UI – Couche d’UI générique
+ * ----------------------------------
+ * - Tous les thèmes (couleurs, header, bouton de thème, zoom) sont gérés par :
+ *     • geoleaf-theme.css  (variables de thème)
+ *     • geoleaf-core.css   (header, bouton de thème, zoom)
+ * - Ce fichier ne contient plus aucun style de thème doublon.
+ * - Il sert uniquement de couche d’UI générique réutilisable (helpers, layout).
+ */
+
+/* ========================================================================== */
+/* 1. Layout générique page / carte                                           */
+/* ========================================================================== */
+
+/* Conteneur principal : la page GeoLeaf occupe toute la hauteur.
+   height: 100vh (pas min-height) pour que flex: 1 fonctionne correctement
+   sur les enfants (notamment .gl-main > #geoleaf-map).
+   Déclaration unique : geoleaf-core.css portait un bloc .gl-page redondant
+   (sous-ensemble strict de celui-ci, même layer, importé avant) — retiré. */
+.gl-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--gl-color-bg-page);
+    color: var(--gl-color-text-main);
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+/* Wrapper principal (en dessous du header) */
+.gl-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-height: 0; /* Pour éviter les débordements flex */
+}
+
+/* Carte plein écran dans la zone principale */
+.gl-main__map {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Map en absolu dans son conteneur */
+#geoleaf-map,
+.gl-map {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    inset: 0;
+    outline: none;
+}
+
+/* ========================================================================== */
+/* 2. Grilles et layout utilitaires                                           */
+/* ========================================================================== */
+
+.gl-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.gl-stack--row {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* Alignements courants */
+.gl-align-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gl-align-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.gl-align-start {
+    display: flex;
+    align-items: flex-start;
+}
+
+/* Marges utilitaires (utilisées ponctuellement dans la démo) */
+.gl-mt-sm {
+    margin-top: 0.5rem;
+}
+
+.gl-mt-md {
+    margin-top: 1rem;
+}
+
+.gl-mt-lg {
+    margin-top: 1.5rem;
+}
+
+/* ========================================================================== */
+/* 3. Boutons et contrôles génériques                                         */
+/* ========================================================================== */
+
+.gl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+
+    padding: 0.4rem 0.75rem;
+    border-radius: 9999px;
+
+    border: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+
+    font-size: 0.875rem;
+    line-height: 1.2;
+    font-weight: 500;
+
+    cursor: pointer;
+    text-decoration: none;
+
+    box-shadow: var(--gl-shadow-soft);
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        transform 120ms ease;
+}
+
+.gl-btn:hover {
+    background: var(--gl-color-bg-surface-muted);
+    border-color: var(--gl-color-border-strong);
+    box-shadow: var(--gl-shadow-medium);
+    transform: translateY(-1px);
+}
+
+.gl-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+/* Variante "subtile" (moins d’ombre, moins d’accent) */
+.gl-btn--subtle {
+    box-shadow: none;
+    background: var(--gl-color-bg-surface-muted);
+}
+
+/* Variante "accent" (utilise la couleur principale GeoLeaf) */
+.gl-btn--accent {
+    background: var(--gl-color-accent);
+    color: var(--gl-color-accent-contrast);
+    border-color: transparent;
+}
+
+.gl-btn--accent:hover {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-text-main);
+}
+
+/* Amélioration de la visibilité du bouton accent en mode dark */
+.gl-theme-dark .gl-btn--accent {
+    background: var(--gl-color-accent);
+    color: var(--gl-color-accent-contrast);
+    font-weight: 600;
+    border: 1px solid var(--gl-color-accent-soft);
+    box-shadow:
+        0 2px 8px var(--gl-color-accent-soft),
+        0 0 0 1px color-mix(in srgb, var(--gl-color-accent) 20%, transparent);
+}
+
+.gl-theme-dark .gl-btn--accent:hover {
+    background: var(--gl-color-accent-hover);
+    color: var(--gl-color-accent-contrast);
+    border-color: color-mix(in srgb, var(--gl-color-accent) 30%, transparent);
+    box-shadow:
+        0 4px 12px var(--gl-color-accent-soft),
+        0 0 0 1px color-mix(in srgb, var(--gl-color-accent) 24%, transparent);
+}
+
+/* Variante "ghost" (fond transparent) */
+.gl-btn--ghost {
+    background: transparent;
+    border-color: var(--gl-color-border-soft);
+    box-shadow: none;
+}
+
+.gl-btn--ghost:hover {
+    background: var(--gl-color-bg-surface-muted);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+/* Boutons icône seuls (ronds) */
+.gl-icon-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+
+    cursor: pointer;
+    box-shadow: var(--gl-shadow-soft);
+
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        transform 120ms ease;
+}
+
+.gl-icon-btn:hover {
+    background: var(--gl-color-bg-surface-muted);
+    border-color: var(--gl-color-border-strong);
+    box-shadow: var(--gl-shadow-medium);
+    transform: translateY(-1px);
+}
+
+.gl-icon-btn:active {
+    transform: translateY(0);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+/* État "actif" pour les boutons de basemap, filtres, etc. */
+.gl-btn--active,
+.gl-icon-btn--active {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-text-main);
+    border-color: var(--gl-color-border-strong);
+}
+
+/* ========================================================================== */
+/* 4. Cartes / panneaux flottants                                             */
+/* ========================================================================== */
+
+.gl-panel {
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    border-radius: 0.75rem;
+
+    border: 1px solid var(--gl-color-border-soft);
+    box-shadow: var(--gl-shadow-medium);
+
+    padding: 0.75rem 1rem;
+}
+
+/* Panneaux en overlay (ex : panneau info en bas à droite) */
+.gl-panel--overlay {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 800;
+}
+
+/* Titre de panneau avec petite ligne subtile */
+.gl-panel__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.gl-panel__subtitle {
+    font-size: 0.75rem;
+    color: var(--gl-color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.gl-panel__divider {
+    height: 1px;
+    background: var(--gl-color-border-soft);
+    margin: 0.5rem 0 0.75rem;
+}
+
+/* ========================================================================== */
+/* 5. Badges / Tags                                                            */
+/* ========================================================================== */
+
+.gl-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+
+    padding: 0.2rem 0.55rem;
+    border-radius: 9999px;
+
+    font-size: 0.7rem;
+    line-height: 1.1;
+    font-weight: 500;
+
+    border: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface-muted);
+    color: var(--gl-color-text-main);
+}
+
+.gl-badge__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: var(--gl-color-accent);
+}
+
+/* Variante badge "muted" */
+.gl-badge--muted {
+    background: transparent;
+    color: var(--gl-color-text-muted);
+}
+
+/* Variante badge spéciale pour les couches, filtres, etc. */
+.gl-badge--layer-manager {
+    font-size: 0.72rem;
+    padding-inline: 0.65rem;
+}
+
+/* ------------------------------------------------------------
+   LEFT PANEL – CONTENEUR DES CONTRÔLES DE FOND DE CARTE
+
+   Seul le conteneur est stylé ici. Les boutons le sont dans
+   geoleaf-baselayers.css, via [data-gl-baselayer] — le même hook que celui
+   lu par le JS (querySelectorAll / closest) et par les tests.
+
+   Un bloc .gl-baselayer-btn coexistait ici : basemaps/ui.ts posait les DEUX
+   hooks sur le même bouton, et geoleaf-baselayers.css étant importé après à
+   spécificité égale, il gagnait la quasi-totalité des conflits. Les rares
+   déclarations qui s'appliquaient encore ont été reprises là-bas ; le reste
+   était neutralisé à l'exécution. Voir S12.
+   ------------------------------------------------------------ */
+
+.gl-left-panel {
+    /* Was declared twice in this block (absolute then relative); relative won
+       as the later declaration, so only it is kept — no rendering change. */
+    position: relative;
+    top: 10px;
+    left: 60px;
+    z-index: 1000;
+    display: none;
+    flex-direction: row;
+    gap: 0;
+    pointer-events: auto;
+    /* Use theme variables so alternate themes can override the look */
+    background: var(--gl-color-overlay-strong);
+    border-radius: 50px;
+    padding: 6px 8px;
+    box-shadow: var(--gl-shadow-medium);
+    backdrop-filter: blur(10px);
+    width: fit-content;
+    border: 1px solid var(--gl-color-border-soft);
+}
+
+/* ------------------------------------------------------------
+   POI PANEL – ACCORDÉONS (SECTIONS REPLIABLES)
+   ------------------------------------------------------------ */
+
+/* Conteneur générique d’une section accordéon */
+.gl-accordion {
+    border-radius: 8px;
+    background: var(--gl-color-surface-elevated);
+    border: 1px solid var(--gl-color-border-subtle);
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+/* Bouton d’en-tête cliquable */
+.gl-accordion__header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+}
+
+/* Focus clavier visible (accessibilité) */
+.gl-accordion__header:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring);
+    outline-offset: 2px;
+}
+
+/* The `__title` / `__icon` / `__body` rules that lived here are gone (4.3, LOW-42).
+   They styled the JS-driven accordion that `_UIDomUtils.attachAccordionBehavior` opened
+   by toggling `gl-is-open` — purged in this same task, and it was the only writer of that
+   class on a `.gl-accordion`. None of those three elements has an emitter either: the live
+   accordion is a native `<details>` built by `feature-info/render/sidepanel-content.ts`,
+   which emits `__header` / `__arrow` / `__panel` and is styled by
+   `capabilities/feature-info/css/*-gallery.css` off `details[open]`.
+   `.gl-accordion` and `.gl-accordion__header` above stay: that markup is real. */
+
+/* Intégration harmonieuse dans le panneau POI */
+.gl-poi-panel__section.gl-accordion {
+    margin-bottom: 0.75rem;
+}

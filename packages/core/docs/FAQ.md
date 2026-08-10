@@ -1,0 +1,300 @@
+---
+title: "GeoLeaf-JS — FAQ"
+---
+
+# GeoLeaf-JS — FAQ
+
+**Package:** `@geoleaf/core`
+**S'applique à :** `@geoleaf/core` v3.x
+**License:** MIT
+
+---
+
+## Installation
+
+### What is the correct package name?
+
+`@geoleaf/core` — available on the public npm registry.
+
+```bash
+npm install @geoleaf/core maplibre-gl
+```
+
+> Le nom `geoleaf` (sans scope) est **incorrect** et fait reference a un
+> package different sans rapport.
+
+### What is the CDN URL?
+
+```html
+<!-- MapLibre GL JS — peer dependency, à charger AVANT GeoLeaf -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<script type="module">
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    globalThis.maplibregl = maplibregl;
+</script>
+
+<!-- GeoLeaf CSS -->
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+/>
+
+<!-- GeoLeaf JS (ESM) -->
+<script
+    type="module"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
+></script>
+```
+
+Variante **unpkg** — mêmes quatre balises, autre origine :
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
+<script type="module">
+    import * as maplibregl from "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.mjs";
+    globalThis.maplibregl = maplibregl;
+</script>
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css" />
+<script type="module" src="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"></script>
+```
+
+⚠️ Cette recette a porté **deux blocs jsDelivr identiques** jusqu'au 08/08/2026, le second
+étiqueté « jsDelivr alternative » — et **aucun des deux ne chargeait MapLibre**. Le second est
+désormais la variante unpkg qu'il prétendait être.
+
+### What are the required peer dependencies?
+
+```bash
+npm install maplibre-gl
+```
+
+MapLibre GL JS (^6.0.0) est la seule dependance externe requise — la borne est celle que
+`packages/core/package.json` déclare en `peerDependencies`, pas une valeur recopiée.
+⚠️ Cette ligne a écrit `^5.0.0` jusqu'au 08/08/2026, soit après la montée en v6.
+Le clustering est integre nativement via supercluster (source clustering MapLibre)
+et les tuiles vectorielles sont gerees par les sources vectorielles natives de MapLibre.
+
+---
+
+## Getting started
+
+### How do I create a basic map?
+
+**CDN/ESM:**
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<script type="module">
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    globalThis.maplibregl = maplibregl;
+</script>
+
+<div id="map" style="height:500px"></div>
+<script type="module">
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
+    Core.init({
+        mapId: "map",
+        center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+        zoom: 12,
+    });
+</script>
+```
+
+**ESM/npm:**
+
+```ts
+import { Core } from "@geoleaf/core";
+Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 });
+```
+
+### How do I load a JSON profile?
+
+```js
+GeoLeaf.Core.init({
+    mapId: "map",
+    configUrl: "/profiles/my-profile.json",
+});
+```
+
+Or using the `loadConfig` method:
+
+```js
+await GeoLeaf.loadConfig("/profiles/my-profile.json");
+// or with an inline object:
+await GeoLeaf.loadConfig({ map: { center: [48.8566, 2.3522], zoom: 12 } });
+```
+
+---
+
+## GeoJSON & layers
+
+### How do I add GeoJSON layers?
+
+GeoJSON layers are defined in the JSON profile and managed by `GeoLeaf.LayerManager`.
+There is no `GeoLeaf.GeoJSON` public API.
+
+Add layers in your profile:
+
+```json
+{
+    "layers": [
+        {
+            "id": "regions",
+            "type": "geojson",
+            "url": "/data/regions.geojson",
+            "style": { "color": "#e74c3c", "weight": 2 }
+        }
+    ]
+}
+```
+
+Then access the layer manager:
+
+```js
+GeoLeaf.LayerManager.init({ map });
+GeoLeaf.LayerManager.refresh();
+```
+
+Layer visibility is managed through the LayerManager UI control (toggle buttons in the panel).
+
+---
+
+## POI
+
+### How do I show POI markers?
+
+**There is no POI module any more** (dissolved in v3). A POI is just a point layer: declare it in
+your profile like any other layer, and let `taxonomy` (symbols + tints), `cluster` and
+`feature-info` (popup / tooltip / side-panel) style and enrich it. Nothing to load, nothing to
+init. Creating POIs interactively is the job of the `@geoleaf-plugins/editor` plugin
+(`GeoLeaf.Editor.AddForm.openAddForm({ lat, lng })`).
+
+---
+
+## Themes
+
+### How do I apply a UI theme (light/dark)?
+
+```js
+GeoLeaf.setTheme("dark"); // via top-level API
+GeoLeaf.Core.setTheme("dark"); // via Core facade
+```
+
+---
+
+## Capabilities
+
+### How do I load secondary modules?
+
+**You don't — and you can't.** `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()`
+were removed in v3 (S5). Every in-core capability ships in the bundle and is available as soon as
+it is parsed. If your code called them, delete the call.
+
+To ship _less code_, compose your own entry — see
+[COOKBOOK Recipe 8](COOKBOOK.md#recipe-8--shipping-less-than-the-whole-library). That is a
+build-time choice, and it actually removes the code from the file; a runtime flag never could.
+
+### Why is my module undefined after boot?
+
+Three usual suspects, in order of likelihood:
+
+1. **It is a plugin, not core.** `GeoLeaf.Table`, `GeoLeaf.Editor`, `GeoLeaf.Storage`… come from
+   their own `<script type="module">`, loaded after `@geoleaf/core`.
+2. **The capability is gated off** by your profile (`modules.<id>.enabled: false`).
+3. **You read it too early.** Wait for `geoleaf:app:ready` before touching a facade.
+
+---
+
+## Plugins
+
+### How do I install the Storage plugin?
+
+The Storage plugin (`@geoleaf-plugins/offline-ui`) is MIT, published on npmjs.org:
+
+```bash
+npm install @geoleaf-plugins/offline-ui
+```
+
+### How do I check which plugins are loaded?
+
+```js
+GeoLeaf.plugins.isLoaded("storage"); // → true/false
+GeoLeaf.plugins.getLoadedPlugins(); // → ["core", "storage"]
+```
+
+> **ESM import :** `import { PluginRegistry } from "@geoleaf/core"` pour les bundlers.
+
+---
+
+## Geocoding (address search)
+
+> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+
+---
+
+## Troubleshooting
+
+### "GeoLeaf is not defined"
+
+Verifiez que le script GeoLeaf utilise `type="module"`, et surtout que **le JavaScript de
+MapLibre** est charge avant lui — pas seulement sa feuille de style :
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<script type="module">
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    globalThis.maplibregl = maplibregl;
+</script>
+<link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+/>
+<script type="module" src="geoleaf.esm.js"></script>
+```
+
+🛑 **Cette recette de dépannage ne listait que les CSS jusqu'au 08/08/2026** — et sa phrase
+disait « que les CSS MapLibre sont chargés », comme si la feuille de style suffisait. La
+réponse à « GeoLeaf is not defined » omettait donc la cause la plus fréquente de l'erreur :
+`geoleaf.esm.js` déclare `maplibre-gl` en `external` et ne l'atteint que par
+`globalThis.maplibregl`, que la v6 ne pose plus d'elle-même.
+
+> GeoLeaf v2 est ESM-only. Le `type="module"` est obligatoire.
+
+### "APIController missing"
+
+This means a facade method was called before the boot sequence completed.
+Wrap in an `init` callback or use `await GeoLeaf.init(options)`.
+
+### `GeoLeaf._loadModule is not a function`
+
+It was removed in v3 (S5), along with the whole lazy-loading machinery. Delete the call —
+whatever you were loading is already in the bundle. See
+[COOKBOOK Recipe 8](COOKBOOK.md#recipe-8--shipping-less-than-the-whole-library) if what you
+wanted was a _smaller_ bundle rather than a deferred one.
+
+### Map container not found
+
+Ensure the DOM element exists before calling `Core.init()`:
+
+```js
+document.addEventListener("DOMContentLoaded", () => {
+  GeoLeaf.Core.init({ mapId: "map", ... });
+});
+```
+
+---
+
+## API conventions
+
+### `GeoLeaf.GeoJSON` — is there a public API?
+
+`GeoLeaf.GeoJSON` is internal. Layer loading is configured in the
+JSON profile and accessed via `GeoLeaf.LayerManager`.
+
+If you need layers loaded at runtime, define them in your profile or use the
+configuration API — see [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
+
+### `GeoLeaf.BaseLayers` vs `GeoLeaf.Baselayers`
+
+Both work — `BaseLayers` is a backward-compatible alias for `Baselayers`.
+Prefer `Baselayers` (lowercase 'l') in new code.

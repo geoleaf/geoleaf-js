@@ -1,0 +1,117 @@
+{
+    "id": "observations_gbif",
+    "label": "Observations GBIF",
+    "zIndex": 75,
+    "geometry": "point",
+    "data": {
+        "_comment": "⚠️ B-56 (28/07/2026) — la source de BOOT est locale, délibérément. Elle a été `https://api.gbif.org/v1/occurrence/search?country=GF&hasCoordinate=true&limit=300` du 27 au 28/07/2026 : `data.mapping` force le fetch sur le fil principal (le worker détruit l'enveloppe `{results}`), et `GeoJSONModule.init()` ATTEND la phase 1, donc cet appel tiers non borné bloquait la chaîne d'init des modules dans les 3 variantes livrées. Le fichier local a la même FORME, donc `mapping` + `itemsPath` restent exercés à l'identique. Repointer vers l'API n'est pas interdit — mais pas dans le thème par défaut, et pas sans borne (`AbortController`).",
+        "directory": "data",
+        "file": "observations_gbif.json",
+        "licence": "Jeu de démonstration à la forme GBIF — schéma © GBIF (api.gbif.org), données fictives",
+        "mapping": "gbif",
+        "itemsPath": "results"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Par règne",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.species",
+                "label": "Espèce",
+                "sortable": true,
+                "width": "25%"
+            },
+            {
+                "field": "properties.vernacularName",
+                "label": "Nom",
+                "sortable": true,
+                "width": "20%"
+            },
+            {
+                "field": "properties.kingdom",
+                "label": "Règne",
+                "sortable": true,
+                "width": "10%"
+            },
+            {
+                "field": "properties.class",
+                "label": "Classe",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.family",
+                "label": "Famille",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.eventDate",
+                "label": "Date",
+                "sortable": true,
+                "width": "15%"
+            }
+        ],
+        "searchFields": ["properties.species", "properties.vernacularName", "properties.family"],
+        "defaultSort": {
+            "field": "properties.species",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 50,
+        "disableClusteringAtZoom": 10
+    },
+    "attributes": {
+        "titleField": "properties.species",
+        "fields": [
+            {
+                "field": "properties.species",
+                "label": "Espèce",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.vernacularName",
+                "label": "Nom vernaculaire",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.kingdom",
+                "label": "Règne",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.eventDate",
+                "label": "Date",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

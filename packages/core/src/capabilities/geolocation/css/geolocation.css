@@ -1,0 +1,190 @@
+@layer gl.capabilities {
+    /*
+ * GeoLeaf — geolocation capability.
+ *
+ * Moved out of `css/geoleaf-core.css` and `css/geoleaf-controls.css` in S6. It used to be welded
+ * into kernel rules through grouped selectors (`.geoleaf-ctrl-zoom, .geoleaf-ctrl-fullscreen,
+ * .geoleaf-ctrl-geolocation, .geoleaf-ctrl-theme-toggle { … }`), which is exactly what made this
+ * capability impossible to detach from the bundle. The kernel now owns the `.geoleaf-ctrl` role
+ * (reset + button chrome + hover + icon); this file owns only what is geolocation's.
+ *
+ * The control itself is hidden: every interaction goes through the mobile toolbar pill, which
+ * clicks `.geoleaf-ctrl-geolocation a` programmatically (see ui/mobile/mobile-toolbar.ts). The
+ * state classes below therefore drive the toolbar's proxy, not a visible button.
+ */
+
+    /* Standalone control hidden — all interactions go through the toolbar pill. */
+    .geoleaf-ctrl-geolocation {
+        display: none !important;
+    }
+
+    /* Positioned on the LEFT, below the other controls. */
+    .maplibregl-ctrl-top-left .geoleaf-ctrl-geolocation {
+        margin-top: 0.5rem;
+        margin-left: 1rem;
+        margin-bottom: 0;
+    }
+
+    .geoleaf-ctrl-geolocation a svg {
+        display: block;
+    }
+
+    /* ── States ──────────────────────────────────────────────────────────────── */
+
+    /* En cours de localisation */
+    .geoleaf-ctrl-geolocation a.gl-is-locating {
+        opacity: 0.6;
+    }
+
+    .geoleaf-ctrl-geolocation a.gl-is-locating svg {
+        animation: gl-geolocation-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes gl-geolocation-pulse {
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.5;
+            transform: scale(0.9);
+        }
+    }
+
+    /* Tracking continu ON */
+    .geoleaf-ctrl-geolocation a.gl-is-active,
+    body.gl-theme-light .geoleaf-ctrl-geolocation a.gl-is-active,
+    body.gl-theme-dark .geoleaf-ctrl-geolocation a.gl-is-active,
+    .gl-theme-light .geoleaf-ctrl-geolocation a.gl-is-active,
+    .gl-theme-dark .geoleaf-ctrl-geolocation a.gl-is-active {
+        background-color: var(--gl-color-accent) !important;
+        color: var(--gl-color-accent-contrast) !important;
+        box-shadow: 0 0 0 2px var(--gl-color-accent-soft);
+    }
+
+    .geoleaf-ctrl-geolocation a.gl-is-active svg {
+        animation: gl-geolocation-active-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes gl-geolocation-active-pulse {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.7;
+        }
+    }
+
+    /* Back to the normal colours once the transient states are over. */
+    body.gl-theme-light .geoleaf-ctrl-geolocation a:not(.gl-is-located):not(.gl-is-locating),
+    .gl-theme-light .geoleaf-ctrl-geolocation a:not(.gl-is-located):not(.gl-is-locating),
+    body.gl-theme-dark .geoleaf-ctrl-geolocation a:not(.gl-is-located):not(.gl-is-locating),
+    .gl-theme-dark .geoleaf-ctrl-geolocation a:not(.gl-is-located):not(.gl-is-locating) {
+        background-color: var(--gl-color-bg-surface);
+        color: var(--gl-color-text-main);
+    }
+
+    /* ========================================================================== */
+    /* USER LOCATION MARKER — on the map, not inside the control                  */
+    /* ========================================================================== */
+
+    .gl-user-location-marker {
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .gl-user-location-dot {
+        width: 16px;
+        height: 16px;
+        background: var(--gl-color-accent);
+        border: 3px solid var(--gl-color-text-inverse);
+        border-radius: 50%;
+        box-shadow: var(--gl-shadow-medium);
+        animation: gl-user-location-appear 0.3s ease-out;
+    }
+
+    @keyframes gl-user-location-appear {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    /* Accuracy circle. */
+    .gl-user-location-accuracy {
+        pointer-events: none;
+    }
+
+    /* ==========================================================================
+   GPS recentre button (#gl-recenter-btn)
+   Created by capabilities/geolocation/geolocation.ts; shows up once the user
+   drifts away from their position. Moved out of mobile-toolbar-responsive.css
+   at S6 — it never belonged to the toolbar.
+   ========================================================================== */
+    #gl-recenter-btn {
+        position: absolute;
+        bottom: 72px;
+        right: 8px;
+        z-index: 1000;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: none;
+        background: #ffffff;
+        color: var(--gl-color-accent, #2563eb);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow:
+            0 2px 8px rgba(0, 0, 0, 0.22),
+            0 0 0 1px rgba(0, 0, 0, 0.06);
+        opacity: 0;
+        visibility: hidden;
+        transform: scale(0.8);
+        transition:
+            opacity 0.22s ease,
+            visibility 0.22s ease,
+            transform 0.22s ease;
+        pointer-events: none;
+    }
+
+    #gl-recenter-btn.gl-is-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: scale(1);
+        pointer-events: auto;
+    }
+
+    #gl-recenter-btn:hover {
+        background: #f0f4ff;
+        box-shadow:
+            0 3px 12px rgba(0, 0, 0, 0.28),
+            0 0 0 1px rgba(0, 0, 0, 0.08);
+    }
+
+    #gl-recenter-btn:active {
+        transform: scale(0.92);
+        transition-duration: 0.08s;
+    }
+
+    #gl-recenter-btn svg {
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #gl-recenter-btn,
+        #gl-recenter-btn.gl-is-visible {
+            transition: none;
+            transform: none;
+        }
+    }
+}

@@ -1,0 +1,22 @@
+{
+    "threshold": 3,
+    "reporters": ["console"],
+    "_comment_css": "CSS added at S9 (CAPACITÉS). Until then this gate was blind to stylesheets, and that is exactly how feature-info-gallery.css came to be a byte-identical concatenation of poi-accordion-gallery.css + poi-lightbox.css, all three loaded together: ~630 lines shipped twice with no gate able to see it (purgecss only reports UNREFERENCED selectors, and all three files were referenced). Measured before wiring: 6.15 % duplicated CSS — above this threshold, so the purge had to come first; after it, 1.82 %.",
+    "format": ["typescript", "javascript", "css"],
+    "pattern": "**/src/**/*.{ts,js,css}",
+    "absolute": true,
+    "gitignore": true,
+    "ignore": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.js",
+        "**/*.spec.ts",
+        "**/*.spec.js",
+        "packages/_*/**",
+        "**/demo/**",
+        "**/*.d.ts"
+    ]
+}

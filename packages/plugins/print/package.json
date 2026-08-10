@@ -1,0 +1,65 @@
+{
+    "name": "@geoleaf-plugins/print",
+    "version": "1.2.1",
+    "type": "module",
+    "license": "MIT",
+    "description": "GeoLeaf Print Plugin — Map at scale → paper format → PDF / JPG at 300 DPI",
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/print"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
+    "main": "dist/geoleaf-print.plugin.js",
+    "module": "dist/geoleaf-print.plugin.js",
+    "types": "dist/types/entry.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/entry.d.ts",
+            "import": "./dist/geoleaf-print.plugin.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/",
+        "src/",
+        "LICENSE",
+        "README.md"
+    ],
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@geoleaf/core": "^3.0.0",
+        "jspdf": "^4.2.1"
+    },
+    "peerDependencies": {
+        "maplibre-gl": "^6.0.0"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@geoleaf/host-runtime": "*",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    }
+}

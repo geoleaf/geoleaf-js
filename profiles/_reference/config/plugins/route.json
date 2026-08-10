@@ -1,0 +1,24 @@
+{
+    "_comment": "S11 capacités-extraction — modules.route fixture (in-core route capability). Endpoint decorator: a per-layer binding derives start/end markers from the line features of a bound layer; the line itself is rendered by the generic GeoJSON engine. Exhaustive canonical binding (both endpoints, every style leaf, showStart/showEnd). TEST-ONLY: never deployed.",
+    "enabled": true,
+    "layers": {
+        "riviere-nord": {
+            "start": {
+                "fillColor": "#2b7cff",
+                "color": "#ffffff",
+                "radius": 6,
+                "weight": 2,
+                "fillOpacity": 1
+            },
+            "end": {
+                "fillColor": "#ff7b32",
+                "color": "#ffffff",
+                "radius": 6,
+                "weight": 2,
+                "fillOpacity": 1
+            },
+            "showStart": true,
+            "showEnd": true
+        }
+    }
+}

@@ -1,0 +1,50 @@
+{
+    "name": "__PLUGIN_PKG__",
+    "version": "1.0.0",
+    "type": "module",
+    "license": "MIT",
+    "description": "GeoLeaf __PLUGIN_NAME__ plugin",
+    "main": "dist/geoleaf-__PLUGIN_NAME__.plugin.js",
+    "module": "dist/geoleaf-__PLUGIN_NAME__.plugin.js",
+    "types": "dist/types/entry.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/entry.d.ts",
+            "import": "./dist/geoleaf-__PLUGIN_NAME__.plugin.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/",
+        "src/",
+        "LICENSE"
+    ],
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@geoleaf/core": "^3.0.0"
+    },
+    "peerDependencies": {
+        "maplibre-gl": "^6.0.0"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@geoleaf/host-runtime": "*",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    }
+}

@@ -1,0 +1,1117 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/layer-config",
+    "title": "GeoLeaf Layer Config",
+    "description": "Per-layer configuration file (layers/*/[name]_config.json). Defines data source, styles, popup, table, clustering. Hardened in Sprint S1 (PRF-SCHEMA). Polymorphic / plugin-extended blocks (data, popup.fields, sidepanelConfig.detailLayout, realtimeLayer, write) stay permissive — see PROFILE_CONTRACT_SPEC §7. ⚠️ `formSchema` was in that list until task 7.2 and is GONE, key and all: it was a second field list, parallel to `attributes.fields[]` and reconciled with it by nothing. Capture is now a projection of the single list (`attributes.fields[].edit`), which is strict rather than permissive. Aliases geometryType↔geometry and tooltipMode↔tooltip.mode are tolerated and flagged in the anomaly registry.",
+    "type": "object",
+    "required": ["id"],
+    "additionalProperties": false,
+    "patternProperties": {
+        "^_comment": {}
+    },
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string",
+            "description": "Unique layer identifier. Must match the key in layers.json."
+        },
+        "label": {
+            "type": "string",
+            "description": "Display label shown in the layer manager."
+        },
+        "zIndex": {
+            "type": "number",
+            "description": "Rendering z-order. Higher values render on top."
+        },
+        "geometry": {
+            "type": "string",
+            "enum": [
+                "polygon",
+                "polyline",
+                "line",
+                "point",
+                "multipolygon",
+                "multiline",
+                "multipoint",
+                "fill-extrusion"
+            ],
+            "description": "Geometry type of this layer's features."
+        },
+        "geometryType": {
+            "type": "string",
+            "enum": [
+                "polygon",
+                "polyline",
+                "line",
+                "point",
+                "multipolygon",
+                "multiline",
+                "multipoint",
+                "fill-extrusion"
+            ],
+            "description": "Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate (ANO-007). Enum mirrors `geometry` (gate-safe: profile values ⊆ enum)."
+        },
+        "interactiveShape": {
+            "type": "boolean",
+            "description": "Whether features are clickable/hoverable."
+        },
+        "showIconsOnMap": {
+            "type": "boolean",
+            "description": "Show custom icons on the map (requires taxonomy icon config)."
+        },
+        "edition": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull` (Sprint 5 task 5.9, decision V1): the second name did not mean what it said — it was read once usefully, as `canDelete()`, so \"full edition\" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 (Sprint 8 task 8.7, B-138) the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused.",
+            "properties": {
+                "create": {
+                    "type": "boolean",
+                    "description": "Right to create a feature. Absent or false = refused."
+                },
+                "update": {
+                    "type": "boolean",
+                    "description": "Right to modify an existing feature. Absent or false = refused."
+                },
+                "delete": {
+                    "type": "boolean",
+                    "description": "Right to delete a feature — what `enableEditionFull` actually gated."
+                }
+            }
+        },
+        "editableGeometryTypes": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": ["Point", "LineString", "Polygon"]
+            },
+            "description": "Allowed geometry types for edition, in CANONICAL GeoJSON casing. ⚠️ This is NOT the same vocabulary as `geometry`/`geometryType`, which are domain lowercase — the two are deliberately kept apart (contracts/attributes.contract.ts: GeometryCanonicalType vs GeometryDomainName). The editor maps a drawing mode back to this casing (editor mode-names.ts geometryTypeForMode), so a lowercase value here matches nothing and drops the layer out of the edition picker with no error. The enum is what makes that failure loud."
+        },
+        "plugin": {
+            "type": "string",
+            "description": "Optional plugin tag associated with this layer."
+        },
+        "type": {
+            "type": "string",
+            "description": "Optional layer type tag (semantics under inventory — see anomaly registry)."
+        },
+        "data": {
+            "type": "object",
+            "description": "Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive; full inventory in B5/B7.",
+            "additionalProperties": true,
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": "Relative directory containing data files (local layers)."
+                },
+                "file": {
+                    "type": "string",
+                    "description": "GeoJSON filename."
+                },
+                "dataUrl": {
+                    "type": "string",
+                    "description": "Remote GeoJSON URL fetched by the core loader (WFS, opendata APIs). Read by geojson/loader/profile.ts:81 and theme-applier/deferred.ts:270."
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Source URL of a PLUGIN-BACKED layer (e.g. flatgeobuf), resolved by the plugin rather than the core loader. ⚠️ NOT an alias of `dataUrl`, despite having been described as one until 02/08/2026: theme-applier/deferred.ts:265 reads it ONLY when `plugin` is set, and falls through to `dataUrl` otherwise. The two keys select two different loaders — merging them would break the plugin path. Convergence tracked in the backlog, not done in passing."
+                },
+                "licence": {
+                    "type": "string",
+                    "description": "Data licence label."
+                },
+                "format": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "number"
+                },
+                "autoRefresh": {
+                    "type": ["boolean", "number"]
+                },
+                "vectorTiles": {
+                    "type": "object",
+                    "description": "Optional vector tile source (MVT).",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "tilesDirectory": {
+                            "type": "string"
+                        },
+                        "tilesUrl": {
+                            "type": "string",
+                            "description": "Remote tile URL — MVT template ({z}/{x}/{y}) or .pmtiles file."
+                        },
+                        "layerName": {
+                            "type": "string"
+                        },
+                        "minZoom": {
+                            "type": "number"
+                        },
+                        "maxNativeZoom": {
+                            "type": "number"
+                        },
+                        "maxZoom": {
+                            "type": "number"
+                        },
+                        "interactive": {
+                            "type": "boolean"
+                        },
+                        "scheme": {
+                            "type": "string",
+                            "enum": ["xyz", "tms"],
+                            "description": "Tile grid scheme (vector-tiles.ts). \"xyz\" (MapLibre default, y-down) or \"tms\" (y-up — e.g. IGN Géoplateforme)."
+                        }
+                    }
+                },
+                "ogcApi": {
+                    "type": "object",
+                    "description": "OGC API Features source — when present, the layer is loaded from an OGC API Features endpoint (single-layer.ts → _loadFromOgcApi).",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "required": ["url"],
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "Base endpoint URL of the OGC API Features service (may include the collection items path)."
+                        },
+                        "collectionId": {
+                            "type": "string",
+                            "description": "Collection id appended as /collections/{id}/items when `url` lacks the items path."
+                        },
+                        "bbox": {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            },
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "description": "BBox filter [minLon, minLat, maxLon, maxLat] (WGS-84)."
+                        },
+                        "maxFeatures": {
+                            "type": "number",
+                            "description": "Max features accumulated across pages (anti-DoS). Default 10000."
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Features per page (limit query param). Default 1000."
+                        },
+                        "autoRefresh": {
+                            "type": "boolean",
+                            "description": "Re-fetch on moveend (viewport bbox). Default false."
+                        },
+                        "autoRefreshDebounce": {
+                            "type": "number",
+                            "description": "Debounce (ms) for moveend refreshes. Default 300."
+                        },
+                        "headers": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            },
+                            "description": "Additional HTTP request headers (e.g. Authorization)."
+                        }
+                    }
+                },
+                "realtime": {
+                    "type": "object",
+                    "description": "Realtime data block (realtime-layer/websocket plugins) — kept permissive (plugin-owned).",
+                    "additionalProperties": true
+                },
+                "headers": {
+                    "type": "object",
+                    "description": "Arbitrary HTTP headers for remote fetches.",
+                    "additionalProperties": true
+                },
+                "mapping": {
+                    "description": "Name of a per-source block declared in mapping.json (string, e.g. \"gbif\"). When set, raw fetched data is normalized to the GeoLeaf POI shape via that block before rendering. (A legacy inline object form is tolerated.)",
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": {}
+                        }
+                    ]
+                },
+                "itemsPath": {
+                    "type": "string",
+                    "description": "Dot-path to the items array inside a non-array response (e.g. \"results\" for the GBIF Occurrence API). Used with `mapping` when the raw response wraps the array."
+                },
+                "mappingFile": {
+                    "type": "string"
+                }
+            }
+        },
+        "styles": {
+            "type": "object",
+            "description": "Style references for this layer.",
+            "required": ["directory", "default"],
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": "Relative directory containing style JSON files."
+                },
+                "default": {
+                    "type": "string",
+                    "description": "Filename of the default style (e.g. \"defaut.json\")."
+                },
+                "available": {
+                    "type": "array",
+                    "description": "All available styles for this layer.",
+                    "items": {
+                        "type": "object",
+                        "required": ["id", "file"],
+                        "additionalProperties": false,
+                        "patternProperties": {
+                            "^_comment": {}
+                        },
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "file": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "clustering": {
+            "type": "object",
+            "description": "Point clustering configuration.",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "maxClusterRadius": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "disableClusteringAtZoom": {
+                    "type": "number"
+                }
+            }
+        },
+        "table": {
+            "type": "object",
+            "description": "Data table panel configuration.",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["field"],
+                        "additionalProperties": false,
+                        "patternProperties": {
+                            "^_comment": {}
+                        },
+                        "properties": {
+                            "field": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "sortable": {
+                                "type": "boolean"
+                            },
+                            "width": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "searchFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "defaultSort": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "field": {
+                            "type": "string"
+                        },
+                        "order": {
+                            "type": "string",
+                            "enum": ["asc", "desc"]
+                        }
+                    }
+                }
+            }
+        },
+        "realtimeLayer": {
+            "type": "object",
+            "description": "Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7.",
+            "additionalProperties": true
+        },
+        "write": {
+            "type": "object",
+            "description": "Per-layer write target: where this layer's edits are pushed. Declared per layer because on a backend like Odoo each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read.",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "required": ["enabled", "endpoint"],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Gate. A layer whose write target is disabled has no outbox."
+                },
+                "endpoint": {
+                    "type": "string",
+                    "description": "URL edits are pushed to."
+                },
+                "dialect": {
+                    "type": "string",
+                    "enum": ["rest", "collection"],
+                    "default": "rest",
+                    "description": "`rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC/PostgREST), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo."
+                },
+                "auth": {
+                    "type": "string",
+                    "enum": ["csrf", "bearer", "none"],
+                    "description": "How the endpoint is authenticated."
+                },
+                "geometryProperty": {
+                    "type": "string",
+                    "default": "geom",
+                    "description": "Property key carrying the geometry in a `collection` body."
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Whitelist of property keys sent in a `collection` body."
+                }
+            }
+        },
+        "legends": {
+            "type": "object",
+            "description": "Legend file references for this layer (unused by current profiles).",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "directory": {
+                    "type": "string",
+                    "description": "Relative directory containing legend JSON files.",
+                    "default": "legends"
+                },
+                "default": {
+                    "type": "string",
+                    "description": "Filename of the default legend."
+                }
+            }
+        },
+        "capabilities": {
+            "type": "object",
+            "description": "Plugin capability bindings keyed by capability id. `feature-info` is typed below because it is the LEGACY attribute model, superseded by the root `attributes` block: it stays valid for the migration window (both shapes are live) and disappears with the dry switch. Any other capability id stays opaque and plugin-owned.",
+            "additionalProperties": true
+        },
+        "attributes": {
+            "type": "object",
+            "description": "The layer's attribute model: one list of fields, two projections (`display` for reading, `edit` for capture). Lives at the layer root rather than under `capabilities` so the edition rule below stays pure JSON Schema and no entry can outlive its layer. Types mirror contracts/attributes.contract.ts.",
+            "additionalProperties": false,
+            "required": ["fields"],
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "titleField": {
+                    "type": "string",
+                    "description": "Dotted path of the field whose value titles the popup and the side panel."
+                },
+                "fields": {
+                    "type": "array",
+                    "description": "The fields, in declaration order.",
+                    "items": {
+                        "$ref": "#/definitions/attributeField"
+                    }
+                }
+            }
+        },
+        "offline": {
+            "type": "object",
+            "description": "Per-layer offline READ declaration (task 4.3). `enabled: true` makes the layer loader read its entities from the IndexedDB `features` store instead of refetching. ⚠️ Declares a READ, never write access: contract invariant S6 — pull never grants editability, which is decided by the layer's online edition flags alone. A layer whose store is empty falls back to the network, so declaring is safe before the first pull.",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "required": ["enabled"],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Gate. When false or absent the layer always loads from the network."
+                },
+                "maxFeatures": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures). Enforced by the pull as a HARD truncation: the OGC loader stops only after accumulating a whole page and never truncates, so without this cut a cap of 15 with a server page of 10 would store 20."
+                },
+                "maxAgeMs": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Staleness threshold in milliseconds (task 4.8). A layer whose last successful pull is older than this is reported `pulledStale` by GeoLeaf.Storage.getSyncReport(). ⚠️ Deliberately WITHOUT a default: absent means a pulled layer is reported `pulled` forever. Inventing a default would make the report raise staleness warnings no integrator asked for and none could silence — a status that cannot be computed is not guessed."
+                },
+                "source": {
+                    "type": "object",
+                    "description": "Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch of task 4.3, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature.",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "required": ["url"],
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "Landing URL of the OGC API Features service (e.g. https://host/ogc). The collection path is appended from `collectionId`."
+                        },
+                        "collectionId": {
+                            "type": "string",
+                            "description": "Collection to pull. Defaults to the layer id when absent."
+                        },
+                        "versionProperty": {
+                            "type": "string",
+                            "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `write_date` on Odoo."
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$comment": "A14 — a field in edition obliges its layer to declare BOTH its editability and its write target. Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. ⚠️ REANCHORED on `edition.update` (Sprint 5 task 5.9, was `enableEdition: true`). `update` and NOT `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. ⚠️ **This rule HAS live subjects since task 7.2 (07/08/2026), and this comment claimed the opposite in both its halves.** It read « zero of the 48 layer configs carries `attributes.fields[].edit` » — there are **24** configs, not 48 (7.1b retired 24 that nobody read), and **2** of them now carry `edit`: `tourism/sites_rosario` (11 fields) and `_reference/reference-points` (1). So `validate:profiles` finally exercises this rule on real data. That does NOT retire `core/__tests__/config/attributes-opposability.test.js`: two live subjects prove the POSITIVE case only, and the suite is what holds the four negative ones — `write` missing, `edition` missing, `edition.update: false`, and the green positive. It stays mandatory.",
+            "if": {
+                "type": "object",
+                "required": ["attributes"],
+                "properties": {
+                    "attributes": {
+                        "type": "object",
+                        "required": ["fields"],
+                        "properties": {
+                            "fields": {
+                                "type": "array",
+                                "contains": {
+                                    "type": "object",
+                                    "required": ["edit"]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "then": {
+                "required": ["edition", "write"],
+                "properties": {
+                    "edition": {
+                        "type": "object",
+                        "required": ["update"],
+                        "properties": {
+                            "update": {
+                                "const": true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "definitions": {
+        "attributeChoice": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "label"],
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "attributeTableColumn": {
+            "type": "object",
+            "description": "A table column. Columns belong to the layer, rows to the feature — a per-feature column set would make the table irregular and give the whitelist no fixed shape to validate.",
+            "additionalProperties": false,
+            "required": ["key", "label"],
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "attributeOptions": {
+            "type": "object",
+            "description": "Per-widget extras. Every key here is read by a field-renderer component, EXCEPT `locale` (date) and `format` (number), which are declared by the contract and land with the rendering slice, and the five `action` keys, which are read by the core popup renderer — field-renderer has no action component. `additionalProperties: false` is what turns a typo into a build error instead of silence.",
+            "$comment": "⚠️ Known asymmetry, measured 02/08/2026: this definition is FLAT, so the schema checks 'is this key known at all', not 'is this key legal for this widget'. The TS contract IS per-widget (AttributeWidgetOptions[W]). Only `action` carries a per-widget constraint below, because its `actionId` is load-bearing. Closing the general case means 23 more branches — versé au backlog, pas fait au passage.",
+            "additionalProperties": false,
+            "properties": {
+                "actionId": {
+                    "type": "string",
+                    "description": "`action` only — identifier carried in the emitted event. Opaque to the core: never interpreted, only forwarded."
+                },
+                "addLabel": {
+                    "type": "string"
+                },
+                "confirm": {
+                    "type": "string",
+                    "description": "`action` only — literal confirmation text shown before the event is emitted."
+                },
+                "confirmKey": {
+                    "type": "string",
+                    "description": "`action` only — i18n key of the confirmation text. Takes precedence over `confirm`."
+                },
+                "payloadFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "`action` only — whitelist of properties joined to the emitted event. ⚠️ Without it, NO property is joined: the event is a document event any script on the page can listen to, so the default goes to confidentiality."
+                },
+                "requiresPlugin": {
+                    "type": "string",
+                    "description": "`action` only — the button is NOT rendered when the named plugin is absent."
+                },
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/attributeTableColumn"
+                    }
+                },
+                "currencies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "emptyLabel": {
+                    "type": "string"
+                },
+                "fetchOptions": {
+                    "type": "string"
+                },
+                "firstDay": {
+                    "type": "string",
+                    "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["integer", "decimal"]
+                },
+                "halfStars": {
+                    "type": "boolean"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "max": {
+                    "type": ["number", "string"]
+                },
+                "maxCount": {
+                    "type": "number"
+                },
+                "maxItems": {
+                    "type": "number"
+                },
+                "maxLength": {
+                    "type": "number"
+                },
+                "maxReviews": {
+                    "type": "number"
+                },
+                "maxRows": {
+                    "type": "number"
+                },
+                "maxSizeMb": {
+                    "type": "number",
+                    "description": "Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ Ce n'était un plafond de refus sec que jusqu'à la tâche 5.1-d — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours."
+                },
+                "maxStars": {
+                    "type": "number"
+                },
+                "maxTags": {
+                    "type": "number"
+                },
+                "min": {
+                    "type": ["number", "string"]
+                },
+                "minItems": {
+                    "type": "number"
+                },
+                "minTags": {
+                    "type": "number"
+                },
+                "multiple": {
+                    "type": "boolean"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/attributeChoice"
+                    }
+                },
+                "ordered": {
+                    "type": "boolean"
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "restricted": {
+                    "type": "boolean"
+                },
+                "rows": {
+                    "type": "number"
+                },
+                "showLabel": {
+                    "type": "boolean"
+                },
+                "step": {
+                    "type": "number"
+                },
+                "suffix": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "uploadEndpoint": {
+                    "type": "string"
+                }
+            }
+        },
+        "attributeField": {
+            "type": "object",
+            "description": "One field. `primitive` says what the value IS, `widget` says how it is shown or captured — two columns, because a single 'representation' column would give the whitelist below nothing to confront.",
+            "additionalProperties": false,
+            "required": ["field", "label", "primitive", "widget"],
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "description": "Dotted path to the value inside the feature (e.g. \"properties.statut\")."
+                },
+                "label": {
+                    "type": "string"
+                },
+                "primitive": {
+                    "type": "string",
+                    "enum": ["string", "number", "boolean", "string[]", "object", "object[]"],
+                    "description": "What the value IS in the GeoJSON. ⚠️ `badge`, `link` and `price` hold OBJECTS, not scalars — handing one to a plain text renderer is what produces `[object Object]`."
+                },
+                "widget": {
+                    "type": "string",
+                    "enum": [
+                        "action",
+                        "badge",
+                        "checkbox",
+                        "coordinates",
+                        "date",
+                        "dropdown",
+                        "email",
+                        "gallery",
+                        "hours",
+                        "image",
+                        "link",
+                        "list",
+                        "longtext",
+                        "metric",
+                        "number",
+                        "phone",
+                        "price",
+                        "radio",
+                        "rating",
+                        "reviews",
+                        "table",
+                        "tags",
+                        "text",
+                        "url"
+                    ],
+                    "description": "23 components registered by field-renderer, plus `action` — which is NOT one: field-renderer has no action component. It is a core-only reading widget, a button emitting `geoleaf:popup:action`. This list is the reference vocabulary; the core render tables align on it."
+                },
+                "computed": {
+                    "type": "string",
+                    "enum": [
+                        "geometry.length",
+                        "geometry.area",
+                        "geometry.centroid",
+                        "geometry.vertexCount"
+                    ],
+                    "description": "Fills the value from the drawn geometry instead of from user input."
+                },
+                "options": {
+                    "$ref": "#/definitions/attributeOptions"
+                },
+                "display": {
+                    "type": "object",
+                    "description": "Reading projection. Omitted when the field is capture-only.",
+                    "additionalProperties": false,
+                    "required": ["surfaces"],
+                    "properties": {
+                        "mode": {
+                            "type": "string",
+                            "enum": ["rendered", "raw"],
+                            "default": "rendered",
+                            "description": "There is deliberately no mode delegating reading to field-renderer: capture is its role, reading belongs to the core."
+                        },
+                        "surfaces": {
+                            "type": "array",
+                            "uniqueItems": true,
+                            "items": {
+                                "type": "string",
+                                "enum": ["tooltip", "popup", "sidepanel"]
+                            },
+                            "description": "The three surfaces are addressable one by one. A single 'displayed yes/no' boolean is refused: it could not express 'in the side panel, not in the tooltip'."
+                        },
+                        "presentation": {
+                            "type": "object",
+                            "description": "Presentation modifiers that belong to the SURFACE, not to the value — which is why they are not per-widget options.",
+                            "$comment": "Added 02/08/2026 at the Sprint 2 pre-flight: the frozen descriptor could not express 79 declarations the profiles already carry (accordion 35, defaultOpen 32, style 12, variant hero 4). Being `additionalProperties: false`, the migration would have FAILED validation rather than degrade silently — the good failure mode, but the gap was real.",
+                            "additionalProperties": false,
+                            "properties": {
+                                "accordion": {
+                                    "type": "boolean",
+                                    "description": "Wraps the field in a collapsible section. Side panel only."
+                                },
+                                "defaultOpen": {
+                                    "type": "boolean",
+                                    "description": "Whether that collapsible section starts open. Meaningless without `accordion`."
+                                },
+                                "emphasis": {
+                                    "type": "string",
+                                    "enum": ["title", "category", "subcategory"],
+                                    "description": "The ONLY three values the render code branches on, out of the 29 the legacy `FieldStyle` union declared. The other 26 produced neither a branch nor a CSS class — measured, and the reason they are not carried over."
+                                },
+                                "hero": {
+                                    "type": "boolean",
+                                    "description": "Lifts an image out of the field flow, as a header image. `image` widget, side panel only."
+                                }
+                            }
+                        }
+                    }
+                },
+                "edit": {
+                    "type": "object",
+                    "description": "Capture projection. Declaring it on ANY field triggers the A14 rule at layer level. `widget` and `options` are OVERRIDES: absent, the capture reuses the field-level pair — true for 10 of the 11 fields migrated at task 7.2, which is why they are optional rather than required.",
+                    "$comment": "⚠️ Why a SECOND (widget, options) pair rather than a derivation from the display one, measured 07/08/2026 at the `formSchema` migration: `AttributeWidgetOptions` is indexed BY WIDGET. `BadgeOptions` is `{placeholder?}` and has nowhere to hold a choice list; `DropdownOptions` carries `options`. One `widget` slot therefore admits exactly one typed options bag, so two projections that need two widgets need two pairs — a hard-coded badge→dropdown table could not have supplied `statut`'s three choices at all, and would have fallen through the SILENT `?? ComponentRegistry.get(\"text\")` of field-renderer-bridge.ts. The alternative was to align the display widget on the capture one, which costs the coloured pill `resolveBadgeStyle()` feeds. Arbitrated by Mattieu: `edit` becomes a real projection, symmetric with `display`, which already overrides via `presentation`.",
+                    "additionalProperties": false,
+                    "dependencies": {
+                        "options": ["widget"]
+                    },
+                    "properties": {
+                        "required": {
+                            "type": "boolean"
+                        },
+                        "widget": {
+                            "type": "string",
+                            "description": "Capture widget, when it differs from the reading one. `action` is absent from this list on purpose: field-renderer registers no action component, so it has no capture form at all.",
+                            "enum": [
+                                "badge",
+                                "checkbox",
+                                "coordinates",
+                                "date",
+                                "dropdown",
+                                "email",
+                                "gallery",
+                                "hours",
+                                "image",
+                                "link",
+                                "list",
+                                "longtext",
+                                "metric",
+                                "number",
+                                "phone",
+                                "price",
+                                "radio",
+                                "rating",
+                                "reviews",
+                                "table",
+                                "tags",
+                                "text",
+                                "url"
+                            ]
+                        },
+                        "options": {
+                            "$ref": "#/definitions/attributeOptions",
+                            "description": "Options of the CAPTURE widget. `dependencies` above makes `widget` mandatory alongside it — an options bag with no capture widget would be typed by the reading widget, that is, by something other than what it configures."
+                        }
+                    }
+                }
+            },
+            "anyOf": [
+                {
+                    "$comment": "Q3 (étendu 02/08) — a field neither read nor captured has no reason to be declared. ⚠️ This sentence ended with « `uses` alone IS legal: a field can be a table column only » until task 7.3 measured it: the `uses` block was REMOVED at 7.1′ (decision A3‴, it added a fourth list of field names without replacing any), so the exception it granted has had no subject since. A field that is only a table column is named by `table.columns[]`, which needs no entry here.",
+                    "required": ["display"]
+                },
+                {
+                    "required": ["edit"]
+                }
+            ],
+            "allOf": [
+                {
+                    "$comment": "A10 — the whitelist of legal (primitive, widget) pairs, grouped by primitive. Six branches instead of 23: the constraint IS the pair, and this form states it once per primitive. ⚠️ EXTENDED at task 7.2 to constrain `edit.widget` as well: the captured value has the same `primitive` as the read one, so the pair table is the same table. Stating it in the same six branches is what stops the two projections from drifting apart.",
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "string"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": [
+                                    "action",
+                                    "badge",
+                                    "date",
+                                    "dropdown",
+                                    "email",
+                                    "image",
+                                    "link",
+                                    "longtext",
+                                    "phone",
+                                    "price",
+                                    "radio",
+                                    "text",
+                                    "url"
+                                ]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "$comment": "The ONE branch where capture is narrower than reading, and the reason is the value SHAPE: `badge` captures `{label, color}`, `link` captures `{href, label?}`, `price` captures an amount object — handing any of them a `string` property writes an object into a scalar column, which `write.properties` then ships flat to the backend. Reading tolerates the scalar (widget-dispatch.ts `textOfBadge`/`textOfLink` branch on the type, deliberately); capture cannot.",
+                                        "enum": [
+                                            "date",
+                                            "dropdown",
+                                            "email",
+                                            "image",
+                                            "longtext",
+                                            "phone",
+                                            "radio",
+                                            "text",
+                                            "url"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "$comment": "A17 — a field whose READING widget holds an object (`badge`, `link`, `price`) while its value is a `string` MUST name its capture widget explicitly. Without this, `edit` with no `widget` inherits the reading one and silently captures an object into a scalar. Mesuré au 7.2 : c'est exactement la forme de `sites_rosario.statut` (`primitive: \"string\"`, `widget: \"badge\"`), et rien ne l'aurait signalée.",
+                    "if": {
+                        "type": "object",
+                        "required": ["widget", "edit"],
+                        "properties": {
+                            "primitive": {
+                                "const": "string"
+                            },
+                            "widget": {
+                                "enum": ["badge", "link", "price"]
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "edit": {
+                                "type": "object",
+                                "required": ["widget"]
+                            }
+                        }
+                    }
+                },
+                {
+                    "$comment": "`action` is the one widget carrying a per-widget option rule: without `actionId` the button renders nothing at all, so a field declaring it is a silent no-op. And it is display-only — field-renderer registers no action component, and a button is a gesture, not a value to type in (Q6).",
+                    "if": {
+                        "properties": {
+                            "widget": {
+                                "const": "action"
+                            }
+                        },
+                        "required": ["widget"]
+                    },
+                    "then": {
+                        "required": ["options"],
+                        "not": {
+                            "required": ["edit"]
+                        },
+                        "properties": {
+                            "options": {
+                                "type": "object",
+                                "required": ["actionId"]
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "number"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": ["metric", "number", "rating"]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "enum": ["metric", "number", "rating"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "boolean"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": ["checkbox"]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "enum": ["checkbox"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "string[]"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": ["checkbox", "gallery", "list", "tags"]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "enum": ["checkbox", "gallery", "list", "tags"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "object"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": ["badge", "coordinates", "hours", "link", "price"]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "$comment": "Identical to the reading list, and that is the point: here the value IS an object, so `badge` and `link` capture the very shape they read. The narrowing lives in the `string` branch only.",
+                                        "enum": ["badge", "coordinates", "hours", "link", "price"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "primitive": {
+                                "const": "object[]"
+                            }
+                        }
+                    },
+                    "then": {
+                        "properties": {
+                            "widget": {
+                                "enum": ["reviews", "table"]
+                            },
+                            "edit": {
+                                "type": "object",
+                                "properties": {
+                                    "widget": {
+                                        "enum": ["reviews", "table"]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

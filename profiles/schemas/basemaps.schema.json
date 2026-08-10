@@ -1,0 +1,315 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/basemaps",
+    "title": "GeoLeaf Basemaps",
+    "description": "basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). Alternate source types (wmts, wms, imageSource, hillshade) present in real profiles were added. The `type` enum was hardened in S6 to the 7 runtime-mapped values; the runtime-support audit confirmed all types (incl. image/hillshade/wmts/wms) are rendered. See anomaly registry ANO-017.",
+    "type": "object",
+    "required": ["basemaps"],
+    "additionalProperties": false,
+    "patternProperties": {
+        "^_comment": {}
+    },
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "basemaps": {
+            "type": "object",
+            "description": "Map of basemap entries keyed by basemap ID.",
+            "additionalProperties": {
+                "$ref": "#/definitions/basemapEntry"
+            }
+        }
+    },
+    "definitions": {
+        "basemapEntry": {
+            "type": "object",
+            "description": "A single basemap source definition.",
+            "required": ["id"],
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Basemap ID (mirrors the key in the parent object)."
+                },
+                "label": {
+                    "type": "string",
+                    "description": "Display label."
+                },
+                "type": {
+                    "type": "string",
+                    "enum": ["tile", "raster", "maplibre", "image", "hillshade", "wmts", "wms"],
+                    "description": "Source type. Enum hardened in S6 to the 7 runtime-mapped values (registry.ts `_resolveBasemapType` + dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path. See anomaly registry ANO-017."
+                },
+                "url": {
+                    "type": "string",
+                    "description": "Tile URL template with {s}, {z}, {x}, {y} placeholders."
+                },
+                "fallbackUrl": {
+                    "type": "string",
+                    "description": "Raster tile URL fallback when MapLibre GL is unavailable."
+                },
+                "style": {
+                    "type": "string",
+                    "description": "MapLibre GL style URL. Only for type: \"maplibre\"."
+                },
+                "tiles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Explicit tile URL array for MapLibre raster sources. Overrides url + subdomains expansion."
+                },
+                "encoding": {
+                    "type": "string",
+                    "description": "Tile encoding hint (e.g. for raster-dem sources)."
+                },
+                "attribution": {
+                    "type": "string",
+                    "description": "HTML attribution string."
+                },
+                "minZoom": {
+                    "type": "number"
+                },
+                "maxZoom": {
+                    "type": "number"
+                },
+                "subdomains": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    ],
+                    "description": "Tile subdomains."
+                },
+                "tileSize": {
+                    "type": "number",
+                    "default": 256
+                },
+                "defaultBasemap": {
+                    "type": "boolean",
+                    "description": "Set to true to make this the active basemap on startup."
+                },
+                "offline": {
+                    "type": "boolean",
+                    "description": "Whether this basemap supports offline tile caching."
+                },
+                "offlineBounds": {
+                    "type": "object",
+                    "description": "Geographic bounds for offline caching.",
+                    "required": ["north", "south", "east", "west"],
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "north": {
+                            "type": "number"
+                        },
+                        "south": {
+                            "type": "number"
+                        },
+                        "east": {
+                            "type": "number"
+                        },
+                        "west": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "cacheMinZoom": {
+                    "type": "number"
+                },
+                "cacheMaxZoom": {
+                    "type": "number"
+                },
+                "wmts": {
+                    "type": "object",
+                    "description": "WMTS source configuration (GetCapabilities-driven).",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "getCapabilitiesUrl": {
+                            "type": "string"
+                        },
+                        "layer": {
+                            "type": "string"
+                        },
+                        "tileMatrixSet": {
+                            "type": "string"
+                        },
+                        "format": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "wms": {
+                    "type": "object",
+                    "description": "WMS source configuration.",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "url": {
+                            "type": "string"
+                        },
+                        "layers": {
+                            "type": "string"
+                        },
+                        "format": {
+                            "type": "string"
+                        },
+                        "version": {
+                            "type": "string"
+                        },
+                        "transparent": {
+                            "type": "boolean"
+                        },
+                        "crs": {
+                            "type": "string",
+                            "description": "Coordinate reference system requested from the WMS server (e.g. `EPSG:3857`)."
+                        },
+                        "styles": {
+                            "type": "string",
+                            "description": "WMS `STYLES` parameter. Empty string requests the server default."
+                        },
+                        "tileSize": {
+                            "type": "number",
+                            "description": "Tile size in pixels requested from the WMS server. Falls back to 256 when absent."
+                        }
+                    }
+                },
+                "imageSource": {
+                    "type": "object",
+                    "description": "Static image overlay source (georeferenced by coordinates).",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "url": {
+                            "type": "string"
+                        },
+                        "coordinates": {
+                            "type": "array"
+                        },
+                        "opacity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    }
+                },
+                "hillshade": {
+                    "type": "object",
+                    "description": "Hillshade (raster-dem) source configuration.",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "demUrl": {
+                            "type": "string"
+                        },
+                        "demEncoding": {
+                            "type": "string",
+                            "enum": ["terrarium", "mapbox"],
+                            "default": "terrarium"
+                        },
+                        "demMaxZoom": {
+                            "type": "number"
+                        },
+                        "exaggeration": {
+                            "type": "number"
+                        },
+                        "illuminationDirection": {
+                            "type": "number"
+                        },
+                        "highlightColor": {
+                            "type": "string"
+                        },
+                        "shadowColor": {
+                            "type": "string"
+                        },
+                        "accentColor": {
+                            "type": "string",
+                            "description": "Accent colour of the hillshade layer (`hillshade-accent-color`). Any CSS colour."
+                        },
+                        "illuminationAnchor": {
+                            "type": "string",
+                            "enum": ["viewport", "map"],
+                            "description": "Whether the light source follows the viewport or is anchored to the map. MapLibre default: `viewport`."
+                        }
+                    }
+                },
+                "terrain": {
+                    "type": "object",
+                    "description": "3D terrain / raster-dem configuration. Only valid when basemap type is \"maplibre\" or tiles-based.",
+                    "required": ["enabled"],
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "description": "Enables 3D terrain rendering for this basemap."
+                        },
+                        "demUrl": {
+                            "type": "string",
+                            "description": "URL template for the raster-dem tile source (may contain {z}/{x}/{y} placeholders). Required when enabled is true."
+                        },
+                        "demEncoding": {
+                            "type": "string",
+                            "enum": ["terrarium", "mapbox"],
+                            "default": "terrarium",
+                            "description": "Tile encoding format for elevation data."
+                        },
+                        "exaggeration": {
+                            "type": "number",
+                            "minimum": 0.1,
+                            "maximum": 10,
+                            "default": 1.5,
+                            "description": "Vertical exaggeration factor. Recommended range: 1.0–3.0."
+                        },
+                        "default3D": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "When true, 3D terrain activates automatically when this basemap is selected."
+                        },
+                        "pitch": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 85,
+                            "default": 45,
+                            "description": "Initial camera pitch in degrees applied when 3D terrain is activated."
+                        },
+                        "bearing": {
+                            "type": "number",
+                            "minimum": -180,
+                            "maximum": 180,
+                            "default": 0,
+                            "description": "Initial camera bearing in degrees applied when 3D terrain is activated."
+                        },
+                        "demMaxZoom": {
+                            "type": "number",
+                            "description": "Maximum zoom of the DEM tile source. Falls back to 15 when absent."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

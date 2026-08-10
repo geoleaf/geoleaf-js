@@ -1,0 +1,331 @@
+#!/usr/bin/env sh
+#
+# ⚠️ `set -e` — SANS LUI, DIX DES ONZE GATES DE CE FICHIER SONT DÉCORATIVES.
+#
+# Ce hook n'avait ni shebang ni `set -e`. Husky l'exécute avec `sh`, et le code de sortie
+# d'un script `sh` est celui de sa DERNIÈRE commande. Mesuré le 01/08/2026 :
+#
+#     $ sh -c 'false
+#       true'; echo $?
+#     0                          ← le premier échec est perdu
+#
+#     $ sh -c 'set -e
+#       false
+#       true'; echo $?
+#     1                          ← le premier échec décide
+#
+# Conséquence : `lint-staged` rouge, `verify-plugin-contract --fail` rouge,
+# `check-orphan-exports` rouge, `check-dead-links` rouge → **le commit passait**, tant que
+# `verify-test-load-mode.cjs` (la dernière) sortait 0. Onze gates posées, une seule armée.
+#
+# Vérifié sûr avant de poser le drapeau : chaque commande de ce fichier est soit dans une
+# condition `if` (exemptée par POSIX), soit une commande dont l'échec DOIT arrêter. Aucun
+# `|| true`, aucun `grep -c`, aucun code non nul « bénin ».
+#
+# ⚠️ EFFET DE BORD MESURÉ LE JOUR MÊME : ce hook n'est plus sûr EN PARALLÈLE D'UN BUILD.
+# Plusieurs de ses gates lisent `dist/` (`verify-plugin-contract` entre autres) ; un
+# `npm run ci:local` ou `turbo run build` qui tourne en même temps réécrit ces répertoires,
+# et le hook attrape un état transitoire. Constaté une fois : commit refusé sur
+# « non-grandfathered violations remain (Plugin Contract v1) », alors que la même gate
+# relancée seule sortait 13/13 conforme.
+#
+# Avant `set -e` la course existait déjà — elle était simplement INVISIBLE, puisque seul le
+# code de sortie de la dernière commande comptait. Le remède est de ne pas committer pendant
+# un build, pas de retirer le drapeau : un hook qui ne rend le verdict que d'une gate sur
+# onze est pire qu'un hook occasionnellement impatient.
+set -e
+
+# ── Trampoline WSL — le SEUL endroit du fichier qui décide de la distro ──────────────────
+#
+# Ce hook s'exécute côté Windows quand le dépôt est monté en UNC, et `cmd.exe` ne sait pas
+# entrer dans un chemin UNC : chaque gate est donc relancée dans WSL. Les 18 trampolines
+# nommaient la distro en dur — 36 occurrences d'un nom de POSTE dans un fichier suivi,
+# inutilisables par tout autre contributeur.
+#
+# `wsl.exe` SANS `-d` entre dans la distro par défaut du poste, et quand le répertoire
+# courant est un chemin `\\wsl.localhost\<distro>\…` il entre dans CELLE-LÀ. Le cas normal
+# n'a donc rien à nommer. Qui a plusieurs distros et un défaut qui n'est pas la bonne
+# exporte `GEOLEAF_WSL_DISTRO`.
+#
+# ⚠️ Le nom n'a pas été « remplacé par une variable avec valeur par défaut » : une forme
+# `${GEOLEAF_WSL_DISTRO:-<nom de la distro>}` aurait laissé ce nom dans le fichier, ce que
+# le retrait cherchait précisément à éviter. Ne pas le réintroduire par confort — le motif
+# est gardé par `.gitleaks.toml`, qui rougirait dessus.
+wsl_run() {
+    if [ -n "${GEOLEAF_WSL_DISTRO:-}" ]; then
+        wsl.exe -d "$GEOLEAF_WSL_DISTRO" -- "$@"
+    else
+        wsl.exe -- "$@"
+    fi
+}
+
+npx lint-staged
+
+# Arbre qualifié — RÉGÉNÉRÉ ici, pas seulement vérifié ailleurs.
+#
+# ⚠️ Pourquoi un générateur dans un hook, alors que tout le reste ici ne fait que vérifier.
+# `docs:tree:check` est gaté en CI, et il a rougi le 02/08/2026 (run 30749750097) sur un
+# commit étiqueté `docs(offline)` qui touchait AUSSI une source : `sync.contract.ts` avait
+# pris 11 lignes, l'arbre était resté sur sa génération d'il y a deux commits. Le run s'est
+# arrêté là — les 40 gates suivantes n'ont jamais tourné, donc un run brûlé pour zéro
+# information sur le reste.
+#
+# La classe est structurelle, pas humaine : on pense à régénérer quand on « change du code »,
+# et un commit `docs` n'en a pas l'air. Aucune discipline ne ferme ça ; un geste automatique,
+# oui. C'est le même contrat que `lint-staged --write` juste au-dessus — le seul endroit de ce
+# hook qui a le droit d'ÉCRIRE.
+#
+# ⚠️ Placé APRÈS `lint-staged`, et ce n'est pas cosmétique : lint-staged reformate puis
+# re-stage les fichiers, ce qui change leur nombre de lignes. Régénérer avant décrirait un
+# index périmé d'un cran.
+#
+# ⚠️ Correct par construction avec un commit PARTIEL (`git add -p`) : depuis B-102 le
+# générateur dérive de l'INDEX (`git ls-files` + `git cat-file`), pas du disque. Il décrit donc
+# exactement ce qui part dans le commit, jamais les modifications en vol restées à côté.
+# Vérifié le 02/08/2026 : une mutation non stagée ne le fait PAS bouger, la même stagée oui.
+#
+# Mesuré à 0,19 s — invisible dans un commit. Le `git add` est un no-op quand rien ne change.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/generate-docs-tree.cjs >/dev/null"
+else
+  node scripts/generate-docs-tree.cjs >/dev/null
+fi
+git add docs/reference/ARBORESCENCE_QUALIFIEE.md docs/reference/ARBORESCENCE_QUALIFIEE.html
+
+# Plugin Contract v1 gate (S14) — POSIX hook, runs on Linux/CI and Windows+UNC dev.
+# On the Windows+UNC dev box, cmd.exe cannot cd into a UNC path, so the verifier
+# is trampolined through WSL. The repo root is derived from the CURRENT worktree
+# (git rev-parse --show-toplevel → wslpath) so the hook works from any git worktree
+# — never hardcode the project path. Elsewhere it runs node natively (else branch).
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-plugin-contract.cjs --fail"
+else
+  node scripts/verify-plugin-contract.cjs --fail
+fi
+
+# Profile contract gate (S2 — config-contract) — validates each profile's profile.json
+# AND every companion config (config/core/*, layers/**/*) against profiles/schemas/*.
+# Enforced locally so a violation is caught before the push (CI, unfrozen 14/07, then
+# confirms an already-green state — cf. the "ci:local first" protocol in CLAUDE.md).
+# Same worktree-aware WSL trampoline as above; validate-profiles.cjs exits 1 on any violation.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/validate-profiles.cjs"
+else
+  node scripts/validate-profiles.cjs
+fi
+
+# Config coverage gate (S9 — config-contract, Phase B complete) — fails if a config key
+# declared in a schema OR read by code (families B1→B7) has no row in
+# inventaire_config_parametres.md. Wired now that every B family is inventoried (else it
+# would fail on an uncovered family). Same worktree-aware WSL trampoline; exits 1 on any gap.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-config-coverage.cjs"
+else
+  node scripts/check-config-coverage.cjs
+fi
+
+# Config consumers gate (S7 — roadmap nettoyage) — the other direction of the config
+# contract: coverage above proves every key HAS a row; this proves each row's
+# "Consommateur (file:line)" citation still points at real code.
+# NO MORE BASELINE since R.43 (25/07/2026): the 62 drifts inherited from the S3→S6
+# refactors were repaired one by one, so the gate now blocks on ANY hard drift instead
+# of only on a new one. Proven by mutation in both categories before the baseline was
+# dropped. Soft drifts (key no longer on the cited line, ambiguous suffix) stay
+# non-blocking by design — they are probable false positives.
+# --no-report is REQUIRED: without it the run rewrites a report that was deliberately
+# deleted from the repo (2bc7c1e0), on every commit. ~350ms.
+# Same worktree-aware WSL trampoline; exits 1 on any hard drift.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-config-consumers.cjs --fail --no-report"
+else
+  node scripts/check-config-consumers.cjs --fail --no-report
+fi
+
+# No-Leaflet gate (S4 — roadmap_code) — fails if any Leaflet reference is
+# reintroduced in source OR tests: runtime L.*, import/require leaflet, declare L,
+# "leaflet" engine literal, JSDoc {L. type, or a `global.L`/`globalThis.L` test
+# mock (the "Global L assignment" lock). CI already runs this step; mirrored
+# locally so it is caught before the push. Same worktree-aware WSL
+# trampoline; verify-no-leaflet.cjs exits 1 on any hit.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-no-leaflet.cjs"
+else
+  node scripts/verify-no-leaflet.cjs
+fi
+
+# Core-standalone gate (S0 — roadmap_architecture-application) — fails if
+# `packages/core/src/` references a plugin package, as the published specifier
+# `@geoleaf-plugins/*` or as a workspace path. This is an ARCHITECTURE boundary
+# (the core stays autonomous and tree-shakeable), NOT a licence one: it survives
+# the all-MIT switch untouched. Until S0 this gate ran ONLY in
+# sync-core-public.yml — the mirror workflow the switch deletes — so the rule
+# CLAUDE.md calls non-negotiable had a single enforcement point, about to be
+# removed. Now mirrored in ci.yml and ci-local.cjs. ~150ms, cheaper than the
+# orphan-exports gate below. Same worktree-aware WSL trampoline; exits 1 on any hit.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-core-standalone.cjs"
+else
+  node scripts/verify-core-standalone.cjs
+fi
+
+# ARCHI S7 (7.4) — frontière symétrique : plugins → core. Même trampoline WSL.
+# ~100ms. Mirrored in ci.yml and ci-local.cjs.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-plugin-core-boundary.cjs"
+else
+  node scripts/verify-plugin-core-boundary.cjs
+fi
+
+# PLUGINS S11.1 — troisième frontière : re-définition d'un utilitaire canonique de
+# @geoleaf/host-runtime hors baseline. Même trampoline WSL. Mirrored in ci.yml and ci-local.cjs.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-plugin-shared-fork.cjs"
+else
+  node scripts/verify-plugin-shared-fork.cjs
+fi
+
+# Package files[] gate (S1 — roadmap_architecture-application) — every entry of a
+# package's files[] must exist on disk. npm drops a dangling entry silently, so a
+# package can declare it ships a LICENSE and publish without one for months: that
+# is exactly what happened (10 packages, plus addpoi listing "LICENCE" in French,
+# an entry that could never match). Build outputs are exempt — an entry git ignores
+# is an artifact whose absence is normal before a build, which is why the check
+# keeps the trailing slash when asking git. Same worktree-aware WSL trampoline.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-package-files.cjs"
+else
+  node scripts/check-package-files.cjs
+fi
+
+# SHIP-SPEC (passage public S1) — un specifier NU du tarball doit se résoudre HORS de ce
+# monorepo. La classe entière est masquée par les symlinks de workspace : `@geoleaf/host-runtime`
+# est `private: true` et 404 sur npm POUR TOUJOURS, et il résolvait vert ici — donc vert dans
+# PUB-TYPES, vert dans `typecheck:consumer` (qui compile depuis packages/core/examples/, soit
+# DANS le monorepo), et `TS2307` chez le premier intégrateur. Six `.d.ts` publiables étaient
+# dans cet état. SHIP-SPEC-02 est SANS baseline, à dessein : déclarer un workspace privé en
+# `dependencies` satisferait SHIP-SPEC-01 en rendant le paquet non installable.
+# ⚠️ Lit `dist/` — comme `verify-plugin-contract` plus haut, il suppose un build. Mesuré à
+# 0,88 s (1 343 fichiers lus sur l'AST TypeScript, jamais au grep : un relevé au grep remonte
+# 5 faux positifs dans des `@example` TSDoc, dont un qui accuserait le core de violer
+# `no-plugin-in-core`). Même trampoline WSL worktree-aware ; exit 1 sur toute fuite.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-shipped-specifiers.cjs"
+else
+  node scripts/check-shipped-specifiers.cjs
+fi
+
+# Dead-code filet B3 (roadmap nettoyage, Sprint 2). Ce script grepe les
+# consommateurs d'un export core dans TOUT le monorepo (pas seulement core) pour
+# éviter les faux positifs sur l'API consommée par les plugins — y compris les
+# VALEURS littérales des const de type chaîne, qu'aucun graphe d'imports ne relie
+# à leur consommateur. C'est son apport propre face à knip : 51 des 74 candidats
+# de sa baseline sont invisibles à knip (mesure 25/07/2026). N.B. l'ancien motif
+# « knip est aveugle sur packages/core/src » est PÉRIMÉ — cause trouvée et
+# corrigée à l'API S2.4, cf. l'en-tête de scripts/check-orphan-exports.cjs.
+# Mesuré à ~800ms — assez rapide pour le pre-commit (contrairement à
+# `dead-code`/knip, non câblé ici pour cette raison). Même trampoline WSL
+# worktree-aware ; exit 1 sur tout candidat.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-orphan-exports.cjs"
+else
+  node scripts/check-orphan-exports.cjs
+fi
+
+# Liens morts de la doc publique (roadmap nettoyage, S7bis.10). Le gate existait
+# depuis mars (package.json `check:links`) et n'était câblé NULLE PART — c'est le
+# trou par lequel b3d85253 est passé le 30/03 : MIGRATION_V1_V2.md supprimé par
+# accident, ses 4 liens laissés derrière, 404 en production depuis mai. VitePress
+# ne rattrapait rien : `ignoreDeadLinks` était à true.
+# Pas de baseline ici — contrairement à check-orphan-exports/check-config-consumers,
+# le gate est VERT (0/64 fichiers) au moment du câblage, donc il ne peut mordre que
+# sur une régression neuve. ~instantané (les URLs externes ne sont jamais fetchées).
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-dead-links.cjs"
+else
+  node scripts/check-dead-links.cjs
+fi
+
+# Contracts purity gate (socle S4 — roadmap_optimisation-socle 4.3) — contracts/*.contract.ts
+# must stay a pure type surface: no runtime value export, no non-type import, no top-level
+# statement. Stops the Sprint 2 "membrane" drift (LegendContract/POIAddFormContract, singletons
+# doing globalThis lookups) from recurring. Static parse of 13 files (~instant). Vert au câblage
+# ⇒ pas de baseline. Same worktree-aware WSL trampoline; exits 1 on any runtime leak.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-contracts-pure.cjs"
+else
+  node scripts/check-contracts-pure.cjs
+fi
+
+# Facade purity gate (kernel S13.1) — the 29 `modules/geoleaf.*.ts` expose the public
+# API and delegate; they do not implement. The rule is documented (ARCHITECTURE.md
+# §Façades publiques) and was broken twice: geoleaf.config.ts drifted into
+# self-registration (removed S2) and geoleaf.storage.ts accumulated ~430 L of Storage
+# orchestration (extracted S3) — both found by a human reading the directory, which is
+# not a repeatable process. Static AST parse of 29 files (~instant). Vert au câblage
+# ⇒ pas de baseline. Same WSL trampoline.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-facade-purity.cjs"
+else
+  node scripts/check-facade-purity.cjs
+fi
+
+# Dynamic-key write ratchet (S13.2) — every `X[k] = …` with a non-literal key either
+# calls the canonical blocklist (modules/utils/general/object-path-guard), is allowlisted
+# in the script with a written reason, or is frozen in the baseline. The Sprint 5
+# prototype-pollution hole was a sink an earlier sweep had not reached, and S13.2 found
+# three more, all reachable from a profile. Static AST parse of ~470 files (~0.4 s).
+# Baselined ⇒ blocks only NEW unguarded sinks. Same WSL trampoline.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/check-dynamic-key-writes.cjs"
+else
+  node scripts/check-dynamic-key-writes.cjs
+fi
+
+# Test load-mode ratchet (COUVERTURE S1) — un module source chargé par `require()` depuis
+# un test voit sa couverture attribuée aux MAUVAISES lignes et aux MAUVAISES fonctions.
+# Rien n'échoue : suite verte, rapport plausible — le défaut a vécu un mois. Le gate ici
+# plutôt qu'en CI seule, parce que la conversion (184 fichiers) dure plusieurs sessions et
+# que la dette s'est déjà recreusée entre deux commits du même jour. Baseline de 357 sites,
+# qui ne peut que DESCENDRE : bloque sur un site neuf, jamais sur un site connu. Scan
+# syntaxique de 567 fichiers de test — mesuré à 0,07 s, invisible dans un commit.
+# Même trampoline WSL.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-test-load-mode.cjs"
+else
+  node scripts/verify-test-load-mode.cjs
+fi
+
+# Contrat inverse (S1.8) — les gates ci-dessus tiennent que ce que NOUS déclarons existe ;
+# celle-ci tient que ce dont l'AVAL dépend n'a pas disparu. Neuf clés du namespace sont
+# parties parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était dehors, et
+# aucun vert d'ici ne pouvait le voir.
+# ⚠️ Elle SAUTE (exit 0, motif nommé, chemin imprimé) tant que `GEOLEAF_CONSUMERS` n'est pas
+# exporté : le manifeste vit chez le consommateur, il nomme un client et des chemins Odoo, et
+# aucun chemin par défaut n'est écrit dans `scripts/`, qui part intégralement dans le clone
+# public. Sur le poste de Mattieu, l'exporter fait mordre le hook ; sans lui il ne coûte rien.
+# Ce qui empêche ce SKIP de tout avaler est `probe-gate-visibility.cjs`, qui plante un
+# manifeste de FIXTURE et exige de la voir rougir dessus. ~1 s (elle relit l'AST des sources
+# pour CC-07). Même trampoline WSL worktree-aware.
+if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
+  ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
+  wsl_run bash -lc "cd \"$ROOT_WSL\" && node scripts/verify-consumer-contract.cjs"
+else
+  node scripts/verify-consumer-contract.cjs
+fi

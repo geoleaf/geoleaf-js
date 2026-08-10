@@ -1,0 +1,24 @@
+{
+    "before": {
+        "capability": "rm-p0b",
+        "match": "rm-p0b",
+        "bootGz": 210,
+        "leanFullGz": 544.9,
+        "leanLiteGz": 413.9,
+        "ownedFiles": 0,
+        "ownedLoc": 0,
+        "refLines": 0,
+        "coreTestFiles": 399
+    },
+    "after": {
+        "capability": "rm-p0b",
+        "match": "rm-p0b",
+        "bootGz": 202.4,
+        "leanFullGz": 531.6,
+        "leanLiteGz": 401.2,
+        "ownedFiles": 0,
+        "ownedLoc": 0,
+        "refLines": 3,
+        "coreTestFiles": 389
+    }
+}

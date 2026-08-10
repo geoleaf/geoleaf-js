@@ -1,0 +1,97 @@
+# GeoLeaf — OGC API Features for the dev proof backend (task 4.H).
+#
+# 🛑 This replaces pg_featureserv, and the reason is MEASURED rather than preferred.
+# pg_featureserv 1.3.1 serves `bbox` and `limit` correctly but emits NO `next` link in
+# its JSON output — verified on 27 rows with `limit=10`: `links` carried only `self`
+# and `alternate`, and `numberMatched` was absent entirely.
+#
+# That matters because `_extractNextUrl()` (kernel/geojson/loader/ogc-api-loader.ts)
+# drives pagination purely off `links[rel="next"]`. Against pg_featureserv the loader
+# stops after one page and reports success. The pull would have LOOKED proven while
+# one of the four mechanisms named in contract point 6 — "pagination par lien next" —
+# was never exercised. A harness that cannot fail the thing it claims to test is the
+# defect this roadmap exists to remove.
+#
+# pygeoapi is the OGC reference implementation and emits next/prev links natively.
+#
+# DEV ONLY. Never deployed.
+
+server:
+    bind:
+        host: 0.0.0.0
+        port: 80
+    # Absolute, and it must match the PUBLIC path: pygeoapi builds its `next` hrefs from
+    # this value. Left at the container's own address the second page would be fetched
+    # from an origin the browser cannot reach — a failure that reads as "pagination is
+    # broken" and is really "base URL is wrong".
+    #
+    # ⚠️ The host is NOT written here. `GEOLEAF_DEV_BACKEND_HOST` is expanded at load time
+    # by pygeoapi's `yaml_load` (`os.path.expandvars` over the whole file, same mechanism
+    # as `${GEOLEAF_PG_PASSWORD}` below) and is passed into the container by
+    # `docker-compose.dev.yml`. If it were ever missing there, `expandvars` leaves the
+    # `${…}` verbatim — pygeoapi would then serve that literal as its base URL rather than
+    # fail, which is why the compose side declares it with `:?` and refuses to start.
+    url: https://${GEOLEAF_DEV_BACKEND_HOST}/ogc
+    mimetype: application/json; charset=UTF-8
+    encoding: utf-8
+    languages:
+        - en-US
+    cors: true
+    pretty_print: false
+    # Default page size. Deliberately SMALL: the proof of task 4.1 needs more than one
+    # page over a seed of a few dozen rows, and a default large enough to swallow the
+    # fixture would make pagination untestable without a bigger fixture.
+    limit: 10
+
+logging:
+    level: ERROR
+
+metadata:
+    identification:
+        title: GeoLeaf dev proof backend
+        description: OGC API Features over the shared PostGIS — read side of the Sprint 4 cycle
+        keywords:
+            - geoleaf
+            - offline
+        keywords_type: theme
+        url: https://${GEOLEAF_DEV_BACKEND_HOST}
+        # Required by the OpenAPI generator, which reads it unguarded
+        # (`openapi.py:272`) and dies with KeyError rather than defaulting.
+        terms_of_service: https://geoleaf.dev
+    license:
+        name: MIT
+        url: https://opensource.org/licenses/MIT
+    provider:
+        name: GeoLeaf Platform
+        url: https://geoleaf.dev
+    contact:
+        name: Pottier, Mattieu
+        email: dev@geoleaf.local
+        role: pointOfContact
+
+resources:
+    sites_rosario:
+        type: collection
+        title: Sites touristiques – Rosario
+        description: Mirrors profiles/tourism/layers/sites_rosario — the one test layer that is editable AND carries a formSchema
+        keywords:
+            - poi
+        extents:
+            spatial:
+                bbox: [-61.0, -33.1, -60.4, -32.8]
+                crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+        providers:
+            - type: feature
+              name: PostgreSQL
+              data:
+                  host: shared-postgis-1
+                  port: 5432
+                  dbname: geoleaf
+                  # Read-only AT THE DATABASE, not by convention — contract invariant S6
+                  # held twice over: pull grants no write access, and the puller has none.
+                  user: geoleaf_ogc
+                  password: ${GEOLEAF_PG_PASSWORD}
+                  search_path: [api, public]
+              id_field: id
+              table: sites_rosario
+              geom_field: geom

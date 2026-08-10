@@ -1,0 +1,398 @@
+/*
+ * GeoLeaf – Barre pill d'utilitaires mobile + composant sheet (Phase 2 Mobile Friendly)
+ * ------------------------------------------------------------------------------------
+ * - Barre d'icônes (Zoom, Géoloc, Recherche, Proximité, Filtre, Thèmes, Couches)
+ *   visible uniquement en viewport ≤ 768px.
+ * - Overlay + bottom sheet réutilisable pour le contenu des panneaux.
+ * - Masquage des contrôles desktop en mobile.
+ */
+
+/* ========================================================================== */
+/* Barre pill d'utilitaires (.gl-map-toolbar)                                 */
+/* ========================================================================== */
+
+/* Wrapper de positionnement — contient la pill + les boutons nav externes */
+.gl-map-toolbar-wrapper {
+    position: absolute;
+    top: 8px;
+    bottom: 80px; /* dégage la zone scale + branding + marge de confort */
+    left: 0.5rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    pointer-events: none; /* ne bloque pas les clics carte */
+    max-height: calc(100% - 96px); /* évite le débordement vertical sur petits écrans */
+}
+
+.gl-map-toolbar-wrapper > * {
+    pointer-events: auto;
+}
+
+.gl-map-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+
+    max-height: 100%; /* contraint par le wrapper top/bottom */
+    padding: 0;
+    border-radius: 9999px;
+    background: var(--gl-color-bg-surface);
+    border: 1px solid var(--gl-color-border-soft);
+    box-shadow: var(--gl-shadow-medium);
+
+    overflow: hidden;
+}
+
+/* Barre toujours visible (desktop + mobile), remplace les boutons actuels. */
+/* Décommenter pour forcer l’affichage de la barre à toutes largeurs (test Live Server) :
+*/
+
+/* Boutons de navigation — ronds, flottants en dehors de la pill, masqués par défaut */
+.gl-map-toolbar__nav {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    background: var(--gl-color-bg-surface);
+    border: 1px solid var(--gl-color-border-soft);
+    box-shadow: var(--gl-shadow-medium);
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    touch-action: manipulation;
+    /* Toujours en display:flex, visibilité gérée par opacity + visibility */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity 0.25s ease,
+        visibility 0.25s ease,
+        background 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.15s ease;
+}
+
+/* Visible uniquement quand le JS détecte un overflow */
+.gl-map-toolbar__nav.gl-is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.gl-map-toolbar__nav:hover {
+    background: var(--gl-color-bg-surface-muted);
+    box-shadow: var(--gl-shadow-strong, 0 4px 16px rgba(0, 0, 0, 0.28));
+    transform: scale(1.08);
+}
+
+.gl-map-toolbar__nav:active {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+    transform: scale(0.92);
+}
+
+.gl-map-toolbar__nav svg {
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+}
+
+/* Zone scrollable des icônes — scrollbar invisible, défilement via flèches uniquement */
+.gl-map-toolbar__scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    /* Masquer la scrollbar sur tous les navigateurs */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 2px;
+}
+
+.gl-map-toolbar__scroll::-webkit-scrollbar {
+    display: none; /* Chrome / Safari / WebKit */
+}
+
+/* Groupe optionnel (ex. filtre + réinitialiser) */
+.gl-map-toolbar__group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+/* Chaque bouton icône : zone tactile ≥ 44px */
+.gl-map-toolbar__btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.15s ease;
+}
+
+.gl-map-toolbar__btn:hover {
+    background: var(--gl-color-bg-surface-muted);
+    transform: scale(1.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    color: var(--gl-color-accent, #2563eb);
+}
+
+.gl-map-toolbar__btn:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring);
+    outline-offset: 2px;
+}
+
+.gl-map-toolbar__btn[aria-expanded="true"] {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+}
+
+/* État actif (ex. filtre avec filtres appliqués) */
+.gl-map-toolbar__btn--active {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+}
+
+.gl-map-toolbar__btn--active:hover {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+    transform: scale(1.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* État actif atténué — recherche appliquée mais barre fermée */
+.gl-map-toolbar__btn--active-muted {
+    background: transparent;
+    color: var(--gl-color-accent, #2563eb);
+    opacity: 0.55;
+}
+
+.gl-map-toolbar__btn--active-muted:hover {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+    opacity: 1;
+    transform: scale(1.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.gl-map-toolbar__btn svg {
+    width: 22px;
+    height: 22px;
+}
+
+/* ========================================================================== */
+/* Mode plein écran : seuls le bouton sortie et la géoloc restent visibles     */
+/* ========================================================================== */
+
+/* Masquer tous les boutons sauf fullscreen-exit, geoloc et poi-add */
+.gl-map-toolbar--fullscreen
+    .gl-map-toolbar__btn:not([data-gl-toolbar-action="fullscreen"]):not(
+        [data-gl-sheet="geoloc"]
+    ):not([data-gl-toolbar-action="poi-add"]):not([data-gl-sheet="poi-add"]) {
+    display: none !important;
+}
+
+/* Masquer le groupe filtre en entier */
+.gl-map-toolbar--fullscreen .gl-map-toolbar__group {
+    display: none !important;
+}
+
+/* Les boutons nav n'ont pas d'utilité en plein écran (2 icônes = pas d'overflow) */
+.gl-map-toolbar--fullscreen ~ .gl-map-toolbar__nav,
+.gl-map-toolbar-wrapper:has(.gl-map-toolbar--fullscreen) .gl-map-toolbar__nav {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+.gl-map-toolbar__reset {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--gl-color-text-muted);
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.15s ease;
+}
+
+.gl-map-toolbar__group.gl-has-active-filters .gl-map-toolbar__reset {
+    display: flex;
+}
+
+.gl-map-toolbar__reset:hover {
+    background: var(--gl-color-bg-surface-muted);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+}
+
+.gl-map-toolbar__reset svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ========================================================================== */
+/* Overlay + Bottom sheet réutilisable                                        */
+/* ========================================================================== */
+
+.gl-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity 0.25s ease,
+        visibility 0.25s ease;
+}
+
+.gl-sheet-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.gl-sheet-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    z-index: 2001;
+    background: var(--gl-color-bg-surface);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(100%);
+    transition: transform 0.3s ease-out;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.gl-sheet-overlay.open .gl-sheet-panel {
+    transform: translateY(0);
+}
+
+.gl-sheet-panel__header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface);
+}
+
+.gl-sheet-panel__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gl-color-text-main);
+}
+
+.gl-sheet-panel__close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.gl-sheet-panel__close:hover {
+    background: var(--gl-color-bg-surface-muted);
+}
+
+.gl-sheet-panel__close:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring);
+    outline-offset: 2px;
+}
+
+.gl-sheet-panel__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+}
+
+/* Phase 3 : contenu des sheets.
+   NOTE (S6) — les règles « ce que telle capacité devient une fois injectée dans le sheet »
+   (thèmes → theme-selector, filtres → filter) sont parties chez elles. Le kernel fournit le
+   SHEET ; chaque capacité dit comment elle s'y loge. Le layer-manager reste ici : c'est un
+   module built-in, pas une capacité. */
+
+.gl-sheet-panel__body .gl-layer-manager {
+    display: flex !important;
+    flex-direction: column !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+}
+
+/* Masquer le bouton collapse du gestionnaire de couches (inutile dans le sheet) */
+.gl-sheet-panel__body .gl-layer-manager .gl-layer-manager__toggle {
+    display: none !important;
+}
+
+/* Wrapper interne : hauteur auto, pas de max-height bloquant */
+.gl-sheet-panel__body .gl-layer-manager .gl-layer-manager__main-wrapper {
+    max-height: none !important;
+    overflow-y: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    min-width: 0 !important;
+}

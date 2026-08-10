@@ -1,0 +1,197 @@
+# Docs partagés MPI — jonction NTFS à la racine (source hors-repo, @-importée par CLAUDE.md, jamais commitée)
+_docs_communs/
+
+# Dépendances Node
+node_modules/
+
+# Builds temporaires
+.cache/
+.parcel-cache/
+
+# Dossiers systèmes / éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+*.code-workspace
+
+# Python virtual environment
+.venv/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Build final
+dist/
+
+# Sortie du build VitePress — artefact, jamais commité. T4.4 l'a sortie de `packages/` :
+# le glob workspace `packages/*` la captait, et `scripts/lib/packages.cjs` ne faisait que
+# la TOLÉRER (répertoire sans manifeste). Produite par
+# `packages/core/docs/.vitepress/config.ts#outDir`, lue par `scripts/deploy-docs.cjs`.
+#
+# Ancrée, contrairement à `dist/` qui est volontairement non ancré (chaque paquet en a un) :
+# cet artefact vit à exactement un endroit, et une règle non ancrée masquerait un futur
+# `packages/<x>/docs-dist/` au lieu de le laisser rougir au check 5.
+/docs-dist/
+
+# Doc de référence GÉNÉRÉE (T4.1) — régénérable à la demande par `npm run docs:deploy` :
+# step 1 `typedoc --options typedoc.json` (out = docs/api), step 2 recopie api/ →
+# public/api/, step 2b y dépose le logo. `docs/public/` est généré à 100 % (api/ + logo.png) ;
+# le reste de `packages/core/docs/` est RÉDIGÉ (`.md` + .vitepress/) et reste suivi.
+#
+# ⚠️ Motifs ANCRÉS, délibérément pas `**/docs/api/`. Un motif générique avalerait la
+# fixture de `probe-gate-visibility.cjs` (packages/plugins/__probe__/docs/api/) et
+# rendrait le check 5 de verify-repo-hygiene INSONDABLE — vert sans plus rien prouver.
+# C'est la gate qui rend l'ancrage sûr : si le core se déplace, ces règles cessent de
+# matcher, les artefacts reparaissent dans `git ls-files --others` et le check 5 rougit,
+# au lieu de se taire. Le générique paraît plus robuste ; il est ce qui aveuglerait.
+packages/core/docs/api/
+packages/core/docs/public/
+
+# Tests et coverage — T6.2 : les rapports de run vivent sous `artifacts/`, un seul
+# endroit au lieu de quatre entrées de racine. Ancré (`/`) délibérément : l'artefact
+# naît à exactement UN endroit, et une règle non ancrée masquerait un futur
+# `packages/x/artifacts/` au lieu de le laisser rougir au check 5b de l'hygiène.
+/artifacts/
+#
+# ⚠️ `coverage/` RESTE, et sans slash initial : le motif couvre ainsi les 17
+# `packages/*/coverage`, que T6.2 ne déplace PAS — c'est `packages/core/coverage/` que
+# `ci.yml:136-141` uploade. Seule la racine a bougé.
+coverage/
+# ⚠️ `test-results.json` est le FICHIER du reporter Vitest (ci.yml:112, lu par
+# check-test-failures.cjs:20) — homonyme du répertoire `test-results/` de Playwright,
+# qui lui a déménagé sous `artifacts/`. Les deux étaient ignorés, un seul a disparu.
+test-results.json
+playwright-results.json
+# `.nyc_output/` reste à la racine : c'est la DONNÉE brute (l'entrant), pas un rapport.
+# `e2e/helpers/coverage.js:7` l'écrit par un chemin en dur, et `verify-e2e-coverage.cjs`
+# la lit là. Seul son RAPPORT (`coverage-e2e`) a bougé sous `artifacts/`.
+.nyc_output/
+
+# Artefacts coverage / logs de run
+coverage-output.txt
+*coverage-output.txt
+vitest_cov_run.txt
+*_cov_run.txt
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Deployment output
+deploy/
+
+# Turborepo cache
+.turbo/
+
+# Connector dev bootstrap (JWT local — jamais commité ; gabarit = connector.local.example.js)
+# T2 — suit l'application vers apps/geoleaf-app/. L'ancien chemin reste ignoré : il
+# ne coûte rien et couvre un worktree encore sur un commit antérieur au déplacement.
+apps/geoleaf-app/connector.local.js
+packages/core/connector.local.js
+
+# Claude Code harness — fichiers d'état runtime (jamais commités)
+.claude/*.lock
+# T6.5 — `settings.local.json` était le SEUL fichier TRACÉ-ET-IGNORÉ du dépôt (commité
+# en fa48acfd, 17,9 Ko, portant un chemin absolu et un nom de distro WSL). Et il n'était
+# ignoré QUE par le gitignore GLOBAL de la machine (`~/.config/git/ignore`) : le dépôt
+# n'en disait rien. Sur tout autre poste il n'était donc pas ignoré du tout et salissait
+# `git status` à chaque session. Le désindexer sans poser la règle ICI aurait déplacé le
+# défaut au lieu de le fermer.
+# ⚠️ Geste de DÉPÔT (`git rm --cached`), pas de disque : le fichier reste en place.
+.claude/settings.local.json
+# S5 (10/08/2026) — `settings.json` avait le même défaut que son voisin, et il était,
+# lui, ignoré NULLE PART : il nommait un chemin absolu de poste et une distro WSL dans un
+# fichier suivi, à la veille d'ouvrir le dépôt. Même geste, même motif, même avertissement :
+# `git rm --cached`, le fichier reste sur le disque et le harnais continue de le lire.
+# ⚠️ La première rédaction de ce commentaire CITAIT les deux motifs en clair — elle
+# réintroduisait dans un fichier suivi exactement ce qu'elle disait retirer. Un commentaire
+# de retrait ne nomme pas ce qu'il retire.
+.claude/settings.json
+
+# Python bytecode (scripts ponctuels locaux)
+__pycache__/
+*.pyc
+*.pyo
+
+# Throwaway / scripts one-shot (toujours dans _archive_local/ — jamais dans scripts/ ni racine)
+tmp_*
+scratch_*
+_archive_local/
+
+# Répertoires de travail des gates (T5.4). Deux producteurs, deux profondeurs :
+#   • `scripts/verify-coverage-attribution.cjs:47` → `.tmp-coverage-probe/` (racine)
+#   • `scripts/typecheck-docs-examples.cjs:106`    → `packages/core/.tmp-docs-typecheck/`
+# Les deux nettoient par `process.on("exit")`, qui couvre le `process.exit()` de leurs
+# gardes mais PAS un SIGKILL ni un crash natif. Le résidu était alors non suivi ET non
+# ignoré — état que le check 5b de `verify-repo-hygiene` (T4.1) fait rougir. Une gate
+# mise au rouge par le cadavre d'une autre gate n'apprend rien à personne.
+#
+# ⚠️ Motif NON ancré, à l'inverse délibéré des `packages/core/docs/api/` ci-dessus, et
+# pour la raison inverse : ces répertoires vivent à deux profondeurs, dont une DANS un
+# package, et un troisième producteur choisirait la sienne. Ce qui est ancré ici, c'est
+# le préfixe `.tmp-` — assez distinctif pour ne rien avaler (0 fichier tracé le porte).
+.tmp-*/
+
+# Sorties brutes des outils d'audit (régénérables — seuls les rapports .md d'audit sont versionnés)
+_docs_projet/travail/audits/*.json
+_docs_projet/travail/audits/*.txt
+_docs_projet/travail/audits/jscpd-raw/
+
+# Rapport GÉNÉRÉ par `check-config-consumers.cjs` (chemin de sortie codé en dur, :47-53).
+# Il n'est pas rédigé : il réapparaît à chaque run de la gate. Il a été archivé une fois
+# (`_docs_projet/archives/rapport_consommateurs-config-s5.md`, instantané du 26/06) — geste
+# sans effet, puisque le générateur le réécrit ici au run suivant. L'instantané archivé
+# reste comme enregistrement historique ; la sortie courante n'est pas versionnée.
+_docs_projet/travail/rapports/rapport_consommateurs-config-s5.md
+
+# Flux de données alternatif NTFS « Zone.Identifier » — écrit par Windows sur tout fichier
+# téléchargé, et visible depuis WSL comme un fichier frère `<nom>:Zone.Identifier`. Il ne
+# contient que le marqueur de provenance ; aucun contenu du projet.
+# ⚠️ Il n'échoue AUCUNE gate — `verify-repo-hygiene.cjs` ne scanne que les modules et les
+# artefacts —, donc rien ne l'aurait signalé : il serait entré au dépôt au premier
+# `git add -A`. C'est le motif de cette ligne, pas la propreté du `git status`.
+*:Zone.Identifier
+
+# ─── Appareil INTERNE — la frontière de ce dépôt (S9, 10/08/2026) ────────────
+#
+# Ce dépôt est né d'un clone du monorepo de travail, amputé de son appareil
+# interne : 39 fichiers, soit `_docs_projet/` (25), `.claude/` (12), `CLAUDE.md`
+# et `.github/copilot-instructions.md`. La liste n'a pas été recopiée d'un
+# document : elle a été DÉRIVÉE le jour du geste. Le compte hérité de la
+# préparation annonçait 22 ; il y en avait 25 — les trois d'écart étant
+# exactement ceux qu'un arbitrage de la veille avait fait changer de côté.
+# Un compte faible de trois est un compte qui laisse passer trois fichiers.
+#
+# ⚠️ Ces règles ne retirent rien : elles empêchent la RÉINTRODUCTION. Le retrait
+# est acquis par construction, ce dépôt naissant d'un commit unique qui n'a
+# jamais porté ces fichiers. Sans ces lignes, le premier `git add -A` lancé
+# depuis une copie de travail qui porte encore l'appareil les ferait entrer, et
+# rien — aucune gate, aucun test — ne le signalerait.
+#
+# ⚠️ Trois motifs sur quatre sont NON ancrés, délibérément, à l'inverse de
+# `/docs-dist/` et `/artifacts/` plus haut. Le critère n'est pas le même : ces
+# deux-là sont des artefacts dont un déplacement DOIT rougir au check 5 de
+# l'hygiène, et c'est l'ancrage qui le garantit. Ici il n'y a aucune gate en
+# aval — un document interne qui réapparaît ne fait rougir personne —, et
+# `CLAUDE.md` est de surcroît lu par son harnais dans N'IMPORTE QUEL
+# sous-répertoire : un motif ancré laisserait passer `packages/core/CLAUDE.md`,
+# c'est-à-dire la forme la plus probable de la réintroduction. Mesuré en posant
+# la règle : 0 autre `CLAUDE.md`, 0 autre `_docs_projet`, 0 autre `.claude` dans
+# l'arbre — le générique n'avale rien. Le quatrième motif, lui, est ancré par sa
+# seule barre oblique, et ça suffit : ce fichier n'est lu qu'à la racine.
+_docs_projet/
+CLAUDE.md
+.claude/
+.github/copilot-instructions.md
+#
+# ⚠️ Les trois règles `.claude/…` et les quatre `_docs_projet/…` écrites plus haut
+# sont désormais SUBSUMÉES par les motifs de bloc ci-dessus. Elles sont laissées
+# en place et non fusionnées : elles décrivent l'hygiène PROPRE de ces deux
+# répertoires — état runtime du harnais, sorties d'audit régénérables, rapport
+# généré par une gate —, qui reste vraie là où ces répertoires continuent de
+# vivre. Une règle redondante coûte une ligne ; une règle supprimée parce qu'on
+# la croyait sans objet coûte le jour où l'objet revient.

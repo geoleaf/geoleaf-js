@@ -1,0 +1,238 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/profile",
+    "title": "GeoLeaf Profile",
+    "description": "profile.json — core profile metadata and configuration. UI, basemaps, search and table config live in separate files referenced via the Files section. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA): additionalProperties:false on fixed-shape objects, _comment* tolerated. modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
+    "type": "object",
+    "required": ["id"],
+    "additionalProperties": false,
+    "patternProperties": {
+        "^_comment": {}
+    },
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string",
+            "description": "Unique profile identifier. Must match the directory name."
+        },
+        "label": {
+            "type": "string",
+            "description": "Human-readable profile label."
+        },
+        "displayLabel": {
+            "type": "string",
+            "description": "Short label shown in the profile switcher (capability `profile-switcher`). Optional — falls back to `label`, then to the profile id. Kept separate from `label` because the latter is descriptive ('Réseau ferroviaire France') where a selector needs to be terse ('France Rail')."
+        },
+        "icon": {
+            "type": "string",
+            "description": "Emoji shown before the label in the profile switcher. Optional — absent renders the label alone."
+        },
+        "description": {
+            "type": "string",
+            "description": "Profile description."
+        },
+        "version": {
+            "type": "string",
+            "description": "Profile version (SemVer).",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "Files": {
+            "type": "object",
+            "description": "Relative paths to companion config files loaded at startup (profile layout v2: config/core/*.json + config/plugins/<moduleId>.json).",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "themesFile": {
+                    "type": "string",
+                    "description": "Path to the themes file (layout v2: config/core/themes.json)."
+                },
+                "layersFile": {
+                    "type": "string",
+                    "description": "Path to the layers registry (layout v2: config/core/layers.json)."
+                },
+                "basemapsFile": {
+                    "type": "string",
+                    "description": "Path to the basemaps file (layout v2: config/core/basemaps.json)."
+                },
+                "uiFile": {
+                    "type": "string",
+                    "description": "Path to the UI config file (layout v2: config/core/ui.json)."
+                },
+                "featuresFile": {
+                    "type": "string",
+                    "description": "Path to the core features file (mapOptions…) — spread at the merged profile root (layout v2: config/core/features.json)."
+                },
+                "mappingFile": {
+                    "type": "string",
+                    "description": "Path to the POI data normalization mapping (multi-source named blocks — layout v2: config/core/mapping.json). Consumed by ConfigNormalizer for layers declaring data.mapping."
+                },
+                "modules": {
+                    "type": "object",
+                    "description": "Module id -> plugin config file path (layout v2: config/plugins/<moduleId>.json). Each file content is merged into modules.<id> (Plugin Contract v1, INV-CONFIG).",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "map": {
+            "type": "object",
+            "description": "Map view configuration.",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "bounds": {
+                    "type": "array",
+                    "description": "Geographic bounds [[south, west], [north, east]].",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                },
+                "center": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "minItems": 2,
+                    "maxItems": 2
+                },
+                "zoom": {
+                    "type": "number"
+                },
+                "maxZoom": {
+                    "type": "number"
+                },
+                "minZoom": {
+                    "type": "number"
+                },
+                "initialMaxZoom": {
+                    "type": "number",
+                    "description": "Alias for maxZoom (legacy)."
+                },
+                "padding": {
+                    "description": "Map padding — array [vertical, horizontal] or object {top, right, bottom, left}.",
+                    "oneOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            },
+                            "minItems": 2,
+                            "maxItems": 4
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "patternProperties": {
+                                "^_comment": {}
+                            },
+                            "properties": {
+                                "top": {
+                                    "type": "number"
+                                },
+                                "right": {
+                                    "type": "number"
+                                },
+                                "bottom": {
+                                    "type": "number"
+                                },
+                                "left": {
+                                    "type": "number"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "positionFixed": {
+                    "type": "boolean"
+                },
+                "boundsMargin": {
+                    "type": "number"
+                },
+                "maxPitch": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 85,
+                    "description": "Maximum map pitch in degrees (0-85). MapLibre default: 60."
+                }
+            }
+        },
+        "modules": {
+            "type": "object",
+            "description": "Per-plugin configuration blocks, keyed by module id (Plugin Contract v1, INV-CONFIG). The keys inside each block are owned and validated by the plugin, not by the core — each block stays additionalProperties:true on purpose.",
+            "additionalProperties": {
+                "type": "object"
+            },
+            "properties": {
+                "offline": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "In-core offline capability (S14 Phase B) — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema)."
+                },
+                "geocoding": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/geocoding — keys validated by the plugin, not the core."
+                },
+                "print": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/print — keys validated by the plugin, not the core."
+                },
+                "measure": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/measure — keys validated by the plugin, not the core."
+                },
+                "editor": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/editor — keys validated by the plugin, not the core."
+                },
+                "cog": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/cog — keys validated by the plugin, not the core."
+                },
+                "fileImport": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/file-import — keys validated by the plugin, not the core."
+                },
+                "flatgeobuf": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/flatgeobuf — keys validated by the plugin, not the core."
+                },
+                "realtimeLayer": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/realtime-layer — keys validated by the plugin, not the core."
+                },
+                "websocket": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/websocket — keys validated by the plugin, not the core."
+                },
+                "connector": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/connector — keys validated by the plugin, not the core."
+                }
+            }
+        }
+    }
+}

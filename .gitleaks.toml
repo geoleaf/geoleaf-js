@@ -1,0 +1,115 @@
+# GeoLeaf — configuration gitleaks. Lue par les DEUX côtés de la gate « Secret scan » :
+# l'action `gitleaks/gitleaks-action` de `ci.yml` et `scripts/gitleaks-local.cjs`, qui
+# lance le MÊME binaire (v8.24.3) par Docker. Les deux la trouvent au même endroit — la
+# racine du dépôt — donc il n'y a rien à synchroniser à la main.
+#
+# ## 🛑 `useDefault` — la ligne dont l'absence rendrait ce fichier DANGEREUX
+#
+# Un `.gitleaks.toml` **REMPLACE** le jeu de règles par défaut. Écrire les quatre motifs
+# maison ci-dessous sans `[extend] useDefault = true` désactiverait d'un coup ~150
+# détections de VRAIS secrets (clés AWS, jetons GitHub, clés privées…) : la gate serait
+# sortie verte en ne gardant plus que quatre chaînes, sur la roadmap qui ouvre le dépôt au
+# public. C'est le mode d'échec le plus coûteux imaginable ici — une gate qui rétrécit sans
+# rien dire. Éprouvé par mutation le 10/08/2026 : `[extend]` retiré, une clé AWS de test
+# n'est PLUS détectée ; `[extend]` remis, elle l'est de nouveau.
+#
+# ## Ce que les quatre règles maison sont, et ce qu'elles ne sont pas
+#
+# Elles ne ferment aucune fuite : les valeurs qu'elles nomment ne sont pas des secrets.
+# L'IP du VPS **résout déjà publiquement** (`geoleaf.dev` y pointe), l'hôte du backend de
+# preuve est un sous-domaine public qui ne répond que derrière un fichier `hosts` de poste,
+# et un nom de distro n'identifie personne. Ce sont des **cliquets d'hygiène** : le Sprint 5
+# a retiré ces motifs des fichiers suivis, et sans règle le nettoyage resterait un
+# instantané au lieu d'être une propriété. Elles servent à faire rougir la RÉINTRODUCTION.
+#
+# ⚠️ Conséquence directe : leurs listes d'exemption nomment les endroits où ces motifs
+# vivent LÉGITIMEMENT aujourd'hui. Sans elles, la gate serait rouge en permanence sur du
+# code juste — et une gate durablement rouge se fait désarmer, ce qui coûterait les ~150
+# règles par défaut avec elle.
+#
+# ⚠️ `_docs_projet/` et `CLAUDE.md` sont exemptés de TOUTES les règles maison : ce sont les
+# documents internes, qui sortent du périmètre public au Sprint 6 puis à la tâche 9.4. Ils
+# portent l'historique de ces motifs — le décrire est leur travail. Le jour où ils quittent
+# le dépôt public, ces exemptions deviennent sans objet et doivent être RETIRÉES, pas
+# oubliées : c'est ce qui rendrait les règles pleinement mordantes.
+#
+# ## Une propriété à connaître avant de modifier ce fichier
+#
+# Il est immunisé contre ses propres règles **par construction, pas par exemption** : chaque
+# point littéral est échappé (`qgis\.geoleaf\.dev`), donc le texte du motif ne se matche pas
+# lui-même. L'exemption `.gitleaks.toml` posée sur chaque règle est une seconde ceinture,
+# utile le jour où quelqu'un écrira un motif sans échappement.
+
+title = "GeoLeaf — règles par défaut + motifs maison (Sprint 5, passage public)"
+
+[extend]
+# 🛑 NE JAMAIS RETIRER — voir l'en-tête. Sans cette ligne, les ~150 règles par défaut
+# disparaissent et la gate ne garde plus que les quatre motifs ci-dessous.
+useDefault = true
+
+# ── ① Hôte du backend de preuve ────────────────────────────────────────────────────────
+[[rules]]
+id = "geoleaf-dev-backend-host"
+description = "Hôte du backend de preuve (dev) écrit en dur — utiliser GEOLEAF_DEV_BACKEND_HOST"
+regex = '''qgis\.geoleaf\.dev'''
+tags = ["geoleaf", "hygiene", "infra-dev"]
+
+[rules.allowlist]
+description = "Les domiciles légitimes de cet hôte, chacun pour un motif nommé"
+paths = [
+    # LE DÉTECTEUR — `DEV_BACKEND_HOSTS`, la liste sur laquelle `build-deploy.cjs` retire
+    # les liaisons de dev des livrables (gaté DNS-05). Le repointer ferait sortir DNS-05
+    # VERTE en ne retirant plus rien.
+    '''^scripts/lib/dev-backend\.cjs$''',
+    # LA CIBLE de ce filtre — la repointer la ferait SORTIR du filtre, donc partir dans
+    # `deploy-core` et `deploy-full`, les deux livrables client.
+    '''^profiles/tourism/layers/sites_rosario/sites_rosario_config\.json$''',
+    # Les suites qui visent ce backend DÉLIBÉRÉMENT.
+    '''^e2e/.*\.spec\.js$''',
+    '''^packages/core/__tests__/storage/sw-core-data-origins\.test\.ts$''',
+    # Les scripts qui documentent ou vérifient le retrait — ils doivent nommer ce qu'ils
+    # retirent pour être lisibles.
+    '''^scripts/build-deploy\.cjs$''',
+    '''^scripts/verify-deploy-no-secrets\.cjs$''',
+    '''^scripts/verify-repo-hygiene\.cjs$''',
+    # Documents internes (sortent du périmètre public au S6 / 9.4) + ce fichier.
+    '''^_docs_projet/''',
+    '''^CLAUDE\.md$''',
+    '''^\.gitleaks\.toml$''',
+]
+
+# ── ② IP du VPS ────────────────────────────────────────────────────────────────────────
+[[rules]]
+id = "geoleaf-vps-ip"
+description = "IP du VPS écrite en dur — déjà publique par DNS, mais elle n'a rien à faire dans le code"
+regex = '''51\.178\.54\.138'''
+tags = ["geoleaf", "hygiene", "infra"]
+
+[rules.allowlist]
+description = "Seuls les documents internes la portent, et ils la quittent au S6 / 9.4"
+paths = ['''^_docs_projet/''', '''^CLAUDE\.md$''', '''^\.gitleaks\.toml$''']
+
+# ── ③ Chemin de poste Windows issu d'un export QGIS ────────────────────────────────────
+[[rules]]
+id = "geoleaf-windows-datas-path"
+description = "Chemin absolu du poste de production de données (résidu d'export QGIS)"
+# Les DEUX formes : barre oblique et antislash — dont l'antislash DOUBLÉ, tel qu'il apparaît
+# dans un littéral JSON. La tâche 5.1 a mesuré que la recette de contrôle de la roadmap,
+# écrite sur la seule forme à barres obliques, était aveugle à 52 des 531 chemins absolus.
+regex = '''[A-Za-z]:[\\/]{1,2}DATAS'''
+tags = ["geoleaf", "hygiene", "poste"]
+
+[rules.allowlist]
+description = "Documents internes uniquement — les 844 propriétés `path` des profils sont retirées"
+paths = ['''^_docs_projet/''', '''^CLAUDE\.md$''', '''^\.gitleaks\.toml$''']
+
+# ── ④ Nom de distro WSL en dur ─────────────────────────────────────────────────────────
+[[rules]]
+id = "geoleaf-wsl-distro"
+description = "Nom de distro WSL en dur — le trampoline de .husky/pre-commit lit GEOLEAF_WSL_DISTRO"
+regex = '''Ubuntu-24\.04'''
+tags = ["geoleaf", "hygiene", "poste"]
+
+[rules.allowlist]
+description = "Documents internes uniquement — les 36 occurrences du hook sont paramétrées"
+paths = ['''^_docs_projet/''', '''^CLAUDE\.md$''', '''^\.gitleaks\.toml$''']

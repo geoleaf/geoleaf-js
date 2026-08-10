@@ -1,0 +1,52 @@
+{
+  "type": "FeatureCollection",
+  "name": "secteurs_eclairage",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "SEC-001", "nom": "Secteur Nord", "communes": "Saint-Denis, Sainte-Marie, Sainte-Suzanne", "nb_candelabres": 5842, "nb_armoires": 48, "puissance_kw": 584.2, "responsable": "Direction Nord" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [55.3800, -20.8200], [55.6200, -20.8200],
+        [55.6200, -20.9600], [55.3800, -20.9600],
+        [55.3800, -20.8200]
+      ]]}
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "SEC-002", "nom": "Secteur Est", "communes": "Saint-André, Saint-Benoît, Sainte-Anne, Sainte-Rose", "nb_candelabres": 4210, "nb_armoires": 36, "puissance_kw": 421.0, "responsable": "Direction Est" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [55.6200, -20.8800], [55.8300, -20.8800],
+        [55.8300, -21.1800], [55.6200, -21.1800],
+        [55.6200, -20.8800]
+      ]]}
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "SEC-003", "nom": "Secteur Sud", "communes": "Saint-Pierre, Saint-Louis, Saint-Joseph, Le Tampon", "nb_candelabres": 6380, "nb_armoires": 55, "puissance_kw": 638.0, "responsable": "Direction Sud" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [55.3500, -21.1800], [55.7000, -21.1800],
+        [55.7000, -21.4500], [55.3500, -21.4500],
+        [55.3500, -21.1800]
+      ]]}
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "SEC-004", "nom": "Secteur Ouest", "communes": "Saint-Paul, Saint-Leu, Les Trois-Bassins", "nb_candelabres": 4950, "nb_armoires": 42, "puissance_kw": 495.0, "responsable": "Direction Ouest" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [55.2000, -20.9000], [55.3800, -20.9000],
+        [55.3800, -21.2000], [55.2000, -21.2000],
+        [55.2000, -20.9000]
+      ]]}
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "SEC-005", "nom": "Secteur Hauts", "communes": "Cilaos, Salazie, La Montagne, Les Makes", "nb_candelabres": 1240, "nb_armoires": 18, "puissance_kw": 124.0, "responsable": "Direction Hauts" },
+      "geometry": { "type": "Polygon", "coordinates": [[
+        [55.3800, -20.9600], [55.6200, -20.9600],
+        [55.6200, -21.1800], [55.3800, -21.1800],
+        [55.3800, -20.9600]
+      ]]}
+    }
+  ]
+}

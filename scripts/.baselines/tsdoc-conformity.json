@@ -1,0 +1,6 @@
+{
+    "_comment": "TSDOC-CONFORMITY — dette gelée. Ne peut que RÉTRÉCIR (TSD-04). Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
+    "_generated": "scripts/check-tsdoc-conformity.cjs --update-baseline",
+    "count": 0,
+    "entries": []
+}

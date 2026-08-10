@@ -1,0 +1,64 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf — Profile switcher (capability `profile-switcher`).
+ *
+ * The data-profile selector sits between the layer manager's header wrapper and its
+ * body wrapper — a band of its own, above every section.
+ *
+ * Styling deliberately mirrors `.gl-layer-manager__style-select` (the per-layer style
+ * selector): the two are the only <select>s of the panel, and a visitor should read
+ * them as the same kind of control. Tokens carry their own fallbacks so the band stays
+ * legible even if a palette omits one.
+ */
+
+    .gl-profile-switcher {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+        background: var(--gl-color-bg-surface-muted, rgba(0, 0, 0, 0.04));
+    }
+
+    .gl-profile-switcher__select {
+        flex: 1;
+        min-width: 0;
+        max-width: 100%;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 5px 20px 5px 8px;
+        border: 1px solid var(--gl-color-border-soft, rgba(255, 255, 255, 0.15));
+        border-radius: 4px;
+        background-color: var(--gl-color-bg-surface, rgba(0, 0, 0, 0.3));
+        color: var(--gl-color-text-main, #fff);
+        cursor: pointer;
+        transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        /* Chevron drawn as a data URI: no extra request, and no dependency on an icon
+       font that a strict CSP might block. */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23888' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+    }
+
+    .gl-profile-switcher__select:hover {
+        border-color: var(--gl-color-accent, #f97316);
+    }
+
+    .gl-profile-switcher__select:focus-visible {
+        outline: 2px solid var(--gl-color-accent, #f97316);
+        outline-offset: 1px;
+    }
+
+    /* The option list is painted by the OS, which ignores most of the parent's styling
+     — set the pair explicitly so dark mode does not render dark-on-dark. */
+    .gl-profile-switcher__select option {
+        background: var(--gl-color-bg-surface, #2b2b2b);
+        color: var(--gl-color-text-main, #fff);
+    }
+}

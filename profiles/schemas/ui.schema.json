@@ -1,0 +1,56 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/ui",
+    "title": "GeoLeaf UI Config",
+    "description": "ui.json — UI controls, search/filter panel, layer manager and scale configuration. The data table panel config moved to modules.table (plugin-table, extraction roadmap table S4). The theme selector flag moved to modules.theme-selector (in-core capability, extraction roadmap theme-selector S8/F3). The legend config (showLegend + legendConfig) moved to modules.legend (in-core capability, extraction roadmap legend S10/F2). The share button flag (showShareButton) moved to modules.permalink.share (sub-feature of the in-core permalink capability, extraction roadmap share S12 → permalink S13/F7). Hardened in Sprint S1 (PRF-SCHEMA). The real search section key is `searchConfig` (the previous `search` was a never-matched ghost — corrected here). Filter items stay permissive (polymorphic by type).",
+    "type": "object",
+    "additionalProperties": false,
+    "patternProperties": { "^_comment": {} },
+    "properties": {
+        "$schema": { "type": "string" },
+        "ui": {
+            "type": "object",
+            "description": "UI control visibility flags and global settings.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "theme": { "type": "string", "enum": ["light", "dark", "auto"] },
+                "language": { "type": "string" },
+                "showBaseLayerControls": { "type": "boolean" },
+                "showLayerManager": { "type": "boolean" },
+                "showCacheButton": { "type": "boolean" },
+                "showCredentialButton": { "type": "boolean" },
+                "showEditor": { "type": "boolean" },
+                "interactiveShapes": {
+                    "type": "boolean",
+                    "description": "Make GeoJSON shapes / accuracy circle interactive (clickable). Default false. Read by the GeoJSON style resolver, geolocation accuracy layer and route layers."
+                }
+            }
+        },
+        "layerManagerConfig": {
+            "type": "object",
+            "description": "Layer manager panel configuration.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "title": { "type": "string" },
+                "collapsedByDefault": { "type": "boolean" },
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["id"],
+                        "additionalProperties": false,
+                        "patternProperties": { "^_comment": {} },
+                        "properties": {
+                            "id": { "type": "string" },
+                            "label": { "type": "string" },
+                            "order": { "type": "number" },
+                            "collapsedByDefault": { "type": "boolean" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

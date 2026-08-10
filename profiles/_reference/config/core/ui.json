@@ -1,0 +1,30 @@
+{
+    "_comment": "B3 ui.json — exhaustive: every SCHEMA-VALID ui key is present so the 'reference fixture resolves end-to-end' tests exercise the whole family at once. The 2 code-only keys (ui.interactiveShapes / ui.scaleType) are DELIBERATELY ABSENT — ui.schema.json has additionalProperties:false, so including them would fail validate-profiles. They are read by live code but unreachable via the contract (ANO-036/037, locked in s11-ui-anomalies-lock.test.js). Several values are picked distinct from code defaults (theme:dark, permalink.mode:query, positions:topright) so per-value tests can distinguish a real read from a default fallback. The table panel config moved to modules.table (config/plugins/table.json) — extraction roadmap table S4. The filter/search panel config moved to modules.filter (config/plugins/filter.json) — capacité in-core filter S5. The legend config (showLegend + legendConfig) moved to modules.legend (config/plugins/legend.json) — capacité in-core legend S10/F2. The share button flag (showShareButton) moved to modules.permalink.share — sub-feature of the in-core permalink capability (share S12 → permalink S13/F7).",
+    "ui": {
+        "theme": "dark",
+        "language": "fr",
+        "showBaseLayerControls": true,
+        "showLayerManager": true,
+        "showCacheButton": true,
+        "showCredentialButton": true,
+        "showEditor": true
+    },
+    "layerManagerConfig": {
+        "title": "Couches",
+        "collapsedByDefault": true,
+        "sections": [
+            {
+                "id": "data-secondary",
+                "label": "Données secondaires",
+                "order": 2,
+                "collapsedByDefault": true
+            },
+            {
+                "id": "data-primary",
+                "label": "Données principales",
+                "order": 1,
+                "collapsedByDefault": false
+            }
+        ]
+    }
+}

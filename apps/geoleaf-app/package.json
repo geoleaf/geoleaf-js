@@ -1,0 +1,7 @@
+{
+    "name": "@geoleaf/app",
+    "version": "3.0.0",
+    "private": true,
+    "license": "MIT",
+    "description": "GeoLeaf — application web déployable. Source unique des 3 variantes de deploy/ ; assemblée par scripts/build-deploy.cjs, jamais publiée sur npm."
+}

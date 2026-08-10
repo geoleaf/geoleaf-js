@@ -1,0 +1,45 @@
+{
+    "_comment": "Reference fixture profile (config-contract Phase C, sprint S10). TEST-ONLY: never deployed (build-deploy.cjs skips _-prefixed dirs) and not listed in geoleaf.config.json. Exhaustive on families B1 (root/profile) and B2 (features). Other families (ui, basemaps, themes, taxonomy, layers) are enriched in sprints S11->S15. Must conform to the hardened schemas (validate-profiles gate).",
+    "id": "_reference",
+    "label": "Profil de référence (fixture de test)",
+    "description": "Profil-fixture exhaustif des paramètres de configuration — source unique des tests Phase C et du futur tableau HTML de référence (S16).",
+    "version": "1.0.0",
+    "map": {
+        "_comment": "B1 map.* — exhaustive: bounds AND center+zoom coexist (loader prefers bounds); padding uses the object form here, the array form is exercised via inline mutation in s10-root-map.test.js. `center` and `bounds` are BOTH [lat, lng] (map/index.ts:59 _centerFromArray) — center sits inside bounds, as the reference profile must show.",
+        "bounds": [
+            [43, 1],
+            [44, 2]
+        ],
+        "center": [43.5, 1.5],
+        "zoom": 8,
+        "minZoom": 4,
+        "maxZoom": 18,
+        "initialMaxZoom": 10,
+        "padding": {
+            "top": 60,
+            "right": 40,
+            "bottom": 60,
+            "left": 40
+        },
+        "positionFixed": true,
+        "boundsMargin": 0.5
+    },
+    "Files": {
+        "_comment": "S10->S13: featuresFile (B2) + uiFile (B3) implicit + layersFile (B5, S13). taxonomy/themes/basemaps are added as core files for S12/C3. validate-profiles tolerates absent referenced companions; the per-family fixture files live under config/core/ and layers/.",
+        "featuresFile": "config/core/features.json",
+        "layersFile": "config/core/layers.json",
+        "modules": {
+            "offline": "config/plugins/offline.json",
+            "geocoding": "config/plugins/geocoding.json",
+            "table": "config/plugins/table.json",
+            "theme-selector": "config/plugins/theme-selector.json",
+            "legend": "config/plugins/legend.json",
+            "taxonomy": "config/plugins/taxonomy.json",
+            "feature-info": "config/plugins/feature-info.json",
+            "cluster": "config/plugins/cluster.json",
+            "filter": "config/plugins/filter.json",
+            "toast-renderer": "config/plugins/toast-renderer.json",
+            "route": "config/plugins/route.json"
+        }
+    }
+}

@@ -1,0 +1,289 @@
+{
+    "name": "@geoleaf/core",
+    "version": "3.0.0",
+    "description": "GeoLeaf — Modular JavaScript mapping library built on MapLibre GL JS. v2.0: WebGL rendering, native vector tiles, GPU clustering. Features: Security (XSS protection), Performance (WebGL pipeline), Typed Errors, Validators, and comprehensive TypeScript support.",
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/core"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
+    "type": "module",
+    "main": "dist/geoleaf.esm.js",
+    "module": "dist/geoleaf.esm.js",
+    "unpkg": "dist/geoleaf.esm.js",
+    "jsdelivr": "dist/geoleaf.esm.js",
+    "types": "dist/types/bundle-esm-entry.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/bundle-esm-entry.d.ts",
+            "import": "./dist/esm/bundle-esm-entry.js",
+            "default": "./dist/esm/bundle-esm-entry.js"
+        },
+        "./kernel": {
+            "types": "./dist/types/kernel-exports.d.ts",
+            "import": "./dist/esm/kernel-exports.js",
+            "default": "./dist/esm/kernel-exports.js"
+        },
+        "./globals": {
+            "types": "./dist/types/globals/globals.d.ts",
+            "import": "./dist/esm/globals/globals.js",
+            "default": "./dist/esm/globals/globals.js"
+        },
+        "./helpers": {
+            "types": "./dist/types/app/app-namespace.d.ts",
+            "import": "./dist/esm/app/app-namespace.js",
+            "default": "./dist/esm/app/app-namespace.js"
+        },
+        "./boot": {
+            "types": "./dist/types/app/boot-install.d.ts",
+            "import": "./dist/esm/app/boot-install.js",
+            "default": "./dist/esm/app/boot-install.js"
+        },
+        "./kernel/config/profile-layers.js": {
+            "types": "./dist/types/kernel/config/profile-layers.d.ts",
+            "import": "./dist/esm/kernel/config/profile-layers.js",
+            "default": "./dist/esm/kernel/config/profile-layers.js"
+        },
+        "./kernel/config/layer-geometry.js": {
+            "types": "./dist/types/kernel/config/layer-geometry.d.ts",
+            "import": "./dist/esm/kernel/config/layer-geometry.js",
+            "default": "./dist/esm/kernel/config/layer-geometry.js"
+        },
+        "./capabilities/*.js": {
+            "types": "./dist/types/capabilities/*.d.ts",
+            "import": "./dist/esm/capabilities/*.js",
+            "default": "./dist/esm/capabilities/*.js"
+        },
+        "./capabilities/*": {
+            "types": "./dist/types/capabilities/*.d.ts",
+            "import": "./dist/esm/capabilities/*.js",
+            "default": "./dist/esm/capabilities/*.js"
+        },
+        "./facades/branding.js": {
+            "types": "./dist/types/api/geoleaf.branding.d.ts",
+            "import": "./dist/esm/api/geoleaf.branding.js",
+            "default": "./dist/esm/api/geoleaf.branding.js"
+        },
+        "./facades/cluster.js": {
+            "types": "./dist/types/api/geoleaf.cluster.d.ts",
+            "import": "./dist/esm/api/geoleaf.cluster.js",
+            "default": "./dist/esm/api/geoleaf.cluster.js"
+        },
+        "./facades/coordinates.js": {
+            "types": "./dist/types/api/geoleaf.coordinates.d.ts",
+            "import": "./dist/esm/api/geoleaf.coordinates.js",
+            "default": "./dist/esm/api/geoleaf.coordinates.js"
+        },
+        "./facades/featureinfo.js": {
+            "types": "./dist/types/api/geoleaf.featureinfo.d.ts",
+            "import": "./dist/esm/api/geoleaf.featureinfo.js",
+            "default": "./dist/esm/api/geoleaf.featureinfo.js"
+        },
+        "./facades/filter.js": {
+            "types": "./dist/types/api/geoleaf.filter.d.ts",
+            "import": "./dist/esm/api/geoleaf.filter.js",
+            "default": "./dist/esm/api/geoleaf.filter.js"
+        },
+        "./facades/geolocation.js": {
+            "types": "./dist/types/api/geoleaf.geolocation.d.ts",
+            "import": "./dist/esm/api/geoleaf.geolocation.js",
+            "default": "./dist/esm/api/geoleaf.geolocation.js"
+        },
+        "./facades/labels.js": {
+            "types": "./dist/types/api/geoleaf.labels.d.ts",
+            "import": "./dist/esm/api/geoleaf.labels.js",
+            "default": "./dist/esm/api/geoleaf.labels.js"
+        },
+        "./facades/layers.js": {
+            "types": "./dist/types/api/geoleaf.layers.d.ts",
+            "import": "./dist/esm/api/geoleaf.layers.js",
+            "default": "./dist/esm/api/geoleaf.layers.js"
+        },
+        "./facades/legend.js": {
+            "types": "./dist/types/api/geoleaf.legend.d.ts",
+            "import": "./dist/esm/api/geoleaf.legend.js",
+            "default": "./dist/esm/api/geoleaf.legend.js"
+        },
+        "./facades/permalink.js": {
+            "types": "./dist/types/api/geoleaf.permalink.d.ts",
+            "import": "./dist/esm/api/geoleaf.permalink.js",
+            "default": "./dist/esm/api/geoleaf.permalink.js"
+        },
+        "./facades/scale.js": {
+            "types": "./dist/types/api/geoleaf.scale.d.ts",
+            "import": "./dist/esm/api/geoleaf.scale.js",
+            "default": "./dist/esm/api/geoleaf.scale.js"
+        },
+        "./facades/share.js": {
+            "types": "./dist/types/api/geoleaf.share.d.ts",
+            "import": "./dist/esm/api/geoleaf.share.js",
+            "default": "./dist/esm/api/geoleaf.share.js"
+        },
+        "./facades/sync.js": {
+            "types": "./dist/types/api/geoleaf.sync.d.ts",
+            "import": "./dist/esm/api/geoleaf.sync.js",
+            "default": "./dist/esm/api/geoleaf.sync.js"
+        },
+        "./facades/taxonomy.js": {
+            "types": "./dist/types/api/geoleaf.taxonomy.d.ts",
+            "import": "./dist/esm/api/geoleaf.taxonomy.js",
+            "default": "./dist/esm/api/geoleaf.taxonomy.js"
+        },
+        "./facades/theme-toggle.js": {
+            "types": "./dist/types/api/geoleaf.theme-toggle.d.ts",
+            "import": "./dist/esm/api/geoleaf.theme-toggle.js",
+            "default": "./dist/esm/api/geoleaf.theme-toggle.js"
+        },
+        "./presets/apply-preset.js": {
+            "types": "./dist/types/presets/apply-preset.d.ts",
+            "import": "./dist/esm/presets/apply-preset.js",
+            "default": "./dist/esm/presets/apply-preset.js"
+        },
+        "./presets/manifest.full.js": {
+            "types": "./dist/types/presets/manifest.full.d.ts",
+            "import": "./dist/esm/presets/manifest.full.js",
+            "default": "./dist/esm/presets/manifest.full.js"
+        },
+        "./contracts/preset.contract.js": {
+            "types": "./dist/types/contracts/preset.contract.d.ts"
+        },
+        "./contracts/core-module.contract.js": {
+            "types": "./dist/types/contracts/core-module.contract.d.ts"
+        },
+        "./contracts/capability.contract.js": {
+            "types": "./dist/types/contracts/capability.contract.d.ts"
+        },
+        "./contracts/config.contract.js": {
+            "types": "./dist/types/contracts/config.contract.d.ts"
+        },
+        "./contracts/map-adapter.contract.js": {
+            "types": "./dist/types/contracts/map-adapter.contract.d.ts"
+        },
+        "./contracts/layer-data.contract.js": {
+            "types": "./dist/types/contracts/layer-data.contract.d.ts"
+        },
+        "./contracts/event-bus.contract.js": {
+            "types": "./dist/types/contracts/event-bus.contract.d.ts"
+        },
+        "./contracts/sync.contract.js": {
+            "types": "./dist/types/contracts/sync.contract.d.ts"
+        },
+        "./style.css": "./dist/geoleaf-main.min.css",
+        "./package.json": "./package.json"
+    },
+    "sideEffects": [
+        "dist/geoleaf.esm.js",
+        "dist/esm/bundle-esm-entry.js",
+        "dist/esm/app/boot.js",
+        "dist/esm/app/app-namespace.js",
+        "dist/esm/globals/globals.js",
+        "dist/esm/globals/globals.*.js",
+        "dist/esm/kernel/config/geoleaf-config/config-accessors.js",
+        "dist/esm/kernel/config/geoleaf-config/config-loaders.js",
+        "dist/esm/kernel/config/geoleaf-config/config-validation.js",
+        "dist/esm/utils/performance/runtime-metrics.js",
+        "dist/esm/kernel/themes/theme-applier/deferred.js",
+        "dist/esm/kernel/themes/theme-applier/ui-sync.js",
+        "dist/esm/kernel/themes/theme-applier/visibility.js",
+        "**/*.css"
+    ],
+    "scripts": {
+        "build": "rimraf dist && rollup -c && rollup -c rollup.consumer.mjs && tsc -p tsconfig.declarations.json && node ../../scripts/emit-ambient-types.cjs",
+        "build:watch": "rollup -c -w",
+        "typecheck:consumer": "tsc -p examples/consumer/tsconfig.json",
+        "clean": "rimraf dist",
+        "test": "vitest run --coverage",
+        "test:smoke": "node ../../scripts/smoke-test.cjs",
+        "test:coverage": "vitest run --coverage",
+        "test:ci": "vitest run --coverage",
+        "test:bundle": "vitest run --config vitest.bundle.config.ts",
+        "test:vitest": "vitest run",
+        "test:vitest:coverage": "vitest run --coverage",
+        "format": "prettier --write \"src/**/*.{ts,js}\" \"*.{json,md}\"",
+        "build:all": "npm run clean && npm run build",
+        "typecheck": "tsc --noEmit",
+        "docs:api": "typedoc --options typedoc.json",
+        "docs:dev": "vitepress dev docs",
+        "docs:build": "vitepress build docs",
+        "docs:preview": "vitepress preview docs",
+        "prepublishOnly": "npm run build"
+    },
+    "peerDependencies": {
+        "maplibre-gl": "^6.0.0"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@rollup/plugin-commonjs": "^29.0.0",
+        "@rollup/plugin-node-resolve": "^16.0.3",
+        "@rollup/plugin-replace": "^6.0.3",
+        "@rollup/plugin-typescript": "^12.3.0",
+        "@types/geojson": "^7946.0.16",
+        "@types/node": "^22.19.20",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "ajv": "^8.18.0",
+        "eslint": "^10.4.1",
+        "eslint-plugin-security": "^4.0.0",
+        "fake-indexeddb": "^6.2.5",
+        "happy-dom": "^20.9.0",
+        "postcss": "^8.5.6",
+        "postcss-import": "^16.1.1",
+        "prettier": "^3.2.5",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "rollup-plugin-istanbul": "^5.0.0",
+        "rollup-plugin-postcss": "^4.0.2",
+        "rollup-plugin-visualizer": "^7.0.1",
+        "tslib": "^2.8.1",
+        "tsx": "^4.21.0",
+        "typedoc": "^0.28.19",
+        "typescript": "^6.0.3",
+        "vitepress": "^1.6.4",
+        "vitest": "^4.1.8"
+    },
+    "files": [
+        "dist/",
+        "!dist/stats.html",
+        "!dist/**/*.js.map",
+        "README.md",
+        "docs/",
+        "!docs/api/",
+        "!docs/public/",
+        "LICENSE"
+    ],
+    "keywords": [
+        "maplibre",
+        "maplibre-gl",
+        "webgl",
+        "map",
+        "mapping",
+        "gis",
+        "geospatial",
+        "vector-tiles",
+        "mvt",
+        "pmtiles",
+        "frontend",
+        "geoleaf",
+        "geojson",
+        "gpx",
+        "security",
+        "xss-protection",
+        "typescript",
+        "performance"
+    ],
+    "license": "MIT",
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    },
+    "dependencies": {
+        "qrcode-generator": "^2.0.4"
+    }
+}

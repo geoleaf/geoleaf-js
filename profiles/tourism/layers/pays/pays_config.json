@@ -1,0 +1,40 @@
+{
+    "id": "pays",
+    "label": "Pays",
+    "zIndex": 40,
+    "interactiveShape": false,
+    "geometry": "polyline",
+    "data": {
+        "directory": "data",
+        "file": "pays.geojson",
+        "vectorTiles": {
+            "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+            "enabled": false,
+            "tilesDirectory": "tiles",
+            "layerName": "pays",
+            "minZoom": 0,
+            "maxNativeZoom": 12,
+            "maxZoom": 18,
+            "interactive": true
+        }
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": false
+    },
+    "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    }
+}

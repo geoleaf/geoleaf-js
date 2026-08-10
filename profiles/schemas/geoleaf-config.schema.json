@@ -1,0 +1,58 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/geoleaf-config",
+    "title": "GeoLeaf Root Config",
+    "description": "geoleaf.config.json — root configuration file loaded at application startup. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA). modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
+    "type": "object",
+    "additionalProperties": false,
+    "patternProperties": { "^_comment": {} },
+    "properties": {
+        "$schema": { "type": "string" },
+        "debug": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable verbose debug logging and cache-bust (?t=timestamp) on config requests."
+        },
+        "data": {
+            "type": "object",
+            "description": "Profile and data configuration.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "activeProfile": {
+                    "type": "string",
+                    "description": "Name of the active profile to load (must match a directory in profiles/)."
+                },
+                "profilesBasePath": {
+                    "type": "string",
+                    "default": "profiles",
+                    "description": "Base path to the profiles directory."
+                },
+                "enableProfilePoiMapping": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable POI data normalization via mapping.json."
+                }
+            }
+        },
+        "logging": {
+            "type": "object",
+            "description": "Logging verbosity.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "level": {
+                    "type": "string",
+                    "enum": ["debug", "info", "warn", "error", "production"],
+                    "default": "info",
+                    "description": "Minimum log level displayed in console."
+                }
+            }
+        },
+        "modules": {
+            "type": "object",
+            "description": "Per-plugin configuration blocks, keyed by module id (Plugin Contract v1, INV-CONFIG). Usually declared in the profile — see profile.schema.json for the known module ids.",
+            "additionalProperties": { "type": "object" }
+        }
+    }
+}

@@ -1,0 +1,68 @@
+{
+    "name": "@geoleaf-plugins/file-import",
+    "version": "1.0.3",
+    "type": "module",
+    "license": "MIT",
+    "description": "GeoLeaf File Import Plugin — Convert and import GPX, KML, KMZ, CSV, TopoJSON files as GeoJSON layers",
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/file-import"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
+    "bundleSize": "~96 KB raw / ~26 KB gzip (separate from core — no impact on core budget)",
+    "main": "dist/geoleaf-file-import.plugin.js",
+    "module": "dist/geoleaf-file-import.plugin.js",
+    "types": "dist/types/entry.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/entry.d.ts",
+            "import": "./dist/geoleaf-file-import.plugin.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/",
+        "src/",
+        "LICENSE"
+    ],
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@geoleaf/core": "^3.0.0",
+        "@types/geojson": "^7946.0.16",
+        "@tmcw/togeojson": "^7.0.0",
+        "fflate": "^0.8.2",
+        "papaparse": "^5.4.1",
+        "topojson-client": "^3.1.0"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@geoleaf/host-runtime": "*",
+        "@types/papaparse": "^5.3.14",
+        "@types/topojson-client": "^3.1.4",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    }
+}

@@ -1,0 +1,193 @@
+@layer gl.capabilities {
+    /* Theme CSS variables are provided by geoleaf-theme.css, loaded earlier in the
+   geoleaf-main.css cascade (no self-import — matches feature-info/toast-renderer). */
+
+    /* ==========================================================================
+   GeoLeaf.Branding — branding line displayed at the bottom of the map
+   ==========================================================================
+   - Root container : .gl-branding
+   - Content        : .gl-branding__content
+
+   ⚠️ This file owns the LAYOUT of `.maplibregl-ctrl-bottom-left`, a container it
+   SHARES with legend, scale and coordinates. Anything added here affects them.
+
+   ⚠️ `!important`: 34 → 2 (B.3). The old count was justified in this very header by
+   "they arbitrate between GeoLeaf capabilities" — which was FALSE for this container.
+   Measured: no other capability declares on it (`scale.css` only mentions it in prose,
+   `coordinates.css` uses it as an ancestor). MapLibre declares `{pointer-events;
+   position;z-index}` then `{bottom:0;left:0}` on it, and `{float;margin}` on its
+   `.maplibregl-ctrl` DESCENDANTS — a class no child here carries: GeoLeaf controls are
+   added unwrapped (`maplibre-adapter.ts:585-590`) and MapLibre's own attribution control
+   is disabled (`maplibre-adapter.ts:139`). So 32 of the 34 fought nothing.
+
+   The margin cluster had to come out as ONE set, not declaration by declaration: the
+   filter-panel shift (l.93) beat `margin:0` only through `!important`, and cancelling it
+   on mobile depended on the same. With all of them normal, specificity decides, and the
+   six live cases were checked by hand: closed/open × desktop/mobile, plus the coordinates
+   readout, whose own rule (1,3,1) outranks `> *` (0,1,0) on its own.
+   ========================================================================== */
+
+    /* =======================================================================
+   1. Root container
+   ======================================================================= */
+
+    .gl-branding {
+        /* The control is inserted into the container designated by `position`. */
+        font-family:
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+        font-size: 0.6rem;
+        color: var(--gl-color-text-muted);
+        pointer-events: auto;
+        margin: 0;
+        padding: 0;
+        transition: margin-left 160ms ease-out;
+    }
+
+    /* Drop the bottom-left container's own spacing and lay it out as a grid. */
+    .maplibregl-ctrl-bottom-left {
+        margin: 0;
+        padding: 0 0 6px 0;
+        /* The only two `!important` left, and they are not decoration: MapLibre declares
+       `{bottom:0;left:0}` on this same selector from an UNLAYERED stylesheet, and an
+       unlayered normal declaration beats a layered one whatever the specificity. Same
+       values, so dropping these would be invisible today — and would hand the position
+       of our own container to a vendor default. Pinned on purpose. */
+        left: 0 !important;
+        bottom: 0 !important;
+        display: grid;
+        grid-template-columns: auto auto;
+        grid-template-rows: auto auto;
+        gap: 6px;
+        transition: margin-left 160ms ease-out;
+        align-items: start;
+        pointer-events: none;
+    }
+
+    /* Legend spans the full width, on the top row. */
+    .maplibregl-ctrl-bottom-left > .gl-map-legend {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    /* Branding sits bottom-left. */
+    .maplibregl-ctrl-bottom-left > .gl-branding {
+        grid-column: 1;
+        grid-row: 2;
+        margin: 0;
+        align-self: end;
+    }
+
+    /* S9 — three rules placing the scale control were removed here: they targeted
+   `> .geoleaf-ctrl:has(.gl-scale-main-wrapper)` and could never match. The scale
+   is added to the map UNWRAPPED (`scale-control.ts:134` passes `_mainWrapper`
+   straight to `addControl`, and `maplibre-adapter.ts:585-590` returns it as-is
+   without adding any class), so `.gl-scale-main-wrapper` is a DIRECT child of
+   this container — never a descendant of a `.geoleaf-ctrl`, a class only
+   theme-toggle.ts:69 and geolocation.ts:329 ever set. The scale's position has
+   therefore always come from grid auto-placement, not from those rules. They
+   were deleted rather than repaired on purpose: fixing the selector would have
+   MOVED the scale (to column 2 / row 2), a visual change nobody asked for. */
+
+    /* Keep every control on one line. */
+    .maplibregl-ctrl-bottom-left > * {
+        margin: 0;
+        flex-shrink: 0;
+        pointer-events: none;
+    }
+
+    /* Shift right while the filter panel is open.
+   This used to need `!important` because `margin: 0 !important` above targeted the same
+   element and important beats normal whatever the specificity — which is how the rule
+   silently did nothing until S9. Both are normal now, and this selector (1,2,1) simply
+   outranks `.maplibregl-ctrl-bottom-left` (0,1,0). The mobile cancel below wins on source
+   order at equal specificity. Do not re-add `!important` to one without the others. */
+    body:has(#gl-filter-panel.gl-is-open) .maplibregl-ctrl-bottom-left {
+        margin-left: 320px;
+    }
+
+    /* =======================================================================
+   2. Branding content
+   ======================================================================= */
+
+    .gl-branding__content {
+        background: var(--gl-color-legend-bg);
+        color: var(--gl-color-text-muted);
+        border-radius: 0;
+        padding: 3px 10px;
+        margin: 0;
+        border: 1px solid var(--gl-color-legend-border);
+        border-left: none;
+        border-bottom: none;
+        box-shadow: var(--gl-shadow-soft);
+        text-align: left;
+        font-weight: 300;
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        opacity: 0.75;
+        transition: opacity 120ms ease;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        font-size: 0.6rem;
+    }
+
+    .gl-branding__content:hover {
+        opacity: 0.95;
+    }
+
+    /* =======================================================================
+   3. Responsive
+   ======================================================================= */
+
+    @media (max-width: 768px) {
+        .gl-branding {
+            font-size: 0.6rem;
+        }
+
+        .gl-branding__content {
+            padding: 3px 6px;
+        }
+
+        /* Mobile layout: scale (GPS + scale) on row 1, branding on row 2. */
+        .maplibregl-ctrl-bottom-left {
+            grid-template-columns: auto;
+            grid-template-rows: auto auto;
+            gap: 2px;
+            margin-left: 0;
+            padding: 0 0 4px 0;
+        }
+
+        /* Cancel the filter-panel shift on mobile. */
+        body:has(#gl-filter-panel.gl-is-open) .maplibregl-ctrl-bottom-left {
+            margin-left: 0;
+        }
+
+        .maplibregl-ctrl-bottom-left > .gl-branding {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        /* Legend (when visible) takes the row above. */
+        .maplibregl-ctrl-bottom-left > .gl-map-legend {
+            grid-column: 1;
+            grid-row: 1;
+        }
+    }
+
+    /* =======================================================================
+   4. Dark / light mode (through the theme's CSS variables)
+   ======================================================================= */
+
+    /* The variables are defined in geoleaf-theme.css:
+   - --gl-color-legend-bg
+   - --gl-color-text-muted
+   - --gl-color-legend-border
+   - --gl-shadow-soft
+
+   The theme is applied at runtime through GeoLeaf.UI.applyTheme().
+*/
+}

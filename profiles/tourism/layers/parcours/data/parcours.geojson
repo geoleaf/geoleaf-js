@@ -1,0 +1,23 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "nom": "Parcours démo",
+                "type_parcours": "randonnee",
+                "difficulte": "moyen",
+                "distance_km": 4.2,
+                "description": "Entité d'exemple pour tester sélection / édition de sommets / suppression / undo-redo."
+            },
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [-60.66, -32.96],
+                    [-60.64, -32.945],
+                    [-60.62, -32.95]
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,50 @@
+{
+    "debug": false,
+    "data": {
+        "activeProfile": "tourism",
+        "profilesBasePath": "../profiles"
+    },
+    "modules": {
+        "profile-switcher": {
+            "_comment": "Data-profile selector at the top of the layer manager (in-core capability). enabled = master gate (opt-in). The list itself is NOT configured here: build-deploy.cjs harvests data.availableProfiles from every profiles/<id>/profile.json. The selector only renders when at least 2 profiles were harvested.",
+            "enabled": true
+        },
+        "language-switcher": {
+            "_comment": "UI language selector in the desktop tab strip and the mobile toolbar (in-core capability). enabled = master gate (opt-in). display: 'flag' (regional emoji) or 'code' (FR, EN…) when the platform does not draw flag emoji. languages: optional allow-list; empty offers the 6 compiled dictionaries.",
+            "enabled": true,
+            "display": "flag"
+        },
+        "theme-palette": {
+            "_comment": "Accent-colour palette (in-core capability). enabled = master gate for the SELECTOR BUTTON (opt-in); the `default` palette below applies either way — an integrator who fixes a brand colour sets enabled:false and keeps `default`. Do NOT confuse with modules.theme-selector (MAP themes) nor with the light/dark toggle.",
+            "enabled": true,
+            "default": "default",
+            "palettes": [
+                { "id": "default", "label": "Orange", "swatch": "#f97316" },
+                { "id": "green", "label": "Vert", "swatch": "#16a34a" },
+                { "id": "blue", "label": "Bleu", "swatch": "#2563eb" }
+            ]
+        },
+        "branding": {
+            "_comment": "Branding capability. Migrated from the former app-global root `branding` key. enabled = master gate (opt-in).",
+            "enabled": true,
+            "text": "Propulsé par © GeoLeaf with MapLibre - Données © OpenStreetMap contributors",
+            "position": "bottomleft"
+        },
+        "pwa": {
+            "_comment": "PWA capability (S14). enabled = master gate (service worker + install prompt). name/short_name/theme_color/background_color feed the deployed manifest.json (build-deploy.cjs).",
+            "enabled": true,
+            "name": "GeoLeaf",
+            "short_name": "GeoLeaf",
+            "description": "Cartographie interactive configurable",
+            "theme_color": "#2d6a4f",
+            "background_color": "#ffffff",
+            "installPrompt": {
+                "_comment": "ACTIVÉ le 02/08/2026 (B-113) — ce n'est pas un confort, c'est la condition de SURVIE du stockage hors-ligne sur une flotte MIXTE iOS + Android. Sur iOS, Safari purge le stockage scriptable après 7 jours d'inactivité pour un site absent de l'écran d'accueil : la feuille d'installation est le seul chemin qui l'évite. Sur Android, l'installation est le signal d'engagement le moins cher pour faire passer navigator.storage.persisted() de bestEffort à persistent — mesuré refusé en headless, accordé sur un Chrome réel. Le coût assumé est une bannière visible chez l'intégrateur ; repasser à false la retire ET rend le stockage évinçable.",
+                "enabled": true
+            },
+            "offlineDetector": {
+                "enabled": false
+            }
+        }
+    }
+}

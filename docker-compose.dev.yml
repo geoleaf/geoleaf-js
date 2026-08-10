@@ -1,0 +1,203 @@
+# Dev only — serves deploy/deploy-* via the shared Traefik proxy (network "web").
+# HTTPS with a locally-trusted mkcert cert (Traefik file provider:
+# infra/traefik/dynamic/geoleaf-tls.yml + dynamic/certs/geoleaf.local.test*.pem).
+# HTTPS is required for Service Workers (secure context); IndexedDB works on both.
+# Prereq:  npm run build:deploy:all   (produces the deploy-* subfolders)
+# Start:   npm run demo:up            (or: npm run demo  to build + start)
+# URLs (http auto-redirects to https):
+#          https://demo.geoleaf.local.test            (core)
+#          https://demo.full.geoleaf.local.test       (storage + cog + editor — édition + hors-ligne)
+#          https://demo.coverage.geoleaf.local.test   (instrumented core — `node scripts/build-deploy-coverage.cjs`)
+# These three hosts are the `nginx` target of e2e/helpers/base-url.js: with
+# E2E_TARGET=nginx the Playwright suite runs against them and starts NO server.
+#          https://demo.local.geoleaf.local.test      (POSTE DE TRAVAIL — `npm run build:deploy:local`)
+# ⚠️ Le 4ᵉ hôte n'est PAS une cible E2E, délibérément : c'est la seule variante qui embarque le
+# bootstrap dev `connector.local.js` (jeton `geoleaf_editor`), donc la seule depuis laquelle on
+# éprouve l'authentification contre le backend. Les variantes livrables reçoivent un talon
+# inerte — invariant tenu par `scripts/verify-deploy-no-secrets.cjs`. Ne jamais livrer
+# `deploy/deploy-local/`, et ne pas l'ajouter à `e2e/helpers/base-url.js` (motif écrit là-bas).
+# ⚠️ Il exige une entrée hosts Windows `127.0.0.1 demo.local.geoleaf.local.test` — les trois
+# autres l'ont déjà. Action côté Windows, impossible depuis WSL.
+#
+# ── GEOLEAF_DEV_BACKEND_HOST — le seul nom d'hôte que ce fichier ne porte PAS ────────────
+# Les trois routeurs du backend de preuve lisent cette variable, posée dans le `.env` de la
+# racine (git-ignoré, comme `GEOLEAF_PG_PASSWORD` et `GEOLEAF_JWT_SECRET` juste à côté).
+# Recette : `docker/backend/README.md`.
+# 🛑 La forme est `${…:?message}` et pas `${…:-défaut}`, et ce n'est pas un détail de style :
+# un défaut ré-écrirait l'hôte en clair ici — c'est-à-dire exactement ce que le retrait
+# cherchait à éviter — et une substitution NUE (`${…}`) rendrait une règle `Host` à hôte VIDE
+# sans un mot, c'est-à-dire un backend qui ne route plus, découvert au prochain appel du
+# navigateur et pas au démarrage de la pile.
+# La forme retenue fait ÉCHOUER `docker compose` au premier geste, en nommant la variable.
+services:
+  geoleaf-dev-nginx:
+    image: nginx:alpine
+    container_name: geoleaf-dev-nginx
+    volumes:
+      - ./deploy:/usr/share/nginx/sites:ro
+      # Mount the whole docker/ dir (not the single file): a single-file bind
+      # mount pins the original inode, so host edits need a full recreate; a
+      # directory mount makes `nginx -s reload` pick up edits live.
+      - ./docker:/etc/nginx/conf.d:ro
+    labels:
+      - "traefik.enable=true"
+      # shared middleware: redirect http -> https
+      - "traefik.http.middlewares.geoleaf-https.redirectscheme.scheme=https"
+      - "traefik.http.services.geoleaf-dev-nginx.loadbalancer.server.port=80"
+      # ── core ──
+      - "traefik.http.routers.geoleaf-core.rule=Host(`demo.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-core.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-core.tls=true"
+      - "traefik.http.routers.geoleaf-core.service=geoleaf-dev-nginx"
+      - "traefik.http.routers.geoleaf-core-web.rule=Host(`demo.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-core-web.entrypoints=web"
+      - "traefik.http.routers.geoleaf-core-web.middlewares=geoleaf-https"
+      - "traefik.http.routers.geoleaf-core-web.service=geoleaf-dev-nginx"
+      # ── full ──
+      - "traefik.http.routers.geoleaf-full.rule=Host(`demo.full.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-full.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-full.tls=true"
+      - "traefik.http.routers.geoleaf-full.service=geoleaf-dev-nginx"
+      - "traefik.http.routers.geoleaf-full-web.rule=Host(`demo.full.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-full-web.entrypoints=web"
+      - "traefik.http.routers.geoleaf-full-web.middlewares=geoleaf-https"
+      - "traefik.http.routers.geoleaf-full-web.service=geoleaf-dev-nginx"
+      # ── coverage ── (instrumented copy of core; E2E target `coverage`)
+      - "traefik.http.routers.geoleaf-coverage.rule=Host(`demo.coverage.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-coverage.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-coverage.tls=true"
+      - "traefik.http.routers.geoleaf-coverage.service=geoleaf-dev-nginx"
+      - "traefik.http.routers.geoleaf-coverage-web.rule=Host(`demo.coverage.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-coverage-web.entrypoints=web"
+      - "traefik.http.routers.geoleaf-coverage-web.middlewares=geoleaf-https"
+      - "traefik.http.routers.geoleaf-coverage-web.service=geoleaf-dev-nginx"
+      # ── local ── (POSTE DE TRAVAIL, jamais livré : la seule variante avec le bootstrap dev)
+      # ⚠️ Sans CES routeurs, le bloc `server` ajouté à docker/nginx.dev.conf ne sert à rien :
+      # Traefik n'achemine que ce que ses règles `Host()` nomment, et un hôte inconnu n'atteint
+      # jamais ce conteneur. Le vhost et le routeur vont par paire — l'un sans l'autre rend un
+      # 404 de Traefik, pas le 503 explicite qu'on a pris soin d'écrire côté nginx.
+      - "traefik.http.routers.geoleaf-local.rule=Host(`demo.local.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-local.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-local.tls=true"
+      - "traefik.http.routers.geoleaf-local.service=geoleaf-dev-nginx"
+      - "traefik.http.routers.geoleaf-local-web.rule=Host(`demo.local.geoleaf.local.test`)"
+      - "traefik.http.routers.geoleaf-local-web.entrypoints=web"
+      - "traefik.http.routers.geoleaf-local-web.middlewares=geoleaf-https"
+      - "traefik.http.routers.geoleaf-local-web.service=geoleaf-dev-nginx"
+    networks:
+      - web
+    restart: unless-stopped
+
+  # ── Proof backend (task 4.H) ────────────────────────────────────────────────
+  #
+  # The Sprint 4 proof criterion reads: coupure réseau → édition d'une entité
+  # RAPATRIÉE → rechargement → push → l'entité porte son identifiant serveur. Every
+  # verb in it needs a server. Until 4.H there was none: the backend host resolved
+  # to 127.0.0.1 with no router behind it (404), no PostgREST/pg_featureserv container
+  # ran, and `11-connector.spec.js` -- the only authenticated E2E -- mocked every
+  # response via `page.route()`. The repository had never talked to a real backend.
+  #
+  # TWO services, because the cycle has two ends and they speak different protocols:
+  #
+  #   geoleaf-featureserv  READ  — OGC API Features. `kernel/geojson/loader/
+  #                                ogc-api-loader.ts` already speaks it and needs no
+  #                                new transport code (contract point 6): `next`-link
+  #                                pagination, `bbox`, `limit`, `AbortSignal`.
+  #   geoleaf-postgrest    WRITE — the `collection` dialect the persistence adapters
+  #                                implement: POST {baseUrl}/{layerId} with a flat
+  #                                { ...properties, geom } body. That IS a PostgREST
+  #                                table endpoint, so no adapter changes either.
+  #
+  # ⚠️ Serving the READ from PostgREST too was tried and rejected: `ogc-api-loader`
+  # builds `?limit=&bbox=&offset=`, and PostgREST reads unknown query params as column
+  # filters -- `bbox` would 400 with "column bbox does not exist". Bending the loader
+  # to PostgREST's dialect would mean writing the transport code the contract says not
+  # to write.
+  #
+  # Both sit on `backend` (to reach shared-postgis-1) AND `web` (for Traefik). Path
+  # routing splits them on one hostname so `connector.local.js` keeps a single baseUrl.
+  geoleaf-postgrest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: geoleaf-postgrest
+    environment:
+      PGRST_DB_URI: postgres://geoleaf_auth:${GEOLEAF_PG_PASSWORD}@shared-postgis-1:5432/geoleaf
+      PGRST_DB_SCHEMAS: api
+      # The role a request gets when it carries NO token. It can only SELECT -- this is
+      # the SQL-side mirror of contract invariant S6 (pull never grants write).
+      PGRST_DB_ANON_ROLE: geoleaf_anon
+      PGRST_JWT_SECRET: ${GEOLEAF_JWT_SECRET}
+      PGRST_SERVER_PORT: 3000
+      # Returns the inserted row, hence the server id: that response IS the identity
+      # reconciliation of task 4.5.
+      PGRST_DB_PREPARED_STATEMENTS: "false"
+    depends_on:
+      - geoleaf-featureserv
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.geoleaf-postgrest.loadbalancer.server.port=3000"
+      # Strip nothing: PostgREST serves table names at the root, and the `collection`
+      # dialect posts to {baseUrl}/{layerId} — the shapes already line up.
+      - "traefik.http.routers.geoleaf-api.rule=Host(`${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}`)"
+      - "traefik.http.routers.geoleaf-api.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-api.tls=true"
+      - "traefik.http.routers.geoleaf-api.service=geoleaf-postgrest"
+      - "traefik.http.routers.geoleaf-api-web.rule=Host(`${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}`)"
+      - "traefik.http.routers.geoleaf-api-web.entrypoints=web"
+      - "traefik.http.routers.geoleaf-api-web.middlewares=geoleaf-https"
+      - "traefik.http.routers.geoleaf-api-web.service=geoleaf-postgrest"
+    networks:
+      - web
+      - backend
+    restart: unless-stopped
+
+  # 🛑 pygeoapi and NOT pg_featureserv, on a MEASURE rather than a preference.
+  # pg_featureserv 1.3.1 was stood up first and serves `bbox` and `limit` correctly, but
+  # emits NO `next` link in its JSON — verified on 27 rows at `limit=10`: `links` carried
+  # only `self` and `alternate`, `numberMatched` was absent. `_extractNextUrl()` drives
+  # the loader's pagination purely off `links[rel="next"]`, so against pg_featureserv the
+  # pull stops after page one AND REPORTS SUCCESS. One of the four mechanisms named in
+  # contract point 6 would have been unprovable while looking proven.
+  #
+  # ⚠️ `geoleaf_ogc` and not `geoleaf_auth`: an OGC server queries as its connection role
+  # and does not `SET ROLE` per request the way PostgREST does. Pointed at the NOINHERIT
+  # `geoleaf_auth`, pg_featureserv served `"collections": []` — which reads like a
+  # configuration miss and is really a privilege one.
+  geoleaf-featureserv:
+    image: geopython/pygeoapi:latest
+    container_name: geoleaf-featureserv
+    environment:
+      GEOLEAF_PG_PASSWORD: ${GEOLEAF_PG_PASSWORD}
+      # pygeoapi étend les `${…}` du fichier de config au chargement (`yaml_load`), donc
+      # `pygeoapi.config.yml` peut nommer l'hôte sans l'écrire — mais SEULEMENT si la
+      # variable entre dans le conteneur. Sans cette ligne, `os.path.expandvars` laisse le
+      # `${…}` tel quel et pygeoapi sert une base URL littérale, à l'octet près.
+      GEOLEAF_DEV_BACKEND_HOST: ${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}
+      PYGEOAPI_CONFIG: /pygeoapi/local.config.yml
+      PYGEOAPI_OPENAPI: /pygeoapi/local.openapi.yml
+    volumes:
+      - ./docker/backend/pygeoapi.config.yml:/pygeoapi/local.config.yml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.geoleaf-featureserv.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.geoleaf-ogc-strip.stripprefix.prefixes=/ogc"
+      - "traefik.http.routers.geoleaf-ogc.rule=Host(`${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}`) && PathPrefix(`/ogc`)"
+      - "traefik.http.routers.geoleaf-ogc.entrypoints=websecure"
+      - "traefik.http.routers.geoleaf-ogc.tls=true"
+      - "traefik.http.routers.geoleaf-ogc.middlewares=geoleaf-ogc-strip"
+      - "traefik.http.routers.geoleaf-ogc.service=geoleaf-featureserv"
+      # Higher priority than the PostgREST router, which matches the same Host with no
+      # path constraint. Traefik ranks by rule length so /ogc would already win, but an
+      # implicit win is one refactor away from an outage.
+      - "traefik.http.routers.geoleaf-ogc.priority=100"
+    networks:
+      - web
+      - backend
+    restart: unless-stopped
+
+networks:
+  web:
+    name: ${TRAEFIK_NETWORK:-web}
+    external: true
+  backend:
+    name: backend
+    external: true

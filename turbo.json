@@ -1,0 +1,169 @@
+{
+    "$schema": "https://turbo.build/schema.json",
+    // qualite Q3.1 (26/07/2026) — filet racine : les deux tsconfig partagés du socle
+    // (packages/build-config/) sont réellement lus par TOUS les tsconfig du dépôt (extends),
+    // qu'ils soient ou non listés dans les `inputs` d'une tâche donnée. Un durcissement de
+    // strict.tsconfig.base.json doit invalider le cache turbo QUELLE QUE SOIT la tâche — pas
+    // seulement celles dont quelqu'un a pensé à lister $TURBO_ROOT$/packages/build-config/**.
+    //
+    // ⚠️ `vitest.config.ts` RACINE ajouté le 01/08/2026. C'est le fichier que la CI lit
+    // LITTÉRALEMENT — `ci.yml` lance `npx vitest run` en mode `projects`, sans turbo. Il
+    // n'était listé dans les `inputs` d'aucune tâche : le modifier ne changeait pas un seul
+    // hash local, donc `npm test` restait en HIT sur un verdict antérieur pendant que la CI
+    // exécutait la nouvelle configuration. Un `globalDependencies` est le bon niveau : il
+    // n'appartient à aucun paquet, et il gouverne le périmètre de tous.
+    "globalDependencies": [
+        "packages/build-config/tsconfig.base.json",
+        "packages/build-config/tsconfig.package.json",
+        "vitest.config.ts"
+    ],
+    "tasks": {
+        "build": {
+            "dependsOn": ["^build"],
+            "outputs": ["dist/**", "examples/dist/**"],
+            "inputs": [
+                "src/**",
+                "examples/minimal/**",
+                "rollup.config.mjs",
+                "$TURBO_ROOT$/postcss.config.mjs",
+                "package.json",
+                "tsconfig.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "build:all": {
+            "dependsOn": ["^build"],
+            "outputs": ["dist/**", "examples/dist/**"],
+            "inputs": [
+                "src/**",
+                "examples/minimal/**",
+                "examples/consumer/**",
+                "rollup.config.mjs",
+                "rollup.consumer.mjs",
+                "$TURBO_ROOT$/postcss.config.mjs",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        // ⚠️ Cet override est né d'une COPIE PARTIELLE de la tâche `build` générique, et il en
+        // a perdu `tsconfig.json` (l.22 ci-dessus l'a, lui). Mesuré le 01/08/2026 : `touch
+        // packages/core/tsconfig.declarations.json` laissait `@geoleaf/core#build` en **cache
+        // HIT**, alors que le script du paquet lance `tsc -p tsconfig.declarations.json`.
+        //
+        // Conséquence : modifier la configuration de compilation des déclarations ne
+        // régénérait PAS `dist/**/*.d.ts` en local — `PUB-TYPES`, `typecheck:consumer` et
+        // `typecheck-docs-examples` jugeaient d'anciens `.d.ts` et sortaient verts. La CI,
+        // qui n'a aucun cache turbo, reconstruisait et jugeait les nouveaux. Vert local,
+        // rouge distant, pour un fichier que turbo ne regardait pas.
+        "@geoleaf/core#build": {
+            "dependsOn": ["^build", "@geoleaf/field-renderer#build"],
+            "outputs": ["dist/**", "examples/dist/**"],
+            "inputs": [
+                "src/**",
+                "examples/minimal/**",
+                "examples/consumer/**",
+                "rollup.config.mjs",
+                "rollup.consumer.mjs",
+                "$TURBO_ROOT$/postcss.config.mjs",
+                "package.json",
+                "tsconfig.json",
+                "tsconfig.declarations.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        // ⚠️ `test-utils/**` ajouté aux QUATRE tâches `test*` le 01/08/2026.
+        //
+        // `packages/plugins/websocket/test-utils/mock-transport.ts` est importé par 4 suites
+        // (`channel-manager`, `public-api`, `connection-manager`, `heartbeat-manager`) et
+        // n'était listé nulle part. Mesuré : `touch` sur ce fichier laissait
+        // `@geoleaf-plugins/websocket#test` en **cache HIT** — turbo rejouait un vert obtenu
+        // avant la modification du helper, pendant que la CI (aucun cache turbo, `npx vitest
+        // run` direct) exécutait le helper modifié.
+        //
+        // C'est la forme la plus coûteuse du défaut : `npm test` sort vert SANS AVOIR LANCÉ
+        // les tests concernés. Un trou d'`inputs` ne se voit pas — il se traduit en verdict
+        // rassurant. `test-utils/` n'est pas dans les `inputs` de `typecheck` en revanche, et
+        // c'est correct : le `tsconfig.json` de websocket ne l'inclut pas (`src/**/*.ts`).
+        "test": {
+            "dependsOn": ["build"],
+            "outputs": ["coverage/**"],
+            // B.48 — passThroughEnv et NON env : GEOLEAF_TEST_FANOUT dimensionne le pool de
+            // workers (cf. packages/build-config/vitest/worker-budget.mjs), il ne change pas
+            // le résultat des tests et ne doit donc pas invalider le cache. Sans cette
+            // déclaration, l'envMode strict de turbo 2 la filtrerait et chaque vitest
+            // retomberait sur son défaut non borné — silencieusement, ce qui est le défaut
+            // que B.48 corrige.
+            "passThroughEnv": ["GEOLEAF_TEST_FANOUT"],
+            "inputs": [
+                "src/**",
+                "__tests__/**",
+                "__mocks__/**",
+                "test-utils/**",
+                "vitest.config.ts",
+                "tsconfig.json",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "test:coverage": {
+            "dependsOn": ["build"],
+            "outputs": ["coverage/**"],
+            "passThroughEnv": ["GEOLEAF_TEST_FANOUT"],
+            "inputs": [
+                "src/**",
+                "__tests__/**",
+                "__mocks__/**",
+                "test-utils/**",
+                "vitest.config.ts",
+                "tsconfig.json",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "test:vitest": {
+            "dependsOn": ["build"],
+            "outputs": [],
+            "inputs": [
+                "src/**",
+                "__tests__/**",
+                "__mocks__/**",
+                "test-utils/**",
+                "vitest.config.ts",
+                "tsconfig.json",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "test:vitest:coverage": {
+            "dependsOn": ["build"],
+            "outputs": ["coverage/**"],
+            "inputs": [
+                "src/**",
+                "__tests__/**",
+                "__mocks__/**",
+                "test-utils/**",
+                "vitest.config.ts",
+                "tsconfig.json",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "typecheck": {
+            "dependsOn": ["^build"],
+            "outputs": [],
+            "inputs": [
+                "src/**/*.ts",
+                "tsconfig.json",
+                "package.json",
+                "$TURBO_ROOT$/packages/build-config/**"
+            ]
+        },
+        "//#verify:contract": {
+            "outputs": [],
+            "inputs": ["packages/**/src/**", "scripts/verify-plugin-contract.cjs"]
+        },
+        "clean": {
+            "cache": false
+        }
+    }
+}

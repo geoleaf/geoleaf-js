@@ -1,0 +1,7 @@
+{
+    "_comment": "S10/F2 — modules.legend (capacité in-core capabilities/legend). Migré depuis ui.showLegend + legendConfig. position:topright choisi distinct du défaut code (bottomleft) pour que les tests par-valeur distinguent une vraie lecture d'un fallback.",
+    "enabled": true,
+    "title": "Légende",
+    "collapsedByDefault": true,
+    "position": "topright"
+}

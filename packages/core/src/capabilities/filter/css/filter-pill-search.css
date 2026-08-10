@@ -1,0 +1,158 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf – Shared pill-shaped search input (.gl-pill-search)
+ * -----------------------------------------------------------
+ * Visual base for the POI textual filter in the filter panel.
+ *
+ * The base class carries the look (pill shape, padding, border,
+ * background, shadow). Positioning is left to consumer-specific
+ * classes.
+ */
+
+    /* ── Wrapper ─────────────────────────────────────────────────────────────── */
+
+    .gl-pill-search {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.45rem 0.35rem 1rem;
+        border-radius: 9999px;
+        background: var(--gl-color-bg-surface);
+        border: 1px solid var(--gl-color-border-soft);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+        box-sizing: border-box;
+    }
+
+    .gl-pill-search:focus-within {
+        box-shadow:
+            0 0 0 2px var(--gl-color-focus-ring),
+            0 2px 12px rgba(0, 0, 0, 0.18);
+    }
+
+    /* Active-search highlight when the input is not empty */
+    .gl-pill-search:has(.gl-pill-search__input:not(:placeholder-shown)) {
+        border-color: var(--gl-color-accent);
+        box-shadow:
+            0 0 0 2px var(--gl-color-accent-alpha),
+            0 2px 12px rgba(0, 0, 0, 0.18);
+    }
+
+    /* ── Input ───────────────────────────────────────────────────────────────── */
+
+    .gl-pill-search__input {
+        flex: 1 1 auto;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--gl-color-text-main);
+        font-size: 0.9rem;
+        line-height: 1.4;
+        padding: 0.2rem 0;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    .gl-pill-search__input::placeholder {
+        color: var(--gl-color-text-muted);
+        opacity: 0.7;
+    }
+
+    /* Remove native clear button on type=search (Chrome/Safari) */
+    .gl-pill-search__input::-webkit-search-cancel-button {
+        display: none;
+    }
+
+    /* ── Submit (magnifier) button ────────────────────────────────────────────── */
+
+    .gl-pill-search__submit {
+        flex-shrink: 0;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: var(--gl-color-accent, #2563eb);
+        color: #fff;
+        cursor: pointer;
+        transition:
+            background 0.15s ease,
+            transform 0.1s ease,
+            filter 0.15s ease;
+        touch-action: manipulation;
+        padding: 0;
+    }
+
+    .gl-pill-search__submit:hover {
+        filter: brightness(1.1);
+    }
+
+    .gl-pill-search__submit:active {
+        transform: scale(0.9);
+    }
+
+    .gl-pill-search__submit svg {
+        width: 18px;
+        height: 18px;
+        pointer-events: none;
+    }
+
+    /* ── Clear (×) button ────────────────────────────────────────────────────── */
+
+    .gl-pill-search__clear {
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--gl-color-text-muted, #94a3b8);
+        cursor: pointer;
+        transition:
+            color 0.15s ease,
+            background 0.15s ease,
+            transform 0.1s ease;
+        touch-action: manipulation;
+        padding: 0;
+    }
+
+    .gl-pill-search__clear:hover {
+        background: var(--gl-color-bg-surface-muted, #f1f5f9);
+        color: var(--gl-color-text-main, #1e293b);
+    }
+
+    .gl-pill-search__clear:active {
+        transform: scale(0.9);
+    }
+
+    .gl-pill-search__clear svg {
+        width: 16px;
+        height: 16px;
+        pointer-events: none;
+    }
+
+    /* Submit button is only useful on mobile (virtual keyboard needs explicit submit).
+   On desktop the search triggers automatically on input (debounce). */
+    @media (min-width: 769px) {
+        .gl-pill-search__submit {
+            display: none;
+        }
+    }
+
+    /* ── Reduced motion ──────────────────────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+        .gl-pill-search__submit,
+        .gl-pill-search__clear {
+            transition: none;
+        }
+        .gl-pill-search__submit:active,
+        .gl-pill-search__clear:active {
+            transform: none;
+        }
+    }
+}

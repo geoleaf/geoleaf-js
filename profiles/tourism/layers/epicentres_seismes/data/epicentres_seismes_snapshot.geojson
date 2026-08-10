@@ -1,0 +1,59 @@
+{
+    "type": "FeatureCollection",
+    "_comment": "Snapshot CDN fallback Sprint 2 roadmap catalogue-demos v1.0.0. Source : USGS earthquake.usgs.gov feed 2.5_week. Échantillon démonstratif 8 séismes représentatifs (mag 2.5–6.8) capturés 2026-04-21 00:00 UTC. Servi automatiquement par PollingSource.fallbackUrl quand l'URL primaire renvoie HTTP non-2xx ou erreur réseau.",
+    "metadata": {
+        "generated": "2026-04-21T00:00:00Z",
+        "title": "USGS Magnitude 2.5+ Earthquakes, Past Week (demo snapshot)",
+        "count": 8
+    },
+    "features": [
+        {
+            "type": "Feature",
+            "id": "us7000mxa1",
+            "properties": { "mag": 6.8, "place": "160 km SW of Iwo Jima, Japan", "time": 1713657600000, "depth": 10.0, "type": "earthquake", "status": "reviewed", "tsunami": 1 },
+            "geometry": { "type": "Point", "coordinates": [141.15, 23.90, 10.0] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa2",
+            "properties": { "mag": 5.4, "place": "Central Chile", "time": 1713654000000, "depth": 58.3, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [-70.85, -32.12, 58.3] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa3",
+            "properties": { "mag": 4.7, "place": "Aleutian Islands, Alaska", "time": 1713643200000, "depth": 42.1, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [-174.20, 51.85, 42.1] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa4",
+            "properties": { "mag": 3.9, "place": "Southern California", "time": 1713621600000, "depth": 8.2, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [-117.52, 34.10, 8.2] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa5",
+            "properties": { "mag": 5.1, "place": "Northern Sumatra, Indonesia", "time": 1713609000000, "depth": 22.5, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [97.30, 4.50, 22.5] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa6",
+            "properties": { "mag": 3.2, "place": "Central Italy", "time": 1713591000000, "depth": 12.0, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [13.22, 42.81, 12.0] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa7",
+            "properties": { "mag": 4.3, "place": "Crete, Greece", "time": 1713577200000, "depth": 35.7, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [25.12, 35.30, 35.7] }
+        },
+        {
+            "type": "Feature",
+            "id": "us7000mxa8",
+            "properties": { "mag": 2.8, "place": "Hawaii region, Hawaii", "time": 1713562800000, "depth": 6.4, "type": "earthquake", "status": "reviewed", "tsunami": 0 },
+            "geometry": { "type": "Point", "coordinates": [-155.28, 19.41, 6.4] }
+        }
+    ]
+}

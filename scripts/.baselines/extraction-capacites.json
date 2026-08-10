@@ -1,0 +1,71 @@
+{
+    "_comment": "Baseline figée S0 — référence non-régression pour la roadmap d'extraction des capacités. Re-mesurer (npm run size / count:any --json / dead-code / dup:check) à chaque clôture de sprint et comparer. NOTE: le bloc `lean` ci-dessous est un RELEVÉ HISTORIQUE — le build lite et son script `npm run size:lean` ont été supprimés (presets S4), la mesure n'est plus reproductible.",
+    "capturedAt": "2026-06-30",
+    "branch": "feature/capacites-extraction",
+    "sprint": "S0",
+    "boot": {
+        "cdnGz": 235.8,
+        "rawKb": 817.2,
+        "staticChunks": 9,
+        "budgetWarnGz": 270,
+        "budgetFailGz": 300,
+        "metric": "minified geoleaf.esm.js + transitive static-import closure (npm run size)"
+    },
+    "lean": {
+        "granularFullGz": 577.8,
+        "granularLiteGz": 480.5,
+        "deltaGz": 97.3,
+        "deltaPct": 16.8,
+        "metric": "HISTORIQUE (non reproductible) — différentiel relatif des clôtures eager granulaires full vs lite. Le build lite et `npm run size:lean` ont été supprimés en S4 (presets) : la dégraçabilité se mesure désormais sur l'entrée d'exemple (`npm run size:example`)."
+    },
+    "countAny": {
+        "totalSource": 134,
+        "core": 1,
+        "coreNote": "1 documented irreducible (kernel/shared storage-contract DB). ANY_HARDENED covers packages/core/src/**.",
+        "byPackage": {
+            "core": 1,
+            "field-renderer": 2,
+            "http-helpers": 0,
+            "plugin-addpoi": 26,
+            "plugin-cog": 0,
+            "plugin-connector": 0,
+            "plugin-editor": 15,
+            "plugin-file-import": 0,
+            "plugin-flatgeobuf": 4,
+            "plugin-geocoding": 0,
+            "plugin-measure": 57,
+            "plugin-print": 29,
+            "plugin-realtime-layer": 0,
+            "plugin-storage": 0,
+            "plugin-table": 0,
+            "plugin-websocket": 0
+        },
+        "futurePluginsNote": "The ~13 capabilities to extract (taxonomy, feature-info, cluster, labels, filter, search, toast-renderer, theme-selector, legend, route, share, permalink, prompt-pwa) are still inside core (which is 1-any). Each extraction must land at 0 any (cliquet ANY_HARDENED extended per plugin)."
+    },
+    "gates": {
+        "deadCode": "green (knip + lazy-orphan guard)",
+        "lazyOrphans": "green (10 chunks, all consumed; knip list in sync)",
+        "jscpd": "green (exit 0, under 3% threshold; 226 clones reported, informational)",
+        "testGarde": "green (geocoding, table — paths + tokens)"
+    },
+    "tests": {
+        "coreTestFiles": 416
+    },
+    "e2e": {
+        "specFiles": 28,
+        "deployVariants": ["core", "addpoi", "full"],
+        "note": "run navigateur/E2E = Mattieu (serveur HTTP interdit côté Claude)"
+    },
+    "lazyChunks": [
+        "basemap-selector",
+        "labels",
+        "layer-manager",
+        "legend",
+        "poi-core",
+        "poi-extras",
+        "poi-renderers",
+        "route",
+        "search",
+        "themes"
+    ]
+}

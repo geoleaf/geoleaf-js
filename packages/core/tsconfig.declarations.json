@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "emitDeclarationOnly": true,
+        "rootDir": "src"
+    },
+    // Only `src/` ships types. `examples/` is type-checked by tsconfig.json but must be
+    // excluded here — it lives outside `rootDir`, and its entry is a fixture, not an API.
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "examples", "__tests__"]
+}

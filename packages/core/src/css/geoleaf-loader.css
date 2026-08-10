@@ -1,0 +1,35 @@
+/* ======================================================================
+   GeoLeaf – Loader / Spinner
+   Plein écran, masqué automatiquement par GeoLeaf.boot() via geoleaf:map:ready
+   ====================================================================== */
+
+#gl-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gl-color-bg-page, #1a1a2e);
+}
+
+#gl-loader::after {
+    content: "";
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--gl-color-border-soft, rgba(255, 255, 255, 0.15));
+    border-top-color: var(--gl-color-accent, #4fc3f7);
+    border-radius: 50%;
+    animation: gl-spin 0.7s linear infinite;
+}
+
+@keyframes gl-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+#gl-loader.gl-loader--fade {
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}

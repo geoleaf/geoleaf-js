@@ -1,0 +1,445 @@
+/* ==========================================================================
+   GeoLeaf — Styles du panneau de gestion des couches
+   ==========================================================================
+   Piloté à 100 % par les variables du thème (geoleaf-theme.css)
+   - Conteneur principal : .gl-layer-manager
+   - Wrapper interne    : .gl-layer-manager__wrapper
+   - En-tête            : .gl-layer-manager__header
+   - Titre              : .gl-layer-manager__title
+   - Bouton toggle      : .gl-layer-manager__toggle
+   - Corps              : .gl-layer-manager__body
+   - Sections           : .gl-layer-manager__section
+   - Items              : .gl-layer-manager__item
+   ========================================================================== */
+
+/* =======================================================================
+   1. Conteneur principal
+   ======================================================================= */
+
+.gl-layer-manager {
+    /* Le contrôle est inséré dans le container bottomright par MapLibre */
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    font-size: 0.8rem;
+    color: var(--gl-color-text-main);
+}
+
+/* Main wrapper : conteneur flex principal */
+.gl-layer-manager__main-wrapper {
+    background: var(--gl-color-legend-bg);
+    color: var(--gl-color-legend-text);
+    border-radius: 0.75rem;
+    border: 1px solid var(--gl-color-legend-border);
+    box-shadow: var(--gl-shadow-medium);
+
+    width: var(--gl-panel-control-width, 270px);
+    box-sizing: border-box;
+
+    /* Hauteur maximale avec flex layout */
+    max-height: 400px;
+    overflow: hidden;
+
+    /* Flexbox pour que le body puisse avoir le scrollbar */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header wrapper : reste fixe sans scrollbar */
+.gl-layer-manager__header-wrapper {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--gl-color-border-soft);
+}
+
+/* Body wrapper : avec scrollbar */
+.gl-layer-manager__body-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 12px;
+
+    /* Style de scrollbar personnalisé */
+    scrollbar-width: thin;
+    scrollbar-color: var(--gl-color-border-soft) transparent;
+}
+
+/* Scrollbar webkit pour le body wrapper */
+.gl-layer-manager__body-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.gl-layer-manager__body-wrapper::-webkit-scrollbar-track {
+    background: var(--gl-color-bg-surface-muted);
+    border-radius: 4px;
+}
+
+.gl-layer-manager__body-wrapper::-webkit-scrollbar-thumb {
+    background-color: var(--gl-color-border-soft);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    border: 1px solid var(--gl-color-bg-surface);
+}
+
+.gl-layer-manager__body-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: var(--gl-color-border-strong);
+}
+
+.gl-layer-manager__body-wrapper::-webkit-scrollbar-thumb:active {
+    background-color: var(--gl-color-text-main);
+}
+
+/* Wrapper interne (ancienne structure - conservée pour compatibilité) */
+.gl-layer-manager__wrapper {
+    display: contents;
+}
+
+/* =======================================================================
+   2. En-tête, titre et bouton de repli
+   ======================================================================= */
+
+.gl-layer-manager__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.gl-layer-manager__title {
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.gl-layer-manager__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Bouton repli / dépli de la légende */
+.gl-layer-manager__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 9999px;
+    border: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
+    box-shadow: var(--gl-shadow-soft);
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        transform 120ms ease,
+        box-shadow 120ms ease;
+}
+
+.gl-layer-manager__toggle:hover {
+    background: var(--gl-color-bg-surface-muted);
+    border-color: var(--gl-color-border-strong);
+    box-shadow: var(--gl-shadow-medium);
+    transform: translateY(-1px);
+}
+
+.gl-layer-manager__toggle:active {
+    transform: translateY(0);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+/* Icône interne (ex : chevron) */
+.gl-layer-manager__toggle-icon {
+    display: inline-block;
+    transform-origin: center;
+    transition: transform 120ms ease;
+}
+
+/* État "replié" : rotation de l’icône */
+.gl-layer-manager--collapsed .gl-layer-manager__toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* Le corps est replié dans cet état */
+.gl-layer-manager--collapsed .gl-layer-manager__body-wrapper {
+    display: none;
+}
+
+/* =======================================================================
+   3. Corps de la légende et sections
+   ======================================================================= */
+
+.gl-layer-manager__body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Chaque section (basemaps, couches, catégories, etc.) */
+.gl-layer-manager__section {
+    padding-top: 4px;
+    border-top: 1px solid var(--gl-color-border-soft);
+    margin-top: 4px;
+}
+
+/* Section accordéon */
+.gl-layer-manager__section--accordion {
+    border: 1px solid var(--gl-accordion-border-color);
+    border-radius: var(--gl-accordion-border-radius);
+    margin-top: 6px;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* En-tête cliquable de l'accordéon */
+.gl-layer-manager__accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--gl-accordion-header-padding);
+    min-height: var(--gl-accordion-header-min-height);
+    background: var(--gl-accordion-header-bg);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+
+.gl-layer-manager__accordion-header:hover {
+    background: var(--gl-accordion-header-bg-hover);
+}
+
+/* Flèche de l'accordéon */
+.gl-layer-manager__accordion-arrow {
+    font-size: var(--gl-accordion-arrow-size);
+    color: var(--gl-color-text-muted);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+/* Flèche pointant vers le bas quand la section est ouverte */
+.gl-layer-manager__section--accordion:not(.gl-layer-manager__section--collapsed)
+    .gl-layer-manager__accordion-arrow {
+    transform: rotate(90deg);
+}
+
+/* Corps de l'accordéon */
+.gl-layer-manager__accordion-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    transition:
+        grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: var(--gl-accordion-body-padding);
+}
+
+/* État collapsed : masquer le corps */
+.gl-layer-manager__section--collapsed .gl-layer-manager__accordion-body {
+    grid-template-rows: 0fr;
+    padding: 0;
+}
+
+.gl-layer-manager__accordion-body > * {
+    min-height: 0;
+}
+
+/* Titre de section (ex. "Fond de carte", "Couches", "Catégories") */
+.gl-layer-manager__section-title {
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+/* Titre dans un accordéon - pas de margin */
+.gl-layer-manager__accordion-header .gl-layer-manager__section-title {
+    margin-bottom: 0;
+    opacity: 1;
+    color: var(--gl-color-text-main);
+}
+
+.gl-layer-manager__items {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* =======================================================================
+   4. Items de légende (ligne)
+   ======================================================================= */
+
+.gl-layer-manager__item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 3px 4px;
+    border-radius: 6px;
+    cursor: default;
+}
+
+/* Item avec thèmes : disposition verticale */
+.gl-layer-manager__item--with-themes {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+/* Ligne principale dans un item avec thèmes */
+.gl-layer-manager__item--with-themes .gl-layer-manager__item-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+/* Variante cliquable (ex. pour activer/désactiver une couche) */
+.gl-layer-manager__item--clickable {
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        transform 100ms ease;
+}
+
+.gl-layer-manager__item--clickable:hover {
+    background-color: var(--gl-color-overlay-soft);
+    transform: translateY(-0.5px);
+}
+
+.gl-layer-manager__item--clickable:active {
+    transform: translateY(0);
+}
+
+/* Label texte de l'item */
+.gl-layer-manager__label {
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    color: inherit; /* suit la couleur globale de la légende */
+    flex: 1;
+    min-width: 0; /* permet le text-overflow */
+}
+
+/* Description plus fine (optionnelle) */
+.gl-layer-manager__description {
+    font-size: 0.7rem;
+    color: var(--gl-color-text-muted);
+    opacity: 0.92;
+}
+
+/* =======================================================================
+   6. Ligne d’item avec badges / tags
+   ======================================================================= */
+
+.gl-layer-manager__item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.gl-layer-manager__item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 1px;
+}
+
+/* Petits badges intégrés à la légende (catégorie, type, etc.) */
+.gl-layer-manager__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    border: 1px solid var(--gl-color-border-soft);
+    font-size: 0.65rem;
+    line-height: 1.1;
+    color: var(--gl-color-text-muted);
+    background: var(--gl-color-overlay-soft);
+}
+
+.gl-layer-manager__badge-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+/* =======================================================================
+   7. Champs de filtre / sélecteurs (optionnels)
+   ======================================================================= */
+
+.gl-layer-manager__filters {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.gl-layer-manager__filter-label {
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+
+/* Ligne de base pour input + select dans la légende */
+.gl-layer-manager__wrapper select {
+    width: 100%;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--gl-color-border-soft);
+    background-color: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    box-sizing: border-box;
+
+    -webkit-appearance: none;
+    appearance: none;
+    background-repeat: no-repeat;
+
+    /* petite flèche neutre */
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--gl-color-border-soft) 50%),
+        linear-gradient(135deg, var(--gl-color-border-soft) 50%, transparent 50%);
+    background-size:
+        6px 6px,
+        6px 6px;
+    background-position:
+        calc(100% - 12px) calc(50% - 2px),
+        calc(100% - 8px) calc(50% - 2px);
+}
+
+/* Sélecteur + options à l'intérieur du bloc .gl-layer-manager :
+   ce sélecteur générique garantit la prise en compte de la police,
+   même si le <select> n'a pas la classe gl-layer-manager__filter-select */
+.gl-layer-manager select,
+.gl-layer-manager option {
+    font-family:
+        cursive,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.gl-layer-manager__filter-input::placeholder {
+    color: var(--gl-color-text-muted);
+    opacity: 0.9;
+}

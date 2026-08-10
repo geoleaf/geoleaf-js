@@ -1,0 +1,24 @@
+{
+    "before": {
+        "capability": "share",
+        "match": "share",
+        "bootGz": 177.1,
+        "leanFullGz": 510.6,
+        "leanLiteGz": 361.3,
+        "ownedFiles": 15,
+        "ownedLoc": 1127,
+        "refLines": 321,
+        "coreTestFiles": 359
+    },
+    "after": {
+        "capability": "share",
+        "match": "share",
+        "bootGz": 177.3,
+        "leanFullGz": 513.8,
+        "leanLiteGz": 361.3,
+        "ownedFiles": 19,
+        "ownedLoc": 1302,
+        "refLines": 327,
+        "coreTestFiles": 360
+    }
+}

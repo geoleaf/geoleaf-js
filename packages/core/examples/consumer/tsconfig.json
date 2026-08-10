@@ -1,0 +1,33 @@
+{
+    // Type-checks the published recipe THROUGH the `exports` map — no `paths`, no relative
+    // escape hatch, exactly what an integrator's compiler does. This is what catches a wrong
+    // `types` condition (e.g. a `./capabilities/*` wildcard that captures `legend/install.js`
+    // and resolves `…/install.js.d.ts`, which does not exist).
+    //
+    // Requires `dist/types/` — so it runs AFTER the build (`npm run typecheck:consumer`), not as
+    // part of the clean-checkout `npm run typecheck`.
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "declaration": false,
+        "declarationDir": null,
+        // qualite Q3.3 (26/07/2026) — `noUnusedLocals`/`noUnusedParameters`, inherited from the
+        // shared base since Q3.5, are incompatible with this fixture's own idiom: every
+        // "unused" const/type IS the assertion (a wrong type fails to compile — that is the
+        // check). Relaxed HERE ONLY, not on the base or on `../../tsconfig.json` — the main
+        // core program still enforces both. `noImplicitReturns`/`noImplicitOverride`/
+        // `verbatimModuleSyntax` stay on; they do not conflict with this pattern.
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
+    },
+    // `published-types.ts` (ARCHI S6) resolves every OTHER workspace package through its own
+    // exports map. It is type-only, so it is compiled here but never bundled by
+    // rollup.consumer.mjs (whose input is entry.ts alone) — the witness-bundle measurement is
+    // untouched.
+    // `extension-contract.ts` (API publique S3) implémente le contrat de module en
+    // important les types depuis le paquet publié — c'est le critère de sortie du sprint.
+    // Type-only à l'exécution : rien ne l'importe, donc `rollup.consumer.mjs` (input =
+    // entry.ts seul) ne le bundle pas et la mesure `size:consumer` reste intacte.
+    "include": ["entry.ts", "published-types.ts", "extension-contract.ts"],
+    "exclude": []
+}

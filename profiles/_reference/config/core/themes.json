@@ -1,0 +1,63 @@
+{
+    "_comment": "Config-contract test-only reference fixture (S12 / B4). Exhaustive on themes.schema.json: root defaultTheme (canonical), config.primaryThemes + config.secondaryThemes, and theme entries of both types with layers[].{visible,style} (incl. a visible:false case). The legacy config.defautTheme typo is intentionally omitted here (canonical fixture) and exercised inline in s12-themes-anomalies-lock.test.js. Source of truth for s12-themes-*.test.js.",
+    "defaultTheme": "base",
+    "config": {
+        "primaryThemes": {
+            "enabled": true,
+            "position": "top-map"
+        },
+        "secondaryThemes": {
+            "enabled": true,
+            "placeholder": "Choisir une saison…",
+            "showNavigationButtons": true,
+            "position": "top-layermanager"
+        }
+    },
+    "themes": [
+        {
+            "id": "base",
+            "label": "Base",
+            "type": "primary",
+            "description": "Theme par défaut — toutes les couches structurantes visibles",
+            "icon": "🗺️",
+            "layers": [
+                { "id": "layer-a", "visible": true, "style": "defaut" },
+                { "id": "layer-b", "visible": true, "style": "defaut" },
+                { "id": "layer-c", "visible": false, "style": "defaut" }
+            ]
+        },
+        {
+            "id": "alternate",
+            "label": "Alternatif",
+            "type": "primary",
+            "description": "Variante avec un style alternatif",
+            "icon": "🌍",
+            "layers": [
+                { "id": "layer-a", "visible": true, "style": "alt" },
+                { "id": "layer-b", "visible": false, "style": "defaut" }
+            ]
+        },
+        {
+            "id": "season-winter",
+            "label": "Hiver",
+            "type": "secondary",
+            "description": "Couches saisonnières — hiver",
+            "icon": "❄️",
+            "layers": [
+                { "id": "layer-snow", "visible": true, "style": "defaut" },
+                { "id": "layer-a", "visible": true, "style": "defaut" }
+            ]
+        },
+        {
+            "id": "season-summer",
+            "label": "Été",
+            "type": "secondary",
+            "description": "Couches saisonnières — été",
+            "icon": "☀️",
+            "layers": [
+                { "id": "layer-sun", "visible": true, "style": "defaut" },
+                { "id": "layer-a", "visible": true, "style": "defaut" }
+            ]
+        }
+    ]
+}

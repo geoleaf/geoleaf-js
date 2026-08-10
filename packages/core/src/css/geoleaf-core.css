@@ -1,0 +1,47 @@
+/*
+ * GeoLeaf Core – page shell, header, fullscreen mode.
+ * --------------------------------------------------
+ * KERNEL ONLY. This file must never name a capability.
+ *
+ * S6 removed two things from it:
+ *
+ *   - **~150 lines of dead zoom / fullscreen control CSS.** `.geoleaf-ctrl-zoom` and
+ *     `.geoleaf-ctrl-fullscreen` are set by NO TypeScript, NO HTML, and are built from no dynamic
+ *     string — they appear in ZERO shipped JS artifact, so no DOM element can ever carry them.
+ *     They are Leaflet-era leftovers: GeoLeaf adds no MapLibre NavigationControl/FullscreenControl,
+ *     and zoom/fullscreen are driven from the mobile toolbar (`[data-gl-toolbar-action]`). The
+ *     purgecss gate could not see them — its safelist whitelists `/^geoleaf/` wholesale.
+ *   - **The geolocation control**, which moved to `capabilities/geolocation/css/geolocation.css`
+ *     where it belongs. A bundle that excludes the geolocation capability no longer carries its CSS.
+ */
+
+/* -----------------------------------------------------
+   Thèmes Light / Dark – Niveau global
+----------------------------------------------------- */
+
+body.gl-theme-light,
+body.gl-theme-dark {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--gl-color-bg-page);
+    color: var(--gl-color-text-main);
+}
+
+/* (T1b) The `.gl-header` block — brand, logo, title, header actions — dressed the
+   demo header (`demo-header.html`), which is gone. Nothing outside this stylesheet
+   ever referenced those classes: purgecss reported the seven of them dead the
+   moment the header was removed. A deployment's page owns its own chrome. */
+
+/* ========================================================================== */
+/* FULLSCREEN MODE SUPPORT — Mobile Friendly                                  */
+/* ========================================================================== */
+
+/* En mode plein écran, .gl-main doit être positionné en relatif pour que
+   les panneaux avec position: absolute fonctionnent correctement */
+.gl-main:fullscreen,
+.gl-main:-webkit-full-screen,
+.gl-main:-moz-full-screen,
+.gl-main:-ms-fullscreen {
+    position: relative;
+}

@@ -1,0 +1,120 @@
+{
+    "_comment": "Config-contract test-only reference fixture (S12 / B4). Exhaustive on basemaps.schema.json: one entry per `type` enum value (tile/raster/maplibre/image/hillshade/wmts/wms) plus a 3D-terrain entry and offline/cache leaves. Source of truth for packages/core/__tests__/config/s12-basemaps-*.test.js — keep in sync with the schema.",
+    "basemaps": {
+        "street": {
+            "id": "street",
+            "label": "Street (tile)",
+            "type": "tile",
+            "url": "https://{s}.tiles.example.com/street/{z}/{x}/{y}.png",
+            "fallbackUrl": "https://fallback.example.com/street/{z}/{x}/{y}.png",
+            "attribution": "&copy; Reference tiles",
+            "minZoom": 3,
+            "maxZoom": 19,
+            "subdomains": "abcd",
+            "tileSize": 256,
+            "defaultBasemap": true,
+            "offline": true,
+            "offlineBounds": { "north": 51.1, "south": 41.3, "east": 9.6, "west": -5.2 },
+            "cacheMinZoom": 6,
+            "cacheMaxZoom": 14
+        },
+        "carto-raster": {
+            "id": "carto-raster",
+            "label": "Voyager (raster)",
+            "type": "raster",
+            "tiles": [
+                "https://a.tiles.example.com/voyager/{z}/{x}/{y}.png",
+                "https://b.tiles.example.com/voyager/{z}/{x}/{y}.png"
+            ],
+            "encoding": "png",
+            "attribution": "&copy; Reference raster",
+            "minZoom": 0,
+            "maxZoom": 20,
+            "tileSize": 512,
+            "offline": false
+        },
+        "vector": {
+            "id": "vector",
+            "label": "Vector (maplibre)",
+            "type": "maplibre",
+            "style": "https://styles.example.com/reference-vector/style.json",
+            "attribution": "&copy; Reference vector",
+            "offline": false
+        },
+        "overlay": {
+            "id": "overlay",
+            "label": "Image overlay",
+            "type": "image",
+            "imageSource": {
+                "url": "https://images.example.com/reference-overlay.png",
+                "coordinates": [
+                    [-5.2, 51.1],
+                    [9.6, 51.1],
+                    [9.6, 41.3],
+                    [-5.2, 41.3]
+                ],
+                "opacity": 0.75
+            },
+            "attribution": "&copy; Reference image"
+        },
+        "relief": {
+            "id": "relief",
+            "label": "Hillshade",
+            "type": "hillshade",
+            "hillshade": {
+                "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "demMaxZoom": 13,
+                "exaggeration": 1.2,
+                "illuminationDirection": 315,
+                "highlightColor": "#ffffff",
+                "shadowColor": "#473b24"
+            },
+            "attribution": "&copy; Reference DEM"
+        },
+        "ign-wmts": {
+            "id": "ign-wmts",
+            "label": "WMTS",
+            "type": "wmts",
+            "wmts": {
+                "getCapabilitiesUrl": "https://wmts.example.com/service?request=GetCapabilities",
+                "layer": "ORTHOIMAGERY.ORTHOPHOTOS",
+                "tileMatrixSet": "PM",
+                "format": "image/jpeg"
+            },
+            "attribution": "&copy; Reference WMTS"
+        },
+        "geoserver-wms": {
+            "id": "geoserver-wms",
+            "label": "WMS",
+            "type": "wms",
+            "wms": {
+                "url": "https://wms.example.com/geoserver/ows",
+                "layers": "reference:orthophoto",
+                "format": "image/png",
+                "version": "1.3.0",
+                "transparent": true
+            },
+            "attribution": "&copy; Reference WMS"
+        },
+        "terrain-3d": {
+            "id": "terrain-3d",
+            "label": "Relief 3D (tile + terrain)",
+            "type": "tile",
+            "url": "https://{s}.tiles.example.com/topo/{z}/{x}/{y}.png",
+            "attribution": "&copy; Reference topo",
+            "minZoom": 5,
+            "maxZoom": 17,
+            "offline": false,
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 1.5,
+                "default3D": true,
+                "pitch": 60,
+                "bearing": 0
+            }
+        }
+    }
+}

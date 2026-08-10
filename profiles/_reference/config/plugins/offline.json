@@ -1,0 +1,8 @@
+{
+    "_comment": "Test-only plugin config (owned by @geoleaf-plugins/storage, validated by the plugin — skipped by validate-profiles). Carries cache.{enableProfileCache,enableTileCache} = false (NON-default). enableProfileCache proves a profile override survives the core spread default (ANO-078). enableTileCache no longer goes through a spread at all: since task 3.13 the engine reads it directly (ResourceEnumerator._tilesRequested) as a VETO, and this profile is the only one in the repo that sets it to false — it is what makes the veto observable. SW/offline moved to modules.pwa (S14).",
+    "enabled": true,
+    "cache": {
+        "enableProfileCache": false,
+        "enableTileCache": false
+    }
+}

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GeoLeaf-e2e" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>GeoLeaf e2e GPX</name></metadata>
+  <wpt lat="48.8566" lon="2.3522"><name>Paris</name></wpt>
+  <trk>
+    <name>Trace</name>
+    <trkseg>
+      <trkpt lat="48.85" lon="2.35"><ele>35</ele></trkpt>
+      <trkpt lat="48.86" lon="2.36"><ele>40</ele></trkpt>
+      <trkpt lat="48.87" lon="2.37"><ele>38</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

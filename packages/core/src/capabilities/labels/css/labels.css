@@ -1,0 +1,90 @@
+@layer gl.capabilities {
+    /**
+ * Labels Component Styles
+ * Styles for the glyph and the permanent tooltips.
+ * Version: 3.0.0
+ */
+
+    /* =======================================================================
+   Label glyph inside the LayerManager
+   ======================================================================= */
+
+    /* Toggle button that shows/hides the labels. */
+    .gl-layer-manager__label-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: 1px solid var(--gl-color-border, rgba(255, 255, 255, 0.2));
+        border-radius: 4px;
+        background: var(--gl-color-bg-surface-muted, rgba(255, 255, 255, 0.1));
+        color: var(--gl-color-text-muted, #888);
+        cursor: pointer;
+        font-size: 0.75rem;
+        line-height: 1;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+        margin-left: 4px;
+    }
+
+    .gl-layer-manager__label-toggle:hover {
+        background: var(--gl-color-overlay-soft);
+        color: var(--gl-color-text);
+        transform: scale(1.05);
+    }
+
+    .gl-layer-manager__label-toggle--on {
+        background: var(--gl-color-accent-soft);
+        border-color: var(--gl-color-accent);
+        box-shadow: var(--gl-shadow-soft);
+    }
+
+    .gl-layer-manager__label-toggle--on:hover {
+        background: var(--gl-color-accent);
+    }
+
+    /* Disabled button — greyed out. */
+    .gl-layer-manager__label-toggle--disabled {
+        opacity: 0.35 !important;
+        cursor: not-allowed !important;
+        background: var(--gl-color-bg-surface-muted, rgba(100, 100, 100, 0.2)) !important;
+        border-color: var(--gl-color-border-muted, rgba(255, 255, 255, 0.1)) !important;
+        color: var(--gl-color-text-disabled, #666) !important;
+    }
+
+    .gl-layer-manager__label-toggle--disabled:hover {
+        transform: none !important;
+        background: var(--gl-color-bg-surface-muted, rgba(100, 100, 100, 0.2)) !important;
+    }
+
+    /* Do NOT hide the button when the layer is hidden: it stays visible and is
+   disabled from JS instead. */
+
+    .gl-layer-manager__label-toggle-icon {
+        display: inline-block;
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    /* The `.gl-label*` / `.geoleaf-tooltip` block that lived here is gone (4.3, LOW-42).
+   It styled Leaflet-era divIcon markers; labels are drawn by a native MapLibre symbol
+   layer (`label-renderer.ts`), so no element ever carried these classes — verified: zero
+   writers in any `src/`. Only the LayerManager toggle above is real DOM. */
+
+    /* =======================================================================
+   Responsive
+   ======================================================================= */
+
+    @media (max-width: 768px) {
+        .gl-layer-manager__label-toggle {
+            width: 18px;
+            height: 18px;
+        }
+
+        .gl-layer-manager__label-toggle-icon {
+            font-size: 12px;
+        }
+    }
+}

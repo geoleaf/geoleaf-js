@@ -1,0 +1,314 @@
+/* ============================================================================
+   GeoLeaf - Panneau lateral droit avec onglets verticaux (desktop >= 1440px)
+   Structure : [contenu repliable 0->320px] + [bande onglets 34px toujours visible]
+   z-index 950 - sous la barre pill (1000) et le panneau POI (1100)
+   ============================================================================ */
+
+/* --------------------------------------------------------------------------
+   Conteneur principal : flex-row colle au bord droit
+   pointer-events:none sur le conteneur pour laisser la carte cliquable
+   -------------------------------------------------------------------------- */
+#gl-right-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 950;
+    display: none;
+    flex-direction: row;
+    align-items: stretch;
+    pointer-events: none;
+}
+
+@media (min-width: 1440px) {
+    #gl-right-panel {
+        display: flex;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Panneau de contenu - glisse de la droite (max-width 0 -> 320px)
+   -------------------------------------------------------------------------- */
+.gl-rp-content {
+    overflow: hidden;
+    max-width: 0;
+    display: flex;
+    flex-direction: column;
+    transition: max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--gl-color-bg-surface);
+    border-left: 1px solid var(--gl-color-border-soft);
+    box-shadow: -3px 0 18px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+}
+
+#gl-right-panel.gl-has-active .gl-rp-content {
+    max-width: 320px;
+}
+
+/* --------------------------------------------------------------------------
+   Panneaux individuels (filters / layers / legend)
+   Un seul visible a la fois
+   -------------------------------------------------------------------------- */
+.gl-rp-pane {
+    display: none;
+    flex-direction: column;
+    min-width: 320px;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gl-color-border-soft) transparent;
+}
+
+.gl-rp-pane.gl-is-active {
+    display: flex;
+}
+
+.gl-rp-pane::-webkit-scrollbar {
+    width: 5px;
+}
+
+.gl-rp-pane::-webkit-scrollbar-thumb {
+    background: var(--gl-color-border-soft);
+    border-radius: 3px;
+}
+
+.gl-rp-pane::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   Bande d'onglets verticale - toujours visible
+   -------------------------------------------------------------------------- */
+.gl-rp-tabs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--gl-color-bg-surface);
+    border-left: 1px solid var(--gl-color-border-soft);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.06);
+    width: 34px;
+    padding: 0;
+    gap: 4px;
+    flex-shrink: 0;
+    pointer-events: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Bouton d'onglet - ecriture verticale
+   -------------------------------------------------------------------------- */
+.gl-rp-tab {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    padding: 18px 4px;
+    border: none;
+    background: transparent;
+    color: var(--gl-color-text-muted);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 6px;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.12s ease;
+    white-space: nowrap;
+    line-height: 1;
+    font-family: inherit;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.gl-rp-tab:hover {
+    background: color-mix(in srgb, var(--gl-color-accent) 15%, transparent);
+    color: var(--gl-color-accent);
+    box-shadow: inset -2px 0 0 var(--gl-color-accent);
+    transform: scaleY(1.04);
+}
+
+.gl-rp-tab:active {
+    transform: scale(0.92);
+}
+
+.gl-rp-tab.gl-is-active {
+    background: var(--gl-color-accent);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* Filters active, panel closed — subtle persistent accent hint */
+.gl-rp-tab.has-filters:not(.gl-is-active) {
+    color: var(--gl-color-accent);
+    box-shadow: inset -2px 0 0 var(--gl-color-accent);
+    background: color-mix(in srgb, var(--gl-color-accent) 10%, transparent);
+}
+
+.gl-rp-tab:focus-visible {
+    outline: 2px solid var(--gl-color-accent);
+    outline-offset: 2px;
+}
+
+/* NOTE (S6) — the "when hosted in the right panel, this capability looks like…" overrides that
+   used to live here (filter, legend, theme-selector, theme-toggle) moved into the capabilities
+   that own them. The kernel defines the CONTAINER; a capability defines its own CONTENT, and the
+   kernel never names a capability — that is what lets a bundle drop a capability's CSS along with
+   its code. See capabilities/{filter,legend,theme-selector,theme-toggle}/css/. */
+
+/* --------------------------------------------------------------------------
+   Override - Gestionnaire de couches dans le right panel (KERNEL — le
+   layer-manager est un module built-in, pas une capacité)
+   -------------------------------------------------------------------------- */
+#gl-right-panel .gl-layer-manager {
+    display: block !important;
+    position: static !important;
+    font-size: 0.8rem;
+    height: 100% !important;
+}
+
+#gl-right-panel .gl-layer-manager__main-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+#gl-right-panel .gl-layer-manager .gl-layer-manager__toggle {
+    display: none !important;
+}
+
+#gl-right-panel .gl-layer-manager__body-wrapper {
+    overflow-y: auto !important;
+    max-height: none !important;
+    display: flex !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+}
+
+/* Force ouvert meme si collapsedByDefault:true */
+#gl-right-panel .gl-layer-manager--collapsed .gl-layer-manager__body-wrapper {
+    display: flex !important;
+}
+
+#gl-right-panel .gl-layer-manager--collapsed .gl-layer-manager__main-wrapper {
+    display: flex !important;
+}
+
+/* Right panel : en-tête du layer-manager (les capacités hébergées ici — filter, legend —
+   portent leur propre copie de cette règle, dans leur feuille : le kernel ne les nomme pas). */
+#gl-right-panel .gl-layer-manager__header-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0.65rem 0.75rem !important;
+    border-bottom: 1px solid var(--gl-color-border-soft) !important;
+    margin-bottom: 0.5rem !important;
+    background: var(--gl-color-bg-surface) !important;
+}
+
+#gl-right-panel .gl-layer-manager__title {
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.04em !important;
+    margin: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Compatibilite panneau POI
+   .gl-poi-sidepanel => z-index 1100  => passe par dessus (950)  OK
+   .gl-poi-sidepanel-overlay => z-index 1099  OK
+   -------------------------------------------------------------------------- */
+
+/* --------------------------------------------------------------------------
+   Base — icône partagée par tous les boutons du bandeau d'onglets desktop.
+   Toute future icône utilise cette classe ; les classes spécifiques
+   (.gl-rp-theme-toggle, .gl-rp-registry-tab-btn, .gl-rp-share-btn) n'ajoutent
+   que leurs surcharges propres.
+   -------------------------------------------------------------------------- */
+.gl-rp-tab-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0 auto 6px auto;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--gl-color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.gl-rp-tab-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.gl-rp-tab-btn:hover {
+    background: color-mix(in srgb, var(--gl-color-accent) 15%, transparent);
+    color: var(--gl-color-accent);
+}
+
+.gl-rp-tab-btn:focus-visible {
+    outline: 2px solid var(--gl-color-accent);
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Séparateur + bouton toggle thème — bas du bandeau d'onglets
+   -------------------------------------------------------------------------- */
+.gl-rp-theme-separator {
+    height: 1px;
+    background: var(--gl-color-border-soft);
+    margin-top: auto;
+    margin-bottom: 8px;
+    width: calc(100% - 8px);
+    flex-shrink: 0;
+}
+
+/* Surcharge : pas de marge basse — le toggle thème est le tout dernier élément */
+.gl-rp-theme-toggle {
+    margin: 0 auto;
+}
+
+/* Le variant mobile est masqué sur desktop — le tab strip prend le relais */
+@media (min-width: 1440px) {
+    .gl-rp-theme-toggle[data-variant="mobile"] {
+        display: none !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Boutons injectés par les plugins via desktopTabButton (registre).
+   Aucune surcharge — .gl-rp-tab-btn suffit ; cette classe reste un marqueur
+   sémantique utilisé par les querySelector.
+   -------------------------------------------------------------------------- */
+
+/* Masque les boutons pill qui ont un équivalent dans la barre desktop */
+@media (min-width: 1440px) {
+    .gl-map-toolbar__btn[data-gl-desktop-slot] {
+        display: none !important;
+    }
+}

@@ -1,0 +1,4 @@
+{
+    "_comment": "S7 capacités-extraction — modules.toast-renderer (in-core capability capabilities/toast-renderer). Capability gate only (opt-out): the DOM notification renderer registers itself against the kernel notify() primitive. Absent/true = active (preserves geoloc/storage toasts); false = renderer inert, GeoLeaf.notify() degrades to console.*.",
+    "enabled": true
+}

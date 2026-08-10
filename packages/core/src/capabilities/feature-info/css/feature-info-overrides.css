@@ -1,0 +1,26 @@
+@layer gl.capabilities {
+    /* GeoLeaf Core (feature-info capability) — plugin-local adjustments over the ported poi CSS.
+   The side-panel and lightbox are appended to <body> (outside the app's font
+   scope), so the app font is set explicitly here; and the popup surface is made
+   opaque (the theme's --gl-color-popup-bg is intentionally translucent). */
+
+    .gl-poi-sidepanel,
+    .gl-poi-popup,
+    .gl-poi-lightbox-global {
+        font-family:
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            "Roboto",
+            "Helvetica Neue",
+            Arial,
+            sans-serif;
+    }
+
+    /* Opaque popup surface (scoped to this plugin's popups via the className set in popup.ts). */
+    .gl-fi-popup-ml .maplibregl-popup-content {
+        background: var(--gl-color-bg-surface, #fff);
+        backdrop-filter: none;
+    }
+}

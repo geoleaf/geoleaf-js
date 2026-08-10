@@ -1,0 +1,660 @@
+---
+type: spec-kernel
+title: kernel — @geoleaf/core
+package: "@geoleaf/core"
+statut: gelé — se met à jour en même temps que le code qu'il décrit
+verifie_contre: 16e5a451
+date: 1er août 2026
+---
+
+# kernel — le substrat que tout le reste suppose
+
+**Type :** kernel · **Code :** `packages/core/src/` · **Vérifié contre :** `16e5a451` (27/07/2026)
+
+> **Ce document ne recopie aucun chiffre mesurable.** Quand une quantité compte, la commande
+> qui l'imprime est citée à sa place. Ce n'est pas une précaution de style : la version
+> précédente de cette fiche annonçait « 18 capacités » à quatre endroits (il y en a 21),
+> « 369+ fichiers TypeScript » (518), et deux comptes d'exports ESM contradictoires à
+> 700 lignes d'écart. Sur les 452 chemins qu'elle citait, **287 ne résolvaient plus**.
+>
+> **Ce document ne recopie pas non plus ce qu'un générateur produit.** L'arborescence, les
+> signatures d'API et la référence des paramètres de profil ont chacune leur source dérivée ;
+> les sections concernées **renvoient**, elles ne dupliquent pas. C'est la frontière que la
+> refonte documentaire V3 pose entre `specs/` et le dérivé — la recréer ici annulerait le
+> travail qui la supprime ailleurs.
+
+---
+
+## Périmètre
+
+`@geoleaf/core` est une bibliothèque TypeScript de cartographie interactive construite sur
+MapLibre GL JS. Elle est pilotée par des **profils JSON** : un intégrateur décrit ses couches,
+ses styles, ses thèmes et son UI en données, sans écrire de code cartographique.
+
+Le **kernel**, au sens de cette fiche, est le sous-ensemble de `packages/core/src/` qui est
+**toujours dans le graphe** : le retirer casse le boot. Il se distingue des **capacités
+in-core** (`capabilities/<id>/`), qui sont gatées, auto-contenues et tree-shakeables, et des
+**plugins** (`packages/plugins/<nom>/`), qui sont des paquets séparés enregistrés au runtime.
+
+### Ce que le kernel fait
+
+- Assemble le namespace global `GeoLeaf.*` et la surface d'exports ESM.
+- Charge, valide, fusionne et expose la configuration issue des profils.
+- Abstrait le moteur cartographique derrière `IMapAdapter` et en fournit l'implémentation
+  MapLibre.
+- Charge et rend les couches GeoJSON, les fonds de carte, les styles et les thèmes.
+- Construit la coquille UI (panneau desktop, barre d'outils mobile, gestionnaire de couches).
+- Porte le bus d'événements, la surface de sécurité (échappement, sanitisation, validation
+  d'URL), le stockage bas niveau et l'introspection.
+- Ordonne le cycle de vie des modules runtime par tri topologique.
+
+### Ce que le kernel ne fait pas
+
+- **Il ne connaît aucun plugin.** `packages/core/src/` ne référence jamais
+  `@geoleaf-plugins/*` — voir §Dépendances et frontières, règle `no-plugin-in-core`.
+- **Il n'embarque pas de backend.** Aucun appel serveur propriétaire, aucun schéma métier.
+- **Il ne déclare, ne valide et ne défaute pas la configuration d'un plugin** : le contenu
+  d'un bloc `modules.<id>` lui est opaque (INV-CONFIG / INV-FRONT).
+- **Il n'est pas l'application.** Le HTML, le `init.js`, le manifeste PWA et les icônes
+  livrées appartiennent à `apps/geoleaf-app/`, qui est la source unique des trois variantes
+  de déploiement et n'est jamais publiée sur npm.
+- **Il ne porte plus de build « Lite »** ni de chargement paresseux par répertoire : le
+  répertoire `src/lazy/` n'existe pas. Une entrée qui veut moins de capacités écrit son
+  propre manifeste (voir `packages/core/examples/minimal/entry.ts`), et ce qu'elle n'importe
+  pas se tree-shake — CSS compris, chaque `install.ts` tirant sa propre feuille de style.
+
+---
+
+## Fonctionnalités
+
+Une ligne par sous-système du kernel. Le détail par fichier — chemin, LOC, exports réels,
+en-tête de module — est **généré** : `docs/reference/ARBORESCENCE_QUALIFIEE.md`
+(`npm run docs:tree`, gaté par `docs:tree:check`).
+
+| ID   | Fonctionnalité                                                               | Entrée                                              | Sortie observable                                                                                                                                                                                                                                                                                     | Code                                                      |
+| ---- | ---------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| K-01 | Assemblage du namespace global et des façades                                | import du bundle                                    | `window.GeoLeaf.*` peuplé, `GeoLeaf.boot()` disponible                                                                                                                                                                                                                                                | `globals/`, `api/geoleaf.*.ts`                            |
+| K-02 | Chargement et fusion de la configuration                                     | `geoleaf.config.json` + `profile.json` + compagnons | `GeoLeaf.Config.get(...)`, config consolidée                                                                                                                                                                                                                                                          | `kernel/config/`                                          |
+| K-03 | Abstraction du moteur cartographique                                         | appels métier engine-agnostic                       | carte MapLibre pilotée sans référence `maplibregl.*` hors adapter                                                                                                                                                                                                                                     | `contracts/map-adapter.contract.ts`, `adapters/maplibre/` |
+| K-04 | Carte, conteneur, thème de carte                                             | config `map` du profil                              | carte montée, `geoleaf:map:ready`                                                                                                                                                                                                                                                                     | `kernel/map/`                                             |
+| K-05 | Fonds de carte (raster, vectoriel, WMS/WMTS, hillshade, image géoréférencée) | `config/core/basemaps.json`                         | sélecteur de fonds, `geoleaf:basemap:change`                                                                                                                                                                                                                                                          | `kernel/basemaps/`                                        |
+| K-06 | Couches GeoJSON — chargement, conversion, styles conditionnels, labels       | `config/core/layers.json` + `layers/<id>/`          | couches rendues, `geoleaf:layer:added`                                                                                                                                                                                                                                                                | `kernel/geojson/`                                         |
+| K-07 | Moteur de thèmes (presets de visibilité)                                     | `config/core/themes.json`                           | thème appliqué, `geoleaf:theme:applied`                                                                                                                                                                                                                                                               | `kernel/themes/`                                          |
+| K-08 | Coquille UI — panneau desktop, barre mobile, composants partagés             | `config/core/ui.json`                               | DOM de la coquille, `geoleaf:toolbar:action`                                                                                                                                                                                                                                                          | `kernel/ui/`                                              |
+| K-09 | Gestionnaire de couches (arbre, bascules, sélecteur de fond)                 | registre de couches + thèmes                        | panneau, `geoleaf:layer:toggle`, `geoleaf:layer-manager:panel`                                                                                                                                                                                                                                        | `kernel/layer-manager/`                                   |
+| K-10 | Bus d'événements assaini                                                     | `dispatchGeoLeafEvent(...)`                         | `CustomEvent` sérialisable sur `document`                                                                                                                                                                                                                                                             | `kernel/events/`, `contracts/event-bus.contract.ts`       |
+| K-11 | Sécurité — échappement, sanitisation, validation d'URL, DOM sûr              | chaînes et URL non fiables                          | HTML sûr, URL rejetées                                                                                                                                                                                                                                                                                | `kernel/security/`                                        |
+| K-12 | Registre d'API, registre de plugins, registre de capacités                   | `PluginRegistry.register(...)`, manifeste de preset | `GeoLeaf.<Plugin>.*`, gates de capacités                                                                                                                                                                                                                                                              | `kernel/api/`                                             |
+| K-13 | Stockage bas niveau et enregistrement du Service Worker                      | config PWA / offline                                | SW enregistré, `geoleaf:sw:updated`, `geoleaf:cache:evicted`                                                                                                                                                                                                                                          | `kernel/storage/`                                         |
+| K-14 | Introspection en lecture seule                                               | —                                                   | `GeoLeaf.Introspection.*` pour les outils tiers — dont `getCapabilityStatus()` (socle-init 9.4), qui répond « qu'est-ce qui est allumé, et pourquoi » : `getAllCapabilities()` rend ce qui est **déclaré**, `getActiveModules()` ce qui **tourne**, celle-ci le **verdict de config**, relu à l'appel | `kernel/introspection/`                                   |
+| K-15 | Contrats de seam inter-modules                                               | implémentation d'un contrat                         | dépendance inversée sans arête directe                                                                                                                                                                                                                                                                | `kernel/shared/`                                          |
+| K-16 | Ordonnancement du runtime par tri topologique (Kahn)                         | `ICoreModule.dependencies`                          | ordre d'`init()` déterministe                                                                                                                                                                                                                                                                         | `app/module-registry.ts`                                  |
+| K-17 | Séquence de boot paramétrée par manifeste                                    | `PresetManifest`                                    | `geoleaf:app:ready`                                                                                                                                                                                                                                                                                   | `app/boot*.ts`, `presets/`                                |
+| K-18 | i18n du core                                                                 | `?lang=` → `ui.language` → `"fr"`                   | libellés traduits, `GeoLeaf.I18n.getActiveLang()`                                                                                                                                                                                                                                                     | `lang/`, `utils/i18n/`                                    |
+
+**Poids relatif des sous-systèmes** (fichiers `.ts` et lignes) — se remesure en une commande,
+donc n'est pas recopié ici :
+
+```bash
+for d in packages/core/src/kernel/*/; do echo -n "${d} "; find "$d" -name '*.ts' | wc -l; done
+```
+
+---
+
+## Séquence de boot
+
+⚠️ **L'ordre est porteur, et il est encodé par l'ordre des imports ESM** — pas par une
+convention écrite ailleurs. Ne jamais réordonner `globals/globals.ts` sans repasser les quatre
+filets listés en fin de section.
+
+### Phase A — les façades, à l'**import du bundle**
+
+`bundle-esm-entry.ts` importe `globals/globals.ts` en side-effect. Celui-ci tire d'abord le CSS
+du kernel, puis six sous-fichiers dans un ordre que la résolution ESM rend déterministe :
+
+```
+globals.core     B1+B2   log, errors, constantes, sécurité, utils   (DOIT être premier)
+globals.config   B3+B4   helpers, validateurs, renderers, data, loaders, map, config
+globals.geojson  B5      geojson, route
+globals.ui       B6+B7+B9 labels, legend, layer-manager, thèmes, ui
+globals.storage  B8      storage, cache, IndexedDB   ← APRÈS l'UI, cf. ADR-05
+globals.api      B11     façades geoleaf.*.js + api/ + PluginRegistry   (DOIT être dernier)
+```
+
+Chaque `globals.*.ts` appelle son `setupX()` **directement, en fin de fichier**. Il n'y a plus
+ni registre d'indirection (`app/module-setup.ts`) ni garde `_done` : les setups kernel ont une
+signature vide — ni adapter, ni config — donc **rien à ordonnancer**.
+
+**Pourquoi la phase A ne peut pas passer par le registry.** Le boot appelle `loadConfig()`
+**avant** `registry.init()`, et les plugins ESM appellent `GeoLeaf.I18n.registerDict()` à leur
+propre top-level, avant tout. Les façades sont un **prérequis** du registry, pas son produit.
+⇒ « registry = seul driver du boot » est **impossible**, pas seulement risqué (ADR-08).
+
+⚠️ **Il n'y a pas de `globals.poi.ts`** — le module POI est dissous. Six fichiers `globals.*`
+en tout ; toute rédaction mentionnant un B10 POI décrit un état révolu.
+
+### Module-eval — `installBoot(preset)`
+
+`app/boot.ts` ne fait qu'appeler `installBoot(FULL)`. Tout ce qui doit se produire à
+l'évaluation du bundle vit dans `app/boot-install.ts` :
+
+- le verrou `?perf=1` (avant la toute première marque de perf) ;
+- l'enregistrement des **6 modules noyau** — `CoreMapModule`, `ConfigModule`, `SharedModule`,
+  `GeoJSONModule`, `UIModule`, `ThemeEngineModule` ;
+- les ancres `GeoLeaf._registry` / `GeoLeaf.registry` ;
+- `_app.startApp`, lié à `bootWithPreset` avec **le manifeste de cette entrée** ;
+- la façade publique `GeoLeaf.boot()`.
+
+⚠️ **6 modules, pas 8.** `SecurityModule` et `APIModule` ont été retirés : leurs
+`init()`/`destroy()` étaient vides, leurs sous-systèmes sont des **façades pures** posées en
+phase A. Ils ne portaient qu'un nœud de graphe.
+
+⚠️ `installBoot()` s'appelle **exactement une fois** par bundle.
+
+### Phase B — le runtime, `bootWithPreset(preset)`
+
+Séquence, dans `app/boot-core.ts` :
+
+```
+loadConfig()                       → config de base (pré-fusion)
+Pass 1  registerPresetDeclarations (déclarations + façades des capacités, NON gatées)
+toCapConfig(baseCfg)               → la vue de config que lisent les gates
+Pass 2  registerPresetModules      (les modules de cycle de vie, gatés)
+loadActiveProfileResources()       → config effective (profil fusionné)
+hook beforeBoot                    (gate d'authentification ; jeter interrompt le boot)
+registry.init(adapter, effectiveCfg)
+```
+
+⚠️ **La gate de la Pass 2 lit la config PRÉ-fusion**, les ressources de profil se chargeant
+après elle. C'est ce qui impose la posture **opt-out** aux capacités optionnelles. **Ne pas
+déplacer la Pass 2 sous `loadActiveProfileResources()`** : les gates opt-out verraient alors
+des `false` de niveau profil et dé-enregistreraient des modules qui sont gatés tardivement,
+dans leur propre `lifecycle.ts`. C'est la zone qu'un sprint antérieur a dû reverter.
+
+**Résolution du profil à booter**, en trois rangs (`_resolveSelectedProfile`) :
+`sessionStorage['gl-selected-profile']` (**one-shot**, lu puis retiré) → `localStorage['gl-profile']`
+(durable, la persistance de la capacité `profile-switcher`) → `null`, qui laisse
+`data.activeProfile` s'appliquer. Les deux stores sont écrits par l'utilisateur : chacun est
+gardé par le même format (`/^[a-zA-Z0-9_-]{1,50}$/`), un id de profil atteignant un `fetch`.
+
+⚠️ **`registry.init()` est SÉQUENTIEL et AWAITÉ, et `GeoJSONModule` y attend le réseau.**
+`app/module-registry.ts` boucle sur l'ordre topologique avec un `await` par module ; or
+`GeoJSONModule.init()` **attend** la phase 1 du chargement des couches
+(`await loadFromActiveProfile()` — les couches du thème par défaut, par lots de
+`PHASE1_BATCH_SIZE`, sans délai entre lots). **Tout module placé après `geojson` dans le tri ne
+peut donc pas se monter avant que ces couches aient résolu**, et une couche déclarant
+`data.mapping` charge **sur le fil principal, sans timeout** (le worker détruirait l'enveloppe
+que le mapping doit lire).
+
+⚠️ **Cette phrase a dit « par lots de 3, 200 ms entre lots » jusqu'au 07/08/2026** — les deux
+nombres sont tombés avec S5.1 (lots de 6, délai désarmé), et le second coûtait **400 ms** sur ce
+chemin, pas 200 : le thème par défaut du profil actif porte **8** couches, donc le minuteur
+partait deux fois. Les valeurs vivent en un seul endroit (`loader/profile.ts`, `PHASE1_BATCH_SIZE`
+et `PHASE1_BATCH_DELAY_MS`) et **ne se recopient pas ici** — c'est précisément en les recopiant
+que cette ligne s'est périmée. ⚠️ Il existe un **second** plafond sur le même chemin, juste après
+(`themes/theme-applier/core.ts`, `perfConfig.themeBatchSize || 6`) : les deux se règlent ensemble.
+
+C'est un piège d'ordonnancement, pas une lenteur : déclarer `dependencies = ["geojson"]` pour la
+seule raison d'être trié **après** quelque chose place la capacité derrière une attente réseau
+non bornée. `toast-renderer` le faisait, et le symptôme était qu'**aucune notification n'était
+rendue pendant tout le chargement initial** — la fenêtre même où surviennent les erreurs de
+chargement (B-56, 28/07/2026 ; `dependencies` ramenée à `["config"]`). **`labels`,
+`feature-info` et `filter` portent encore cette déclaration** (B-57) — ⚠️ leur retirer demande de
+vérifier d'abord que leur `init()` ne lit réellement aucun état GeoJSON, ce que rien n'atteste
+aujourd'hui.
+
+### Le filet qui garde cette séquence — quatre tiers, aucun redondant
+
+| Tier          | Fichier                                                     | Ce qu'il attrape                                                          |
+| ------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Artefact      | `packages/core/__tests__/bundle-boot-contract.test.js`      | surface d'**import**, santé de l'APIController, canari plugin, DCE Rollup |
+| Getter réel   | `packages/core/__tests__/api/api-controller-getter.test.js` | `managers: 0` — l'oracle littéral de la panne S4                          |
+| Golden master | `packages/core/__tests__/app/boot-golden-master.test.js`    | surface **post-boot**, avec un `registry.init()` réel                     |
+| Navigateur    | `scripts/probe-boot-contract.mjs`                           | le **rendu**, l'**ordre réel** des marqueurs, et la **ré-entrance**       |
+
+⚠️ **Chaque tier a son angle mort.** Une régression de ré-entrance dans `_getAPIController()`
+est passée verte sur les trois premiers tiers et n'a été vue que par la sonde navigateur ;
+inversement, deux pannes historiques n'avaient pas besoin d'un navigateur — un test de 4 ms les
+attrapait pendant que la suite complète restait verte. Le critère n'est pas « faut-il un
+navigateur » mais **« le test lit-il l'objet réel, ou un mock de l'objet ? »**.
+
+---
+
+## Les 13 sous-systèmes de `kernel/`
+
+Chaque répertoire répond à une question : _qu'est-ce qui traverse ma frontière, et par où ?_
+La règle ESLint **R.8** interdit à `capabilities/**` d'importer profondément sous `kernel/**` :
+seuls les **barils** (`index.ts`), les **hubs de types** (`*-types.ts`) et les **seams** sont
+atteignables. Un sous-système sans `index.ts` est un sous-système **entièrement interne**.
+
+| Sous-système     | Rôle                                                                                 | Route médiée                                   | Ce qui passe la frontière                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api/`           | contrôleur d'API, registre de plugins, registre de capacités, boot-info              | `index.ts`                                     | `APIController`, `PluginRegistry`, `CapabilityRegistry`, `BootInfo` — ⚠️ `GeoLeafAPI` **n'est pas** au baril. 🛑 Le motif écrit ici était « assembleur à état, avec des dépendances d'ordre de chargement » : **c'était vrai jusqu'au 08/08/2026**, et socle-init 7.7 a retiré l'assemblage — le module ne fait plus que ré-exporter le namespace vivant. Il reste hors baril parce qu'il porte un **effet de bord d'import** (`_g.GeoLeaf = _g.GeoLeaf \|\| {}`) et non un symbole pur, ce que le baril ne doit pas dissimuler |
+| `basemaps/`      | fonds de carte, providers, hillshade, source image                                   | — (interne)                                    | via la façade `GeoLeaf.Baselayers`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `config/`        | chargement, fusion, accès à la config ; `module-config.ts`                           | `index.ts` **restreint**                       | ⚠️ `Config` n'est **pas** ré-exporté au baril — la route recommandée reste `./config-primitives.js`, qui porte 17 des imports de la frontière. Deux portes vers la même pièce donneraient deux réponses à la même question                                                                                                                                                                                                                                                                                                      |
+| `events/`        | bus d'événements                                                                     | `index.ts`                                     | `dispatchGeoLeafEvent` uniquement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `geojson/`       | chargement, conversion, styles, labels — **l'arête la plus chargée** de la frontière | `index.ts`                                     | `GeoJSONCore`. ⚠️ Les **types ne sont pas** ré-exportés : les hubs (`core-types.ts`, `loader/loader-types.ts`) restent importables directement, router un import type-only par un baril runtime tirerait l'implémentation dans le graphe                                                                                                                                                                                                                                                                                        |
+| `introspection/` | surface lecture seule pour les outils tiers                                          | — (interne)                                    | via `GeoLeaf.Introspection`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `layer-manager/` | arbre de couches, bascules, sélecteur de fond                                        | seams `panel-seam.ts`, `item-controls-seam.ts` | contributions de capacités, sans arête directe                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `map/`           | conteneur, thème de carte, façade                                                    | — (interne)                                    | via `GeoLeaf.Core`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `security/`      | échappement, validateurs, sanitiseurs, DOM sûr                                       | `index.ts`                                     | `escapeHtml`, `escapeAttribute`, `createSafeElement`, sanitiseurs, validateurs d'URL                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `shared/`        | contrats de seam et état partagé inter-modules                                       | `index.ts` — **baril de médiation**            | `StorageContract` et l'état que lisent les capacités. ⚠️ **L'élargir est le geste que R.8 DÉSIGNE**, pas un contournement — mais il est explicite et doit être motivé sur place                                                                                                                                                                                                                                                                                                                                                 |
+| `storage/`       | stockage bas niveau, enregistrement du Service Worker                                | `index.ts` **étroit**                          | `SWRegister` seul — c'est tout ce que `capabilities/pwa/` consomme. ⚠️ `sw-core.js` vit ici mais **n'est ni importé ni bundlé** : il est copié tel quel dans chaque variante, donc tout littéral qu'il partage avec le core est écrit **deux fois** et doit porter sa garde de source (`DATA_ORIGINS_KEY`, `TILE_BUDGET_KEY`, le plafond de tuiles)                                                                                                                                                                             |
+| `themes/`        | moteur de thèmes : chargeur, applicateur, événement `geoleaf:theme:applied`          | `index.ts`                                     | `ThemeLoader` + ses types. ⚠️ **Le moteur est kernel, le sélecteur est une capacité** (`capabilities/theme-selector/`) — ce baril est la couture entre les deux                                                                                                                                                                                                                                                                                                                                                                 |
+| `ui/`            | primitives UI, panneau desktop, barre mobile                                         | `index.ts` **délibérément étroit**             | `_UIComponents`, `createPillSearchInput`. Le plus gros sous-arbre du kernel, et presque tout y est interne — **l'élargir est une décision, pas une formalité**. ⚠️ `desktop/desktop-tabs-seam.ts` n'est pas ré-exporté : un seam est déjà une frontière médiée                                                                                                                                                                                                                                                                  |
+
+⚠️ **`kernel/shared/` est le point d'attention permanent.** Toujours identifier ses consumers
+avant de le modifier : c'est par lui que passent `storage-contract`, `geojson-state`,
+`layer-configs-state`, `lifecycle` et `sync-handler-contract`.
+
+**Les seams du dépôt**, tous emplacements confondus — c'est la convention pour une dépendance
+inversée :
+
+```bash
+find packages/core/src -name '*seam*.ts'
+```
+
+---
+
+## Configuration
+
+### Ce qui appartient à cette fiche, et ce qui ne lui appartient pas
+
+| Sujet                                             | Où il fait autorité                                                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Structure d'un dossier profil, invariants `PRF-*` | `docs/specs/contrats/PROFILE_CONTRACT_SPEC.md` (**gelé sous RFC**)                                                                    |
+| Comment valider un profil, erreurs et remèdes     | `docs/reference/GUIDE_VALIDATION_PROFILS.md`                                                                                          |
+| Inventaire exhaustif des paramètres, par famille  | `docs/reference/inventaire_config_parametres.md` (gate bidirectionnelle) et son rendu `reference_parametres_config.html` (**généré**) |
+| Ce qui suit ci-dessous                            | le **mécanisme** de chargement et de fusion, propre au kernel                                                                         |
+
+### Le manifeste `Files`
+
+`profile.json` ne porte que l'identité, `map` et le manifeste `Files`. Ce manifeste est
+**fermé** (`additionalProperties: false` dans `profiles/schemas/profile.schema.json`) : sept
+clés, pas une de plus — `themesFile`, `layersFile`, `basemapsFile`, `uiFile`, `featuresFile`,
+`mappingFile`, `modules`.
+
+```json
+{
+    "Files": {
+        "themesFile": "config/core/themes.json",
+        "layersFile": "config/core/layers.json",
+        "basemapsFile": "config/core/basemaps.json",
+        "uiFile": "config/core/ui.json",
+        "featuresFile": "config/core/features.json",
+        "modules": {
+            "offline": "config/plugins/offline.json",
+            "addpoi": "config/plugins/addpoi.json",
+            "taxonomy": "config/plugins/taxonomy.json",
+            "legend": "config/plugins/legend.json",
+            "filter": "config/plugins/filter.json"
+        }
+    }
+}
+```
+
+⚠️ **La taxonomie n'a pas d'entrée dédiée** — c'est un **module** : `Files.modules.taxonomy`,
+et les icônes sont son `icons.spriteUrl`. Un profil déclarant l'ancienne clé racine est
+**rejeté** par `npm run validate:profiles`.
+
+⚠️ **Ce qu'un lecteur ne doit PAS attendre du profil enrichi.** `_buildEnrichedProfile` pose
+exactement `basePath`, `_profileId`, `themes`, `mapping`, `layers`, plus le spread du profil de
+base — **ni `taxonomy`, ni `icons`**. Les lire depuis `getActiveProfile()` renvoie `undefined`,
+**en silence** : c'était la cause de deux bugs distincts (listes de catégories AddPOI, sprite
+jamais mis en cache). Passer par la capacité (`GeoLeaf.Taxonomy.getLayerCategories`) ou par le
+seam offline (`CacheStorage.loadProfileConfig`, qui hydrate `icons` depuis
+`Files.modules.taxonomy`).
+
+⚠️ **L'exemple ci-dessus est gardé.** `packages/core/__tests__/guards/doc-profile-examples.guard.test.js`
+extrait tout bloc `Files` de cette fiche et le valide contre `profile.schema.json`. Un bloc qui
+parle de `Files` sans parser fait **échouer** le test au lieu d'être sauté : un skip silencieux
+se lit « tout va bien » alors que l'exemple le plus normatif du fichier n'a jamais été vérifié.
+
+### Ordre de chargement
+
+1. `geoleaf.config.json` → `data.activeProfile`.
+2. `profile.json`, choisi selon le profil résolu (voir §Séquence de boot).
+3. Si `profile.bundleFile` est déclaré → **un seul fetch** de `profile-bundle.json`, pré-fusionné
+   par `scripts/lib/bundle-profiles.cjs`. ⚠️ Ce fichier **n'existe pas dans `profiles/`** : il
+   est produit **dans le déployé** par `build-deploy.cjs`, qui patche au passage le
+   `profile.json` copié pour y ajouter `"bundleFile"`. En `debug: true`, le bundle est ignoré
+   et la cascade est chargée — édition à chaud sans rebuild.
+4. Sinon, cascade : les fichiers `config/core/*` + les fichiers `Files.modules`, en parallèle,
+   puis les configs de couches.
+5. Configs de couches et styles : à la demande, au premier affichage.
+6. Données GeoJSON : selon la configuration de la couche.
+
+### `modules.<id>` — la configuration d'un plugin est opaque au core
+
+`modules.<id>.*` est la **seule** forme supportée. Le miroir bidirectionnel et le repli de
+dépréciation posés à l'origine ont été retirés, en même temps que les interfaces de clés racine
+dépréciées. `module-config.ts` n'expose plus que deux mécanismes :
+
+- **`resolveModuleConfig()`** (porté par `Config.getModuleConfig`) — lit le bloc `modules.<id>` ;
+  si le bloc existe il fait foi **en bloc**, sinon la valeur par défaut est rendue. **Aucun
+  repli** sur une clé racine.
+- **`mergeModulesBag()`** — fusionne **entrée par entrée** le bag `modules` d'un profil dans la
+  config consolidée. Un remplacement en bloc perdrait les entrées déclarées par la config de
+  boot pour d'autres plugins.
+
+```javascript
+GeoLeaf.Config.getModuleConfig("offline", "cache.enableProfileCache", true);
+GeoLeaf.Config.get("modules.offline.cache.enableProfileCache"); // forme dot-notation équivalente
+```
+
+`poiConfig` et `clusteringConfig` sont des **features core** : clés racine du config consolidé,
+déclarées dans `config/core/features.json`, hors `modules.*`.
+
+### Profils présents dans le dépôt
+
+Le dépôt livre **`tourism`** et **`reunion-eclairage`**, deux profils de démonstration, plus
+**`_reference`**, qui n'est pas une démonstration mais l'échantillon exhaustif contre lequel se
+lisent les formes de configuration — `build-deploy.cjs` l'écarte du déployé comme tout répertoire
+préfixé `_`. Un profil métier ne s'ajoute pas ici : il se fabrique en suivant
+`docs/specs/contrats/PROFILE_CONTRACT_SPEC.md`.
+
+📌 **Deux profils livrés est une propriété, pas un hasard**, et deux mécanismes en dépendent :
+le **sélecteur de profil** ne se laisse éprouver qu'à partir de deux (`e2e/24-profile-switcher`),
+et `reunion-eclairage/ign-plan-3d` est le **seul fond vectoriel** du dépôt, donc le seul qui
+puisse être servi hors ligne (`docs/specs/capacites/offline.md` §Cache API). Descendre à un
+profil livré éteint les deux, silencieusement pour le premier.
+
+⚠️ **Aucun compte n'est écrit dans cette section, et c'est délibéré.** Elle a annoncé « deux
+profils métier » du 27/07/2026 au 10/08/2026, en les nommant ; `reunion-eclairage` est ensuite
+parti au Sprint 7 du passage public — comme profil **client** — puis **revenu le 10/08/2026**,
+neutralisé de toute mention de son exploitant et requalifié en profil de démonstration. Un compte
+en dur ne se serait vu vieillir ni à l'aller ni au retour. Le compte fait foi à la commande :
+
+```bash
+npm run validate:profiles
+```
+
+---
+
+## Contrat exposé
+
+### Ce que cette section fait, et ne fait pas
+
+Elle **ne recopie aucune signature**. Les signatures sont dérivées du TSDoc par TypeDoc
+(`npm run docs:api -w packages/core`) ; les recopier ici recréerait exactement le doublon que
+la refonte documentaire supprime. Ce qui suit est ce que TypeDoc ne sait pas dire : **où les
+choses se montent, et par quel canal**.
+
+### Les trois canaux, et leur asymétrie
+
+| Canal                            | Ce qui y vit                                                                 | Monté par                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Exports ESM nommés**           | ce que `bundle-esm-entry.ts` ré-exporte, l'essentiel via `kernel-exports.ts` | le bundler, à l'import                                                            |
+| **Namespace global `GeoLeaf.*`** | la surface CDN, typée dans `src/global.d.ts`                                 | phase A pour le kernel, `registerGlobals(gl)` des `install.ts` pour les capacités |
+| **Sous-chemins `types`-seuls**   | 6 contrats d'extension (`@geoleaf/core/contracts/*.contract.js`)             | la map `exports` du `package.json`                                                |
+
+⚠️ **Les deux premiers canaux ne se recouvrent pas.** Certains namespaces runtime ne sont pas
+des exports ESM, et certains exports ESM ne sont pas montés sur le global. Un document qui
+présente l'un comme la liste de l'autre est faux par construction — c'est ce qui a fait diverger
+`API_REFERENCE.md` de la sortie TypeDoc. Les listes se mesurent :
+
+```bash
+grep -nE "^export" packages/core/src/bundle-esm-entry.ts packages/core/src/kernel-exports.ts
+ls packages/core/src/api/geoleaf.*.ts
+```
+
+⚠️ **Le kernel ne peut pas suivre le `registerGlobals()` des capacités.** Celui-ci tourne à
+l'appel de `boot()` (Pass 1) ; la phase A du kernel doit tourner à l'**import du bundle**, car
+les plugins ESM appellent `GeoLeaf.I18n.registerDict()` à leur propre top-level, avant.
+**Asymétrie légitime** : le kernel est le **substrat**, pas une capacité —
+`contracts/preset.contract.ts` le dit déjà (_« The kernel is implicit — never listed here »_).
+
+### Contrats
+
+`packages/core/src/contracts/` porte les interfaces partagées. Ce sont des **surfaces de types
+pures** : ni export de valeur, ni import non-type, ni instruction top-level — gaté par
+`scripts/check-contracts-pure.cjs`, en pre-commit comme en `ci:local`. Six d'entre eux sont
+publiés en sous-chemins `types`-seuls : `core-module`, `capability`, `config`, `map-adapter`,
+`layer-data`, `event-bus`. On en ajoute quand on veut ; **on n'en retire jamais**.
+
+⚠️ **`ICoreModule` est l'union `ILifecycleModule | IUISlotModule`.** Il déclarait
+`dependencies`/`init`/`destroy` comme obligatoires alors que `ModuleRegistry.register()` accepte
+depuis toujours `{id, ui}` — le contrat publié tel quel aurait rejeté huit sites d'appel réels.
+TypeScript refusant `implements` sur une union, les classes de cycle de vie déclarent
+`implements ILifecycleModule`.
+
+### Événements
+
+Deux cartes, et la distinction est porteuse :
+
+- **`GeoLeafEventMap`** — les événements typés du bus assaini. Ils survivent au
+  `JSON.parse(JSON.stringify())` que le bus applique.
+- **`GeoLeafRawEventMap`** — `geoleaf:toolbar:action` y vit **seul et volontairement** : son
+  `element: HTMLElement` ne survit pas à la sérialisation. Le placer dans la première carte
+  aurait rendu `dispatchGeoLeafEvent` type-légal et **runtime-faux**.
+
+`Events.on/off/once` accepte les deux cartes ; l'émission reste sérialisable. Le reliquat non
+typé est **borné et décroissant**, tenu par la baseline
+`scripts/.baselines/event-map-coverage.json` et la gate `check-event-map-coverage.cjs`. Les
+comptes des deux côtés se lisent là :
+
+```bash
+grep -oE '"geoleaf:[a-z:_-]+"' packages/core/src/contracts/event-bus.contract.ts | sort -u
+node -p "require('./scripts/.baselines/event-map-coverage.json').count"
+```
+
+### Typage du namespace
+
+`src/global.d.ts` porte le contrat du namespace global. La couverture de typage est gatée par
+`scripts/check-namespace-typing-coverage.cjs` (HOST-04/05/06) et la synchronisation
+`GeoLeafHost ⊆ GeoLeafGlobal ⊆ oracle post-boot` par `scripts/verify-host-contract-sync.cjs`.
+
+⚠️ **Les membres sont référencés un par un, jamais par `extends`.** Les lecteurs d'AST
+n'itèrent que `node.members` : des membres hérités disparaîtraient de la vue de **toutes** les
+gates du namespace. `scripts/lib/ts-decl-read.cjs` refuse désormais de conclure sur une clause
+`extends`.
+
+⚠️ **`Table`, `Geocoding` et `Popup` ne sont typés nulle part** — absents de `global.d.ts`. Ils
+ne sont donc ni dérivables ni gatables aujourd'hui ; c'est un trou ouvert, pas un choix.
+
+### Typage publié
+
+Ce que npm sert comme typage est le `dist/types/` **produit par le build**, atteignable par une
+condition `types` dans la map `exports`. **Aucun `.d.ts` maintenu à la main ne fait partie du
+contrat public** (ADR-14). Mécanisé par `scripts/verify-published-types.cjs` et
+`packages/core/examples/consumer/published-types.ts`, qui résout les paquets typés **à la
+compilation**, comme le ferait un intégrateur.
+
+---
+
+## Décisions de conception
+
+Les ADR sont numérotés historiquement ; l'ordre n'est pas chronologique et les numéros ne se
+réattribuent pas. Les décisions périmées sont **annotées, jamais supprimées** — un ADR qu'on
+efface laisse un code inexpliqué.
+
+| #          | Décision                                                                                                                                                                                                 | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Alternative écartée                                                                                                                                                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **ADR-01** | Toutes les opérations cartographiques passent par `IMapAdapter` ; aucune référence `maplibregl.*` hors `adapters/maplibre/`                                                                              | testabilité (l'adapter se mocke) et remplacement du moteur sans toucher au métier                                                                                                                                                                                                                                                                                                                                                                                                                                                  | appeler MapLibre directement — coût nul à court terme, couplage total à long terme                                                                                                                                                                                       |
+| **ADR-02** | `packages/core/src/` ne référence aucun plugin (`no-plugin-in-core`)                                                                                                                                     | frontière d'**architecture** : le core reste autonome et tree-shakeable, et son graphe ne dépend d'aucun paquet optionnel. La règle ne s'appuie sur aucune propriété des plugins autre que le fait qu'ils sont des plugins                                                                                                                                                                                                                                                                                                         | laisser le core connaître ses plugins — couplage total, tree-shaking perdu, et une capacité qu'on croit optionnelle devient obligatoire                                                                                                                                  |
+| **ADR-03** | ESM seul, plus d'UMD depuis la v2.0.0                                                                                                                                                                    | ⚠️ **révisé — la décision tient, sa justification était fausse pendant trois ans.** Le motif écrit était « MapLibre GL JS ≥5 est ESM-only » : c'était **faux de la v5**, qui déclarait `main: dist/maplibre-gl.js` sans `module` ni `exports` — un script classique (constaté le 08/08/2026). La prémisse est **redevenue vraie le jour même** avec MapLibre 6, réellement ESM-only et qui ne publie plus aucun bundle UMD. Une décision juste pour une mauvaise raison est exactement ce que ces annotations existent pour tracer | garder UMD pour les intégrations `<script>` classiques                                                                                                                                                                                                                   |
+| **ADR-04** | Le runtime est ordonné par tri topologique (Kahn) sur `ICoreModule.dependencies`                                                                                                                         | l'ordre de déclaration ne détermine pas l'ordre d'exécution ; le graphe, si                                                                                                                                                                                                                                                                                                                                                                                                                                                        | ordre manuel dans `boot.ts` — la source des bugs d'initialisation que l'ADR a fermés                                                                                                                                                                                     |
+| **ADR-05** | `globals.storage.ts` (B8) est importé **après** `globals.ui.ts` (B9), contre la numérotation                                                                                                             | le bouton cache s'accroche à un DOM qui doit exister                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | respecter l'ordre numérique — provoque un crash                                                                                                                                                                                                                          |
+| **ADR-06** | Deux **natures** de code, pas deux sous-répertoires : **kernel** (`kernel/<domaine>`, toujours dans le graphe, aucune gate) et **capacité in-core** (`capabilities/<id>/`, gate `modules.<id>`, opt-out) | ⚠️ **révisé** — l'ADR décrivait `modules/built-in/` vs `modules/optional/`, un répertoire **supprimé** ; il est resté faux treize jours dans le document lu en référence à chaque session                                                                                                                                                                                                                                                                                                                                          | garder la dichotomie `built-in`/`optional`. Le tree-shaking a survécu mais a **changé de mécanisme** : ce n'est plus un répertoire que le build saute, c'est l'installer qui **possède son CSS** et le tire lui-même — le sauter retire le code _et_ la feuille de style |
+| **ADR-07** | Les boutons d'action en popup ne laissent qu'un **canal événementiel** (`geoleaf:popup:action`)                                                                                                          | le rendu popup est passé à `@geoleaf-plugins/feature-info` ; plus rien n'invoquait le registre de handlers, devenu un no-op silencieux                                                                                                                                                                                                                                                                                                                                                                                             | garder `GeoLeaf.Popup.registerActionHandler`/`runAction`/`bindPopupActions` — retirés                                                                                                                                                                                    |
+| **ADR-08** | Deux phases, **une seule manière chacune** : les façades à l'import (phase A), le runtime au registry (phase B)                                                                                          | ⚠️ **révisé** — le texte d'origine interdisait un changement qu'un sprint antérieur avait **déjà livré**, et attribuait la panne S4 à `loadConfig()` alors que le déclencheur réel était un **log de debug** lisant `_APIController`, dont l'accesseur **construit** le contrôleur à l'évaluation du bundle. Le backlog a recopié la mauvaise cause                                                                                                                                                                                | « registry = seul driver du boot » — **impossible**, pas seulement risqué : les façades sont un prérequis du registry                                                                                                                                                    |
+| **ADR-09** | Un **module** est interne (cycle de vie, graphe de dépendances, bundlé) ; un **plugin** est externe (enregistré au runtime, bundle séparé, métadonnées `requires`/`optional`)                            | les modules **participent** à l'ordre d'init, les plugins **non** — enregistrement plat                                                                                                                                                                                                                                                                                                                                                                                                                                            | un mécanisme d'extension unique : il aurait fait entrer des extensions optionnelles dans le graphe critique                                                                                                                                                              |
+| **ADR-10** | `domCreate()` est la fabrique DOM canonique du core                                                                                                                                                      | type de retour précis (`HTMLElementTagNameMap[K]`) et paramètre `parent` positionnel. ⚠️ **Les chiffres de la rédaction initiale n'étaient reproductibles ni à HEAD ni au commit qui l'a rendue**                                                                                                                                                                                                                                                                                                                                  | `createElement`/`$create`. ⚠️ La bascule **n'est pas mécanique** : les sites `$create` utilisent des props que `domCreate` ne traite pas du tout (`className`, `textContent`, `attributes`, `id`, `dataset`, handlers). Elle suppose d'**étendre** `domCreate` d'abord   |
+| **ADR-11** | Le core **n'importe pas** `@geoleaf/host-runtime` ; la dépendance est à sens unique (plugin → host-runtime)                                                                                              | ce paquet lit `globalThis.GeoLeaf`, un namespace que **ce core assemble lui-même** — l'importer, c'est se relire à travers son propre shim client. Et le core a déjà `getGeoLeaf()`                                                                                                                                                                                                                                                                                                                                                | migrer les copies de `coreConfigGet` vers `host-runtime` y compris côté core, comme la roadmap le demandait à la lettre. La duplication a bien été supprimée, mais **en intra-core**                                                                                     |
+| **ADR-12** | `public-api.ts` **expose**, il n'implémente pas — deux patrons conformes (ré-export pur, fabrique `buildPublicApi`)                                                                                      | mécanisé par `scripts/check-facade-purity.cjs`, **sans baseline**. ⚠️ **Enseignement principal** : cinq paquets excluaient leur façade de la couverture ; y loger l'implémentation la rendait **invisible**, et la conformation l'a fait apparaître à 0 %                                                                                                                                                                                                                                                                          | réutiliser telle quelle la grammaire du core, qui rejette toute fonction locale — elle flaggerait `buildPublicApi` lui-même                                                                                                                                              |
+| **ADR-13** | Dans `@geoleaf/field-renderer`, le vocabulaire de **rendu** appartient à la lib, celui de **formulaire** (`form.*`) à l'hôte                                                                             | router les dictionnaires de rendu créerait une dépendance de la lib envers ses hôtes ; un troisième hôte rendrait des jours vides                                                                                                                                                                                                                                                                                                                                                                                                  | router les 3 dictionnaires vers les catalogues hôtes                                                                                                                                                                                                                     |
+| **ADR-14** | Le contrat de typage publié est **généré**, jamais écrit à la main                                                                                                                                       | un `index.d.ts` racine de 847 lignes a été traité comme le contrat public par quatre sprints — il n'était le `types` d'aucun paquet et **n'était compilé par rien**, donc il avait dérivé librement                                                                                                                                                                                                                                                                                                                                | maintenir un `.d.ts` de façade à la main                                                                                                                                                                                                                                 |
+
+⚠️ **Une croyance testée et infirmée, consignée parce qu'elle circule** : « la condition `types`
+doit être la première, sinon elle n'est jamais lue ». **Faux sur cette chaîne d'outils** —
+mesuré. Ce qui protège de `TS7016`, c'est la **présence** de la condition, pas sa position. La
+convention « `types` en premier » est conservée pour l'uniformité, et le gate le dit.
+
+---
+
+## Dépendances et frontières
+
+### Où va une fonctionnalité neuve — kernel, capacité ou plugin
+
+Les trois frontières ci-dessous disent ce qu'un côté a le droit d'importer. Celle-ci dit de
+**quel côté on atterrit**, et elle se tranche avant d'écrire la première ligne. Doctrine issue
+de la session d'idéation du 04/07/2026, versée ici le 01/08/2026 depuis
+`rapport_decisions-architecture.md` — elle n'avait aucun domicile dans `specs/`, et un
+classement qui ne vit que dans un rapport daté se refait de mémoire au sprint suivant.
+
+**Deux axes, pas un.** On les confond souvent, et c'est ce qui produit les mauvais classements :
+
+- **Le lien au noyau** — `import` de contrats publics + enregistrement au registry typé
+  (refactor-safe, tree-shakeable, composable au build) = **capacité**. Accès runtime par le seam
+  `globalThis.GeoLeaf.*`, zéro couplage compile-time = **plugin**.
+- **Le moment de livraison** — inline dans le boot, chunk dynamique `import()`, ou script
+  externe / lazy. ⚠️ C'est un axe **indépendant** du premier : une capacité peut être un chunk.
+
+| Couche                     | Lien              | Livraison                          | Contenu                                                                                                    |
+| -------------------------- | ----------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Kernel**                 | —                 | inline, toujours                   | moteur géométrique, adapter MapLibre, registries, config, sécurité, event-bus, moteur de thème, `notify()` |
+| **Capacité** (first-party) | typé compile-time | inline _ou_ chunk selon l'ubiquité | les enrichissements quasi-universels ou légers                                                             |
+| **Plugin** (tiers-capable) | seam runtime      | script externe _ou_ lazy           | optionnel, lourd en dépendances, écrit par un tiers, ou adossé à un backend                                |
+
+**La grille, dans l'ordre — la première réponse « oui » tranche :**
+
+1. Couplé aux internals (rendu, sécurité, boot) ? → **kernel**
+2. Un tiers pourrait l'écrire sans aide ? → **plugin**
+3. Grosse dépendance (flexsearch, GDAL, flatgeobuf, qrcode) ? → **plugin**, ou capacité-**chunk**
+   pour isoler la dépendance
+4. Utilisé par ~tout le monde ? → **capacité inline**
+5. Commun mais pas universel, moyennement lourd ? → **capacité chunk dynamique**
+
+⚠️ **Aucun mécanisme nouveau n'est à inventer pour l'axe 2** : `ICapabilityDeclaration`
+(`packages/core/src/contracts/capability.contract.ts`) exprime déjà les deux régimes par son
+champ `loader?` — absent = embarqué et gaté au runtime par `isEnabled()`, présent = chunk.
+
+⚠️ **Le point contre-intuitif, celui qui fait rater la question 4.** Pour du code **toujours**
+embarqué, le plus performant n'est pas un lazy plus malin — c'est de **ne pas découper** (inline
+
+- gate booléen). Le chunk ne gagne des octets que si le code est **conditionnellement** livré.
+  Traiter une capacité quasi-universelle en `<script>` externe eager cumule les inconvénients :
+  même payload, requête HTTP en plus, couplage par le seam, et le piège de câblage déjà touché
+  deux fois.
+
+**Le principe qui gouverne le contenu du kernel** : natif dessous, déclaratif dessus. Ne pas
+exposer MapLibre brut (sinon l'intégrateur utiliserait MapLibre directement, et il n'y a plus de
+produit) ; ne pas réimplémenter le moteur (rendu, cluster, sources, popup, events sont GPU et
+plus rapides que tout portage). Le kernel est un **traducteur mince** : profil JSON → sources,
+couches et expressions natives, plus ce que le natif n'a pas — rendu d'attributs, tooltip et
+sidepanel, no-code, orchestration.
+
+### La frontière `capabilities/` → `kernel/` (règle R.8)
+
+`capabilities/**` ne peut pas importer profondément sous `kernel/**`. Trois routes seulement :
+le **baril** du sous-système, un **hub de types** `*-types.ts`, ou un **seam**. Élargir un
+baril est le geste que la règle désigne — il est explicite, et se motive sur place.
+
+### La frontière core → plugins (`no-plugin-in-core`)
+
+Gate `scripts/verify-core-standalone.cjs`, bloquant en CI (push **et** pull request), en
+pre-commit et dans `ci:local`. Il couvre la direction core → plugins et, symétriquement,
+`connector` → plugins.
+
+⚠️ **C'est une frontière d'architecture.** Elle garantit que le core reste autonome et
+tree-shakeable, et ne dépend d'aucune propriété des plugins autre que le fait qu'ils sont des
+plugins.
+
+**Conséquences de forme** : les fonctionnalités de plugin sont injectées dans le namespace au
+runtime via le `PluginRegistry`, jamais par import statique ; un plugin ne peut pas voir sa
+configuration déclarée, validée ou défautée par le core (INV-FRONT).
+
+### La frontière lib / app
+
+`apps/geoleaf-app/` est l'**application déployable** et la source unique et irremplaçable des
+variantes de `deploy/` : `index.html`, `init.js`, `manifest.json`,
+`connector.local.example.js`, `src/assets/icons/`. Le workspace est `private: true` et n'a
+délibérément ni `files[]`, ni script `test`/`build`, ni `vitest.config.ts`. Contrat gardé par
+`scripts/verify-app-template.cjs`.
+
+⚠️ **Cette ligne a écrit « des trois variantes LIVRÉES » — deux erreurs dans trois mots.** Deux
+variantes sont livrées (`deploy-core`, `deploy-full`) ; `deploy-coverage` et `deploy-local` ne le
+sont pas. Le décompte se lit avec `ls deploy/`, il ne se recopie pas. **`deploy-local`** est la
+variante de poste (`npm run build:deploy:local`) : elle seule reçoit `connector.local.js`, porteur
+d'un jeton, et elle seule conserve la balise qui le charge — un livrable n'a **ni le fichier, ni la
+moindre référence à lui**. Invariants tenus par `scripts/verify-deploy-no-secrets.cjs` (DNS-02) et
+`APP-11`, détaillés dans `specs/plugins/CDC_connector.md`.
+
+⚠️ Trois de ses invariants protègent des formes **mono-ligne** que `build-deploy.cjs` patche
+par regex `/gm` sans flag `/s` : **ne jamais laisser Prettier reformater `index.html`**, et ne
+pas ajouter `apps/**/*.html` à `lint-staged`.
+
+### Les chemins de package ne se codent jamais en dur
+
+Un chemin `packages/<nom>` écrit en dur ne casse pas au déplacement : il **cesse silencieusement
+de matcher**, et la gate concernée sort verte en n'ayant rien scanné. Passer par
+`scripts/lib/packages.cjs`, qui **jette** ; `scripts/probe-gate-visibility.cjs` surveille cette
+classe de défaut.
+
+### Dépendances externes
+
+MapLibre GL JS ≥6.0 est une **peer dependency externe**, hors bundle. ⚠️ Depuis la v6, le
+moteur est **ESM-only** : il ne publie plus de bundle UMD, n'expose plus le global `maplibregl`
+— reposé par le shim `vendor/maplibre-gl/global.mjs` — et se présente en **graphe de trois
+modules**, dont deux ne sont nommés dans aucun markup (d'où la clôture de `boot-assets.cjs`,
+qui les fait entrer au pré-cache du service worker).
+
+Le budget du kernel est la **clôture transitive des imports statiques** depuis l'entrée, pas
+l'entrée seule qui n'est qu'un shim. Échec de build au-delà de 300 KB gz, alerte au-delà de
+270 KB gz :
+
+```bash
+npm run size
+```
+
+---
+
+## Annexe — Glossaire
+
+| Terme                  | Définition                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Profil**             | ensemble de fichiers JSON définissant un contexte métier complet                                                                                 |
+| **Façade**             | fichier `api/geoleaf.*.ts` exposant un domaine sur `GeoLeaf.*` — il expose, il n'implémente pas                                                  |
+| **Globals**            | fichiers `globals/globals.*.ts` qui peuplent `window.GeoLeaf.*` en side-effect, à l'import                                                       |
+| **Phase A / phase B**  | les façades à l'import du bundle / le runtime au `ModuleRegistry`                                                                                |
+| **Capacité in-core**   | `capabilities/<id>/`, auto-contenue (logique + CSS + tests + déclaration + façade), gatée `modules.<id>`, opt-out                                |
+| **Installer**          | `capabilities/<id>/install.ts` — le point d'ancrage unique d'une capacité dans un manifeste de preset                                            |
+| **Preset / manifeste** | la liste des installers qu'une entrée de bundle embarque (`presets/manifest.full.ts` pour le bundle livré)                                       |
+| **Seam**               | contrat d'inversion de dépendance : un consommateur pousse sa contribution au lieu d'être importé                                                |
+| **Baril de médiation** | `index.ts` d'un sous-système kernel — la seule porte que R.8 laisse aux capacités                                                                |
+| **ICoreModule**        | union `ILifecycleModule \| IUISlotModule` — un module de cycle de vie ou un slot UI                                                              |
+| **IMapAdapter**        | interface d'abstraction du moteur cartographique, engine-agnostic                                                                                |
+| **StyleRules**         | tableau de règles conditionnelles attribut → style, déclaré en JSON                                                                              |
+| **Terrarium**          | encodage DEM terrain (AWS/Mapzen) : altitude encodée en RGB                                                                                      |
+| **FlatGeobuf**         | format binaire géospatial à index R-tree, streaming par bbox                                                                                     |
+| ~~**ESM Lite**~~       | **terme mort** — le build réduit figé n'existe plus. Conservé pour que le mot, présent dans d'anciens enregistrements, soit reconnu comme périmé |
+| ~~**Lazy chunk**~~     | **terme mort au sens du kernel** — `src/lazy/` n'existe pas. Seuls des `import()` ponctuels subsistent                                           |
+
+---
+
+## Annexe — Historique des révisions
+
+| Version   | Date            | Auteur        | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------- | --------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **4.1.0** | 1er août 2026   | Claude Opus 5 | **§Dépendances et frontières reçoit la doctrine de placement** — « Où va une fonctionnalité neuve : kernel, capacité ou plugin ». Les deux axes (lien au noyau · moment de livraison), la table des 3 couches, la grille ordonnée à 5 questions et le principe natif-dessous/déclaratif-dessus, versés depuis `rapport_decisions-architecture.md` (session d'idéation du 04/07/2026) à l'archivage de la zone `travail/`. ⚠️ **Motif du versement** : aucun fichier de `specs/` ne portait ce classement, et `/feature` ne couvre pas le placement — la seule frontière que les trois sections suivantes ne disaient pas était celle qui décide **de quel côté** on atterrit. Les trois autres frontières sont inchangées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **4.0.0** | 27 juillet 2026 | Claude Opus 5 | **Réécriture complète contre le code, refonte documentaire V3 §2.3 + §2.4.** Le document précédent (`CDC_technique.md`, 2 572 lignes) citait **452 chemins dont 287 ne résolvaient plus**, annonçait « 18 capacités » ×4 (réel **21**), « 11 plugins » / « 9 plugins » (réel **13**), « 369+ fichiers TypeScript » (réel **518**), « 8 profils » (réel **2** + `_reference`), et **deux comptes d'exports ESM contradictoires** à 700 lignes d'écart. Il portait aussi trois versions incompatibles de lui-même — frontmatter `v3.34.0`, bandeau `v3.23.0`, corps « version 2.1.5 » — alors que `packages/core/package.json` vaut **3.0.0**. Réécrit au squelette `specs/` : Périmètre / Fonctionnalités / Séquence de boot / 13 sous-systèmes / Configuration / Contrat exposé / Décisions / Frontières. **Trois sections deviennent des renvois** au lieu d'être recopiées : l'arborescence des sources (→ `reference/ARBORESCENCE_QUALIFIEE.md`, généré et gaté), la liste des signatures d'API (→ TypeDoc) et la structure d'un profil (→ `specs/contrats/PROFILE_CONTRACT_SPEC.md` + `reference/GUIDE_VALIDATION_PROFILS.md`) — c'est la frontière `specs/` ↔ dérivé, et la recréer ici annulerait le travail qui la supprime ailleurs. **Les 14 ADR sont conservés**, condensés en table décision / pourquoi / alternative écartée, avec leurs révisions et leurs corrections de prémisse — un ADR périmé s'annote, il ne s'efface pas. Péremptions balayées : `src/modules/**` et `modules/optional/` (n'existent plus), `plugin-storage` → `offline-ui` (10 sites), `GeoLeaf-Core` décrit comme dépôt public, `src/lazy/` (19 mentions d'un répertoire absent). L'exemple `Files` est repris du profil `reunion-eclairage` réel et validé contre `profile.schema.json`. |
+
+<details>
+<summary>Historique antérieur — <code>CDC_technique.md</code>, v2.1.0 (22/04/2026) → v3.33.1 (26/07/2026)</summary>
+
+L'historique détaillé des 20 révisions antérieures est conservé dans le document archivé
+`CDC_technique_v2.3.0.md` et dans les journaux de session
+(`JOURNAL-2026-07.md`). Il n'est pas recopié ici : il documentait
+l'évolution d'un texte qui a été remplacé, pas l'évolution du code.
+
+Les décisions qu'il portait et qui restent vivantes ont été versées aux ADR ci-dessus. Celles
+qui décrivaient un mécanisme supprimé (`app/module-setup.ts` et la posture « top-level +
+guard », le miroir `applyModulesCompat`, le build Lite, le registre de handlers de popup) sont
+consignées comme **écartées** dans la table des décisions, avec leur motif — c'est la seule
+forme sous laquelle elles servent encore.
+
+</details>
+
+---
+
+_GeoLeaf Platform — Mattieu Pottier_

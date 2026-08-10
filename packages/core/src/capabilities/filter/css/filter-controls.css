@@ -1,0 +1,306 @@
+@layer gl.capabilities {
+    /* ------------------------------------------------------------
+   FILTER TOGGLE BUTTON — opens/closes the panel
+   ------------------------------------------------------------ */
+    .gl-filter-toggle {
+        position: fixed;
+        top: calc(220px + 10%);
+        left: 0;
+        transform: translateY(-50%);
+        z-index: 1001;
+
+        width: 28px;
+        height: 50px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        background: var(--gl-color-bg-surface);
+        border: 1px solid var(--gl-color-border-soft);
+        border-left: none;
+        border-radius: 0 12px 12px 0;
+
+        cursor: pointer;
+        box-shadow: var(--gl-shadow-medium);
+
+        transition:
+            left 160ms ease-out,
+            background 0.2s ease,
+            width 0.2s ease,
+            box-shadow 0.2s ease;
+    }
+
+    /* Shift the toggle button while the panel is open. */
+    body:has(#gl-filter-panel.gl-is-open) .gl-filter-toggle {
+        left: min(320px, calc(100% - 2rem));
+    }
+    .gl-filter-toggle:hover {
+        background: var(--gl-color-bg-surface-muted);
+        width: 32px;
+        box-shadow: var(--gl-shadow-medium);
+    }
+
+    .gl-filter-toggle__icon {
+        color: var(--gl-color-text-main);
+        transition: transform 0.2s ease;
+    }
+
+    .gl-filter-toggle:focus-visible {
+        outline: 2px solid var(--gl-color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    /* ------------------------------------------------------------
+   FILTER CONTROLS
+   ------------------------------------------------------------ */
+
+    .gl-filter-panel__checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--gl-color-accent);
+    }
+
+    /* Tree view (categories / sub-categories) */
+    .gl-filter-panel__tree {
+        width: 100%;
+    }
+
+    .gl-filter-tree {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .gl-filter-tree--root {
+        padding: 0;
+    }
+
+    .gl-filter-tree--subcategories {
+        margin-top: 0.3rem;
+        padding-left: 2rem;
+        border-left: 2px solid var(--gl-color-border-soft);
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    .gl-filter-tree__item {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .gl-filter-tree__item--category {
+        margin-bottom: 0.2rem;
+    }
+
+    .gl-filter-tree__item--category.is-expanded .gl-filter-tree--subcategories {
+        max-height: 1000px;
+    }
+
+    .gl-filter-tree__item--subcategory {
+        margin-bottom: 0.15rem;
+    }
+
+    .gl-filter-tree__row {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .gl-filter-tree__arrow {
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.7rem;
+        color: var(--gl-color-text-main);
+        user-select: none;
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+
+    .gl-filter-tree__arrow:hover {
+        color: var(--gl-color-accent);
+    }
+
+    .gl-filter-tree__spacer {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .gl-filter-tree__label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        padding: 0.2rem 0;
+        font-size: 0.85rem;
+        flex: 1;
+    }
+
+    .gl-filter-tree__label--category {
+        font-weight: 600;
+        color: var(--gl-color-text-main);
+    }
+
+    .gl-filter-tree__label--subcategory {
+        font-weight: 400;
+        color: var(--gl-color-text-main);
+    }
+
+    .gl-filter-tree__checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--gl-color-accent);
+        flex-shrink: 0;
+    }
+
+    /* Indeterminate state for partially selected categories. */
+    .gl-filter-tree__checkbox:indeterminate {
+        opacity: 0.7;
+    }
+
+    .gl-filter-tree__text {
+        user-select: none;
+        flex: 1;
+    }
+
+    .gl-filter-panel__tree-empty {
+        font-size: 0.85rem;
+        color: var(--gl-color-text-muted);
+        font-style: italic;
+        margin: 0;
+        padding: 0.5rem 0;
+    }
+
+    /* Proximity Filter */
+    .gl-filter-panel__proximity {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .gl-filter-panel__proximity-range {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.5rem;
+        background: var(--gl-color-bg-surface-muted);
+        border-radius: 6px;
+    }
+
+    .gl-filter-panel__proximity-instruction {
+        font-size: 0.75rem;
+        color: var(--gl-color-text-muted);
+        font-style: italic;
+        margin: 0;
+        padding-top: 0.3rem;
+    }
+
+    /* Draggable GPS marker dot — CSP-safe, replaces the inline-styled icon div.
+   Size comes from the marker iconSize (set on the element via CSSOM). */
+    .gl-proximity-gps-marker {
+        background: #2563eb;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ------------------------------------------------------------
+   RESPONSIVE — on very small screens the strip takes more width so it
+   stays usable.
+   ------------------------------------------------------------ */
+    @media (max-width: 640px) {
+        #gl-filter-panel.gl-filter-panel {
+            left: 0.5rem;
+            right: 0.5rem;
+            width: auto;
+        }
+
+        .gl-filter-toggle {
+            width: 28px;
+            height: 56px;
+        }
+    }
+
+    /* ==========================================================================
+   Hosted in the right-hand side panel (desktop ≥ 1440px)
+   --------------------------------------------------------------------------
+   Moved out of css/geoleaf-desktop-panel.css at S6 — same rationale as the
+   legend: the kernel defines the container, the capability says how it sits in it.
+
+   S9 — the `!important` of this section were dropped. They were redundant by
+   SPECIFICITY, which is checkable without a browser: `#gl-right-panel
+   #gl-filter-panel` scores (2,1,0) against the (1,1,0) of
+   `#gl-filter-panel.gl-filter-panel` in filter-panel.css, and
+   `#gl-right-panel .gl-filter-panel__header` scores (1,1,0) against a bare
+   (0,1,0). Two are kept, and only two — see the media query below.
+   ========================================================================== */
+
+    /* The filter panel is position:fixed by default — put it back to static here. */
+    #gl-right-panel #gl-filter-panel,
+    #gl-right-panel #gl-filter-panel.gl-filter-panel {
+        position: static;
+        opacity: 1;
+        transform: none;
+        visibility: visible;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        box-shadow: none;
+        border: none;
+        border-radius: 0;
+        z-index: auto;
+        transition: none;
+        pointer-events: auto;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+    }
+
+    /* S9 — a `#gl-right-panel #gl-filter-panel:not(.gl-is-open), …​.gl-is-open` block
+   was removed here. It re-declared `opacity: 1; transform: none; visibility:
+   visible` — the exact three properties already set by the rule above, whose
+   first selector (`#gl-right-panel #gl-filter-panel`, no state qualifier)
+   matches the panel whatever `.gl-is-open` does. Its comment claimed to "force
+   it visible even without .gl-is-open"; that was already true. */
+
+    /* Cancel MapLibre's shift when the filter lives in the right panel.
+   ⚠️ These two `!important` are KEPT deliberately. Their opponent
+   (filter-panel.css `body:has(#gl-filter-panel.gl-is-open)
+   .maplibregl-ctrl-top-left`) has the SAME specificity (1,2,1) in the SAME
+   layer, so the winner is decided by source order alone — i.e. by the order of
+   the imports in install.ts. Dropping them would make this rule depend on a
+   line order nothing protects. */
+    @media (min-width: 1440px) {
+        body:has(#gl-filter-panel.gl-is-open) .maplibregl-ctrl-top-left {
+            margin-left: 0 !important;
+            transition: none !important;
+        }
+    }
+
+    #gl-right-panel .gl-filter-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 0.75rem;
+        border-bottom: 1px solid var(--gl-color-border-soft);
+        margin-bottom: 0.5rem;
+        background: var(--gl-color-bg-surface);
+    }
+
+    #gl-right-panel .gl-filter-panel__title {
+        text-transform: uppercase;
+        font-weight: 600;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        margin: 0;
+    }
+}

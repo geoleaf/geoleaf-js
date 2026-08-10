@@ -1,0 +1,58 @@
+{
+    "id": "armoires",
+    "label": "Armoires électriques",
+    "zIndex": 90,
+    "geometry": "point",
+    "interactiveShape": true,
+    "showIconsOnMap": false,
+    "data": {
+        "directory": "data",
+        "file": "armoires.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.id",
+        "fields": [
+            {
+                "field": "properties.id",
+                "label": "id",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.secteur",
+                "label": "Secteur",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.puissance_kw",
+                "label": "Puissance totale (kW)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

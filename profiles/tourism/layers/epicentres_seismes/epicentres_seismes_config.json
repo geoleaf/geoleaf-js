@@ -1,0 +1,105 @@
+{
+    "id": "epicentres_seismes",
+    "label": "Épicentres séismes (7 jours)",
+    "zIndex": 80,
+    "geometry": "point",
+    "data": {
+        "_comment": "⚠️ B-56 (28/07/2026) — la source de BOOT est le snapshot local, pas le flux USGS. Elle a pointé le flux du 27 au 28/07/2026 : `GeoJSONModule.init()` attend la phase 1, donc cet appel tiers était dans le chemin de démarrage des 3 variantes livrées. Le flux USGS reste la source du DIRECT, dans `realtime.url` ci-dessous — le polling démarre APRÈS le boot et ne bloque rien. Le snapshot a été déplacé de `profiles/tourism/data/` vers le dossier de la couche, là où vit la donnée de toutes les autres : `data.directory` est TOUJOURS préfixé au `file` (profile-loader.ts `_buildEnrichedProfile`), donc viser la racine du profil demandait un `../` que la résolution ne voyait plus. `realtime.fallbackUrl` suit — lui se résout depuis la racine du profil (url-resolver.ts du plugin), d'où les deux écritures différentes du MÊME fichier.",
+        "directory": "data",
+        "file": "epicentres_seismes_snapshot.geojson",
+        "licence": "Domaine public — USGS Earthquake Hazards Program (earthquake.usgs.gov)",
+        "realtime": {
+            "_comment": "Sprint 2 roadmap catalogue-demos v1.0.0. Polling 60 s sur le flux USGS 2.5+ magnitude past 7 days (GeoJSON natif). idField = id natif des Features USGS. Fallback snapshot figé si panne.",
+            "enabled": true,
+            "source": "polling",
+            "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson",
+            "intervalMs": 60000,
+            "decoder": "json",
+            "updateMode": "upsert",
+            "idField": "id",
+            "fallbackUrl": "layers/epicentres_seismes/data/epicentres_seismes_snapshot.geojson"
+        }
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Par magnitude",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.place",
+                "label": "Lieu",
+                "sortable": true,
+                "width": "40%"
+            },
+            {
+                "field": "properties.mag",
+                "label": "Magnitude",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.depth",
+                "label": "Profondeur (km)",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.time",
+                "label": "Date",
+                "sortable": true,
+                "width": "30%"
+            }
+        ],
+        "searchFields": ["properties.place"],
+        "defaultSort": {
+            "field": "properties.mag",
+            "order": "desc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 50,
+        "disableClusteringAtZoom": 6
+    },
+    "attributes": {
+        "titleField": "properties.place",
+        "fields": [
+            {
+                "field": "properties.place",
+                "label": "Lieu",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.mag",
+                "label": "Magnitude",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.time",
+                "label": "Date",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

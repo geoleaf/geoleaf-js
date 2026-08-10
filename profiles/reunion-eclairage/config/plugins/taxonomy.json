@@ -1,0 +1,60 @@
+{
+    "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Point SIZE stays with the layer style (candelabres keeps radius 7). Amber palette, preserving the layer's existing yellow identity (fillColor #facc15). Glyphs are DARK here: a white stroke on light amber would be unreadable. NB the filter of this profile reads `subField: subCategoryId` (camelCase) while the taxonomy declares `subcategoryId` — pre-existing, out of scope.",
+    "enabled": true,
+    "icons": {
+        "spriteUrl": "../profiles/reunion-eclairage/icons/sprite_reunion.svg",
+        "symbolPrefix": "reunion-poi-cat-"
+    },
+    "render": {
+        "popup": { "showIconCategory": true, "showIconSubcategory": true, "colorBadges": true },
+        "sidepanel": {
+            "showIconCategory": true,
+            "showIconSubcategory": true,
+            "colorBadges": true
+        }
+    },
+    "layers": {
+        "candelabres": { "use": "poi-cat" },
+        "armoires": { "use": "poi-cat" }
+    },
+    "taxonomies": {
+        "poi-cat": {
+            "categoryField": "categoryId",
+            "subCategoryField": "subcategoryId",
+            "categories": {
+                "eclairage": {
+                    "svgId": "eclairage-generic",
+                    "iconColor": "#3e2723",
+                    "marker": { "fill": "#f9a825", "stroke": "#f57f17", "strokeWidth": 1 },
+                    "label": "Éclairage public",
+                    "subcategories": {
+                        "candelabres": {
+                            "svgId": "candelabres",
+                            "iconColor": "#263238",
+                            "marker": { "fill": "#fdd835", "stroke": "#f9a825", "strokeWidth": 1 },
+                            "label": "Candélabres"
+                        },
+                        "armoires": {
+                            "svgId": "armoires",
+                            "iconColor": "#fff3e0",
+                            "marker": { "fill": "#ef6c00", "stroke": "#e65100", "strokeWidth": 1 },
+                            "label": "Armoires électriques"
+                        },
+                        "reseau": {
+                            "svgId": "reseau",
+                            "iconColor": "#4e342e",
+                            "marker": { "fill": "#ffb300", "stroke": "#ff8f00", "strokeWidth": 1 },
+                            "label": "Réseau câbles"
+                        },
+                        "secteurs": {
+                            "svgId": "secteurs",
+                            "iconColor": "#fffde7",
+                            "marker": { "fill": "#ff6f00", "stroke": "#e65100", "strokeWidth": 1 },
+                            "label": "Secteurs"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

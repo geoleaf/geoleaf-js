@@ -1,0 +1,494 @@
+﻿/**
+ * GeoLeaf Table - Styles CSS
+ * Style du bottom-sheet drawer et du tableau de données
+ */
+
+/* ========================================================================== */
+/* 1. Conteneur principal (bottom-sheet)                                      */
+/* ========================================================================== */
+
+.gl-table-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: var(--gl-color-bg-surface);
+    border-top: 1px solid var(--gl-color-border-soft);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+}
+
+.gl-table-panel.gl-is-visible {
+    transform: translateY(0);
+}
+
+/* Barre de redimensionnement */
+.gl-table-panel__resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.gl-table-panel__resize-handle:hover .gl-table-panel__resize-bar {
+    background: var(--gl-color-accent);
+}
+
+.gl-table-panel__resize-bar {
+    width: 40px;
+    height: 3px;
+    background: var(--gl-color-border-soft);
+    border-radius: 2px;
+    transition: background 0.2s ease;
+}
+
+/* ========================================================================== */
+/* 2. Barre d'outils (toolbar)                                                */
+/* ========================================================================== */
+
+.gl-table-panel__toolbar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
+    padding: 0.75rem 0.5rem !important;
+    background: var(--gl-color-bg-surface-muted);
+    border-bottom: 1px solid var(--gl-color-border-soft);
+    flex-shrink: 0 !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+}
+
+/* Sélecteur de couche */
+.gl-table-panel__layer-selector {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+}
+
+.gl-table-panel__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gl-color-text-main);
+    white-space: nowrap;
+}
+
+.gl-table-panel__select {
+    padding: 0.375rem 0.5rem !important;
+    border: 1px solid var(--gl-color-border-soft);
+    border-radius: 4px;
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    font-size: 0.875rem;
+    width: 150px !important;
+    margin-right: 0.5rem !important;
+    cursor: pointer;
+}
+
+.gl-table-panel__select:focus-visible {
+    outline: none;
+    border-color: var(--gl-color-accent);
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+/* Champ de recherche */
+.gl-table-panel__search {
+    flex: 0 0 auto !important;
+    width: 140px !important;
+    margin-right: 1.5rem !important;
+    position: relative !important;
+}
+
+.gl-table-panel__search-input {
+    width: 100% !important;
+    padding: 0.375rem 0.5rem !important;
+    border: 1px solid var(--gl-color-border-soft);
+    border-radius: 4px;
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    font-size: 0.8125rem !important;
+    position: relative !important;
+}
+
+.gl-table-panel__search-input::placeholder {
+    color: var(--gl-color-text-muted);
+}
+
+.gl-table-panel__search-input:focus-visible {
+    outline: none;
+    border-color: var(--gl-color-accent);
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+/* Boutons de la toolbar */
+.gl-table-panel__btn {
+    padding: 0.375rem 0.625rem !important;
+    border: 1px solid var(--gl-color-border-soft);
+    border-radius: 4px;
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    font-size: 0.8125rem !important;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
+}
+
+.gl-table-panel__btn:hover:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted);
+    border-color: var(--gl-color-border-strong);
+}
+
+.gl-table-panel__btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gl-table-panel__btn.gl-is-active {
+    background: var(--gl-color-accent);
+    color: var(--gl-color-accent-contrast);
+    border-color: var(--gl-color-accent);
+}
+
+/* ========================================================================== */
+/* 3. Export dropdown                                                         */
+/* ========================================================================== */
+
+.gl-table-export-group {
+    position: relative !important;
+    flex-shrink: 0 !important;
+}
+
+.gl-table-panel__btn--export-trigger {
+    padding: 0.375rem 0.625rem !important;
+}
+
+/* Spinner state (Excel lazy-load) */
+.gl-table-panel__btn--export-trigger.gl-is-loading {
+    opacity: 0.7;
+    cursor: wait;
+    pointer-events: none;
+}
+
+.gl-table-panel__btn--export-trigger.gl-is-loading::after {
+    content: "";
+    display: inline-block;
+    width: 0.65em;
+    height: 0.65em;
+    margin-left: 0.4em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: gl-spin 0.6s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes gl-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.gl-table-export-dropdown {
+    display: none;
+    position: fixed;
+    z-index: 1200;
+    min-width: 140px;
+    background: var(--gl-color-bg-surface);
+    border: 1px solid var(--gl-color-border-soft);
+    border-radius: 4px;
+    box-shadow: var(--gl-shadow-medium);
+    padding: 0.25rem 0;
+}
+
+.gl-table-export-group.gl-is-open .gl-table-export-dropdown {
+    display: block;
+}
+
+.gl-table-export-dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 0.8125rem;
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.gl-table-export-dropdown__item:hover {
+    background: var(--gl-color-bg-surface-muted);
+}
+
+/* ========================================================================== */
+/* 4. Wrapper du tableau (scrollable)                                         */
+/* ========================================================================== */
+
+.gl-table-panel__wrapper {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+/* ========================================================================== */
+/* 4. Tableau (table)                                                         */
+/* ========================================================================== */
+
+.gl-table-panel__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    table-layout: fixed;
+}
+
+/* En-tête du tableau */
+.gl-table-panel__th {
+    position: sticky;
+    top: 0;
+    background: var(--gl-color-bg-surface-muted);
+    color: var(--gl-color-text-main);
+    font-weight: 600;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid var(--gl-color-border-strong);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.gl-table-panel__th--checkbox {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    overflow: hidden;
+}
+
+.gl-table-panel__th--sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.gl-table-panel__th--sortable:hover {
+    background: var(--gl-color-bg-surface);
+}
+
+.gl-table-panel__sort-icon {
+    opacity: 0.5;
+    margin-left: 0.25rem;
+}
+
+.gl-table-panel__th--sortable.is-sorted-asc .gl-table-panel__sort-icon,
+.gl-table-panel__th--sortable.is-sorted-desc .gl-table-panel__sort-icon {
+    opacity: 1;
+}
+
+/* Cellules du tableau */
+.gl-table-panel__td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gl-color-border-soft);
+    color: var(--gl-color-text-main);
+}
+
+.gl-table-panel__td--checkbox {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+    overflow: hidden;
+}
+
+.gl-table-panel__td--number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Lignes */
+.gl-table-panel__table tbody tr {
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.gl-table-panel__table tbody tr:hover {
+    background: var(--gl-color-bg-surface-muted);
+}
+
+.gl-table-panel__table tbody tr.gl-is-selected {
+    background: rgba(249, 115, 22, 0.1);
+}
+
+.gl-table-panel__table tbody tr.gl-is-selected:hover {
+    background: rgba(249, 115, 22, 0.15);
+}
+
+/* Checkboxes */
+.gl-table-panel__checkbox-all,
+.gl-table-panel__checkbox {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+/* Force minimale pour la colonne checkbox - règle la plus spécifique */
+.gl-table-panel__table .gl-table-panel__th--checkbox,
+.gl-table-panel__table .gl-table-panel__td--checkbox {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+}
+
+/* ========================================================================== */
+/* 5. Boutons toggle                                                          */
+/* ========================================================================== */
+
+/* Bouton toggle dans le toolbar (masquer le tableau) */
+.gl-table-panel__toggle-btn {
+    padding: 0.375rem 0.5rem !important;
+    border: 1px solid var(--gl-color-border-soft);
+    border-radius: 4px;
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.gl-table-panel__toggle-btn:hover {
+    background: var(--gl-color-bg-surface-muted);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+.gl-table-panel__toggle-btn:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring);
+    outline-offset: 2px;
+}
+
+.gl-table-panel__toggle-btn__icon {
+    color: var(--gl-color-text-main);
+    transition: transform 0.2s ease;
+}
+
+/* ========================================================================== */
+/* 6. Responsive                                                              */
+/* ========================================================================== */
+
+@media (max-width: 768px) {
+    .gl-table-panel {
+        height: 40%;
+    }
+
+    /* Position gérée dynamiquement par JavaScript */
+
+    .gl-table-panel__toolbar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .gl-table-panel__search {
+        max-width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .gl-table-panel__select {
+        min-width: 150px;
+    }
+
+    .gl-table-panel__th,
+    .gl-table-panel__td {
+        padding: 0.5rem;
+        font-size: 0.8125rem;
+    }
+}
+
+/* ========================================================================== */
+/* 7. Mode sombre (déjà géré par les variables CSS du thème)                  */
+/* ========================================================================== */
+
+body.gl-theme-dark .gl-table-panel {
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* PLUGINS S10: section 8 (`__empty` / `__loading` / `__error`) removed — the
+   three message-state selectors had no producer (the live loading state is
+   `gl-is-loading` on the trigger, panel.ts). */
+
+/* ==========================================================================
+   Core-integration rules — relocated from core CSS during the S3 extraction
+   (formerly in desktop-panel.css / geoleaf-core.css / notifications.css /
+   layer-manager-panel.css). These selectors target core elements (right-panel
+   tab strip, fullscreen body class, notifications, bottom-right map controls)
+   so the data table coexists with the core UI. The plugin stylesheet is
+   injected globally (CSP-safe), so the selectors resolve at runtime.
+   ========================================================================== */
+
+/* Desktop bottom-drawer: slides in from the right, offset by the right-panel
+   tab strip width (34px = .gl-rp-tabs). Height 30% initial, draggable, max 60%. */
+@media (min-width: 1440px) {
+    .gl-table-panel {
+        right: 34px !important;
+        /* Panel width = 100vw - 34px, so translateX(100%) leaves a 34px sliver of its
+           left edge (the layer selector) peeking past the right edge, over the tab
+           strip. Add +40px to clear the offset and hide it completely. */
+        transform: translateX(calc(100% + 40px)) !important;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        height: 30%;
+        min-height: 30%;
+        max-height: 60%;
+    }
+    .gl-table-panel.gl-is-visible {
+        transform: translateX(0) !important;
+        z-index: 1100 !important;
+    }
+}
+
+/* Active state for the desktop "Tableau" vertical tab (registry tab button).
+   Dedicated class (not core's gl-is-active, which _closeAllTabs strips on native
+   tab clicks) — mirrors the native .gl-rp-tab.gl-is-active accent look. */
+.gl-rp-tab.gl-table-tab-active {
+    background: var(--gl-color-accent);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+/* PLUGINS S10: `body.gl-fullscreen-active .gl-table-panel` removed — no code
+   ever set `gl-fullscreen-active` (it was the single occurrence in the repo).
+   Core fullscreen toggles `gl-map-toolbar--fullscreen` on the toolbar and reads
+   `document.fullscreenElement`; it never puts a class on <body>. */
+
+/* Offset bottom-center notifications when the table drawer is open.
+   PLUGINS S10: was `calc(var(--gl-table-height, 300px) + 20px)`, but nothing
+   ever set `--gl-table-height`, so it was pinned at a fixed 300px regardless of
+   the drawer's actual size (default 30% of the viewport, resizable to 60%).
+   Aligned to the same viewport-% approximation the sibling rule below already
+   uses for the map controls over this same drawer — scales with the drawer
+   instead of a fixed pixel guess, and drops the dead token. */
+body.gl-table-open .gl-notifications--bottom-center {
+    bottom: calc(40% + 20px);
+}
+
+/* Shift bottom-right map controls (legend) up when the table is visible. */
+body:has(.gl-table-panel.gl-is-visible) .maplibregl-ctrl-bottom-right {
+    bottom: calc(40% + 24px);
+    transition: bottom 0.3s ease-in-out;
+}

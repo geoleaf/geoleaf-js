@@ -1,0 +1,65 @@
+{
+    "type": "FeatureCollection",
+    "name": "sites_rosario",
+    "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "rosario-poi-001",
+                "title": "Monumento Nacional a la Bandera",
+                "description": "Monument national inauguré en 1957, sur le site où Belgrano créa le drapeau argentin en 1812.",
+                "adresse": "Av. Belgrano y Av. del Puerto, Rosario, Santa Fe",
+                "description_longue": "Le Monumento Nacional a la Bandera s'élève à 70 mètres de hauteur. Conçu par Ángel Guido et Alejandro Bustillo, il abrite le mausolée du général Belgrano et offre une vue panoramique sur le río Paraná depuis son sommet accessible en ascenseur.",
+                "services": ["Ascenseur panoramique", "Mausolée Belgrano", "Audioguide ES/EN/FR", "Cafétéria", "Boutique souvenirs", "Accès PMR"],
+                "mots_cles": ["patrimoine", "histoire", "culture", "gratuit"],
+                "horaires": [
+                    { "jour": "Lundi", "horaire": "Fermé" },
+                    { "jour": "Mar–Ven", "horaire": "09h00–19h00" },
+                    { "jour": "Sam–Dim", "horaire": "10h00–20h00" }
+                ],
+                "site_web": "https://www.monumentoabandera.gob.ar",
+                "statut": "Ouvert",
+                "photo_principale": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Monumento_a_la_Bandera_%28Rosario%29.jpg/640px-Monumento_a_la_Bandera_%28Rosario%29.jpg",
+                "galerie": [
+                    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Monumento_a_la_Bandera_%28Rosario%29.jpg/320px-Monumento_a_la_Bandera_%28Rosario%29.jpg",
+                    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Belgrano_Rosario.jpg/320px-Belgrano_Rosario.jpg"
+                ],
+                "categoryId": "CULTURES",
+                "subcategoryId": "MUSEE"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-60.6524, -32.9442]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": "rosario-poi-002",
+                "title": "Parque Independencia",
+                "description": "Grand parc urbain de 104 hectares au cœur de Rosario, créé en 1900.",
+                "adresse": "Av. Pellegrini 2202, Rosario, Santa Fe",
+                "description_longue": "Le Parque Independencia est le poumon vert de Rosario. Il abrite le Museo Municipal de Bellas Artes Juan B. Castagnino, un hippodrome, des rosiers dans le Jardín Francés, un lac avec barques et des terrains de sport. Marchés artisanaux chaque week-end.",
+                "services": ["Musée Castagnino", "Hippodrome", "Location barques", "Terrains de sport", "Marchés week-end", "Wi-Fi gratuit"],
+                "mots_cles": ["nature", "culture", "enfants", "gratuit"],
+                "horaires": [
+                    { "jour": "Tous les jours", "horaire": "06h00–22h00" },
+                    { "jour": "Musée", "horaire": "Mar–Ven 14h–20h" }
+                ],
+                "site_web": "https://www.rosario.gob.ar/parques",
+                "statut": "Ouvert",
+                "photo_principale": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Parque_Independencia_Rosario.jpg/640px-Parque_Independencia_Rosario.jpg",
+                "galerie": [
+                    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Parque_Independencia_Rosario.jpg/320px-Parque_Independencia_Rosario.jpg"
+                ],
+                "categoryId": "nature",
+                "subcategoryId": "parc"
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [-60.6695, -32.9478]
+            }
+        }
+    ]
+}

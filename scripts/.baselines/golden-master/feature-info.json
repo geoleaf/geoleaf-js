@@ -1,0 +1,24 @@
+{
+    "before": {
+        "capability": "feature-info",
+        "match": "feature-info",
+        "bootGz": 206.5,
+        "leanFullGz": 520.3,
+        "leanLiteGz": 427.3,
+        "ownedFiles": 0,
+        "ownedLoc": 0,
+        "refLines": 22,
+        "coreTestFiles": 396
+    },
+    "after": {
+        "capability": "feature-info",
+        "match": "feature-info",
+        "bootGz": 215.1,
+        "leanFullGz": 558.3,
+        "leanLiteGz": 427.3,
+        "ownedFiles": 18,
+        "ownedLoc": 2938,
+        "refLines": 31,
+        "coreTestFiles": 406
+    }
+}

@@ -1,0 +1,132 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "geoleaf/layers",
+    "title": "GeoLeaf Layers Index",
+    "description": "layers.json — index of all layers loaded for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). layerTemplates[].template/.instances stay permissive (partial layer-config, merged at runtime — see PROFILE_CONTRACT_SPEC §7).",
+    "type": "object",
+    "additionalProperties": false,
+    "patternProperties": { "^_comment": {} },
+    "properties": {
+        "$schema": { "type": "string" },
+        "layers": {
+            "type": "array",
+            "description": "Individual layer references. Each entry points to a layer config file.",
+            "items": {
+                "type": "object",
+                "required": ["id"],
+                "additionalProperties": false,
+                "patternProperties": { "^_comment": {} },
+                "properties": {
+                    "id": { "type": "string", "description": "Unique layer identifier." },
+                    "configFile": {
+                        "type": "string",
+                        "description": "Relative path to the layer config JSON file."
+                    },
+                    "layerManagerId": {
+                        "type": "string",
+                        "description": "Layer manager section this layer belongs to."
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "Optional display label override (otherwise read from the layer config)."
+                    },
+                    "order": {
+                        "type": "number",
+                        "description": "Optional ordering hint within the layer manager section."
+                    },
+                    "defaultVisible": {
+                        "type": "boolean",
+                        "description": "Whether the layer is visible on load."
+                    }
+                }
+            }
+        },
+        "layerTemplates": {
+            "type": "array",
+            "description": "Layer templates: one template expanded into N individual layer configs at runtime.",
+            "items": {
+                "type": "object",
+                "required": ["templateId", "template", "instances"],
+                "additionalProperties": false,
+                "patternProperties": { "^_comment": {} },
+                "properties": {
+                    "templateId": {
+                        "type": "string",
+                        "description": "Identifier for this template group."
+                    },
+                    "layerManagerId": {
+                        "type": "string",
+                        "description": "Layer manager section for all instances."
+                    },
+                    "template": {
+                        "type": "object",
+                        "description": "Base layer config shared by all instances. Partial layer-config — kept permissive (additionalProperties:true) because it carries arbitrary layer-config keys merged at runtime.",
+                        "additionalProperties": true,
+                        "properties": {
+                            "zIndex": { "type": "number" },
+                            "geometry": {
+                                "type": "string",
+                                "enum": ["polygon", "line", "point", "multipolygon"]
+                            },
+                            "data": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                    "directory": { "type": "string" }
+                                }
+                            },
+                            "styles": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                    "directory": { "type": "string" },
+                                    "default": { "type": "string" },
+                                    "available": { "type": "array" }
+                                }
+                            },
+                            "table": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                    "enabled": { "type": "boolean" }
+                                }
+                            },
+                            "clustering": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                    "enabled": { "type": "boolean" },
+                                    "maxClusterRadius": { "type": "number" },
+                                    "disableClusteringAtZoom": { "type": "number" }
+                                }
+                            }
+                        }
+                    },
+                    "instances": {
+                        "type": "array",
+                        "description": "One entry per expanded layer. Merged with template at runtime — kept permissive (per-instance layer-config overrides).",
+                        "items": {
+                            "type": "object",
+                            "required": ["id", "label", "dataFile"],
+                            "additionalProperties": true,
+                            "properties": {
+                                "id": {
+                                    "type": "string",
+                                    "description": "Unique layer ID for this instance."
+                                },
+                                "label": {
+                                    "type": "string",
+                                    "description": "Display label for this instance."
+                                },
+                                "dataFile": {
+                                    "type": "string",
+                                    "description": "Data file name relative to the template's data.directory."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

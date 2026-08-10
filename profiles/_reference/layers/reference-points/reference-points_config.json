@@ -1,0 +1,116 @@
+{
+    "_comment": "B5 fixture (config-contract Phase C, sprint S13). TEST-ONLY. Reference layer config — schema-valid, exercises every core-read leaf (data/styles/legends/tooltip/popup/sidepanel/search/table/clustering). Canonical geometry+tooltip.mode coexist with the geometryType+tooltipMode root aliases (ANO-007/008). Plugin-owned keys (edition.*, data.limit/realtime, mapping) are present for the B7/B9 renvoi reference. Per-value variations are produced by deepMerge override in s13-layer-*.",
+    "id": "reference-points",
+    "label": "Points de référence",
+    "zIndex": 10,
+    "geometry": "point",
+    "geometryType": "point",
+    "type": "poi",
+    "plugin": "flatgeobuf",
+    "interactiveShape": true,
+    "showIconsOnMap": true,
+    "edition": { "create": true, "update": true, "delete": false },
+    "editableGeometryTypes": ["Point"],
+    "_comment_write": "Posé à la tâche 7.2, et EXIGÉ par la règle A14 dès que `attributes.fields[].edit` apparaît ci-dessous — vu rougir dans cet ordre : `edit` seul rend `must have required property 'write'`. Cette fixture n'est jamais déployée et cet endpoint n'est jamais appelé ; son rôle est de porter toutes les formes légales, donc elle porte aussi celle-ci. `properties` liste le seul champ capturable, et reste la liste blanche d'expédition : ce qui n'y figure pas n'est jamais envoyé.",
+    "write": {
+        "enabled": true,
+        "endpoint": "https://example.test/collections/reference-points",
+        "dialect": "collection",
+        "auth": "none",
+        "properties": ["name"]
+    },
+    "data": {
+        "directory": "layers/reference-points/data",
+        "file": "reference-points.geojson",
+        "format": "geojson",
+        "licence": "ODbL",
+        "limit": 5000,
+        "autoRefresh": false,
+        "headers": {
+            "Accept": "application/geo+json"
+        },
+        "vectorTiles": {
+            "enabled": false,
+            "tilesDirectory": "layers/reference-points/tiles",
+            "tilesUrl": "https://example.test/poi/{z}/{x}/{y}.pbf",
+            "layerName": "poi",
+            "minZoom": 0,
+            "maxNativeZoom": 14,
+            "maxZoom": 22,
+            "interactive": true
+        },
+        "mapping": "reference-mapping"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            },
+            {
+                "id": "alt",
+                "label": "Alternatif",
+                "file": "alt.json"
+            }
+        ]
+    },
+    "legends": {
+        "directory": "legends",
+        "default": "defaut.legend.json"
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.name",
+                "label": "Nom",
+                "sortable": true,
+                "width": "40%"
+            },
+            {
+                "field": "properties.categoryId",
+                "label": "Catégorie",
+                "sortable": true
+            }
+        ],
+        "searchFields": ["properties.name"],
+        "defaultSort": {
+            "field": "properties.name",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 60,
+        "disableClusteringAtZoom": 14
+    },
+    "attributes": {
+        "titleField": "name",
+        "fields": [
+            {
+                "field": "name",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                },
+                "edit": {
+                    "required": true
+                }
+            },
+            {
+                "field": "categoryId",
+                "label": "Catégorie",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

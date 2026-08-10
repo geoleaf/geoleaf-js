@@ -1,0 +1,410 @@
+/*!
+ * GeoLeaf Field Renderer — Form field components
+ * © 2026 Mattieu Pottier — MIT License
+ *
+ * The catalogue of field-level components rendered inside a form: list, tags, table,
+ * badge and gallery. **No modal layout rule lives here** — those are in
+ * `form-modal-base.css`. Imported by `ui/responsive-modal.ts`.
+ *
+ * @renamed 2026-07-26 (STRUCT S8) — was `form-modal-layout.css`, a name that announced the
+ * modal while the content was this catalogue: 27 root selectors, zero `.gl-form-modal*`.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   List component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-list__editor {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.gl-form-list__item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gl-form-list__item.is-dragging {
+    opacity: 0.4;
+}
+
+.gl-form-list__item.is-over {
+    border-top: 2px solid var(--gl-color-accent, #f97316);
+    padding-top: 2px;
+}
+
+.gl-form-list__handle {
+    cursor: grab;
+    color: var(--gl-color-text-muted, #9ca3af);
+    font-size: 16px;
+    line-height: 1;
+    padding: 2px;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.gl-form-list__handle:active {
+    cursor: grabbing;
+}
+
+.gl-form-list__remove {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gl-color-text-muted, #9ca3af);
+    border-radius: 50%;
+    font-size: 14px;
+    padding: 0;
+    transition:
+        color 0.12s,
+        background 0.12s;
+}
+
+.gl-form-list__remove:hover {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.gl-form-list__add {
+    appearance: none;
+    background: none;
+    border: 1px dashed var(--gl-color-border-strong, rgba(15, 23, 42, 0.22));
+    border-radius: var(--gl-border-radius, 6px);
+    padding: 5px 10px;
+    color: var(--gl-color-text-muted, #6b7280);
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-family: inherit;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition:
+        border-color 0.12s,
+        color 0.12s,
+        background 0.12s;
+}
+
+.gl-form-list__add:hover {
+    border-color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent, #f97316);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tags component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-tags__wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    min-height: 36px;
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-radius: var(--gl-border-radius, 6px);
+    cursor: text;
+    transition:
+        border-color 0.12s,
+        box-shadow 0.12s;
+}
+
+.gl-form-tags__wrap:focus-within {
+    border-color: var(--gl-color-accent, #f97316);
+    box-shadow: 0 0 0 3px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+}
+
+.gl-form-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px 2px 10px;
+    background: var(--gl-color-accent-soft, rgba(249, 115, 22, 0.12));
+    color: var(--gl-color-accent, #f97316);
+    border-radius: 20px;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+.gl-form-tag > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gl-form-tag__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0;
+    font-size: 12px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    line-height: 1;
+}
+
+.gl-form-tag__remove:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.gl-form-tags__input {
+    flex: 1;
+    min-width: 80px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-family: inherit;
+    color: var(--gl-color-text-main, #0f172a);
+    padding: 1px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Table component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-table__editor-wrap {
+    overflow-x: auto;
+    margin-bottom: 6px;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.12));
+    border-radius: var(--gl-border-radius, 6px);
+}
+
+.gl-form-table__editor {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+}
+
+.gl-form-table__editor th,
+.gl-form-table__editor td {
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.1));
+}
+
+.gl-form-table__editor th {
+    text-align: left;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-weight: 600;
+    color: var(--gl-color-text-muted, #6b7280);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    padding: 6px;
+}
+
+.gl-form-table__editor .gl-form-input {
+    padding: 4px 6px;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+}
+
+.gl-form-table__action-col {
+    width: 32px;
+    text-align: center;
+}
+
+.gl-form-table__remove-row {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gl-color-text-muted, #9ca3af);
+    border-radius: 50%;
+    font-size: 13px;
+    padding: 0;
+    margin: 0 auto;
+    transition:
+        color 0.12s,
+        background 0.12s;
+}
+
+.gl-form-table__remove-row:hover {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+}
+
+.gl-form-table__add-row {
+    appearance: none;
+    background: none;
+    border: 1px dashed var(--gl-color-border-strong, rgba(15, 23, 42, 0.22));
+    border-radius: var(--gl-border-radius, 6px);
+    padding: 5px 10px;
+    color: var(--gl-color-text-muted, #6b7280);
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    font-family: inherit;
+    cursor: pointer;
+    width: 100%;
+    text-align: center;
+    transition:
+        border-color 0.12s,
+        color 0.12s,
+        background 0.12s;
+}
+
+.gl-form-table__add-row:hover {
+    border-color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent, #f97316);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Badge component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-badge__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.gl-form-badge__row .gl-form-input {
+    flex: 1;
+}
+
+.gl-form-badge__color {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    border-radius: var(--gl-border-radius, 6px);
+    cursor: pointer;
+    padding: 2px;
+    background: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Gallery component
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-form-gallery__editor {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.gl-form-gallery__item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--gl-border-radius, 6px);
+    overflow: hidden;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+    flex-shrink: 0;
+}
+
+.gl-form-gallery__item.is-dragging {
+    opacity: 0.4;
+}
+
+.gl-form-gallery__item.is-over {
+    outline: 2px solid var(--gl-color-accent, #f97316);
+    outline-offset: 1px;
+}
+
+.gl-form-gallery__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.gl-form-gallery__remove {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    padding: 0;
+    line-height: 1;
+}
+
+.gl-form-gallery__remove:hover {
+    background: rgba(220, 38, 38, 0.85);
+}
+
+.gl-form-gallery__add-slot {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--gl-color-border-strong, rgba(15, 23, 42, 0.2));
+    border-radius: var(--gl-border-radius, 6px);
+    color: var(--gl-color-text-muted, #9ca3af);
+    cursor: pointer;
+    font-size: 26px;
+    background: none;
+    flex-shrink: 0;
+    transition:
+        border-color 0.12s,
+        color 0.12s,
+        background 0.12s;
+}
+
+.gl-form-gallery__add-slot:hover,
+.gl-form-gallery__add-slot.is-over {
+    border-color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent, #f97316);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+}
+
+/* ── Lightbox ── */
+
+.gl-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: gl-modal-fade-in 0.15s ease;
+    /* Explicit, and NOT redundant. `gl-modal-fade-in` runs 0 → 1 with no
+       fill-mode, so the computed value falls back to the cascade the moment the
+       animation ends — whatever any other stylesheet in the page says about this
+       class. @geoleaf/core shipped a `.gl-lightbox { opacity: 0 }` until S9
+       (feature-info's ported "old styles"), which made this viewer fade in and
+       then disappear after 150 ms. That rule is gone; this line is what stops
+       the failure from reforming from any other sheet. */
+    opacity: 1;
+}
+
+.gl-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--gl-border-radius, 6px);
+}

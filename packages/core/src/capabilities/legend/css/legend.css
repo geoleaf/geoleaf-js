@@ -1,0 +1,470 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf.Legend — map legend styles
+ * Renders the legend symbols.
+ *
+ * Structure:
+ * .gl-map-legend                    Root container
+ *   .gl-map-legend__wrapper         Wrapper with background/border
+ *     .gl-map-legend__header        Header (title + toggle)
+ *       .gl-map-legend__title
+ *       .gl-map-legend__toggle
+ *     .gl-map-legend__body          Body, holding the sections
+ *       .gl-legend__section
+ *         .gl-legend__section-title
+ *         .gl-legend__items
+ *           .gl-legend__item
+ *             .gl-legend__symbol
+ *             .gl-legend__text
+ *       .gl-legend__footer
+ */
+
+    /* ========================================================================== */
+    /* Root container                                                             */
+    /* ========================================================================== */
+
+    .gl-map-legend {
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .gl-map-legend__wrapper {
+        width: var(--gl-panel-control-width, 270px);
+        box-sizing: border-box;
+        padding: 8px;
+        pointer-events: auto;
+        background: var(--gl-color-legend-bg);
+        color: var(--gl-color-legend-text);
+        font-size: 0.8rem;
+        line-height: 1.3;
+        border: 1px solid var(--gl-color-legend-border);
+        border-left: none;
+        border-bottom: none;
+        border-radius: 0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ========================================================================== */
+    /* Header                                                                     */
+    /* ========================================================================== */
+
+    .gl-map-legend__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--gl-color-legend-border);
+    }
+
+    .gl-map-legend__title {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--gl-color-legend-text);
+    }
+
+    .gl-map-legend__toggle {
+        background: transparent;
+        border: none;
+        color: var(--gl-color-legend-text);
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+        transition: transform 0.2s ease;
+    }
+
+    .gl-map-legend__toggle:hover {
+        opacity: 0.7;
+    }
+
+    .gl-map-legend--collapsed .gl-map-legend__toggle {
+        transform: rotate(180deg);
+    }
+
+    /* ========================================================================== */
+    /* Corps                                                                      */
+    /* ========================================================================== */
+
+    .gl-map-legend__body {
+        display: block;
+        max-height: 350px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .gl-map-legend--collapsed .gl-map-legend__body {
+        display: none;
+    }
+
+    /* ========================================================================== */
+    /* Sections                                                                   */
+    /* ========================================================================== */
+
+    .gl-legend__section {
+        margin-bottom: 8px;
+    }
+
+    .gl-legend__section:last-child {
+        margin-bottom: 0;
+    }
+
+    .gl-legend__section-title {
+        margin: 0 0 4px 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gl-color-legend-text);
+        opacity: 0.9;
+    }
+
+    .gl-legend__items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* ========================================================================== */
+    /* Items                                                                      */
+    /* ========================================================================== */
+
+    .gl-legend__item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .gl-legend__symbol {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+    }
+
+    .gl-legend__text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .gl-legend__label {
+        font-size: 0.75rem;
+        color: var(--gl-color-legend-text);
+        font-weight: 500;
+    }
+
+    .gl-legend__description {
+        font-size: 0.65rem;
+        color: var(--gl-color-legend-text);
+        opacity: 0.7;
+        font-style: italic;
+    }
+
+    /* ========================================================================== */
+    /* Specific symbols                                                           */
+    /* ========================================================================== */
+
+    /* Circle */
+    .gl-legend__circle {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        border: none !important;
+    }
+
+    /* Line */
+    .gl-legend__line {
+        margin: 4px 0;
+    }
+
+    /* Polygon */
+    .gl-legend__polygon {
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Stars */
+    .gl-legend__stars {
+        display: flex;
+        gap: 2px;
+    }
+
+    .gl-legend__star {
+        line-height: 1;
+    }
+
+    /* Custom icon. */
+    .gl-legend__icon-img {
+        display: block;
+        object-fit: contain;
+    }
+
+    /* ========================================================================== */
+    /* Footer                                                                     */
+    /* ========================================================================== */
+
+    .gl-legend__footer {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid var(--gl-color-legend-border);
+        font-size: 0.7rem;
+        color: var(--gl-color-legend-text);
+        opacity: 0.7;
+    }
+
+    /* ========================================================================== */
+    /* Scrollbar styling                                                          */
+    /* ========================================================================== */
+
+    .gl-map-legend__body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .gl-map-legend__body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .gl-map-legend__body::-webkit-scrollbar-thumb {
+        background: var(--gl-color-legend-border);
+        border-radius: 3px;
+    }
+
+    .gl-map-legend__body::-webkit-scrollbar-thumb:hover {
+        background: var(--gl-color-legend-text);
+        opacity: 0.5;
+    }
+
+    /* ========================================================================== */
+    /* Accordions (multi-layer)                                                   */
+    /* ========================================================================== */
+
+    .gl-legend__accordion {
+        margin-bottom: 6px;
+        border: 1px solid var(--gl-accordion-border-color);
+        border-radius: var(--gl-accordion-border-radius);
+        overflow: hidden;
+        background: var(--gl-color-legend-bg);
+    }
+
+    .gl-legend__accordion:last-child {
+        margin-bottom: 0;
+    }
+
+    .gl-legend__accordion-header {
+        border: none;
+        width: 100%;
+        font: inherit;
+        line-height: normal;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--gl-accordion-header-padding);
+        min-height: var(--gl-accordion-header-min-height);
+        background: var(--gl-accordion-header-bg);
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s ease;
+    }
+
+    .gl-legend__accordion-header:hover {
+        background: var(--gl-accordion-header-bg-hover);
+    }
+
+    .gl-legend__accordion-title {
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--gl-color-legend-text);
+        margin: 0;
+    }
+
+    /* Legend accordion arrow (CSS rotation, aligned with filter panel & layer manager). */
+    .gl-legend__accordion-icon {
+        font-size: var(--gl-accordion-arrow-size);
+        color: var(--gl-color-text-muted);
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: transform;
+    }
+
+    .gl-legend__accordion--collapsed .gl-legend__accordion-icon {
+        transform: rotate(0deg);
+    }
+
+    .gl-legend__accordion:not(.gl-legend__accordion--collapsed) .gl-legend__accordion-icon {
+        transform: rotate(90deg);
+    }
+
+    /* Accordion body — same grid animation as the filter panel & layer manager. */
+    .gl-legend__accordion-body {
+        display: grid;
+        grid-template-rows: 1fr;
+        overflow: hidden;
+        transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: var(--gl-accordion-body-padding);
+        background: var(--gl-color-legend-bg);
+    }
+
+    .gl-legend__accordion--collapsed .gl-legend__accordion-body {
+        grid-template-rows: 0fr;
+        padding: 0;
+    }
+
+    .gl-legend__accordion-body > * {
+        min-height: 0;
+    }
+
+    .gl-legend__accordion-body::-webkit-scrollbar-thumb:hover {
+        background: var(--gl-color-legend-text);
+        opacity: 0.5;
+    }
+
+    /* Sections inside the accordions. */
+    .gl-legend__accordion-body .gl-legend__section {
+        margin-bottom: 6px;
+    }
+
+    .gl-legend__accordion-body .gl-legend__section:last-child {
+        margin-bottom: 0;
+    }
+
+    /* ========================================================================== */
+    /* Inactive layers (greyed out)                                               */
+    /* ========================================================================== */
+
+    .gl-legend__accordion--inactive {
+        opacity: 0.5;
+        filter: grayscale(70%);
+        transition:
+            opacity 0.3s ease,
+            filter 0.3s ease;
+        pointer-events: none; /* disable every click on the accordion */
+    }
+
+    .gl-legend__accordion--inactive .gl-legend__accordion-header {
+        cursor: not-allowed;
+        background: var(--gl-color-legend-header-inactive-bg, rgba(0, 0, 0, 0.02));
+    }
+
+    .gl-legend__accordion--inactive .gl-legend__accordion-header:hover {
+        background: var(--gl-color-legend-header-inactive-bg, rgba(0, 0, 0, 0.02));
+    }
+
+    .gl-legend__accordion--inactive .gl-legend__accordion-title {
+        font-style: italic;
+        color: var(--gl-color-legend-text-inactive, rgba(0, 0, 0, 0.5));
+    }
+
+    /* ------------------------------------------------------------
+   Loading overlay spinner keyframe — static (CSP-safe).
+   Replaces the dynamic <style> injection (_ensureSpinnerStyles),
+   which is a style-src violation under strict CSP (roadmap B.5).
+   ------------------------------------------------------------ */
+    @keyframes gl-legend-spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* ==========================================================================
+   Hosted in the right-hand side panel (desktop ≥ 1440px)
+   --------------------------------------------------------------------------
+   Moved out of css/geoleaf-desktop-panel.css at S6. The kernel defines the
+   CONTAINER (#gl-right-panel, .gl-rp-pane, .gl-rp-tabs); it is up to the legend
+   to say how it sits inside it. The kernel no longer names any capability —
+   that is what lets a bundle without `legend` ship none of this CSS.
+   ========================================================================== */
+
+    #gl-right-panel .gl-map-legend {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        pointer-events: auto !important;
+        border-radius: 0 !important;
+    }
+
+    /* Force it open even when collapsedByDefault is true. */
+    #gl-right-panel .gl-map-legend--collapsed .gl-map-legend__body {
+        display: block !important;
+    }
+
+    #gl-right-panel .gl-map-legend__toggle {
+        display: none !important;
+    }
+
+    #gl-right-panel .gl-map-legend .gl-map-legend__wrapper {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        border: none !important;
+        max-height: none !important;
+    }
+
+    /* The legend body does not scroll — the pane does. */
+    #gl-right-panel .gl-map-legend__body {
+        max-height: none !important;
+        overflow-y: visible !important;
+        overflow-x: visible !important;
+    }
+
+    /* Unified right-panel header (the layer manager carries its own copy on the
+   kernel side: the rule used to be grouped, it is now duplicated per owner). */
+    #gl-right-panel .gl-map-legend__header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0.65rem 0.75rem !important;
+        border-bottom: 1px solid var(--gl-color-border-soft) !important;
+        margin-bottom: 0.5rem !important;
+        background: var(--gl-color-bg-surface) !important;
+    }
+
+    #gl-right-panel .gl-map-legend__title {
+        text-transform: uppercase !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 0.04em !important;
+        margin: 0 !important;
+    }
+
+    /* ==========================================================================
+   Hidden by default, revealed by whichever host adopts it
+   --------------------------------------------------------------------------
+   Moved out of css/components/mobile-toolbar/mobile-toolbar-responsive.css (S6).
+   ⚠️ S9 — this heading used to read "Mobile — the legend is not floating", which
+   was wrong: the rule below carries NO media query, so the legend is hidden at
+   EVERY width. It is shown again only by a host that adopts it — the right panel
+   (≥ 1440px, section above) or the mobile sheet (rule right below). Restoring a
+   media query here, as the old wording invited, would leave the 769-1439px range
+   with a permanently hidden legend.
+   ========================================================================== */
+
+    .gl-map-legend {
+        display: none !important;
+    }
+
+    /* Once injected into the sheet body, the legend becomes visible. */
+    .gl-sheet-panel__body .gl-map-legend {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        pointer-events: auto !important;
+        border-radius: 0 !important;
+    }
+
+    .gl-sheet-panel__body .gl-map-legend .gl-map-legend__wrapper {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border-radius: 0.5rem !important;
+        border: 1px solid var(--gl-color-border-soft) !important;
+    }
+}

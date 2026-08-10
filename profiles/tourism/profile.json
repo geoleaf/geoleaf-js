@@ -1,0 +1,38 @@
+{
+    "id": "tourism",
+    "label": "Profil tourisme",
+    "displayLabel": "Tourisme",
+    "icon": "🏖️",
+    "description": "Profil optimisé pour les POI touristiques (hébergements, activités, nature…). Version 1.3.0 avec structure modulaire complète.",
+    "version": "1.3.0",
+    "map": {
+        "bounds": [
+            [-55, -73.5],
+            [-21.78, -53.5]
+        ],
+        "initialMaxZoom": 10,
+        "padding": [50, 50],
+        "positionFixed": true,
+        "boundsMargin": 0.7
+    },
+    "Files": {
+        "themesFile": "config/core/themes.json",
+        "layersFile": "config/core/layers.json",
+        "basemapsFile": "config/core/basemaps.json",
+        "uiFile": "config/core/ui.json",
+        "featuresFile": "config/core/features.json",
+        "modules": {
+            "offline": "config/plugins/offline.json",
+            "geocoding": "config/plugins/geocoding.json",
+            "table": "config/plugins/table.json",
+            "theme-selector": "config/plugins/theme-selector.json",
+            "legend": "config/plugins/legend.json",
+            "taxonomy": "config/plugins/taxonomy.json",
+            "feature-info": "config/plugins/feature-info.json",
+            "cluster": "config/plugins/cluster.json",
+            "filter": "config/plugins/filter.json",
+            "route": "config/plugins/route.json"
+        },
+        "mappingFile": "config/core/mapping.json"
+    }
+}

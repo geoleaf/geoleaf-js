@@ -1,0 +1,13 @@
+{
+    "after": {
+        "capability": "offline",
+        "match": "offline",
+        "bootGz": 179.4,
+        "leanFullGz": 524.8,
+        "leanLiteGz": 398.9,
+        "ownedFiles": 28,
+        "ownedLoc": 8196,
+        "refLines": 145,
+        "coreTestFiles": 375
+    }
+}

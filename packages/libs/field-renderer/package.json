@@ -1,0 +1,58 @@
+{
+    "name": "@geoleaf/field-renderer",
+    "version": "1.0.0",
+    "type": "module",
+    "license": "MIT",
+    "description": "GeoLeaf Field Renderer — Generic field catalog (23 components, bi-mode read/edit), responsive modal, focus-trap, validators",
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/libs/field-renderer"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
+    "main": "dist/geoleaf-field-renderer.js",
+    "module": "dist/geoleaf-field-renderer.js",
+    "types": "dist/types/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/geoleaf-field-renderer.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist/",
+        "src/",
+        "LICENSE",
+        "README.md"
+    ],
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage",
+        "prepublishOnly": "npm run build"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@geoleaf/host-runtime": "*",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org",
+        "access": "public"
+    }
+}

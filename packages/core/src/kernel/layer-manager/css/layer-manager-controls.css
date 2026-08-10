@@ -1,0 +1,186 @@
+/* =======================================================================
+   8. Petits contrôles intégrés (toggle de couche, etc.)
+   ======================================================================= */
+
+/* Container ligne item + petit toggle à droite */
+.gl-layer-manager__item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+}
+
+/* Conteneur des contrôles alignés à droite */
+.gl-layer-manager__item-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    width: 56px; /* Largeur fixe : toggle 36px + gap 4px + flèche 16px = 56px */
+}
+
+/* Toggle minimaliste type "switch" pour activer/désactiver une couche */
+.gl-layer-manager__item-toggle {
+    width: 36px;
+    height: 20px;
+    border-radius: 9999px;
+    border: 2px solid var(--gl-color-border-strong);
+    background: var(--gl-color-overlay-soft);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+        background 120ms ease,
+        box-shadow 120ms ease,
+        transform 120ms ease,
+        border-color 120ms ease;
+    box-shadow: inset 0 1px 3px var(--gl-color-overlay-strong);
+}
+
+.gl-layer-manager__item-toggle::after {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    background: var(--gl-color-bg-surface);
+    box-shadow: var(--gl-shadow-medium);
+    transition:
+        left 140ms ease,
+        background 140ms ease,
+        transform 140ms ease;
+}
+
+/* Hover pour l'état OFF */
+.gl-layer-manager__item-toggle:hover {
+    border-color: var(--gl-color-border-strong);
+    background: var(--gl-color-overlay-strong);
+}
+
+/* État ON : utilise la couleur d'accent du thème, de manière discrète */
+.gl-layer-manager__item-toggle--on {
+    background: var(--gl-color-accent-soft);
+    border-color: var(--gl-color-accent);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+.gl-layer-manager__item-toggle--on::after {
+    left: 18px;
+    background: var(--gl-color-bg-surface);
+    transform: translateX(0) scale(1.03);
+    box-shadow: var(--gl-shadow-medium);
+}
+
+/* Hover pour l'état ON */
+.gl-layer-manager__item-toggle--on:hover {
+    background: var(--gl-color-accent);
+    border-color: var(--gl-color-accent);
+}
+
+/* État Loading : animation pulsation pendant le chargement d'une couche */
+.gl-layer-manager__item-toggle--loading {
+    opacity: 0.6;
+    pointer-events: none;
+    animation: gl-toggle-pulse 1s ease-in-out infinite;
+}
+
+.gl-layer-manager__item-toggle--loading::after {
+    background: var(--gl-color-accent-soft);
+}
+
+@keyframes gl-toggle-pulse {
+    0%,
+    100% {
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* =======================================================================
+   9. Responsive
+   ======================================================================= */
+
+@media (max-width: 768px) {
+    .gl-layer-manager__wrapper {
+        max-width: 260px;
+        padding: 8px 10px;
+    }
+
+    .gl-layer-manager__title {
+        font-size: 0.78rem;
+    }
+
+    .gl-layer-manager__label {
+        max-width: 140px;
+    }
+}
+
+/* =======================================================================
+   10. Sélecteur de styles
+
+   L'ancienne section 10 « Sélecteur de thèmes » a été retirée (S12) : ses 11
+   classes .gl-layer-manager__theme-* n'avaient aucun émetteur dans le repo.
+   Les sélecteurs de thème vivants portent d'autres noms — .gl-rp-theme-toggle
+   (ui/desktop/desktop-panel-theme.ts), .gl-theme-selector-primary/-secondary
+   (capabilities/theme-selector/), [data-gl-role="theme-toggle"] (ui/theme.ts).
+   Retirés avec elle : __style-wrapper et __control-label, que style-selector.ts
+   ne rend pas (le DOM produit est div.__style-selector > select.__style-select,
+   l'accessibilité passant par un aria-label sur le <select>).
+   ======================================================================= */
+
+/* Conteneur du sélecteur de styles */
+.gl-layer-manager__style-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    width: 100%;
+}
+
+/* Select pour choisir le style */
+.gl-layer-manager__style-select {
+    flex: 1;
+    font-size: 0.68rem;
+    padding: 4px 6px;
+    border: 1px solid var(--gl-color-border-soft, rgba(255, 255, 255, 0.15));
+    border-radius: 4px;
+    background: var(--gl-color-bg-surface, rgba(0, 0, 0, 0.3));
+    color: var(--gl-color-text-main, #fff);
+    cursor: pointer;
+    min-width: 0;
+    max-width: 100%;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23888' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    padding-right: 20px;
+}
+
+.gl-layer-manager__style-select:hover {
+    border-color: var(--gl-color-accent, #4a90d9);
+    background: var(--gl-color-bg-surface-muted, rgba(0, 0, 0, 0.4));
+}
+
+.gl-layer-manager__style-select:focus-visible {
+    outline: none;
+    border-color: var(--gl-color-accent, #4a90d9);
+    box-shadow: 0 0 0 2px var(--gl-color-accent-soft, rgba(74, 144, 217, 0.25));
+}
+
+/* Options du select */
+.gl-layer-manager__style-select option {
+    background: var(--gl-color-bg-surface, #2a2a2a);
+    color: var(--gl-color-text-main, #fff);
+    padding: 4px 8px;
+}

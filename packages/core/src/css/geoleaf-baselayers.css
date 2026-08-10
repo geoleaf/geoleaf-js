@@ -1,0 +1,144 @@
+/*
+ * GeoLeaf Baselayers – Styles des contrôles de fond de carte
+ * ----------------------------------------------------------
+ * Ce fichier gère uniquement l’apparence des contrôles liés aux basemaps.
+ * Tout est piloté par les variables de thème définies dans geoleaf-theme.css.
+ *
+ * Le JavaScript GeoLeaf.Baselayers utilise :
+ *   - l’attribut data-gl-baselayer="street|topo|satellite"
+ *   - les classes gl-baselayer-active et gl-is-active (ajoutées automatiquement)
+ *
+ * Objectifs :
+ *   - boutons type "pill" modernes, cohérents avec le reste de l’UI
+ *   - aucun code couleur en dur (uniquement des variables CSS)
+ *   - état actif clairement visible, thème light/dark pris en charge
+ */
+
+/* ========================================================================== */
+/* 1. Boutons basemap (data-gl-baselayer)                                     */
+/* ========================================================================== */
+
+/* Base commune à tout élément cliquable contrôlant une basemap */
+[data-gl-baselayer] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+
+    border: 1px solid var(--gl-color-border-soft);
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+
+    font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+
+    cursor: pointer;
+    white-space: nowrap;
+
+    /* Reprises de .gl-baselayer-btn (ui-base.css, supprimé au S12) : les seules
+       déclarations que ce bloc ne portait pas déjà, donc les seules qui
+       s'appliquaient réellement. Les autres (padding, background, border,
+       font-size/weight, color, border-radius…) étaient écrasées ici. */
+    position: relative;
+    pointer-events: auto;
+    z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    box-shadow: var(--gl-shadow-soft);
+    transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        transform 100ms ease,
+        color 140ms ease;
+}
+
+/* Hover : mise en avant structurelle, quel que soit l'état */
+[data-gl-baselayer]:hover {
+    border-color: var(--gl-color-border-strong);
+    box-shadow: var(--gl-shadow-medium);
+    transform: translateY(-1px);
+}
+
+/* Hover d'un bouton NON actif — repris de ui-base.css, dont le sélecteur
+   `.gl-baselayer-btn:hover:not(.gl-baselayer-active):not(.gl-is-active)` était
+   en (0,3,0) et l'emportait donc sur `[data-gl-baselayer]:hover` (0,2,0) pour
+   background et color. Le `background: var(--gl-color-bg-surface-muted)` qui
+   figurait ici ne s'est jamais appliqué : il perdait contre cette règle sur un
+   bouton inactif, et contre `.gl-baselayer-active:hover` sur un bouton actif. */
+/* ⚠️ Contraste (backlog B.9) — `color` était `--gl-color-text-inverse` (#f9fafb),
+   c'est-à-dire un texte quasi blanc sur `--gl-color-accent-soft`, qui n'est PAS un
+   aplat d'accent mais un voile : `rgba(249,115,22,.14)`. Composé sur la surface
+   blanche du thème clair, il donne rgb(254,235,222) — soit un ratio de **1,10:1**
+   avec le texte inverse. Le libellé disparaissait au survol (AA exige 4,5:1). En
+   thème sombre le même couple donnait 13,23:1, d'où un défaut invisible en dev.
+   `text-main` est la bonne paire pour un fond voilé : 15,48:1 en clair, 12,85:1 en
+   sombre — les deux au-delà de AAA. Vérifié par calcul WCAG sur les valeurs de
+   tokens réelles, pas à l'œil. */
+[data-gl-baselayer]:hover:not(.gl-baselayer-active):not(.gl-is-active) {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-text-main);
+}
+
+/* Active/pressed : retour à plat, sans “coller” visuellement */
+[data-gl-baselayer]:active {
+    transform: translateY(0);
+    box-shadow: var(--gl-shadow-soft);
+}
+
+/* Focus clavier visible — repris de ui-base.css. Aucune autre règle du repo ne
+   couvre le focus de ces boutons : sans cette reprise, la suppression de
+   .gl-baselayer-btn serait une régression d'accessibilité. */
+[data-gl-baselayer]:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Pour compatibilité avec les <button> natifs */
+[data-gl-baselayer]:disabled,
+[data-gl-baselayer][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: default;
+    box-shadow: none;
+}
+
+/* ========================================================================== */
+/* 2. État sélectionné (couche de fond active)                                */
+/* ========================================================================== */
+
+/* Le JS ajoute gl-baselayer-active et gl-is-active sur l'élément correspondant */
+[data-gl-baselayer].gl-baselayer-active,
+[data-gl-baselayer].gl-is-active {
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-text-main);
+    border-color: var(--gl-color-border-strong);
+    box-shadow: var(--gl-shadow-medium);
+    /* Repris de ui-base.css : à spécificité égale (0,2,0), ce bloc l'emportait
+       sur background et color, mais font-weight n'était déclaré que là-bas —
+       il s'appliquait donc bien (600 sur l'actif contre 500 sur les autres). */
+    font-weight: 600;
+}
+
+/* Survol de l’élément déjà actif : accent légèrement renforcé */
+[data-gl-baselayer].gl-baselayer-active:hover,
+[data-gl-baselayer].gl-is-active:hover {
+    background: var(--gl-color-accent);
+    color: var(--gl-color-accent-contrast);
+}
+
+/* Sections retirées (S12) — aucun émetteur dans le repo, vérifié par grep :
+   .gl-baselayers / --stacked (wrapper jamais rendu), .gl-baselayer__icon et
+   __label (le bouton reçoit textContent, sans sous-élément — basemaps/ui.ts),
+   .gl-baselayer--compact, et .gl-layer-manager__baselayers + son @media. */

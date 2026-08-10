@@ -1,0 +1,138 @@
+{
+    "$schema": "perf-baseline",
+    "version": "2.4.0",
+    "engine": "maplibre",
+    "capturedAt": "2026-06-26T20:22:39Z",
+    "environment": {
+        "node": "v22.22.3",
+        "os": "linux (WSL2 / WSLg — Ubuntu 24.04 on Windows 11)",
+        "browser": "Chromium 145 (Playwright, --headed via WSLg)"
+    },
+    "_notes": {
+        "runtime": "Captured 2026-06-26 (perf roadmap Sprint 2 / F-TOOL-1) under E2E_HW_GL=1, Playwright --headed on WSLg (virtualized GPU). initTime / memory / geojsonRender are trustworthy; FPS are NOT representative — see runtime.fps._note. Historical snapshots kept as runtime.*_pre_r4.",
+        "previous_baseline": "Sprint R4 (2026-03-28): esm_flat 580.67 KB / 127.42 KB gzip — delta +30.2 KB raw / +6.8 KB gzip for Sprints 1-5 features",
+        "bundle_removed": "Le bloc `bundle` a ete RETIRE le 02/08/2026 (B-108). Il n'avait NI lecteur NI ecrivain : le seul consommateur de ce fichier, e2e/06-performance-baseline.spec.js, ne touche que `runtime.*` et recopiait `bundle` tel quel a chaque capture, et scripts/benchmark.cjs a perdu son `--perf-baseline` au T6.3. Ses chiffres dataient donc du 14/04/2026 et etaient faux : addpoi_raw_kb 628.3 contre 330.2 mesures, deux `*_gzip_kb` a null, et une cle `storage_*` nommant un paquet renomme `offline-ui` depuis le 26/07. Le poids des bundles a UN proprietaire, scripts/check-bundle-size.cjs, qui depuis B-107 pese TOUS les fichiers emis et porte des budgets qui peuvent rougir. Une seconde copie non lue de ces chiffres ne pouvait que fossiliser."
+    },
+    "runtime": {
+        "_status": "captured",
+        "_note": "Captured 2026-06-26 (Sprint 2 / F-TOOL-1) under E2E_HW_GL=1 + Playwright --headed on WSLg. initTime is startup-total (network-inclusive on local http-server — NOT the prod JS-parse target). FPS via rAF are an artifact of the virtualized GPU (see runtime.fps._note).",
+        "initTime_pre_r4": {
+            "min": 784.4,
+            "max": 1045.7,
+            "avg": 929.9,
+            "median": 1012.9,
+            "runs": 10,
+            "target_ms": 600,
+            "note": "Pre-Sprint R4 baseline — expect significant improvement after deferral of Legend/LayerManager/Labels/Scale"
+        },
+        "fps_pre_r4": {
+            "100_markers": {
+                "avg": 59,
+                "clustered": 60
+            },
+            "1k_markers": {
+                "avg": 56,
+                "clustered": 59
+            },
+            "5k_markers": {
+                "avg": 41,
+                "clustered": 58
+            },
+            "10k_markers": {
+                "avg": 17,
+                "clustered": 56
+            },
+            "note": "Pre-Sprint R4. MapLibre WebGL renders on canvas — 10K unclustered should be significantly better than Leaflet DOM-based 4fps. Re-measure to confirm."
+        },
+        "memory_pre_r4": {
+            "baseline_mb": 82.4,
+            "after10kFeatures_mb": 82.4
+        },
+        "initTime": {
+            "min": 1667.3,
+            "max": 3334,
+            "avg": 2238,
+            "median": 2044.8,
+            "runs": 10,
+            "target_ms": 500
+        },
+        "memory": {
+            "baseline_mb": 29.6,
+            "after10kFeatures_mb": 29.6
+        },
+        "geojsonRender": {
+            "1k": {
+                "avg_ms": 0.2,
+                "min": 0.1,
+                "max": 0.4
+            },
+            "5k": {
+                "avg_ms": 0.3,
+                "min": 0.2,
+                "max": 0.4
+            },
+            "10k": {
+                "avg_ms": 0.4,
+                "min": 0.2,
+                "max": 0.6
+            }
+        },
+        "fps": {
+            "100_markers": {
+                "avg": 6,
+                "clustered": 22
+            },
+            "1k_markers": {
+                "avg": 2,
+                "clustered": 7
+            },
+            "5k_markers": {
+                "avg": 1,
+                "clustered": 5
+            },
+            "10k_markers": {
+                "avg": 1,
+                "clustered": 5
+            },
+            "_note": "NOT representative of native end-user perf. Captured under WSLg virtualized GPU; --headed gave the same numbers as headless, ~10x below native pre-R4 (plain 59/56/41/17). rAF FPS in this harness is informational ONLY — do NOT gate on absolute FPS (Sprint 3). The clustered>plain trend still holds. A fluidity contract requires native-Windows + a real display."
+        },
+        "basemapRebuild": {
+            "avg_ms": 1.6,
+            "min": 1.4,
+            "max": 1.8,
+            "switches": 3,
+            "geojsonLayers": 6,
+            "_note": "F-RENDER-1 spike (perf roadmap Sprint 5, 2026-06-27, E2E_HW_GL=1, block 6.2.8). Cost of _rebuildGeoJSONLayers + POI rebuild after a setStyle teardown on a basemap switch crossing the vector boundary. GL-independent (pure JS source/layer re-injection) so reliable even under software GL. ~1.6 ms for 6 GeoJSON layers (~30x under the 50 ms threshold) => NO-GO on a transformStyle optimization (rare user action, negligible gain). Non-gating; kept for surveillance. Measured via an inline vector basemap (offline-safe) alternated with the profile default raster."
+        }
+    },
+    "bottlenecks": [
+        {
+            "id": 1,
+            "description": "10K unclustered markers — FPS degradation (was 17fps pre-R4, MapLibre WebGL expected improvement)",
+            "cause": "Many symbol layers on canvas — MapLibre v5.x WebGL rendering is faster than Leaflet DOM, but 10K unclustered markers still stress the renderer due to symbol collision detection.",
+            "mitigations": [
+                "clustering enabled by default recommendation in profile",
+                "[GeoLeaf PERF] console warning added for >1000 unclustered markers (Sprint R4)",
+                "POI_CONFIG.md updated with clustering guidance (Sprint R4)"
+            ],
+            "status": "partially_addressed",
+            "measured": "2026-06-26 (WSLg, E2E_HW_GL=1, --headed): 1fps plain / 5fps clustered at 10K — NOT representative (virtualized-GPU rAF artifact, see runtime.fps._note). Native measurement still required to confirm real WebGL fluidity."
+        },
+        {
+            "id": 2,
+            "description": "Init time > 600ms target (pre-R4 median: 1012ms)",
+            "cause": "Sprint R4 deferred Legend, LayerManager, Labels, Scale, CoordinatesDisplay modules to geoleaf:app:ready event. Awaiting measurement.",
+            "mitigations": [
+                "deferred modules in init.ts via geoleaf:app:ready hook (Sprint R4)",
+                "performance.mark() B1-B11 instrumentation added (Sprint R4)"
+            ],
+            "status": "measured",
+            "measured": "2026-06-26: startup-total median 2044.8ms (network-inclusive on local http-server — NOT the prod JS-parse target). geojsonRender add-source/add-layer 0.2-0.4ms. Heap stable at 29.6MB (baseline = after-10k)."
+        }
+    ],
+    "deadCodeRemoved": {
+        "files": 0,
+        "exports": 0,
+        "note": "HISTORIQUE, ère Leaflet — ne pas lire comme un état courant. Mesures du 2026-03-28 : @ts-nocheck retiré du cluster api/ (Sprint R1), zéro @ts-nocheck dans packages/core/src/. Le champ `knipClean: true` a été RETIRÉ le 2026-07-26 : aucun code ne le lisait, et il affirmait « knip ne trouve rien » alors que knip était alors aveugle au core par un défaut de packaging (sous-chemin \"./dist/*\" du exports, retiré à l'API S2.4). Un booléen non lu qui ne peut plus être infirmé se fossilise au lieu de se périmer. État courant de la détection de code mort : `npm run dead-code` (baseline de 1 signal, backlog B-22)."
+    }
+}

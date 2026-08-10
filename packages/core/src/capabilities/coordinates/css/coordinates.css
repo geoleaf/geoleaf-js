@@ -1,0 +1,98 @@
+@layer gl.capabilities {
+    /* Theme CSS variables are provided by geoleaf-theme.css, loaded earlier in the
+   geoleaf-main.css cascade (no self-import — matches feature-info/toast-renderer). */
+
+    /* ==========================================================================
+   GeoLeaf.Coordinates — cursor coordinates readout
+   ==========================================================================
+   Shows the cursor coordinates at the bottom right, next to the legend.
+   - Root container : .gl-coordinates-display
+   - Content        : .gl-coordinates__content
+   ========================================================================== */
+
+    /* =======================================================================
+   1. Root container
+   ======================================================================= */
+
+    .gl-coordinates-display {
+        /* MapLibre inserts the control into the bottom-left container. */
+        font-family:
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+        font-size: 0.85rem;
+        color: var(--gl-color-text-main);
+        pointer-events: none;
+        transition: margin-left 160ms ease-out;
+    }
+
+    /* Shift the readout right while the filter panel is open.
+   ⚠️ `!important` is REQUIRED, and the reason lives in ANOTHER capability:
+   `branding.css` owns the layout of the shared `.maplibregl-ctrl-bottom-left`
+   and applies `> * { margin: 0 !important }` to every direct child — which this
+   readout is. Important beats normal whatever the specificity, so this rule did
+   nothing whenever branding was installed (S9). */
+    body:has(#gl-filter-panel.gl-is-open) .maplibregl-ctrl-bottom-left .gl-coordinates-display {
+        margin-left: 320px !important;
+    }
+
+    /* =======================================================================
+   2. Coordinates content
+   ======================================================================= */
+
+    .gl-coordinates__content {
+        background: var(--gl-color-legend-bg);
+        color: var(--gl-color-legend-text);
+        border-radius: 0.75rem;
+        padding: 10px 14px;
+        border: 1px solid var(--gl-color-legend-border);
+        box-shadow: var(--gl-shadow-medium);
+        min-width: 200px;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+        pointer-events: auto;
+        transition:
+            background-color 120ms ease,
+            border-color 120ms ease,
+            box-shadow 120ms ease;
+    }
+
+    .gl-coordinates__content:hover {
+        background: var(--gl-color-bg-surface-muted);
+        border-color: var(--gl-color-border-strong);
+        box-shadow: var(--gl-shadow-medium);
+    }
+
+    /* =======================================================================
+   3. Responsive
+   ======================================================================= */
+
+    @media (max-width: 768px) {
+        .gl-coordinates-display {
+            font-size: 0.75rem;
+        }
+
+        .gl-coordinates__content {
+            min-width: 180px;
+            padding: 8px 12px;
+        }
+    }
+
+    /* =======================================================================
+   4. Dark / light mode (through the theme's CSS variables)
+   ======================================================================= */
+
+    /* The CSS variables are defined in geoleaf-theme.css:
+   - --gl-color-legend-bg
+   - --gl-color-legend-text
+   - --gl-color-legend-border
+   - --gl-shadow-soft
+   - --gl-shadow-medium
+
+   The theme is applied at runtime through GeoLeaf.UI.applyTheme().
+*/
+}

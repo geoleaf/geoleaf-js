@@ -1,0 +1,20 @@
+@layer gl.capabilities {
+    /* GeoLeaf Core (feature-info capability) — hover tooltip (lightweight, theme-aware) */
+
+    .gl-fi-tooltip {
+        position: absolute;
+        background: var(--gl-color-popup-bg, #fff);
+        color: var(--gl-color-popup-text, #1a1a1a);
+        border: 1px solid var(--gl-color-popup-border, rgba(0, 0, 0, 0.08));
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        pointer-events: none;
+        box-shadow: var(--gl-shadow-soft, 0 2px 10px rgba(0, 0, 0, 0.18));
+        max-width: 280px;
+        z-index: 1000;
+        /* Position above the pointer with a small gap. */
+        transform: translate(-50%, calc(-100% - 10px));
+    }
+}

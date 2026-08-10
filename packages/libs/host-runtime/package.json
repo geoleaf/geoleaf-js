@@ -1,0 +1,34 @@
+{
+    "name": "@geoleaf/host-runtime",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "license": "MIT",
+    "description": "GeoLeaf internal — typed accessor to the global GeoLeaf namespace, shared by plugins. Not published: bundled into each consumer at build time (declare it as a devDependency, never a dependency).",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/types/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "scripts": {
+        "clean": "rimraf dist",
+        "build": "rollup -c",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:coverage": "vitest run --coverage"
+    },
+    "devDependencies": {
+        "@geoleaf/build-config": "*",
+        "@vitest/coverage-istanbul": "^4.1.8",
+        "happy-dom": "^20.9.0",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.12.0",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    }
+}

@@ -1,0 +1,37 @@
+{
+    // qualite Q3.5 (26/07/2026) — hérite désormais de la base commune (voir _comment de
+    // tsconfig.base.json). N'était PLUS un îlot volontaire : c'était une copie manuelle de 10
+    // options jamais resynchronisée. `module` et `skipLibCheck` restent écrits explicitement ici
+    // malgré la redondance avec la base : @rollup/plugin-typescript redéclare ces deux champs
+    // dans son DEFAULT_COMPILER_OPTIONS et sa couche « own » GAGNE sur l'héritage — les valeurs
+    // coïncident aujourd'hui, mais les laisser en propre supprime le risque plutôt que d'en dépendre.
+    "extends": "@geoleaf/build-config/tsconfig.base.json",
+    "compilerOptions": {
+        "module": "ESNext",
+        "declarationDir": "dist/types",
+        "outDir": "dist",
+        "skipLibCheck": true,
+        "allowJs": false,
+        "checkJs": false,
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "types": ["geojson", "node"]
+    },
+    // `examples/` is type-checked on purpose: it holds the documented recipe for building a
+    // lighter custom bundle (`examples/minimal/entry.ts`). A recipe that no longer compiles
+    // is worse than no recipe. It is excluded from tsconfig.declarations.json (rootDir: src)
+    // and its build output (examples/dist/) is never published — package.json `files` ships
+    // `dist/` only.
+    //
+    // `examples/consumer/` is the exception, and it is excluded ON PURPOSE (S6): it imports
+    // through the published subpaths (`@geoleaf/core/...`), whose `types` conditions point into
+    // `dist/types/` — which does not exist on a clean checkout. Type-checking it from here would
+    // make `npm run typecheck` (turbo: no `dependsOn: build`) fail before the first build. It has
+    // its own tsconfig, run after the build by `npm run typecheck:consumer`.
+    //
+    // ⚠️ Do NOT "fix" that by adding `paths: { "@geoleaf/core/*": ["./src/*"] }` here. This
+    // tsconfig is the one @rollup/plugin-typescript loads in `baseConfig`, and `paths` would let
+    // its resolveId hook claim `@geoleaf/core/*` — see the warning in rollup.consumer.mjs.
+    "include": ["src/**/*", "examples/**/*"],
+    "exclude": ["node_modules", "dist", "examples/dist", "examples/consumer", "__tests__"]
+}

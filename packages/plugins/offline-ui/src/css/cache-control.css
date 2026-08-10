@@ -1,0 +1,599 @@
+/**
+ * GeoLeaf Storage - Cache Control content styles
+ *
+ * Styles for the cache control panel rendered INSIDE the offline cache modal
+ * (Import tab): STATUS accordion, CONFIG (layer table), ZONE accordion (S3),
+ * action buttons and progress bar.
+ *
+ * The modal shell (overlay, header, tabs, body, export panel) lives in
+ * cache-modal.css, which also neutralises the legacy floating-panel chrome of
+ * `.gl-cache-control` (`.gl-cache-modal__body .gl-cache-control*`).
+ *
+ * Theme-driven: every colour resolves to a `--gl-color-*` variable defined in
+ * the core theme (geoleaf-theme.css), with safe fallbacks for the few names the
+ * core does not expose (text-primary, primary).
+ */
+
+/* ========================================================================
+   Status accordion
+   ======================================================================== */
+.gl-cache-status {
+    margin-bottom: 16px;
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    border-radius: 6px;
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-status__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-status__header:hover {
+    background: var(--gl-color-bg-surface, #fff);
+}
+
+.gl-cache-status__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.gl-cache-status__icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.gl-cache-status__label,
+.gl-cache-layers__label,
+.gl-cache-zone__label,
+.gl-cache-sync__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gl-color-text-secondary, #6b7280);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gl-cache-status__toggle,
+.gl-cache-layers__toggle,
+.gl-cache-zone__toggle,
+.gl-cache-sync__toggle {
+    background: transparent;
+    border: none;
+    color: var(--gl-color-text-secondary, #6b7280);
+    padding: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    transition: transform 0.2s ease;
+}
+
+.gl-cache-status__toggle:hover,
+.gl-cache-layers__toggle:hover,
+.gl-cache-zone__toggle:hover,
+.gl-cache-sync__toggle:hover {
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-cache-status__info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+}
+
+.gl-cache-status__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.gl-cache-status__key {
+    color: var(--gl-color-text-muted, #6b7280);
+    font-weight: 500;
+}
+
+.gl-cache-status__value {
+    color: var(--gl-color-text-main, #0f172a);
+    font-weight: 600;
+    text-align: right;
+}
+
+/* PLUGINS S10: `__value--success/error/warning` removed — the status value
+   span (cache-control-dom.ts:117) is created with the base class only and its
+   text set directly; no code ever adds a severity modifier. */
+
+/* ========================================================================
+   Buttons (shared by actions, zone, stop)
+   ======================================================================== */
+.gl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.gl-btn__icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.gl-btn__text {
+    text-align: center;
+}
+
+.gl-btn--primary {
+    background: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-text-inverse, #f9fafb);
+    box-shadow: 0 2px 8px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+}
+
+.gl-btn--primary:hover:not(:disabled) {
+    background: var(--gl-color-accent-hover, var(--gl-color-accent, #f97316));
+    box-shadow: 0 4px 12px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+}
+
+.gl-btn--primary:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.95);
+}
+
+.gl-btn--secondary {
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    color: var(--gl-color-text-main, #0f172a);
+    border-color: var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-btn--secondary:hover:not(:disabled) {
+    background: var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+    border-color: var(--gl-color-accent, #f97316);
+}
+
+.gl-btn--secondary:active:not(:disabled) {
+    background: var(--gl-color-bg-surface, #fff);
+    transform: scale(0.98);
+}
+
+.gl-btn--danger {
+    background: #ef4444;
+    border-color: #dc2626;
+    color: #fff;
+}
+
+.gl-btn--danger:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #b91c1c;
+}
+
+.gl-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+}
+
+/* ========================================================================
+   Actions row (Download profile / Clear cache)
+   ======================================================================== */
+.gl-cache-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-btn {
+    width: 100%;
+}
+
+/* ========================================================================
+   Progress bar
+   ======================================================================== */
+.gl-cache-progress {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    border-radius: 6px;
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-progress__bar {
+    width: 100%;
+    height: 6px;
+    background: var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.gl-cache-progress__fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.gl-cache-progress__text {
+    font-size: 12px;
+    color: var(--gl-color-text-muted, #6b7280);
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.gl-cache-btn-stop {
+    width: 100%;
+    margin-top: 8px;
+    background: #ef4444;
+    border: 1px solid #dc2626;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.gl-cache-btn-stop:hover {
+    background: #dc2626;
+    border-color: #b91c1c;
+}
+
+/* ========================================================================
+   CONFIG accordion (layer selection table)
+   ======================================================================== */
+.gl-cache-layers {
+    margin-bottom: 16px;
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.gl-cache-layers__header,
+.gl-cache-zone__header,
+.gl-cache-sync__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.gl-cache-layers__header:hover,
+.gl-cache-zone__header:hover,
+.gl-cache-sync__header:hover {
+    background: var(--gl-color-bg-surface, #fff);
+}
+
+.gl-cache-layers__title,
+.gl-cache-zone__title,
+.gl-cache-sync__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.gl-cache-layers__icon,
+.gl-cache-zone__icon,
+.gl-cache-sync__icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.gl-cache-layers__content {
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.gl-cache-layers__content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.gl-cache-layers__content::-webkit-scrollbar-thumb {
+    background: var(--gl-color-border, rgba(15, 23, 42, 0.08));
+    border-radius: 3px;
+}
+
+/* Table */
+.gl-cache-layers__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.gl-cache-layers__table thead th {
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    color: var(--gl-color-text-secondary, #6b7280);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.gl-cache-layers__th-checkbox,
+.gl-cache-layers__td-checkbox {
+    width: 40px;
+    text-align: center;
+}
+
+.gl-cache-layers__th-geometry {
+    width: 90px;
+}
+
+.gl-cache-layers__th-style {
+    width: 130px;
+}
+
+.gl-cache-layers__select-all,
+.gl-cache-layers__td-checkbox input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--gl-color-accent, #f97316);
+}
+
+.gl-cache-layers__row {
+    transition: background 0.2s ease;
+}
+
+.gl-cache-layers__row:hover {
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+}
+
+.gl-cache-layers__td-checkbox,
+.gl-cache-layers__td-name,
+.gl-cache-layers__td-geometry,
+.gl-cache-layers__td-style,
+.gl-cache-layers__td-size,
+.gl-cache-layers__td-cache {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-layers__td-name {
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-cache-layers__td-name .gl-cache-layers__icon {
+    font-size: 14px;
+    margin-right: 8px;
+}
+
+.gl-cache-layers__td-name .gl-cache-layers__name {
+    font-weight: 500;
+}
+
+.gl-cache-layers__td-geometry,
+.gl-cache-layers__td-style,
+.gl-cache-layers__td-cache {
+    color: var(--gl-color-text-secondary, #6b7280);
+    text-align: center;
+}
+
+.gl-cache-layers__td-size {
+    color: var(--gl-color-text-secondary, #6b7280);
+    text-align: right;
+    width: 80px;
+}
+
+.gl-cache-layers__td-cache {
+    width: 60px;
+}
+
+.gl-cache-layers__style-select {
+    width: 100%;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.gl-cache-layers__style-select:focus-visible {
+    outline: none;
+    border-color: var(--gl-color-accent, #f97316);
+    box-shadow: 0 0 0 2px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+}
+
+.gl-cache-layers__loading,
+.gl-cache-layers__error {
+    padding: 16px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--gl-color-text-secondary, #6b7280);
+}
+
+.gl-cache-layers__error {
+    color: #ef4444;
+}
+
+/* ========================================================================
+   ZONE accordion (S3 vector offline: bbox + zoom ceiling + estimate)
+   ======================================================================== */
+.gl-cache-zone {
+    margin-bottom: 16px;
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.gl-cache-zone__content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gl-cache-zone__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gl-cache-zone__buttons .gl-btn {
+    flex: 1 1 auto;
+}
+
+.gl-cache-zone__row {
+    display: flex;
+    align-items: center;
+}
+
+.gl-cache-zone__row-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    font-size: 13px;
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-cache-zone__zoom-select {
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.gl-cache-zone__note {
+    font-size: 12px;
+    color: var(--gl-color-text-muted, #6b7280);
+    line-height: 1.4;
+}
+
+.gl-cache-zone__summary {
+    font-size: 12px;
+    color: var(--gl-color-text-main, #0f172a);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.gl-cache-zone__estimate {
+    font-size: 12px;
+    color: var(--gl-color-accent, #f97316);
+    font-weight: 600;
+}
+
+/* ========================================================================
+   Collapsible accordions (smooth open/close)
+   The toggle handlers add `.gl-cache-collapsible--collapsed` instead of
+   flipping `display`, so the height can be transitioned.
+   ======================================================================== */
+.gl-cache-status__info,
+.gl-cache-zone__content {
+    overflow: hidden;
+    max-height: 600px;
+    transition:
+        max-height 0.28s ease,
+        opacity 0.2s ease;
+}
+
+.gl-cache-layers__content {
+    /* keeps its own max-height (320px) + overflow-y:auto for the table */
+    transition:
+        max-height 0.28s ease,
+        opacity 0.2s ease;
+}
+
+.gl-cache-collapsible--collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    overflow: hidden !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* ========================================================================
+   Responsive
+   ======================================================================== */
+@media (max-width: 768px) {
+    .gl-cache-layers__content {
+        max-height: 240px;
+    }
+
+    .gl-cache-layers__table {
+        font-size: 12px;
+    }
+
+    .gl-cache-layers__th-checkbox,
+    .gl-cache-layers__td-checkbox {
+        width: 32px;
+        padding: 6px 8px;
+    }
+
+    .gl-cache-zone__buttons .gl-btn {
+        flex-basis: 100%;
+    }
+}
+
+/* Cache status glyph of the layer table (S7) — one builder, three call sites:
+   layer row, basemap row, and the post-download refresh. */
+.gl-cache-layers__status {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.gl-cache-layers__status--cached {
+    color: #22c55e;
+}
+
+.gl-cache-layers__status--missing {
+    color: #ef4444;
+}
+
+.gl-cache-layers__status--none {
+    color: var(--gl-color-text-muted, #94a3b8);
+    font-weight: normal;
+    font-size: 14px;
+}
+
+body.gl-theme-dark .gl-cache-layers__status--cached {
+    color: #4ade80;
+}
+
+body.gl-theme-dark .gl-cache-layers__status--missing {
+    color: #fca5a5;
+}

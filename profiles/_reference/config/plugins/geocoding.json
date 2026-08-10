@@ -1,0 +1,8 @@
+{
+    "enabled": true,
+    "provider": "nominatim",
+    "countrycodes": "fr",
+    "bbox": [-5.5, 41, 10, 51.5],
+    "debounceMs": 300,
+    "minChars": 3
+}

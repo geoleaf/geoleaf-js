@@ -1,0 +1,184 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf — palette « VERTE » (capacité `theme-palette`).
+ *
+ * RÉCUPÉRÉE depuis git (`git show bf940422~1:packages/core/src/css/geoleaf-theme-green.css`), jamais
+ * réécrite : ces valeurs étaient déjà réglées en clair ET en sombre, contraste compris.
+ * Les recomposer de mémoire aurait réintroduit des régressions déjà résolues.
+ *
+ * SEULS les 3 sélecteurs de tête ont changé — `:root`, `.gl-theme-light`,
+ * `.gl-theme-dark` sont désormais portés par `:root[data-gl-palette="green"]`.
+ * Aucune couleur n'a été modifiée.
+ *
+ * L'attribut vit sur <html>, la classe `gl-theme-*` sur <body> : la relation est
+ * DESCENDANTE, ce qui garde les deux axes (palette / clair-sombre) orthogonaux.
+ *
+ * ⚠️ **Requalifié le 27/07/2026 — même correction que `blue.css`, voir son en-tête.**
+ * Ces sélecteurs ne sont **pas** safelistés (`scripts/lib/purgecss-config.cjs` ne
+ * contient aucune entrée de palette, la baseline non plus). Ce qui les protège, c'est
+ * que **purgecss n'est pas une étape du build CSS** : c'est une gate de rapport. Les
+ * deux blocs sont bien dans `dist/geoleaf-main.min.css`, vérifié.
+ */
+
+    /* =======================================================================
+   GeoLeaf – Fichier de thème centralisé (Theme v1 – Palette VERTE)
+   -----------------------------------------------------------------------
+   Variante full-green : UI en tons verts cohérents en Light & Dark
+   Structure strictement identique au thème bleu d’origine.
+   ======================================================================= */
+
+    /* -----------------------------------------------------------------------
+   Palette par défaut (fallback) – très proche du thème LIGHT vert
+   ----------------------------------------------------------------------- */
+    :root[data-gl-palette="green"] {
+        /* Couleurs générales */
+        --gl-color-bg-page: #ffffff;
+        --gl-color-bg-surface: #e2f3e8; /* remplace le bleu clair par un vert très pâle */
+        --gl-color-bg-surface-muted: #f1faf5;
+        --gl-color-bg-overlay: rgba(255, 255, 255, 0.82);
+        --gl-color-text-muted: #64748b;
+
+        /* Accent (boutons, icônes, toggles actifs) – VERT */
+        --gl-color-accent: #16a34a; /* Vert principal (green-600) */
+        --gl-color-accent-soft: rgba(22, 163, 74, 0.16);
+
+        /* POI – palette verte */
+        --gl-color-poi-fill: #22c55e; /* Vert marqueur (green-500) */
+        --gl-color-poi-fill-default: #16a34a; /* Couleur par défaut si aucune catégorie */ /* Contour par défaut si aucune catégorie */
+
+        /* Badges POI par défaut (verts) */
+        --gl-color-badge-category-bg: rgba(34, 197, 94, 0.12);
+        --gl-color-badge-category-border: rgba(34, 197, 94, 0.3);
+        --gl-color-badge-subcategory-bg: rgba(15, 23, 42, 0.04);
+        --gl-color-badge-subcategory-border: rgba(15, 23, 42, 0.08);
+
+        /* Panneau latéral POI */
+
+        /* Itinéraire – vert contrasté */
+        --gl-color-route-line: #15803d; /* green-700 */
+
+        /* Légende */
+        --gl-color-legend-bg: rgba(255, 255, 255, 0.78);
+        --gl-color-legend-border: rgba(187, 247, 208, 0.9); /* basé sur green-200 */
+        --gl-color-legend-text: #0f172a;
+
+        /* Popup POI */
+        --gl-color-popup-bg: rgba(255, 255, 255, 0.8);
+        --gl-color-popup-border: rgba(187, 247, 208, 0.9);
+        --gl-color-popup-text: #0f172a;
+        /* Trait sous le titre de la popup POI (fallback ≈ light) */
+        --gl-poi-title-border: #1f2937;
+
+        /* Focus ring (accessibilité) – Vert */
+        --gl-color-focus-ring: #16a34a;
+
+        /* Ombres */
+
+        /* Additional theme-aware variables used across the UI */
+        --gl-shadow-panel: -8px 0 30px rgba(15, 23, 42, 0.3);
+        --gl-color-gallery-item-bg: rgba(15, 23, 42, 0.04);
+        /*
+     * Dark text on the green accent, not near-white. `#f9fafb` on `#16a34a` measures
+     * 3.15:1 — under the 4.5:1 of WCAG AA — and this token is read by 10+ accent
+     * surfaces (ui-base buttons, theme-selector, geolocation, plugin-table, connector),
+     * so every one of them inherited the deficit. `#020617` measures 6.12:1, and matches
+     * what the default theme already does on its orange accent (7.20:1).
+     * Found while fixing the save button at PLUGINS B.7; the button itself only exposed
+     * a theme-level defect.
+     */
+        --gl-color-accent-contrast: #020617;
+        --gl-color-accent-hover: #15803d;
+
+        /* Aliases utilitaires pour harmoniser toutes les couches UI */
+
+        /* Opacités / overlays génériques dérivés du thème */
+
+        /* Accent en alpha réutilisable (focus, halos) */
+    }
+
+    /* PC 10″ (769–1024px) : side panel légèrement réduit pour laisser plus de carte visible */
+
+    /* -----------------------------------------------------------------------
+   Thème LIGHT – appliqué quand le <body> a la classe .gl-theme-light
+   Aussi disponible directement sur .gl-theme-light pour support fullscreen
+   ----------------------------------------------------------------------- */
+    :root[data-gl-palette="green"] body.gl-theme-light,
+    :root[data-gl-palette="green"] .gl-theme-light {
+        --gl-color-bg-page: #ffffff; /* fond blanc */
+        --gl-color-bg-surface: #f3fbf6; /* surface vert très pâle */
+        --gl-color-bg-surface-muted: #f3fbf6;
+        --gl-color-bg-overlay: rgba(255, 255, 255, 0.82);
+        --gl-color-text-muted: #64748b;
+
+        /* Accent vert */
+        --gl-color-accent: #16a34a;
+        --gl-color-accent-soft: rgba(22, 163, 74, 0.16);
+
+        /* POI / itinéraire en vert */
+        --gl-color-poi-fill: #22c55e;
+        --gl-color-poi-fill-default: #16a34a;
+
+        --gl-color-route-line: #15803d;
+
+        --gl-color-legend-bg: rgba(255, 255, 255, 0.8);
+        --gl-color-legend-border: rgba(187, 247, 208, 0.9);
+        --gl-color-legend-text: #0f172a;
+
+        --gl-color-popup-bg: rgba(255, 255, 255, 0.82);
+        --gl-color-popup-border: rgba(187, 247, 208, 0.9);
+        --gl-color-popup-text: #0f172a;
+        /* Gris anthracite en light */
+        --gl-poi-title-border: #1f2937;
+
+        /* Badges POI – déclinaison verte */
+        --gl-color-badge-category-bg: rgba(34, 197, 94, 0.16);
+        --gl-color-badge-category-border: rgba(34, 197, 94, 0.35);
+        --gl-color-badge-subcategory-bg: rgba(15, 23, 42, 0.06);
+        --gl-color-badge-subcategory-border: rgba(15, 23, 42, 0.12);
+
+        /* Focus ring (accessibilité) */
+        --gl-color-focus-ring: #16a34a;
+    }
+
+    /* -----------------------------------------------------------------------
+   Thème DARK – appliqué quand le <body> a la classe .gl-theme-dark
+   Aussi disponible directement sur .gl-theme-dark pour support fullscreen
+   ----------------------------------------------------------------------- */
+    :root[data-gl-palette="green"] body.gl-theme-dark,
+    :root[data-gl-palette="green"] .gl-theme-dark {
+        --gl-color-bg-page: #022c22; /* vert très sombre type "forêt" */
+        --gl-color-bg-surface: #022c22;
+        --gl-color-bg-surface-muted: #022c22;
+        --gl-color-bg-overlay: rgba(6, 78, 59, 0.78);
+        --gl-color-text-inverse: #020617;
+
+        /* POI / itinéraire verts, plus lumineux pour le dark */
+        --gl-color-poi-fill: #22c55e;
+        --gl-color-poi-stroke: #022c22;
+        --gl-color-poi-fill-default: #4ade80;
+        --gl-color-poi-stroke-default: #022c22;
+
+        /* Accent vert adouci pour le dark */
+        --gl-color-accent: #4ade80;
+        --gl-color-accent-soft: rgba(74, 222, 128, 0.22);
+
+        --gl-color-route-line: #4ade80;
+
+        --gl-color-legend-bg: rgba(6, 78, 59, 0.82);
+        --gl-color-legend-border: rgba(21, 128, 61, 0.9);
+
+        --gl-color-popup-bg: rgba(6, 78, 59, 0.86);
+        --gl-color-popup-border: rgba(21, 128, 61, 0.9);
+        /* Blanc en dark */
+        --gl-poi-title-border: #e5e7eb;
+
+        /* Badges POI – déclinaison verte en dark */
+        --gl-color-badge-category-bg: rgba(34, 197, 94, 0.45);
+        --gl-color-badge-category-border: rgba(34, 197, 94, 0.75);
+        --gl-color-badge-subcategory-bg: rgba(15, 23, 42, 0.65);
+        --gl-color-badge-subcategory-border: rgba(15, 23, 42, 0.9);
+
+        /* Focus ring (accessibilité) - identique mais vert */
+        --gl-color-focus-ring: #4ade80;
+    }
+}

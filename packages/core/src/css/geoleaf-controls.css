@@ -1,0 +1,94 @@
+/*
+ * GeoLeaf — the map-control ROLE contract.
+ * ----------------------------------------
+ * KERNEL ONLY. This file must never name a capability.
+ *
+ * Every map control wears `.geoleaf-ctrl` (see `capabilities/geolocation/geolocation.ts` and
+ * `capabilities/theme-toggle/theme-toggle.ts`, which already add it). The kernel defines what
+ * that role LOOKS like — the reset, the button chrome, the hover, the icon — and each capability
+ * defines only what is its own, in its own stylesheet.
+ *
+ * ## Why this file used to be the blocker (S6)
+ *
+ * It carried grouped selectors of the form
+ *
+ *     .geoleaf-ctrl-zoom, .geoleaf-ctrl-fullscreen, .geoleaf-ctrl-geolocation,
+ *     .geoleaf-ctrl-theme-toggle { … }
+ *
+ * which is what made `geolocation` and `theme-toggle` impossible to detach: their CSS was welded
+ * into a kernel rule that named them. Two of those four classes turned out to be **dead** —
+ * `.geoleaf-ctrl-zoom` and `.geoleaf-ctrl-fullscreen` appear in ZERO shipped JS artifact (Leaflet
+ * -era leftovers; zoom/fullscreen are driven from the mobile toolbar). The remaining two already
+ * wore a shared role class. So the fix was not a rewrite, it was a deletion plus a rename.
+ */
+
+/* =====================================================
+   CONTENEUR COMMUN POUR TOUS LES CONTRÔLES TOPLEFT
+===================================================== */
+.maplibregl-ctrl-top-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 1rem;
+    margin-left: 1rem;
+}
+
+/* Reset neutre du conteneur de contrôle.
+   !important justifié : nécessaire pour outrepasser les styles par défaut du moteur */
+.geoleaf-ctrl {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+}
+
+/* Chrome standard du bouton */
+.geoleaf-ctrl a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+    text-align: center;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+
+    border: none;
+    border-radius: 0;
+
+    /* Couleurs 100 % pilotées par les variables de thème */
+    background-color: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
+
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.12s ease;
+}
+
+body.gl-theme-light .geoleaf-ctrl a:hover,
+body.gl-theme-dark .geoleaf-ctrl a:hover {
+    background-color: var(--gl-color-bg-surface-muted);
+    color: var(--gl-color-text-main);
+    box-shadow: var(--gl-shadow-medium);
+    transform: translateY(-1px);
+}
+
+.geoleaf-ctrl a:active {
+    transform: translateY(0) scale(0.96);
+}
+
+/* Icônes SVG — couleur uniforme et centrage */
+.geoleaf-ctrl svg {
+    display: block;
+    color: currentColor;
+    stroke: currentColor;
+    margin: auto;
+}

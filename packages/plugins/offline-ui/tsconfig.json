@@ -1,0 +1,37 @@
+{
+    "_comment": [
+        "Profil STANDARD depuis l'API publique S4.4c. Ce fichier étendait `tsconfig.base.json`",
+        "et portait `declaration: false` : il résolvait `@core/*` et `@core-offline/*` vers les",
+        "SOURCES du core, et son répertoire `shared/` vivait hors de `src/` — deux raisons de ne",
+        "pas pouvoir porter de `rootDir`.",
+        "",
+        "Les 5 imports ont disparu au S4.4b. `StorageContract` passe par `globalThis.GeoLeaf`",
+        "(son identité était le contrat : la copie embarquée n'était jamais initialisée, donc",
+        "`isAvailable()` rendait `false` pour toujours et `whenReady()` ne résolvait jamais).",
+        "`resolveProfileLayers` passe par le sous-chemin publié du core. `estimateVectorZone` a",
+        "été DÉPLACÉE ici : elle était morte côté core (0 appelant) et son build l'élaguait de",
+        "l'artefact publié — un sous-chemin publié ne garantit que le FICHIER, pas le symbole.",
+        "",
+        "⚠️ `shared/` a été DÉPLACÉ sous `src/shared/`. J'avais d'abord écrit ici qu'il pouvait",
+        "rester dehors « puisqu'il n'importe plus rien du core » — c'était faux, et `tsc` l'a dit",
+        "en TS6059 : `rootDir` n'interdit pas un fichier hors racine, il interdit un fichier",
+        "ÉMETTABLE hors racine, et celui-ci l'est puisque 16 fichiers de `src/` l'importent.",
+        "",
+        "Le déplacement est devenu bien moins coûteux que ce que le pré-vol annonçait : deux de",
+        "ses quatre obstacles ont disparu au S4.4b. Le seam `storage-contract` n'existe plus (le",
+        "fichier ADAPTE la façade au lieu d'en dupliquer une copie), et son import `@core/shared/`",
+        "non plus — donc ni `verify-seam-drift` ni PCB-01 n'avaient à être touchés. Effet de bord",
+        "gratuit : `turbo.json` déclare `build.inputs = src/**` sans `shared/**`, donc éditer ce",
+        "fichier n'invalidait AUCUN cache ; le trou se referme avec le déplacement.",
+        "",
+        "Le glob `ui/**/*` de l'ancien `include` ne matchait RIEN — il n'y a pas de `ui/` à la",
+        "racine du paquet, seulement `src/ui/`. Retiré."
+    ],
+
+    "extends": "@geoleaf/build-config/tsconfig.package.json",
+    "compilerOptions": {
+        "types": ["geojson", "node"]
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "dist", "src/__tests__"]
+}

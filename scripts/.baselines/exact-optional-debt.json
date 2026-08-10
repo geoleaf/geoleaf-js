@@ -1,0 +1,6 @@
+{
+    "_comment": "EXACT-OPTIONAL-DEBT — propriétés élargies en `?: T | undefined`, gelées. Cette liste ne peut que RÉTRÉCIR (EOD-02). Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire. Chaque entrée doit porter dans le code un commentaire nommant le consommateur pour lequel « absent » et « présent valant undefined » sont équivalents.",
+    "_generated": "node scripts/check-exact-optional-debt.cjs --update-baseline",
+    "count": 0,
+    "entries": []
+}

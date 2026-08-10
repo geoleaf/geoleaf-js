@@ -1,0 +1,28 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "_comment": [
+        "Profil standard d'un package du monorepo — ARCHI S9.1.",
+        "  { \"extends\": \"@geoleaf/build-config/tsconfig.package.json\" }",
+        "",
+        "= tsconfig.base.json + les 3 chemins d'émission. C'est ce que 15 des 17 packages",
+        "étendent. Les 2 exceptions (`plugin-addpoi`, `plugin-storage`) étendent",
+        "`tsconfig.base.json` directement — motif détaillé là-bas.",
+        "",
+        "${configDir} EST OBLIGATOIRE ICI, et c'est tout l'objet de ce fichier.",
+        "TypeScript résout les chemins relatifs contre le fichier OÙ ILS SONT ÉCRITS, pas",
+        "contre le consommateur. Écrits nus, ces 3 chemins feraient émettre les 15 packages",
+        "dans packages/build-config/dist. Mesuré sur le compilateur réel :",
+        "  sans ${configDir} → outDir=../dist   rootDir=../src    ❌",
+        "  avec ${configDir} → outDir=./dist    rootDir=./src     ✅",
+        "Le piège n'est pas lié au specifier npm : un tsconfig.base.json à la racine du",
+        "dépôt produirait exactement le même effet."
+    ],
+
+    "extends": "./tsconfig.base.json",
+
+    "compilerOptions": {
+        "declarationDir": "${configDir}/dist/types",
+        "outDir": "${configDir}/dist",
+        "rootDir": "${configDir}/src"
+    }
+}

@@ -1,0 +1,34 @@
+{
+    "_comment": "B5 fixture (config-contract Phase C, sprint S13). TEST-ONLY: never deployed. Exhaustive layers index. `layers[]` references reference-points_config.json (exercised leaf-by-leaf by s13-layer-*). `layerTemplates[]` exercises expandLayerTemplates (config/profile-loader-helpers.ts:159). Must conform to layers.schema.json (validate-profiles gate).",
+    "layers": [
+        {
+            "id": "reference-points",
+            "configFile": "layers/reference-points/reference-points_config.json",
+            "layerManagerId": "section-poi",
+            "label": "Points de référence",
+            "order": 1,
+            "defaultVisible": true
+        }
+    ],
+    "layerTemplates": [
+        {
+            "templateId": "rivieres",
+            "layerManagerId": "section-hydro",
+            "template": {
+                "geometry": "line",
+                "data": { "directory": "layers/rivieres/data" },
+                "styles": { "directory": "styles", "default": "defaut.json", "available": [] },
+                "table": { "enabled": false },
+                "clustering": { "enabled": false }
+            },
+            "instances": [
+                {
+                    "id": "riviere-nord",
+                    "label": "Rivière Nord",
+                    "dataFile": "riviere-nord.geojson"
+                },
+                { "id": "riviere-sud", "label": "Rivière Sud", "dataFile": "riviere-sud.geojson" }
+            ]
+        }
+    ]
+}

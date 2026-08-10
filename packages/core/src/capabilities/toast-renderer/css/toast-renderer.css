@@ -1,0 +1,375 @@
+@layer gl.capabilities {
+    /**
+ * GeoLeaf Notification System Styles
+ * Toast notification system.
+ * @version 1.2.0
+ * @updated 2026-07-09 — moved into the in-core toast-renderer capability (S7); dead .gl-overlay* block purged
+ * @renamed 2026-07-26 (STRUCT S8) — was `notifications.css`; the capability is named
+ * toast-renderer, and T5 §1 arbitrates `<cap>[-variante].css` for capability stylesheets.
+ */
+
+    /* ========================================
+   Main container
+   ======================================== */
+    :root {
+        --gl-toast-bg: var(--gl-color-bg-surface, #ffffff);
+        --gl-toast-text: var(--gl-color-text-main, #0f172a);
+        --gl-toast-shadow: var(--gl-shadow-medium, 0 4px 16px rgba(0, 0, 0, 0.15));
+        --gl-toast-close-hover: color-mix(
+            in srgb,
+            var(--gl-color-text-main, #0f172a) 8%,
+            transparent
+        );
+    }
+
+    body.gl-theme-dark,
+    .gl-theme-dark {
+        --gl-toast-bg: color-mix(in srgb, var(--gl-color-bg-surface, #0b1120) 82%, #0b0f1a 18%);
+        --gl-toast-text: var(--gl-color-text-main, #e5e7eb);
+        --gl-toast-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+        --gl-toast-close-hover: color-mix(
+            in srgb,
+            var(--gl-color-text-main, #e5e7eb) 12%,
+            transparent
+        );
+    }
+
+    .gl-notifications {
+        position: fixed;
+        /* Above everything, modals included (field-renderer overlay: 10000), so toasts
+   stay readable while a form is left open on an error. Still BELOW the
+   field-renderer lightbox, which sits at 20000 (form-field-components.css:427). */
+        z-index: 10100;
+        pointer-events: none; /* does not swallow clicks */
+        display: flex;
+        flex-direction: column-reverse; /* stack grows upwards (newest at the bottom) */
+        gap: 8px;
+        max-height: 300px;
+        overflow: visible;
+        transition: bottom 0.3s ease; /* transition when the table opens */
+    }
+
+    /* ========================================
+   Available positions
+   ======================================== */
+
+    /* Default position: bottom-center (recommended). */
+    .gl-notifications--bottom-center {
+        bottom: 70px; /* 20px margin + 50px table button */
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        min-width: 320px;
+        max-width: 500px;
+    }
+
+    /* Alternative: top-right */
+    .gl-notifications--top-right {
+        top: 90px; /* below the header */
+        right: 20px;
+        width: 360px;
+    }
+
+    /* Alternative: bottom-right */
+    .gl-notifications--bottom-right {
+        bottom: 20px;
+        right: 20px;
+        width: 360px;
+    }
+
+    /* Alternative: top-center */
+    .gl-notifications--top-center {
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        min-width: 320px;
+        max-width: 500px;
+    }
+
+    /* ========================================
+   Dynamic adjustments
+   ======================================== */
+
+    /* Shift when the POI detail panel is open. */
+    body.gl-poi-sidepanel-open .gl-notifications--top-right,
+    body.gl-poi-sidepanel-open .gl-notifications--bottom-right {
+        right: calc(420px + 20px);
+    }
+
+    /* ========================================
+   Individual toast
+   ======================================== */
+    .gl-toast {
+        pointer-events: auto; /* re-enable clicks on the toast itself */
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 42px 14px 16px; /* room for the close button */
+        background: var(--gl-toast-bg);
+        /* `--gl-color-accent`, NOT `--gl-accent` (S9). The latter is defined nowhere in the
+   repo: an undefined custom property with no fallback makes the declaration invalid
+   at computed-value time, so this shorthand fell back to `border-left-style: none`
+   — and the four `--info/--success/--warning/--error` modifiers below only set
+   `border-left-color`. The whole colour-coding of toasts rendered nothing. */
+        border-left: 4px solid var(--gl-color-accent);
+        border-radius: 6px;
+        box-shadow: var(--gl-toast-shadow);
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--gl-toast-text);
+        line-height: 1.5;
+
+        /* Entry animation (initial state). */
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Visible state. */
+    .gl-toast--visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    /* Exit animation. */
+    .gl-toast--removing {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.2s ease-out;
+    }
+
+    /* ========================================
+   Re-ordering animations (priority queue)
+   ======================================== */
+
+    /* Slide-up animation (toast displaced by a higher-priority one). */
+    .gl-toast--sliding-up {
+        animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateY(-100%);
+            opacity: 0;
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-20px);
+            opacity: 0.5;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* ========================================
+   Toast message
+   ======================================== */
+    .gl-toast__message {
+        flex: 1;
+        word-wrap: break-word;
+        word-break: break-word;
+    }
+
+    /* ========================================
+   Close button
+   ======================================== */
+    .gl-toast__close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--gl-color-text-muted, #6b7280);
+        font-size: 20px;
+        font-weight: 300;
+        line-height: 1;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Explicit dark theme (in case the variables are not injected). */
+    body.gl-theme-dark .gl-toast,
+    .gl-theme-dark .gl-toast {
+        background: var(--gl-toast-bg, #0b0f1a);
+        color: var(--gl-toast-text, #e5e7eb);
+        box-shadow: var(--gl-toast-shadow, 0 6px 20px rgba(0, 0, 0, 0.35));
+    }
+
+    .gl-toast__close:hover {
+        background: var(--gl-toast-close-hover);
+        color: var(--gl-toast-text);
+    }
+
+    .gl-toast__close:active {
+        transform: scale(0.9);
+    }
+
+    /* ========================================
+   Notification types
+   ======================================== */
+
+    /* Success (green) */
+    .gl-toast--success {
+        border-left-color: #10b981;
+    }
+
+    .gl-toast--success::before {
+        content: "✓";
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: #10b981;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 1px;
+    }
+
+    /* Error (red) */
+    .gl-toast--error {
+        border-left-color: #ef4444;
+    }
+
+    .gl-toast--error::before {
+        content: "✗";
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: #ef4444;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 1px;
+    }
+
+    /* Warning (amber) */
+    .gl-toast--warning {
+        border-left-color: #f59e0b;
+    }
+
+    .gl-toast--warning::before {
+        content: "⚠";
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: #f59e0b;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 1px;
+    }
+
+    /* Info (blue) */
+    .gl-toast--info {
+        border-left-color: #3b82f6;
+    }
+
+    .gl-toast--info::before {
+        content: "ℹ";
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: #3b82f6;
+        font-weight: bold;
+        font-size: 16px;
+        margin-top: 1px;
+    }
+
+    /* ========================================
+   Dark mode
+   ======================================== */
+    /* S9 — `background` and `box-shadow` were removed from this rule. It is a second
+   `body.gl-theme-dark .gl-toast` block, identical in specificity (0,2,1) to the
+   one above but declared later, so it won every time: the `--gl-toast-bg`
+   color-mix and the dark `--gl-toast-shadow` computed at the top of this file
+   were dead weight, and a theme could not retint its toasts through the tokens
+   the file advertises. Only `backdrop-filter` is genuinely additive, so only it
+   remains. ⚠️ This DOES change the dark surface (flat #2b2b2b → the token-based
+   mix) — carried to the browser-check table. */
+    body.gl-theme-dark .gl-toast {
+        backdrop-filter: blur(10px);
+    }
+
+    body.gl-theme-dark .gl-toast__close:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ========================================
+   Responsive Mobile
+   ======================================== */
+    @media (max-width: 768px) {
+        .gl-notifications--bottom-center {
+            left: 10px;
+            right: 10px;
+            transform: none;
+            min-width: auto;
+            max-width: none;
+            bottom: 60px;
+        }
+
+        .gl-notifications--top-right,
+        .gl-notifications--bottom-right,
+        .gl-notifications--top-center {
+            left: 10px;
+            right: 10px;
+            transform: none;
+            width: auto;
+        }
+
+        .gl-toast {
+            font-size: 13px;
+            padding: 12px 38px 12px 14px;
+        }
+
+        .gl-toast__close {
+            width: 26px;
+            height: 26px;
+            font-size: 18px;
+        }
+    }
+
+    /* ========================================
+   Accessibility states
+   ======================================== */
+    .gl-toast:focus-within {
+        /* Same undefined-token fix as the border-left above (S9): an invalid `outline`
+   shorthand fell back to `outline-style: none`, so the focus ring was absent —
+   an accessibility defect, not just a cosmetic one. */
+        outline: 2px solid var(--gl-color-accent);
+        outline-offset: 2px;
+    }
+
+    /* Mode reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        .gl-toast,
+        .gl-notifications {
+            transition: none !important;
+        }
+    }
+}

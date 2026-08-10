@@ -1,0 +1,164 @@
+/* ==========================================================================
+   GeoLeaf.GeoJSON – Styles spécifiques aux couches GeoJSON et UI associée
+   Piloté à 100 % par les variables du thème (geoleaf-theme.css)
+
+   Ne PAS ré-importer geoleaf-theme.css ici : geoleaf-main.css l'importe déjà
+   en layer(gl.tokens). Un @import local est sans layer(), donc hérite de
+   gl.kernel — la copie parasite surclassait alors la couche de tokens, et les
+   241 lignes du thème étaient inlinées deux fois dans le bundle.
+   ========================================================================== */
+
+/* 
+ * Panneau d’information GeoJSON (par exemple : info sur la feature survolée)
+ * Positionné au-dessus de la carte, sans gêner les interactions.
+ * L’activation/gestion JS se fera plus tard dans le module GeoJSON ou la démo.
+ */
+
+.gl-geojson-info {
+    position: absolute;
+    top: 80px;
+    right: 16px;
+    max-width: 280px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    z-index: 500;
+    pointer-events: none; /* Le panneau n’intercepte pas les clics sur la carte */
+    box-shadow: var(--gl-shadow-medium);
+    backdrop-filter: blur(6px);
+
+    /* Couleurs pilotées par le thème (light/dark) */
+    background: var(--gl-color-popup-bg);
+    color: var(--gl-color-popup-text);
+    border: 1px solid var(--gl-color-popup-border);
+}
+
+/* Titres / contenu du panneau d’information */
+
+.gl-geojson-info__title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gl-geojson-info__subtitle {
+    font-size: 0.75rem;
+    opacity: 0.85;
+    margin: 0 0 8px;
+}
+
+.gl-geojson-info__body {
+    font-size: 0.8rem;
+    opacity: 0.95;
+}
+
+/* Petits badges pour type de feature / couche / statut */
+
+.gl-geojson-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+
+    /* Palette dérivée de l’accent du thème */
+    background: var(--gl-color-accent-soft);
+    color: var(--gl-color-accent);
+}
+
+/* Badge accentué pour signaler une feature active / sélectionnée */
+
+.gl-geojson-badge--active {
+    border: 1px solid var(--gl-color-accent);
+}
+
+/* ========================================================================== 
+   États de mise en avant des éléments liés aux features GeoJSON
+   (listes, items de légende, etc. – DOM classique, pas les géométries SVG)
+   ========================================================================== */
+
+/* Élément “feature” dans une éventuelle liste ou panneau latéral */
+
+.gl-geojson-feature-item {
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    font-size: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease-out,
+        box-shadow 160ms ease-out,
+        transform 160ms ease-out;
+
+    /* Fond et bordure issus du thème (light/dark) */
+    background: var(--gl-color-bg-surface-muted);
+    border: 1px solid var(--gl-color-border-soft);
+}
+
+/* Survol d’un élément de liste (couplable au survol d’une feature sur la carte) */
+
+.gl-geojson-feature-item:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--gl-shadow-medium);
+}
+
+/* État “highlight” (par exemple, feature survolée sur la carte) */
+
+.gl-geojson-feature--highlight {
+    box-shadow:
+        0 0 0 1px var(--gl-color-route-line),
+        var(--gl-shadow-medium);
+}
+
+/* État “selected” (feature activement sélectionnée) */
+
+.gl-geojson-feature--selected {
+    box-shadow:
+        0 0 0 1px var(--gl-color-accent),
+        var(--gl-shadow-medium);
+}
+
+/* Titre / sous-titre dans un item de liste de features */
+
+.gl-geojson-feature-item__title {
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.gl-geojson-feature-item__meta {
+    font-size: 0.7rem;
+    opacity: 0.75;
+}
+
+/* ========================================================================== 
+   Adaptation responsive minimale
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .gl-geojson-info {
+        top: auto;
+        bottom: 16px;
+        right: 16px;
+        left: 16px;
+        max-width: none;
+    }
+
+    .gl-geojson-feature-item {
+        font-size: 0.78rem;
+    }
+}

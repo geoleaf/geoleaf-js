@@ -1,0 +1,24 @@
+{
+    "before": {
+        "capability": "poi",
+        "match": "poi",
+        "bootGz": 198.5,
+        "leanFullGz": 538.3,
+        "leanLiteGz": 374.5,
+        "ownedFiles": 27,
+        "ownedLoc": 4781,
+        "refLines": 1233,
+        "coreTestFiles": 385
+    },
+    "after": {
+        "capability": "poi",
+        "match": "poi",
+        "bootGz": 188.1,
+        "leanFullGz": 510.7,
+        "leanLiteGz": 347.8,
+        "ownedFiles": 5,
+        "ownedLoc": 1436,
+        "refLines": 1041,
+        "coreTestFiles": 366
+    }
+}

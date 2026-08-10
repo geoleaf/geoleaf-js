@@ -1,0 +1,4 @@
+{
+    "_comment": "S2 capacités-extraction — modules.feature-info (plugin @geoleaf-plugins/feature-info). Attribute-rendering capacity: tooltip (hover), popup (click), side-panel (selection) for GeoJSON/VT layers. Per-layer bindings live in layers/<id>/{id}_config.json under capabilities.feature-info. POI rendering stack delegated to this plugin since S2b (see CDC_plugin-feature-info.md).",
+    "enabled": true
+}

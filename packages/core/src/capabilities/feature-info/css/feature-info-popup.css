@@ -1,0 +1,243 @@
+@layer gl.capabilities {
+    /* ==========================================================================
+   GeoLeaf Core (feature-info capability) — POI rendering styles
+   Self-contained port of the ORIGINAL (pre-extraction) GeoLeaf attribute
+   rendering CSS. Class names and rule values are preserved VERBATIM so the
+   plugin renders pixel-identically to the "before" core styling.
+   Colors are driven by --gl-color-* theme variables still provided by core.
+   Merge order: popup → sidepanel → accordion/gallery/tags → lightbox.
+   ========================================================================== */
+
+    /* ==========================================================================
+   SECTION 1 — POI popup (before_poi-popup.css)
+   ========================================================================== */
+
+    /* ==========================================================================
+   Feature-info — UI styles for point rendering (generic point layers)
+   Driven by the theme variables (geoleaf-theme.css)
+   ========================================================================== */
+
+    /* ------------------------------------------------------------
+   1) Marqueur POI (MapLibre symbol)
+   ------------------------------------------------------------ */
+
+    /* ------------------------------------------------------------
+   2) Tooltip POI
+   ------------------------------------------------------------ */
+
+    /* ------------------------------------------------------------
+   3) Popup POI enrichie
+   ------------------------------------------------------------ */
+
+    .gl-poi-popup {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        max-width: 300px;
+        min-width: 260px;
+        font-family:
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Roboto",
+            sans-serif;
+        font-size: 0.875rem;
+        line-height: 1.35;
+    }
+
+    @media (max-width: 768px) {
+        .gl-poi-popup {
+            max-width: 230px;
+            min-width: 180px;
+            font-size: 0.8rem;
+        }
+        .maplibregl-popup-content {
+            max-width: 240px !important;
+            margin: 8px 10px !important;
+        }
+    }
+
+    /* ------------------------------------------------------------------
+   Harmonisation avec MapLibre popup : fond semi-transparent suivant le
+   theme (consumes the variables defined in geoleaf-theme.css)
+   ------------------------------------------------------------------ */
+    .maplibregl-popup-content {
+        background: var(--gl-color-popup-bg); /* fully opaque, light/dark theme */
+        color: var(--gl-color-popup-text);
+        border: 1px solid var(--gl-color-popup-border);
+        box-shadow: var(--gl-shadow-medium);
+        border-radius: 0.5rem;
+        backdrop-filter: blur(6px); /* optional: keeps a polished feel */
+    }
+
+    /* Popup arrow — a pure triangle made of CSS borders only.
+   No background: the div is 0×0px, so a background would paint a visible rectangle. */
+    .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+        border-top-color: var(--gl-color-popup-bg);
+    }
+    .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+        border-bottom-color: var(--gl-color-popup-bg);
+    }
+    .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+        border-right-color: var(--gl-color-popup-bg);
+    }
+    .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+        border-left-color: var(--gl-color-popup-bg);
+    }
+
+    /* Force popups above the theme selectors (850). */
+    .maplibregl-popup {
+        z-index: 1050 !important;
+    }
+
+    /* Text block under the photo: inner padding visually opens up the bubble. */
+    .gl-poi-popup__body {
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Title sits right under the photo, with a rule separating it from the text. */
+    .gl-poi-popup__body .gl-poi-popup__title {
+        margin-top: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid var(--gl-poi-title-border);
+    }
+
+    .gl-poi-popup__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.2rem;
+    }
+
+    /* The single definition of a pill badge, for EVERY surface (popup, side-panel,
+   tooltip). It used to be declared twice — the side-panel's copy was unscoped and
+   loaded later, so it won everywhere with `color: text-inverse` (near-white) and no
+   background at all: the pills were effectively invisible. The side-panel now only
+   overrides its own metrics, scoped.
+
+   A background is declared here so a pill is always readable, even when taxonomy
+   supplies no colour. When it does, `renderBadge` overrides background / border /
+   colour through the CSSOM. */
+    .gl-poi-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        background: var(--gl-color-badge-subcategory-bg);
+        border: 1px solid var(--gl-color-badge-subcategory-border);
+        color: var(--gl-color-text);
+    }
+
+    /* Level variants, emitted by `renderBadge` from the field's `style`. The former
+   `--cat` / `--imp` / `--tag` classes were never emitted by any renderer — and had
+   their two colour sets swapped, `--cat` pointing at the *subcategory* variables. */
+    .gl-poi-badge--category {
+        background: var(--gl-color-badge-category-bg);
+        border-color: var(--gl-color-badge-category-border);
+    }
+
+    .gl-poi-badge--subcategory {
+        background: var(--gl-color-badge-subcategory-bg);
+        border-color: var(--gl-color-badge-subcategory-border);
+    }
+
+    /* Category / sub-category glyph injected next to a badge / text field on the
+   popup, side-panel and tooltip surfaces (taxonomy `render` flags). Sized to the
+   text and inheriting `currentColor` from the surrounding label; the sprite
+   symbols use `stroke="currentColor"`, so the stroke follows the text colour.
+   Injected via `createElementNS` (`<use href="#…">`) — CSP-safe. */
+    .gl-fi-cat-icon {
+        flex: 0 0 auto;
+        width: 1em;
+        height: 1em;
+        margin-right: 0.35em;
+        display: inline-block;
+        vertical-align: -0.15em;
+        color: currentColor;
+        overflow: visible;
+    }
+
+    .gl-fi-cat-icon use {
+        color: inherit;
+    }
+
+    /* Rating (stars) */
+    .gl-rating {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.35rem;
+    }
+
+    .gl-rating__label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--gl-color-text-secondary, var(--gl-color-text-muted, #666));
+    }
+
+    .gl-rating__stars {
+        display: inline-flex;
+        gap: 2px;
+    }
+
+    .gl-rating__star {
+        font-size: 1.2rem;
+        color: #d1d5db;
+        transition: color 0.2s;
+    }
+
+    .gl-rating__star--filled {
+        color: #fbbf24;
+    }
+
+    .gl-rating__value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--gl-color-text-primary, var(--gl-color-text-main, #111));
+    }
+
+    /* "See more" link colour, driven by the theme. */
+    .gl-poi-popup__link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        align-self: flex-end;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+
+        /* Colour driven by the theme. */
+        color: var(--gl-color-accent);
+
+        text-decoration: none;
+        border-bottom: 1px solid currentColor;
+        text-align: right;
+    }
+
+    .gl-poi-popup__link:hover {
+        opacity: 0.85;
+    }
+
+    /* More specific rule, so the colour keeps following the theme variable even when
+   inherited styles or global rules also target links. */
+    .maplibregl-popup-content .gl-poi-popup__body .gl-poi-popup__link,
+    .maplibregl-popup-content .gl-poi-popup__body .gl-poi-popup__link:visited {
+        color: var(--gl-color-accent);
+        border-bottom-color: currentColor;
+    }
+
+    .maplibregl-popup-content .gl-poi-popup__body .gl-poi-popup__link:hover {
+        color: color-mix(in srgb, var(--gl-color-accent) 85%, transparent);
+    }
+}

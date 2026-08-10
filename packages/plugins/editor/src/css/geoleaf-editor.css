@@ -1,0 +1,429 @@
+/*!
+ * @geoleaf-plugins/editor — Stylesheet
+ * © 2026 Mattieu Pottier — MIT License
+ *
+ * Uses GeoLeaf CSS custom properties:
+ *   --gl-color-accent, --gl-color-border, --gl-font-size-sm
+ *
+ * PLUGINS S4: the .gl-form-* block that stood here is gone. Half of it duplicated
+ * @geoleaf/field-renderer's canonical block and never won the cascade (this file
+ * is imported first by entry.ts, field-renderer's arrives later at equal
+ * specificity); the other half styled field-renderer's own radio / checkbox /
+ * metric / dropdown / link components and moved there, where those components
+ * live. It also named --gl-color-surface, a variable no stylesheet defines — its
+ * hard-coded dark fallback would have painted dark text on a dark field had it
+ * ever won. Form styling is now entirely field-renderer's; only editor-specific
+ * overrides belong here.
+ */
+
+/* stylelint-disable */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Root container — positioned via CSS custom properties set by JS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * B-12 — les QUATRE propriétés d'ancrage, pas deux.
+ *
+ * Ce bloc ne déclarait que `top` et `left`, alors que `_applyPosition`
+ * (sub-menu/floating-menu.ts) propose quatre ancrages. Pour `top-right`,
+ * `bottom-left` et `bottom-right`, il posait la coordonnée absente à `auto` — sans
+ * qu'aucun `right` ni `bottom` ne prenne le relais. Mesuré sur deploy-full : les
+ * trois retombaient en haut à gauche (`top-right` → left 0 ; `bottom-left` → top 0 ;
+ * `bottom-right` → 0,0). Un seul ancrage sur quatre fonctionnait.
+ *
+ * ⚠️ Et c'est ce qui rendait le défaut coûteux : le seul ancrage utilisable,
+ * `top-left`, est précisément celui qui superpose le pill à la toolbar du core
+ * (`.gl-map-toolbar-wrapper`, même colonne haut-gauche, z-index 1000 contre 980
+ * ici). Les boutons d'outils étaient alors RENDUS mais INATTEIGNABLES.
+ *
+ * ⚠️ PORTÉE EXACTE, mesurée — le défaut ne touche PAS tous les parcours.
+ * `toggleEditorMenu(anchorEl)` (editor-api.ts) repositionne le menu à côté de la
+ * barre au PREMIER ouvrant, mais seulement si un ancre lui est passée. Le clic sur
+ * le bouton de la toolbar du core en passe une : ce parcours-là plaçait déjà le menu
+ * hors collision (vérifié : bouton Point en x=73, clic reçu directement).
+ * Restait à découvert le chemin SANS ancre — c'est-à-dire l'API publique
+ * `GeoLeaf.Editor.toggleMenu()` appelée par un intégrateur qui câble son propre
+ * bouton, et les 4 tests E2E de `09-editor`, qui échouaient sur
+ * `<div class="gl-map-toolbar__scroll"> intercepts pointer events`.
+ * `toBeVisible()` ne teste pas l'occlusion : la suite ne pouvait pas le nommer.
+ *
+ * Les valeurs par défaut restent `10px / 10px` en top/left pour que le CSS seul,
+ * sans JS, garde un rendu sensé ; `right`/`bottom` défaillent à `auto`, neutre.
+ */
+.gl-editor-root {
+    position: fixed;
+    top: var(--gl-editor-top, 10px);
+    left: var(--gl-editor-left, 10px);
+    right: var(--gl-editor-right, auto);
+    bottom: var(--gl-editor-bottom, auto);
+    z-index: 980;
+    pointer-events: none;
+    font-family: inherit;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* Ancré à droite : le contenu s'aligne sur le bord droit, sinon le pill « pend »
+   vers l'intérieur de la carte au lieu de longer son bord. */
+.gl-editor-root[data-gl-anchor-x="right"] {
+    align-items: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Floating sub-menu panel — calqué sur plugin-measure/geoleaf-measure.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-editor-menu {
+    position: relative;
+    pointer-events: auto;
+    background: var(--gl-color-bg-surface, #ffffff);
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 9999px;
+    box-shadow: var(--gl-shadow-medium, 0 4px 12px rgba(0, 0, 0, 0.12));
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.gl-editor-menu--hidden {
+    display: none;
+}
+
+/* ── Drag handle ── */
+
+.gl-editor-menu__handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 24px;
+    cursor: grab;
+    border-radius: 9999px;
+    color: var(--gl-color-text-muted, #aaa);
+    user-select: none;
+    touch-action: none;
+}
+
+.gl-editor-menu__handle:active {
+    cursor: grabbing;
+}
+
+.gl-editor-menu__grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-muted, #ccc);
+}
+
+.gl-editor-menu__grip svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Separator ── */
+
+.gl-editor-menu__sep {
+    width: 60%;
+    height: 1px;
+    background: var(--gl-color-border-soft, #e5e7eb);
+    margin: 2px 0;
+    flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Tool buttons (mode tools — point/line/polyline/polygon/select)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-editor-tool-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-main, #111827);
+    position: relative;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        transform 0.15s,
+        box-shadow 0.15s;
+}
+
+.gl-editor-tool-btn svg {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+}
+
+.gl-editor-tool-btn:hover:not(:disabled),
+.gl-editor-tool-btn:focus-visible:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    outline: none;
+}
+
+.gl-editor-tool-btn--active {
+    background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
+    color: var(--gl-color-accent, #2563eb);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Action buttons (undo/redo/delete/close)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-editor-action-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gl-color-text-main, #111827);
+    position: relative;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        transform 0.15s,
+        opacity 0.15s;
+}
+
+.gl-editor-action-btn svg {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+}
+
+.gl-editor-action-btn:hover:not(:disabled),
+.gl-editor-action-btn:focus-visible:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    color: var(--gl-color-accent, #2563eb);
+    transform: scale(1.12);
+    outline: none;
+}
+
+.gl-editor-action-btn[data-action="delete"]:hover:not(:disabled) {
+    background: var(--gl-color-danger-alpha, rgba(211, 47, 47, 0.1));
+    color: var(--gl-color-danger, #d32f2f);
+}
+
+.gl-editor-action-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.gl-editor-action-btn--close {
+    color: var(--gl-color-text-muted, #aaa);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Offline pending-queue badge (hidden when the queue is empty)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-editor-queue-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 2px auto;
+    padding: 2px 8px;
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 9999px;
+    background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
+    color: var(--gl-color-accent, #2563eb);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.gl-editor-queue-badge:hover,
+.gl-editor-queue-badge:focus-visible {
+    background: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-tooltip-text, #ffffff);
+}
+
+/* Pending-queue detail modal rows */
+.gl-editor-queue-detail__list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.gl-editor-queue-detail__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 10px;
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 6px;
+    font-size: 0.82rem;
+}
+
+.gl-editor-queue-detail__kind {
+    font-weight: 600;
+    color: var(--gl-color-text-main, #111827);
+}
+
+.gl-editor-queue-detail__layer {
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   JS-positioned tooltip div (avoids overflow:hidden clipping on the menu)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Présentation du tooltip : extraite vers @geoleaf/host-runtime
+   (src/css/tooltip.css), adoptée par le module qui écrit `gl-is-visible`.
+   Les 19 déclarations étaient STRICTEMENT identiques à celles de l'autre plugin —
+   seul le préfixe de classe différait (STRUCT S2, F8). L'élément porte désormais
+   `gl-tooltip` en plus de sa classe locale, qui reste disponible pour surcharger. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S6: Modal / Drawer — gl-form-modal-* styles are injected by
+   @geoleaf/field-renderer. Only editor-specific overrides here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Delete confirm dialog ──
+   5.2 — `.gl-editor-delete-modal` retirée avec la modale locale qu'elle habillait. La
+   confirmation passe par `confirmDialog` de `@geoleaf/field-renderer`, qui porte son propre
+   `.gl-form-modal-confirm`. ⚠️ Le panneau passe de 360 à 420 px et le `gap` de 12 à 4 : c'est
+   un changement VISUEL assumé, le prix de la factorisation. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S10: Conflict resolution (HTTP 409) — prompt + manual merge
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.gl-editor-conflict-modal {
+    max-width: 420px;
+    padding: 20px;
+    gap: 12px;
+}
+
+.gl-editor-conflict-merge {
+    max-width: 520px;
+    padding: 20px;
+    gap: 12px;
+}
+
+.gl-editor-conflict-merge__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.gl-editor-conflict-merge__row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--gl-color-border, rgba(0, 0, 0, 0.08));
+}
+
+.gl-editor-conflict-merge__key {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.gl-editor-conflict-merge__opt {
+    font-size: 0.82em;
+    opacity: 0.7;
+}
+
+.gl-editor-conflict-merge__opt.gl-is-selected {
+    opacity: 1;
+    border-color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent, #f97316);
+}
+
+/* ========================================
+   TEMPORARY PLACEMENT MARKER  (tâche 5.1-a)
+   Absorbé d'`addpoi/src/css/geoleaf-addpoi.css`, qui n'était plus QUE ce bloc et
+   meurt avec le plugin. Deux écarts assumés avec l'original :
+     1. la couleur passe par `currentColor`, pas par une interpolation dans le markup ;
+     2. l'animation respecte `prefers-reduced-motion` — un marqueur qui pulse en boucle
+        sur un appareil de terrain est exactement ce que ce réglage existe pour couper.
+======================================== */
+
+/* ⚠️ Tokens RÉELS de `geoleaf-theme.css`. La première rédaction utilisait
+   `--gl-color-info` et `--gl-color-warning`, qui n'existent nulle part : la déclaration
+   serait retombée en silence sur son repli en dur, donc insensible au thème sombre —
+   c'est exactement ce que la gate `verify:css-tokens` existe pour attraper, et elle l'a
+   attrapé. `danger` pour l'accroche : on est sur le point de créer un doublon. */
+.gl-editor-placement-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--gl-color-accent, #0ea5e9);
+}
+
+.gl-editor-placement-marker.snapped {
+    color: var(--gl-color-danger, #f59e0b);
+}
+
+.gl-editor-placement-marker__pin {
+    display: flex;
+    animation: gl-editor-placement-pulse 1.5s ease-in-out infinite;
+}
+
+.gl-editor-placement-marker.snapped .gl-editor-placement-marker__pin {
+    animation: gl-editor-placement-bounce 0.6s ease-out;
+}
+
+@keyframes gl-editor-placement-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes gl-editor-placement-bounce {
+    0%,
+    100% {
+        transform: scale(1) translateY(0);
+    }
+    50% {
+        transform: scale(1.2) translateY(-10px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gl-editor-placement-marker__pin,
+    .gl-editor-placement-marker.snapped .gl-editor-placement-marker__pin {
+        animation: none;
+    }
+}
