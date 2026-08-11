@@ -538,26 +538,20 @@ const ACTION_EXEMPTIONS = {
         gateReelle: false,
         motif: "publication de rapports — ne contrôle rien, ne peut pas faire échouer une gate.",
     },
-    "gitleaks/gitleaks-action": {
-        gateReelle: true,
-        // ⚠️ Reste listée comme gate distante même si `npm run gitleaks:local` la rejoue :
-        // le local couvre le chemin `push` (la même plage, le même binaire, la même version),
-        // PAS le chemin `pull_request`, qui interroge l'API GitHub et exige GITHUB_TOKEN.
-        // Les deux chemins de cette étape n'ont pas les mêmes prérequis — c'est très
-        // exactement ce qui a permis au défaut du 29/07/2026 de survivre : `main` passait
-        // pendant qu'aucune PR ne pouvait passer.
-        // ⚠️ Cette promesse est VÉRIFIÉE (PARITY-10), pas affichée sur parole : la feuille
-        // nommée ici doit réellement être atteinte par `STEPS`. Sans ce contrôle, retirer la
-        // gate locale laisserait l'énonciation continuer d'annoncer une couverture disparue —
-        // le pourrissement même que les témoins d'EXEMPTIONS existent pour interdire.
-        localEquivalent: "npm run gitleaks:local",
-        localLeaf: "node scripts/gitleaks-local.cjs",
-        partialMotif: "action externe — seul le chemin `push` est rejoué localement",
-        motif:
-            "gate RÉELLE. L'ACTION n'est pas reproductible en local, mais son BINAIRE l'est : " +
-            "`npm run gitleaks:local` scanne origin/main..HEAD, la même plage que l'action sur " +
-            "un push, avec la version qu'elle installe. Le chemin `pull_request` reste distant.",
-    },
+    // 🗑️ `gitleaks/gitleaks-action` — entrée RETIRÉE le 11/08/2026, avec l'action elle-même.
+    //
+    // Elle portait le seul `partialMotif` du fichier : l'action couvrait un chemin
+    // `pull_request` que le local ne pouvait pas rejouer. **Ce partage n'existe plus** — la
+    // gate est désormais `run: node scripts/gitleaks-local.cjs` des DEUX côtés, donc une
+    // étape ordinaire, couverte par PARITY sans exemption.
+    //
+    // Le motif du retrait n'est pas l'élégance : `gitleaks-action` est **payante en
+    // organisation**, et elle échouait sur 100 % des runs du dépôt public
+    // (`[geoleaf] is an organization. License key is required.`). Le binaire, lui, est libre.
+    //
+    // 📌 C'est PARITY-04 qui a exigé cette suppression, le jour même : une exemption dont
+    // plus aucune étape n'use est périmée, et la gate a rougi dessus. C'est exactement ce
+    // qu'elle existe pour attraper — une énonciation qui survit à son objet.
 };
 
 /**

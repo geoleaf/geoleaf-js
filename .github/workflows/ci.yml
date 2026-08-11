@@ -28,17 +28,21 @@ on:
 # de la MÊME étape ont donc DEUX prérequis différents, et cet écart a coûté deux runs : le
 # premier pour le jeton, le second pour sa portée.
 #
-# ⚠️ Un bloc `permissions:` explicite met à `none` TOUT ce qu'il ne nomme pas. Les deux lignes
-# ci-dessous sont donc la liste complète de ce dont ce workflow a besoin, vérifiée action par
-# action : `checkout` veut `contents: read` ; `gitleaks-action` veut les deux ;
-# `setup-node` et `upload-artifact` n'ont besoin d'aucune portée (l'upload passe par le jeton
-# de runtime, pas par `GITHUB_TOKEN`).
+# ⚠️ Un bloc `permissions:` explicite met à `none` TOUT ce qu'il ne nomme pas. La ligne
+# ci-dessous est donc la liste complète de ce dont ce workflow a besoin, vérifiée action par
+# action : `checkout` veut `contents: read` ; `setup-node` et `upload-artifact` n'ont besoin
+# d'aucune portée (l'upload passe par le jeton de runtime, pas par `GITHUB_TOKEN`).
 #
-# 🛑 Ne PAS « corriger » ça en basculant le défaut du dépôt en read/write : ce réglage élargit
-# TOUS les workflows d'un coup, alors que le besoin est de deux portées dans celui-ci.
+# 📌 `pull-requests: read` a été RETIRÉE le 11/08/2026, en même temps que `gitleaks-action` :
+# elle n'existait que pour elle. Le scan passe désormais par le binaire, lancé en local, qui
+# lit la plage dans le clone et n'interroge aucune API — donc plus aucun appelant de cette
+# portée. La laisser aurait rendu FAUSSE la phrase « liste complète vérifiée action par
+# action » juste au-dessus, et une permission sans demandeur est indiscernable d'un oubli.
+#
+# 🛑 Ne PAS « corriger » un manque de portée en basculant le défaut du dépôt en read/write :
+# ce réglage élargit TOUS les workflows d'un coup, alors que le besoin serait ici.
 permissions:
     contents: read
-    pull-requests: read
 
 jobs:
     build-and-test:
@@ -58,7 +62,7 @@ jobs:
             # « aucune fuite » en sortant verte si le code de sortie avait été avalé. Une gate qui
             # ne voit rien ne garde rien, quelle que soit sa couleur.
             #
-            # ⚠️ Les 7 `uses:` de ce fichier sont épinglés par SHA en v7/v3, et le motif n'est
+            # ⚠️ Les 6 `uses:` de ce fichier sont épinglés par SHA en v7, et le motif n'est
             # pas l'hygiène : **Node 20 quitte les runners GitHub le 16/09/2026**. Chaque run
             # l'annonçait déjà — « The following actions target Node.js 20 but are being
             # forced to run on Node.js 24 ». Après cette date, les actions restées en Node 20
@@ -344,26 +348,33 @@ jobs:
             - name: Security audit — full dependency tree (informational, non-blocking)
               run: node scripts/audit-dev-report.cjs
 
-            # Secret scanning. Pinned by SHA.
+            # Secret scanning — LE BINAIRE, plus l'action.
+            #
+            # 🛑 `gitleaks-action` est GRATUIT sur un compte personnel et PAYANT sur une
+            # ORGANISATION. Le dépôt public vit sous l'orga `geoleaf`, et l'action y échoue
+            # sur 100 % des runs, sans rapport avec le contenu scanné :
+            #
+            #     [geoleaf] is an organization. License key is required.
+            #     🛑 missing gitleaks license. Go grab one at gitleaks.io
+            #
+            # Mesuré le 11/08/2026, à la première poussée : les 7 PR ouvertes par Dependabot
+            # étaient rouges toutes les sept, et pour ce seul motif. Sous le compte personnel
+            # les mêmes montées passaient — l'écart n'est pas dans le code, il est dans le
+            # propriétaire du dépôt.
+            #
+            # ⚠️ **Le binaire, lui, est libre** (MIT, `ghcr.io/gitleaks/gitleaks:v8.24.3`) :
+            # seule l'enveloppe Action est sous licence. On perd donc l'enveloppe, pas le scan.
+            #
+            # ✅ Et ce que ce changement GAGNE, au-delà de réparer la CI : c'est désormais
+            # EXACTEMENT la commande que lance `ci:local`. Cette étape était la seule gate de
+            # fond portée par une action, donc la seule que `ci:local` ne pouvait pas rejouer —
+            # un écart que `PARITY-11` compare des listes de commandes sans pouvoir le combler.
+            # Une seule instrumentation des deux côtés ferme la question.
+            #
+            # 📌 `fetch-depth: 0` du checkout reste EXIGÉ : le script délimite sa plage avec
+            # `origin/main..HEAD`, et escalade vers l'historique complet quand elle est vide.
             - name: Secret scan (gitleaks)
-              uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
-              env:
-                  GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
-                  # ⚠️ EXIGÉ pour les événements `pull_request` — changement cassant de
-                  # `gitleaks-action` v2, mesuré le 29/07/2026 :
-                  #
-                  #     event type: pull_request
-                  #     🛑 GITHUB_TOKEN is now required to scan pull requests
-                  #
-                  # Sur un `push`, l'action lit la plage de commits dans le dépôt local et n'a
-                  # besoin de rien. Sur une `pull_request`, elle interroge l'API pour énumérer les
-                  # commits de la PR — d'où le jeton. Les deux chemins de la MÊME étape ont donc
-                  # deux prérequis différents, ce qui est exactement pourquoi le défaut a survécu :
-                  # `main` passait (une fois `fetch-depth` réglé) pendant qu'AUCUNE PR ne pouvait
-                  # passer. Dix PR dependabot s'accumulaient sur ce seul motif.
-                  #
-                  # Jeton automatique du run, aucun secret à provisionner.
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: node scripts/gitleaks-local.cjs
 
             - name: Unit tests — all packages (workspace mode, JSON reporter)
               run: npx vitest run --reporter=json --outputFile=test-results.json --reporter=verbose

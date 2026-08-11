@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 17 |
 | Répertoires | 172 |
 | Fichiers | **1015** — 845 `.ts` · 46 `.css` · 124 `scripts/` |
-| Lignes de code | 190 895 |
+| Lignes de code | 190 930 |
 | Artefacts qualifiés | **1061 / 1187** (89.4 %) |
 
 | Verdict | Artefacts |
@@ -1823,7 +1823,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── generate-docs-tree.cjs              |  952 |  ok |  ok | justifié  | Générateur de l'arborescence qualifiée : croise l'inventaire mesuré et…
 ├── generate-pwa-icons.cjs              |  175 |  ok |  ok | justifié  | Produit les quatre icônes PNG de la PWA — 192 et 512, variantes any et…
 ├── generate-vector-tiles.cjs           |  415 |  ok |  ok | justifié  | Outil manuel : génère les tuiles vectorielles PBF des couches d'un…
-├── gitleaks-local.cjs                  |  255 |   ? |   ? | ?         | (à qualifier)
+├── gitleaks-local.cjs                  |  296 |   ? |   ? | ?         | (à qualifier)
 ├── golden-master.cjs                   |  165 |  ok |  ok | justifié  | Harnais d'empreinte par capacité : fige avant et après extraction la…
 ├── probe-boot-contract.mjs             |  273 |  ok |  ok | justifié  | Sonde manuelle : pilote Chromium contre le déployé réel et vérifie la…
 ├── probe-boot-waterfall.mjs            |  255 |   ? |   ? | ?         | probe-boot-waterfall — ce que la CASCADE du premier chargement coûte…
@@ -1880,7 +1880,7 @@ Modules partagés de l'outillage : registre de paquets, périmètres de test, in
 -----------------------------------------------------------------------
 ├── boot-assets.cjs         | 394 |   ? |   ? | ?         | (à qualifier)
 ├── bundle-profiles.cjs     | 180 |  ok |  ok | justifié  | Module de fusion des fichiers de section d'un profil modulaire en un…
-├── ci-parity.cjs           | 960 |   ? |   ? | ?         | (à qualifier)
+├── ci-parity.cjs           | 954 |   ? |   ? | ?         | (à qualifier)
 ├── consumer-manifest.cjs   | 349 |   ? |   ? | ?         | ! GeoLeaf — lecture des manifestes de consommation (contrat inverse).
 ├── dev-backend.cjs         | 190 |   ? |   ? | ?         | (à qualifier)
 ├── docs-paths.cjs          | 241 |   ? |   ? | ?         | (à qualifier)

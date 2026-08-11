@@ -85,43 +85,84 @@ function main() {
     // 1. Docker. Son absence est une dépendance d'ENVIRONNEMENT manquante, pas une gate en
     //    échec : faire rougir `ci:local` pour ça pousserait à le contourner, et une gate
     //    contournée ne garde rien. On l'annonce fort, et on sort 0.
+    //
+    // 🛑 SAUF EN CI, ET LE MOTIF DE L'INDULGENCE EST CE QUI A CHANGÉ. Cette tolérance reposait
+    // sur une phrase — « la gate distante tournera quand même sur le runner » — qui était vraie
+    // tant que le distant lançait `gitleaks-action`. Depuis le 11/08/2026, `ci.yml` lance CE
+    // script : le filet invoqué pour justifier la sortie 0 est devenu le script lui-même. Sans
+    // ce garde-fou, un runner sans Docker rendrait un vert silencieux en s'appuyant sur un
+    // secours qui n'existe plus — exactement la classe de défaut que l'escalade de plage
+    // ci-dessous vient de fermer, réintroduite par l'autre bout.
     if (!dockerAvailable()) {
+        const inCI = process.env.CI === "true";
         console.log(`  ${C.y}⚠ Docker ne répond pas — CE SCAN N'A PAS EU LIEU.${C.x}`);
+        if (inCI) {
+            console.log(
+                `  ${C.r}✗ En CI, c'est un ÉCHEC : ce script EST la gate distante depuis le\n` +
+                    `  11/08/2026, donc rien ne le rattrape en aval. Un scan qui n'a pas eu lieu\n` +
+                    `  ne peut pas sortir vert ici.${C.x}`
+            );
+            process.exit(1);
+        }
         console.log(
-            `  ${C.d}La gate distante « Secret scan (gitleaks) » tournera quand même sur le\n` +
-                `  runner. Un secret présent dans les commits à pousser ne sera donc découvert\n` +
-                `  qu'après avoir dépensé un run.${C.x}`
+            `  ${C.d}Sur un poste, ce n'est pas un échec : la gate distante rejouera le même\n` +
+                `  scan sur le runner. Un secret présent dans les commits à pousser ne sera donc\n` +
+                `  découvert qu'après avoir dépensé un run.${C.x}`
         );
         process.exit(0);
     }
 
     // 2. La plage. Comptée AVANT le scan, précisément pour ne pas rendre un verdict sur rien.
+    //
+    // 🛑 UNE PLAGE VIDE N'EST PLUS UNE SORTIE 0 — elle ESCALADE vers l'historique complet.
+    //
+    // Jusqu'au 11/08/2026 les deux cas ci-dessous (`origin/main` absent, ou plage à 0 commit)
+    // imprimaient « AUCUN VERDICT » et sortaient **0**. L'intention était juste — ne pas
+    // prétendre à un vert sur zéro octet — mais l'effet ne l'était pas : un pas de `ci:local`
+    // qui sort 0 se lit VERT dans le tableau récapitulatif, quoi qu'il imprime.
+    //
+    // Mesuré ce jour-là, et c'est ce qui a tranché : sur le clone du dépôt public — **un seul
+    // commit, aucun remote** — `ci:local` donnait ce pas pour vert. Le scan `--all` lancé
+    // séparément (tâche 9.8) y a trouvé **3 fuites**. La gate ne mentait pas dans son texte,
+    // elle mentait dans son code de sortie, et c'est le code de sortie qu'un tableau lit.
+    //
+    // Escalader est correct dans les deux cas, et pour la même raison : quand la plage
+    // relative est indéfinie ou vide, l'objet à garder n'est pas « ce qu'on s'apprête à
+    // pousser » mais **tout ce que ce dépôt porte**. Sur un dépôt neuf c'est un commit ;
+    // ailleurs c'est plus long, et c'est le prix d'un verdict.
     let range;
+    let escalated = null;
     if (all) {
         range = "HEAD";
     } else {
         const upstream = git("rev-parse", "--verify", "--quiet", "origin/main");
         if (upstream.status !== 0) {
-            console.log(
-                `  ${C.y}⚠ \`origin/main\` introuvable — impossible de délimiter la plage.${C.x}`
-            );
-            console.log(`  ${C.d}Relancer avec --all pour scanner tout l'historique.${C.x}`);
-            process.exit(0);
+            escalated = "`origin/main` est introuvable — aucune plage relative n'est définissable";
+            range = "HEAD";
+        } else {
+            range = "origin/main..HEAD";
         }
-        range = "origin/main..HEAD";
     }
 
-    const count = git("rev-list", "--count", range);
-    const n = count.status === 0 ? Number(count.stdout.trim()) : -1;
+    let count = git("rev-list", "--count", range);
+    let n = count.status === 0 ? Number(count.stdout.trim()) : -1;
+    if (n === 0 && range !== "HEAD") {
+        escalated = `0 commit dans \`${range}\` — il n'y a rien à comparer`;
+        range = "HEAD";
+        count = git("rev-list", "--count", range);
+        n = count.status === 0 ? Number(count.stdout.trim()) : -1;
+    }
+    if (escalated) {
+        console.log(`  ${C.y}⚠ ESCALADE vers l'historique complet : ${escalated}.${C.x}`);
+        console.log(
+            `  ${C.d}Une plage vide ne rend pas un verdict. Plutôt que de sortir 0 sur zéro\n` +
+                `  octet — ce qu'un tableau de gates lit comme un VERT —, le scan porte sur tout\n` +
+                `  l'historique atteignable depuis HEAD.${C.x}`
+        );
+    }
     if (n === 0) {
-        console.log(
-            `  ${C.y}⚠ 0 commit dans \`${range}\` — RIEN À SCANNER, DONC AUCUN VERDICT.${C.x}`
-        );
-        console.log(
-            `  ${C.d}Ce n'est pas un vert. gitleaks aurait imprimé « no leaks found » sur zéro\n` +
-                `  octet, ce qui est le mode d'échec que ce script existe pour ne pas répéter.${C.x}`
-        );
-        process.exit(0);
+        console.log(`  ${C.r}✗ 0 commit atteignable depuis HEAD — refus de conclure.${C.x}`);
+        process.exit(1);
     }
     if (n < 0) {
         console.log(`  ${C.r}✗ plage \`${range}\` illisible — refus de conclure.${C.x}`);
