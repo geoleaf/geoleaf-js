@@ -283,7 +283,6 @@ const workspaces = {
             "gtfs-realtime-bindings",
             "axe-core",
             "minimatch",
-            "glob",
             "ajv",
             "ajv-formats",
             "flatbuffers",
