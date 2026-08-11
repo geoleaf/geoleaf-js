@@ -114,55 +114,58 @@ function main() {
 
     // 2. La plage. Comptée AVANT le scan, précisément pour ne pas rendre un verdict sur rien.
     //
-    // 🛑 UNE PLAGE VIDE N'EST PLUS UNE SORTIE 0 — elle ESCALADE vers l'historique complet.
+    // 🛑 UNE PLAGE VIDE SORT 0 EN ANNONÇANT QU'ELLE N'A RIEN SCANNÉ — et ce n'est PAS
+    //    satisfaisant. La tentative de le corriger a été faite le 11/08/2026 et RETIRÉE le
+    //    jour même, parce que son remède était pire. L'histoire est écrite ici pour qu'on ne
+    //    la refasse pas à l'identique.
     //
-    // Jusqu'au 11/08/2026 les deux cas ci-dessous (`origin/main` absent, ou plage à 0 commit)
-    // imprimaient « AUCUN VERDICT » et sortaient **0**. L'intention était juste — ne pas
-    // prétendre à un vert sur zéro octet — mais l'effet ne l'était pas : un pas de `ci:local`
-    // qui sort 0 se lit VERT dans le tableau récapitulatif, quoi qu'il imprime.
+    // **Le défaut, réel** : un pas de `ci:local` qui sort 0 se lit VERT dans le tableau, quoi
+    // qu'il imprime. Mesuré sur le clone du dépôt public — un commit, aucun remote — où ce pas
+    // était vert pendant que le `--all` de la tâche 9.8 y trouvait **3 fuites**.
     //
-    // Mesuré ce jour-là, et c'est ce qui a tranché : sur le clone du dépôt public — **un seul
-    // commit, aucun remote** — `ci:local` donnait ce pas pour vert. Le scan `--all` lancé
-    // séparément (tâche 9.8) y a trouvé **3 fuites**. La gate ne mentait pas dans son texte,
-    // elle mentait dans son code de sortie, et c'est le code de sortie qu'un tableau lit.
+    // **Le remède essayé** : escalader vers l'historique complet quand la plage est vide.
+    // **Pourquoi il a été retiré** : sur un dépôt à long historique, il ressuscite des
+    // trouvailles DÉJÀ REMÉDIÉES. Mesuré à la première poussée — la CI est passée rouge sur
+    // `geoleaf-windows-datas-path` dans `5b8c6c8f`, un commit dont le Sprint 5 a nettoyé le
+    // contenu depuis. Une gate qu'aucun correctif ne peut verdir sans réécrire l'historique
+    // est une gate qu'on finit par contourner.
     //
-    // Escalader est correct dans les deux cas, et pour la même raison : quand la plage
-    // relative est indéfinie ou vide, l'objet à garder n'est pas « ce qu'on s'apprête à
-    // pousser » mais **tout ce que ce dépôt porte**. Sur un dépôt neuf c'est un commit ;
-    // ailleurs c'est plus long, et c'est le prix d'un verdict.
+    // **Les deux replis alternatifs sont mesurés et écartés eux aussi** :
+    //   • `--log-opts=-1` (le commit de tête) — faux dès le 2ᵉ commit : sur le dépôt public il
+    //     ne verrait plus le commit initial, donc pas les 3 fuites qui motivaient tout ceci ;
+    //   • `gitleaks dir` (l'arbre) — scanne ce que git ignore : **108 trouvailles**, presque
+    //     toutes dans `node_modules/`.
+    //
+    // **Ce qu'il faudrait** : la plage de l'ÉVÉNEMENT (`github.event.before..sha`), que
+    // `gitleaks-action` obtenait de GitHub et qu'un script local ne peut pas deviner. C'est une
+    // pièce à concevoir — un crochet d'environnement lu ici, posé par `ci.yml` —, pas à
+    // improviser. En attendant, `9.8` (`--all`, sur un dépôt neuf) reste le verdict de fond.
     let range;
-    let escalated = null;
     if (all) {
         range = "HEAD";
     } else {
         const upstream = git("rev-parse", "--verify", "--quiet", "origin/main");
         if (upstream.status !== 0) {
-            escalated = "`origin/main` est introuvable — aucune plage relative n'est définissable";
-            range = "HEAD";
-        } else {
-            range = "origin/main..HEAD";
+            console.log(
+                `  ${C.y}⚠ \`origin/main\` introuvable — impossible de délimiter la plage.${C.x}`
+            );
+            console.log(`  ${C.d}Relancer avec --all pour scanner tout l'historique.${C.x}`);
+            process.exit(0);
         }
+        range = "origin/main..HEAD";
     }
 
-    let count = git("rev-list", "--count", range);
-    let n = count.status === 0 ? Number(count.stdout.trim()) : -1;
-    if (n === 0 && range !== "HEAD") {
-        escalated = `0 commit dans \`${range}\` — il n'y a rien à comparer`;
-        range = "HEAD";
-        count = git("rev-list", "--count", range);
-        n = count.status === 0 ? Number(count.stdout.trim()) : -1;
-    }
-    if (escalated) {
-        console.log(`  ${C.y}⚠ ESCALADE vers l'historique complet : ${escalated}.${C.x}`);
-        console.log(
-            `  ${C.d}Une plage vide ne rend pas un verdict. Plutôt que de sortir 0 sur zéro\n` +
-                `  octet — ce qu'un tableau de gates lit comme un VERT —, le scan porte sur tout\n` +
-                `  l'historique atteignable depuis HEAD.${C.x}`
-        );
-    }
+    const count = git("rev-list", "--count", range);
+    const n = count.status === 0 ? Number(count.stdout.trim()) : -1;
     if (n === 0) {
-        console.log(`  ${C.r}✗ 0 commit atteignable depuis HEAD — refus de conclure.${C.x}`);
-        process.exit(1);
+        console.log(
+            `  ${C.y}⚠ 0 commit dans \`${range}\` — RIEN À SCANNER, DONC AUCUN VERDICT.${C.x}`
+        );
+        console.log(
+            `  ${C.d}Ce n'est pas un vert. gitleaks aurait imprimé « no leaks found » sur zéro\n` +
+                `  octet, ce qui est le mode d'échec que ce script existe pour ne pas répéter.${C.x}`
+        );
+        process.exit(0);
     }
     if (n < 0) {
         console.log(`  ${C.r}✗ plage \`${range}\` illisible — refus de conclure.${C.x}`);
