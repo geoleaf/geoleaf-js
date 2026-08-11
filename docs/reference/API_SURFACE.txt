@@ -1017,8 +1017,6 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-taxonomy-paint.resol
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-vector-tiles.buildVectorTileLayer.buildVectorTileLayer | doc:bb064188675e
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-vector-tiles.buildVectorTileLayer.buildVectorTileLayer.ensureSentinel.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-vector-tiles.updateVectorTileLayerStyle.updateVectorTileLayerStyle | doc:737842caca4d
-CallSignature | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.getConfig.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.isEnabled.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.getHandler.getHandler | doc:bd1881605470
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.getHandlers.getHandlers | doc:0b3a9ba62917
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerHandler.registerHandler | doc:c477d43cddc3
@@ -1094,9 +1092,9 @@ CallSignature | GeoLeaf Core API.capabilities/branding/types.BrandingMapLike.add
 CallSignature | GeoLeaf Core API.capabilities/cluster/config.getClusterConfig.getClusterConfig | doc:285cf9d4ca3e
 CallSignature | GeoLeaf Core API.capabilities/cluster/constants.clusterConfigDefaults.clusterConfigDefaults | doc:baf7a321afac
 CallSignature | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONClusterOptions.applyGeoJSONClusterOptions | doc:fbc93d1478d0
+CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.getConfig.__type.__type | doc:-
+CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.isEnabled.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi | doc:ce0f4c220736
-CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.getConfig.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.isEnabled.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy | doc:62203e2707ff
 CallSignature | GeoLeaf Core API.capabilities/coordinates/config.getCoordinatesConfig.getCoordinatesConfig | doc:3260f7c39372
 CallSignature | GeoLeaf Core API.capabilities/coordinates/lifecycle.CoordinatesLifecycle.__type._reset._reset | doc:573823b58192
@@ -12247,8 +12245,6 @@ Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.OwnedStyl
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.OwnedStyleIds.sourceIds | doc:e550ad332247
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleSpecLike.layers | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleSpecLike.sources | doc:-
-Property | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.getConfig | doc:bcd7399b9248
-Property | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.isEnabled | doc:22145cf693aa
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.ensureSprite | doc:6fcf46b66531
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getCategories | doc:70f365b37bb0
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getFieldMappings | doc:25c6a6caffe3
@@ -12324,8 +12320,8 @@ Property | GeoLeaf Core API.capabilities/branding/types.BrandingControl._map | d
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingControl._options | doc:-
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingOptions.position | doc:-
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingOptions.text | doc:-
-Property | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.getConfig | doc:bcd7399b9248
-Property | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.isEnabled | doc:22145cf693aa
+Property | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.getConfig | doc:bcd7399b9248
+Property | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.isEnabled | doc:22145cf693aa
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterConfig.clusterRadius | doc:18c20e7d65d2
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterConfig.clusterStrategies | doc:1f5b1dfca426
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterConfig.clusterStrategy | doc:da616c0c7156
@@ -13538,7 +13534,7 @@ Property | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.setBaseLayer 
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Branding | doc:4c78add5db0a
 Property | GeoLeaf Core API.global.GeoLeafGlobal.COG | doc:538bdbf0004f
 Property | GeoLeaf Core API.global.GeoLeafGlobal.CONSTANTS | doc:21708c067b16
-Property | GeoLeaf Core API.global.GeoLeafGlobal.Cluster | doc:cab7ab6f2bcb
+Property | GeoLeaf Core API.global.GeoLeafGlobal.Cluster | doc:49d117a7fba4
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Config | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Connector | doc:46b9f4594598
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Coordinates | doc:50b698b69d8f
@@ -15382,6 +15378,7 @@ TypeAlias | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleTra
 TypeAlias | GeoLeaf Core API.app/app-types.PermalinkRuntimeConfig | doc:45fd11af75d2
 TypeAlias | GeoLeaf Core API.app/app-types.RevealPadding | doc:531884bcda73
 TypeAlias | GeoLeaf Core API.capabilities/branding/public-api.BrandingPublicApi | doc:9bb748a77184
+TypeAlias | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi | doc:5c168c9150cc
 TypeAlias | GeoLeaf Core API.capabilities/coordinates/public-api.CoordinatesPublicApi | doc:11b2f88b6ae1
 TypeAlias | GeoLeaf Core API.capabilities/feature-info/render/dom.RenderSurface | doc:6d2b578e7b94
 TypeAlias | GeoLeaf Core API.capabilities/feature-info/render/dom.TaxonomySurface | doc:4e8c697b4966
@@ -15687,9 +15684,6 @@ TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibr
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-style-converter.toClusterCirclePaint.toClusterCirclePaint.config.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleTransform.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-vector-tiles.buildVectorTileLayer.buildVectorTileLayer.ensureSentinel.__type | doc:-
-TypeLiteral | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type | doc:-
-TypeLiteral | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.getConfig.__type | doc:-
-TypeLiteral | GeoLeaf Core API.api/geoleaf.cluster.Cluster.__type.isEnabled.__type | doc:-
 TypeLiteral | GeoLeaf Core API.api/geoleaf.sync.Sync.__type | doc:-
 TypeLiteral | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type | doc:-
 TypeLiteral | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.ensureSprite.__type | doc:-
@@ -15709,9 +15703,8 @@ TypeLiteral | GeoLeaf Core API.app/app-types.AppNamespace.showNotification.__typ
 TypeLiteral | GeoLeaf Core API.app/app-types.AppNamespace.startApp.__type | doc:-
 TypeLiteral | GeoLeaf Core API.app/boot-modules/core-map-lifecycle.CoreMapLifecycle.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/branding/lifecycle.BrandingLifecycle.__type | doc:-
-TypeLiteral | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type | doc:-
-TypeLiteral | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.getConfig.__type | doc:-
-TypeLiteral | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi.__type.isEnabled.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.getConfig.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.isEnabled.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/coordinates/lifecycle.CoordinatesLifecycle.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/coordinates/types.CoordinatesMapLike.off.off.handler.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/coordinates/types.CoordinatesMapLike.on.on.handler.__type | doc:-

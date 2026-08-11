@@ -477,8 +477,8 @@ declare global {
 
         /** Branding overlay (logo, attribution) — `GeoLeaf.Branding`. */
         Branding?: import("./capabilities/branding/public-api.js").BrandingPublicApi;
-        /** POI clustering controls — `GeoLeaf.Cluster`. Pas de type public nommé. */
-        Cluster?: typeof import("./capabilities/cluster/public-api.js").Cluster;
+        /** POI clustering controls — `GeoLeaf.Cluster`. */
+        Cluster?: import("./capabilities/cluster/public-api.js").ClusterPublicApi;
         /** Coordinate readout control — `GeoLeaf.Coordinates`. */
         Coordinates?: import("./capabilities/coordinates/public-api.js").CoordinatesPublicApi;
         /** Feature detail panel — `GeoLeaf.FeatureInfo`. Type déclaré dans `types.ts`. */
