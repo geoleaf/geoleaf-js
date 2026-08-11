@@ -371,10 +371,36 @@ jobs:
             # un écart que `PARITY-11` compare des listes de commandes sans pouvoir le combler.
             # Une seule instrumentation des deux côtés ferme la question.
             #
-            # 📌 `fetch-depth: 0` du checkout reste EXIGÉ : le script délimite sa plage avec
-            # `origin/main..HEAD`, et escalade vers l'historique complet quand elle est vide.
+            # 📌 `fetch-depth: 0` du checkout reste EXIGÉ : le scan porte sur des COMMITS.
+            #
+            # ✅ `GEOLEAF_GITLEAKS_RANGE` — la plage vient de l'ÉVÉNEMENT, et c'est la seule
+            # source qui la connaisse. Sur un push, `actions/checkout` laisse `origin/main`
+            # pointer le commit poussé : le repli local `origin/main..HEAD` rend alors **0
+            # commit**, donc un NON-VERDICT à chaque push sur `main`. C'est précisément ce que
+            # `gitleaks-action` évitait en lisant l'événement, et la seule chose qu'on perdait
+            # en passant au binaire.
+            #
+            # 🛑 Côté script, une plage vide fournie par cette variable est un **ÉCHEC** : la
+            # plomberie a affirmé des bornes, si elles ne contiennent rien c'est le calcul
+            # ci-dessous qui est faux. Le silence serait pire que le rouge.
+            #
+            # ⚠️ Posée en `env:` de l'étape existante, JAMAIS dans une étape `run:` séparée :
+            # `PARITY-11` exige que toute commande de ce fichier soit couverte par `ci:local`,
+            # et une étape de calcul en serait une de plus, non couverte.
+            #
+            # 📌 Vide sur `workflow_dispatch` et au premier push d'une branche (`before` nul) —
+            # le script retombe alors sur son comportement local. Assumé : un run manuel n'a
+            # pas de plage naturelle, et inventer une borne serait pire que dire qu'on n'en a
+            # pas.
             - name: Secret scan (gitleaks)
               run: node scripts/gitleaks-local.cjs
+              env:
+                  GEOLEAF_GITLEAKS_RANGE:
+                      ${{ github.event_name == 'pull_request' && format('{0}..{1}',
+                      github.event.pull_request.base.sha, github.event.pull_request.head.sha) ||
+                      github.event.before != null && github.event.before !=
+                      '0000000000000000000000000000000000000000' && format('{0}..{1}',
+                      github.event.before, github.sha) || '' }}
 
             - name: Unit tests — all packages (workspace mode, JSON reporter)
               run: npx vitest run --reporter=json --outputFile=test-results.json --reporter=verbose

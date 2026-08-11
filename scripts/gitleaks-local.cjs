@@ -140,9 +140,31 @@ function main() {
     // `gitleaks-action` obtenait de GitHub et qu'un script local ne peut pas deviner. C'est une
     // pièce à concevoir — un crochet d'environnement lu ici, posé par `ci.yml` —, pas à
     // improviser. En attendant, `9.8` (`--all`, sur un dépôt neuf) reste le verdict de fond.
+    // ✅ `GEOLEAF_GITLEAKS_RANGE` — LA PIÈCE QUI MANQUAIT, posée le 11/08/2026.
+    //
+    // C'est la réponse au problème décrit au-dessus, et elle vient d'où l'information EXISTE :
+    // l'événement GitHub. `ci.yml` calcule `before..sha` sur un push, `base..head` sur une PR,
+    // et le passe ici. Un script local ne peut pas deviner ces bornes — c'est exactement ce que
+    // `gitleaks-action` recevait de la plateforme, et la seule chose qu'on perdait en la
+    // remplaçant par le binaire.
+    //
+    // 🛑 **Quand la plage vient de l'événement, une plage VIDE est un ÉCHEC, pas un silence.**
+    // La tolérance du repli local se justifie par « il n'y a rien à comparer, c'est normal sur
+    // un poste ». Ici la plomberie a AFFIRMÉ une plage : si elle ne contient rien, c'est que le
+    // calcul est faux, et sortir 0 rendrait la gate muette précisément là où elle est seule.
+    //
+    // 📌 Quand la variable est absente — `workflow_dispatch`, premier push d'une branche —, le
+    // comportement local s'applique tel quel, non-verdict compris. C'est assumé : un run manuel
+    // n'a pas de plage naturelle, et inventer une borne serait pire que dire qu'on n'en a pas.
+    const envRange = (process.env.GEOLEAF_GITLEAKS_RANGE || "").trim();
+    const fromEvent = envRange.length > 0;
+
     let range;
     if (all) {
         range = "HEAD";
+    } else if (fromEvent) {
+        range = envRange;
+        console.log(`  ${C.d}plage fournie par l'événement CI : ${range}${C.x}`);
     } else {
         const upstream = git("rev-parse", "--verify", "--quiet", "origin/main");
         if (upstream.status !== 0) {
@@ -158,6 +180,17 @@ function main() {
     const count = git("rev-list", "--count", range);
     const n = count.status === 0 ? Number(count.stdout.trim()) : -1;
     if (n === 0) {
+        if (fromEvent) {
+            console.log(
+                `  ${C.r}✗ 0 commit dans \`${range}\`, une plage POURTANT fournie par` +
+                    ` l'événement.${C.x}`
+            );
+            console.log(
+                `  ${C.d}Ce n'est pas « rien à scanner » : c'est un calcul de bornes faux dans\n` +
+                    `  ci.yml. Sortir 0 ici rendrait la gate muette là où elle est le seul œil.${C.x}`
+            );
+            process.exit(1);
+        }
         console.log(
             `  ${C.y}⚠ 0 commit dans \`${range}\` — RIEN À SCANNER, DONC AUCUN VERDICT.${C.x}`
         );
