@@ -43,10 +43,10 @@
     },
     "dependencies": {
         "@geoleaf/core": "^3.0.0",
-        "@turf/distance": "^7.1.0",
-        "@turf/area": "^7.1.0",
-        "@turf/circle": "^7.1.0",
-        "@turf/centroid": "^7.1.0",
+        "@turf/distance": "^7.4.0",
+        "@turf/area": "^7.4.0",
+        "@turf/circle": "^7.4.0",
+        "@turf/centroid": "^7.4.0",
         "@turf/helpers": "^7.1.0"
     },
     "peerDependencies": {

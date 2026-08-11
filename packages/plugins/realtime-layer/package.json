@@ -42,7 +42,7 @@
     },
     "dependencies": {
         "@geoleaf/core": "^3.0.0",
-        "gtfs-realtime-bindings": "^2.0.0"
+        "gtfs-realtime-bindings": "^2.2.0"
     },
     "devDependencies": {
         "@geoleaf/build-config": "*",
