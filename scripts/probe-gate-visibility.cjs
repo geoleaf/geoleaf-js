@@ -686,6 +686,56 @@ try {
         return { ok: Boolean(hit), detail: hit ? hit.dir : "absente du registre" };
     });
 
+    // Passage public S12.2 — `docs-paths.cjs` est la racine commune de SPECS-PATHS,
+    // GUIDES-PATHS et TSDOC-PATHS, trois gates posées entre le 11 et le 12/08/2026 dont
+    // AUCUNE n'était exercée ici.
+    //
+    // ⚠️ Le risque est le sien propre, et il est muet : ces gates rendent « N chemins cités,
+    // 0 mort ». Si une sous-racine cesse de résoudre, le corpus tombe à zéro et le verdict
+    // reste **vert** — la forme exacte du « vert qui n'a rien scanné » que cette sonde traque
+    // partout ailleurs. Le module s'en défend par un `throw` dans `requireRoot()` ; ce qui
+    // suit vérifie que cette défense EXISTE ENCORE, et qu'elle porte sur un corpus non vide.
+    //
+    // 📌 La racine INTERNE est délibérément hors périmètre : `docs-paths` reporte son
+    // assertion au premier `internal()`, précisément pour que le clone public — qui n'a pas
+    // `_docs_projet/` — ne meure pas à l'import. Exiger ici sa présence rendrait la sonde
+    // rouge là-bas, c'est-à-dire dans le seul dépôt où ces trois gates comptent le plus.
+    assertThat("docs-paths : sous-racines résolues et corpus non vide", () => {
+        delete require.cache[require.resolve("./lib/docs-paths.cjs")];
+        const dp = require("./lib/docs-paths.cjs");
+
+        // Le garde-fou du module, lu DANS sa source : un `throw` retiré rendrait toutes les
+        // sous-racines silencieusement optionnelles.
+        const src = fs.readFileSync(path.join(ROOT, "scripts", "lib", "docs-paths.cjs"), "utf8");
+        if (!/function requireRoot[\s\S]*?throw new Error\(/.test(src)) {
+            return {
+                ok: false,
+                detail: "requireRoot ne JETTE plus — une racine absente passerait",
+            };
+        }
+
+        // Compte DÉRIVÉ des sous-racines publiques, jamais une liste recopiée : ajouter une
+        // 4ᵉ sous-racine sans l'exercer ici serait exactement le défaut de l'assertion
+        // voisine, qui annonçait « 4/4 » en en vérifiant 5.
+        const roots = ["specs", "reference", "guides"].map((k) => [k, dp[k]()]);
+        const missing = roots.filter(([, abs]) => !fs.existsSync(abs)).map(([k]) => k);
+        if (missing.length) return { ok: false, detail: `sous-racine(s) absente(s) : ${missing}` };
+
+        const counts = roots.map(([k, abs]) => {
+            const n = fs
+                .readdirSync(abs, { recursive: true, withFileTypes: true })
+                .filter((e) => e.isFile() && e.name.endsWith(".md")).length;
+            return [k, n];
+        });
+        const empty = counts.filter(([, n]) => n === 0).map(([k]) => k);
+        return {
+            ok: empty.length === 0,
+            detail: empty.length
+                ? `corpus VIDE : ${empty.join(", ")} — la gate sortirait verte sans rien lire`
+                : counts.map(([k, n]) => `${k} ${n}`).join(" · ") + " fichiers .md",
+        };
+    });
+
     // T5.1bis — `deploy-docs.cjs` est le script le plus destructeur du dépôt (`rmSync`
     // récursif sur une cible EXTERNE) et il n'est invoqué par AUCUNE CI : ni `ci-local`,
     // ni `ci.yml`, ni le hook. Sa correction la plus importante — l'ordre

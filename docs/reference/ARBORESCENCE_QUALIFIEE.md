@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 17 |
 | Répertoires | 172 |
 | Fichiers | **1017** — 845 `.ts` · 46 `.css` · 126 `scripts/` |
-| Lignes de code | 192 124 |
+| Lignes de code | 192 174 |
 | Artefacts qualifiés | **1061 / 1189** (89.2 %) |
 
 | Verdict | Artefacts |
@@ -1830,7 +1830,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── probe-boot-waterfall.mjs            |  255 |   ? |   ? | ?         | probe-boot-waterfall — ce que la CASCADE du premier chargement coûte…
 ├── probe-cluster-oracle.mjs            |  157 |   ? |   ? | ?         | (à qualifier)
 ├── probe-csp-origins.mjs               |   69 |   ? |   ? | ?         | (à qualifier)
-├── probe-gate-visibility.cjs           | 1361 |  ok |  ok | justifié  | Méta-gate : plante un paquet imbriqué porteur de défauts connus et exige…
+├── probe-gate-visibility.cjs           | 1411 |  ok |  ok | justifié  | Méta-gate : plante un paquet imbriqué porteur de défauts connus et exige…
 ├── probe-heap-metrics.mjs              |  486 |   ? |   ? | ?         | (à qualifier)
 ├── probe-offline-pull.mjs              |  191 |   ? |   ? | ?         | Sonde — le rapatriement borné écrit-il RÉELLEMENT dans le store…
 ├── probe-sw-observability.mjs          |  350 |   ? |   ? | ?         | (à qualifier)
