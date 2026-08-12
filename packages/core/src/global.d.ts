@@ -427,7 +427,7 @@ declare global {
             ): Record<string, import("./capabilities/taxonomy/types.js").TaxonomyCategory>;
             /** Résout l'icône de sprite d'un point, tenant compte de sa catégorie et de sa teinte. */
             resolvePoiIcon(
-                poi: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike
+                poi: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike
             ): import("./capabilities/taxonomy/types.js").ResolvedIcon;
             /**
              * Chaque paire (icône × teinte) référencée par la config, pour que l'adaptateur
@@ -446,13 +446,13 @@ declare global {
              */
             resolveTitleIcon(
                 layerId: string,
-                feature: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike,
+                feature: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike,
                 surface: import("./capabilities/taxonomy/types.js").TaxonomySurface
             ): string | null;
             /** Le style de badge d'un champ, ou `null` si aucun ne s'applique. */
             resolveBadgeStyle(
                 layerId: string,
-                feature: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike,
+                feature: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike,
                 surface: import("./capabilities/taxonomy/types.js").TaxonomySurface,
                 field: string
             ): import("./capabilities/taxonomy/types.js").ResolvedBadgeStyle | null;

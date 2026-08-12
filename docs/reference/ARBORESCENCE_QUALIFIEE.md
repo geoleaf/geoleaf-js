@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 17 |
 | Répertoires | 172 |
 | Fichiers | **1017** — 845 `.ts` · 46 `.css` · 126 `scripts/` |
-| Lignes de code | 192 015 |
+| Lignes de code | 192 118 |
 | Artefacts qualifiés | **1061 / 1189** (89.2 %) |
 
 | Verdict | Artefacts |
@@ -1814,7 +1814,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── count-any.cjs                       |  150 |  ok |  ok | justifié  | Compte les any explicites en position de type par paquet — métrique de…
 ├── create-plugin.cjs                   |  269 |  ok |  ok | justifié  | Générateur de squelette de plugin : copie _plugin-template, substitue…
 ├── deploy-docs.cjs                     |  373 |  ok |  ok | justifié  | Chaîne de déploiement de la documentation publique : TypeDoc, build…
-├── emit-ambient-types.cjs              |  100 |   ? |   ? | ?         | (à qualifier)
+├── emit-ambient-types.cjs              |  203 |   ? |   ? | ?         | (à qualifier)
 ├── gen-api-surface.cjs                 |  337 |  ok |  ok | justifié  | Génère `docs/reference/API_SURFACE.txt` — le manifeste de la surface…
 ├── gen-attributes-report.cjs           |  218 |   ? |   ? | ?         | Le modèle attributaire des profils, en UN tableau plat — généré et gaté.
 ├── gen-config-reference.cjs            |  537 |  ok |  ok | justifié  | Génère depuis l'inventaire des paramètres un tableau HTML autonome de…

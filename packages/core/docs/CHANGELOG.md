@@ -11,7 +11,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## [Unreleased]
+## [3.0.0] - 2026-08-12
+
+> **Major release v3.0.0.** It consolidates the whole v3 effort: dissolution of the POI subsystem into generic point layers, taxonomy v3 (the point symbol), extraction of the optional modules into in-core capabilities and MIT plugins, multi-instance rework, security hardening (strict `style-src` CSP) and **hard removal of all legacy** (deprecated API aliases, re-export shims, format fallbacks, legacy configuration keys).
+>
+> The jump from the last version published on npm (**2.1.8**, 2026-05-13) is a large one. Breaking changes are numerous; where a migration path exists it is written next to the entry that needs it.
+
+::: warning
+
+`taxonomy` and `feature-info` are capabilities built into `@geoleaf/core`, **not** separate npm packages. Entries below that mention `@geoleaf-plugins/feature-info` and `@geoleaf-plugins/taxonomy` as external plugins to install or load through a `<script>` tag are obsolete: both capabilities ship **inside the core bundle** (`geoleaf.esm.js` + `dist/geoleaf-main.min.css`) and are enabled by configuration — no extra install, no extra `<script>` tag. **Migration**: remove the `<script src="dist/geoleaf-taxonomy.plugin.js">` and `<script src="dist/geoleaf-feature-info.plugin.js">` tags.
+
+:::
 
 ### Changed — **BEHAVIOURAL BREAKING CHANGE**: `analyzeMemoryLeaks()` no longer returns `normal` on a browser that measures nothing
 
@@ -784,18 +794,6 @@ an end-to-end authorisation model.
 ### Fixed
 
 - **Two French `aria-label` values contained leftover Franglais** ("Afficher / hide la layer" and "Afficher/hide les étiquettes"). Corrected to idiomatic French ("Afficher / masquer la couche" and "Afficher/masquer les étiquettes"). Only the default French dictionary was affected — the five other locales were already correct, and both the i18n keys (`aria.layer.toggle`, `aria.labels.toggle`) and the `getLabel()` API are unchanged.
-
-## [3.0.0] - 2026-07-16
-
-> **Major release v3.0.0.** It consolidates the whole v3 effort: dissolution of the POI subsystem into generic point layers, taxonomy v3 (the point symbol), extraction of the optional modules into in-core capabilities and MIT plugins, multi-instance rework, security hardening (strict `style-src` CSP) and **hard removal of all legacy** (deprecated API aliases, re-export shims, format fallbacks, legacy configuration keys).
->
-> The jump from the last version published on npm (**2.1.8**, 2026-05-13) is a large one: breaking changes are numerous, and **each carries its own "Migration" note**.
-
-::: warning
-
-`taxonomy` and `feature-info` are capabilities built into `@geoleaf/core`, **not** separate npm packages. Entries below that mention `@geoleaf-plugins/feature-info` and `@geoleaf-plugins/taxonomy` as external plugins to install or load through a `<script>` tag are obsolete: both capabilities ship **inside the core bundle** (`geoleaf.esm.js` + `dist/geoleaf-main.min.css`) and are enabled by configuration — no extra install, no extra `<script>` tag. **Migration**: remove the `<script src="dist/geoleaf-taxonomy.plugin.js">` and `<script src="dist/geoleaf-feature-info.plugin.js">` tags.
-
-:::
 
 ### Fixed
 
