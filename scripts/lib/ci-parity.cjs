@@ -80,6 +80,33 @@ function workflowDir() {
 }
 
 /**
+ * Ce workflow LIVRE-t-il, plutôt qu'il ne VÉRIFIE ?
+ *
+ * Critère dérivé du déclencheur, et volontairement étroit : un bloc `on:` qui porte
+ * `tags:` (ou un `release:`) **et aucun** `branches:`. Un workflow déclenché sur branche
+ * ou sur pull request reste une validation, même s'il livre aussi.
+ *
+ * ⚠️ **La direction du doute est le sujet.** Classer à tort une validation en livraison la
+ * sort de la comparaison **en silence** ; classer à tort une livraison en validation la
+ * fait seulement rougir, donc regarder. La seconde erreur se voit, la première non — d'où
+ * un critère qui refuse de conclure au moindre `branches:`. Sans cette étroitesse,
+ * `ci.yml` deviendrait exemptable en lui ajoutant un `tags:`, c'est-à-dire que la gate
+ * serait désarmée par la porte qu'on vient d'ouvrir.
+ *
+ * @param {string} text Contenu du fichier de workflow.
+ * @returns {boolean} `true` si le workflow livre et sort de la comparaison.
+ */
+function isDeliveryWorkflow(text) {
+    // Le bloc `on:` seul — jusqu'à la prochaine clé de premier niveau.
+    const onBlock = text.match(/^on:\s*$([\s\S]*?)^[a-z]/m);
+    const scope = onBlock ? onBlock[1] : "";
+    if (!scope) return false;
+    const hasTags = /^\s{2,}(tags|release):/m.test(scope);
+    const hasBranches = /^\s{2,}branches:/m.test(scope);
+    return hasTags && !hasBranches;
+}
+
+/**
  * Planchers témoins — mesure du 30/07/2026 : 1 workflow, 1 job, 55 étapes (48 `run:`,
  * 7 `uses:`), et 56 entrées dans `STEPS`.
  *
@@ -606,6 +633,8 @@ function classify() {
     const corpus = {
         dir,
         workflows: files.length,
+        validationWorkflows: 0,
+        deliveryWorkflows: [],
         jobs: 0,
         steps: 0,
         runKeys: 0,
@@ -618,6 +647,31 @@ function classify() {
 
     for (const f of files) {
         const txt = fs.readFileSync(path.join(dir, f), "utf8");
+
+        // ── Validation ou livraison ? (passage public S11.1, 12/08/2026) ─────────
+        //
+        // La propriété gardée ici est « `ci:local` ⊇ CI ». Elle vaut pour ce qui VÉRIFIE :
+        // toute gate qui tourne à distance doit pouvoir tourner en local. Elle n'a aucun
+        // sens pour ce qui LIVRE — `npm publish` n'a rien à faire dans `ci:local`, et
+        // l'exempter commande par commande écrirait six fois « publier n'est pas une
+        // gate » au lieu de le dire une fois.
+        //
+        // Le classement est DÉRIVÉ du déclencheur, jamais d'une liste de noms : un
+        // workflow déclenché par un tag ou une release livre ; un workflow déclenché par
+        // un push de branche ou une PR valide. Une liste de fichiers exemptés serait le
+        // « Keep this list in sync » que ce module existe pour remplacer.
+        //
+        // ⚠️ Le critère est VOLONTAIREMENT strict — `push:` avec `tags:` ET SANS
+        // `branches:`. Un workflow qui se déclenche aussi sur branche reste une
+        // validation : la moindre tolérance ici rendrait `ci.yml` exemptable en lui
+        // ajoutant un `tags:`, c'est-à-dire désarmerait la gate par la porte qu'elle
+        // vient d'ouvrir.
+        if (isDeliveryWorkflow(txt)) {
+            corpus.deliveryWorkflows.push(f);
+            continue;
+        }
+        corpus.validationWorkflows++;
+
         const wf = parseWorkflow(txt, f);
         const raw = rawCounts(txt);
         corpus.rawRunKeys += raw.runKeys;
@@ -632,6 +686,19 @@ function classify() {
             }
         }
     }
+
+    // 🛑 PAS DE CODE « aucun workflow de validation » ICI — et son absence est un RÉSULTAT,
+    // pas un oubli. Il en avait été écrit un (PARITY-12) le 12/08/2026, puis retiré le jour
+    // même : la mutation qui devait le faire mordre — `ci.yml` reclassé en livraison — fait
+    // rougir les **planchers PARITY-01** d'abord (`jobs = 0`, `steps = 0`, `runKeys = 0`,
+    // `ciLeaves = 0`), qui refusent de conclure sur un corpus vide. Vider la comparaison par
+    // le classement, c'est vider le corpus ; le cas est donc déjà couvert, et un code qui ne
+    // peut jamais mordre aurait donné l'illusion d'une protection de plus.
+    //
+    // Ce qui manquait vraiment n'était pas une assertion mais un DIAGNOSTIC : les planchers
+    // disent « jobs = 0 » sans orienter vers le classement. C'est la ligne « hors comparaison »
+    // de `verify-ci-parity.cjs` qui le porte, imprimée AVANT le verdict pour rester lisible
+    // quand les planchers coupent le rapport.
 
     // PARITY-07 — l'accord des deux instruments, avant tout verdict.
     if (corpus.runKeys !== corpus.rawRunKeys || corpus.usesKeys !== corpus.rawUsesKeys) {

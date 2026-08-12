@@ -1,0 +1,97 @@
+name: Publish to npm
+
+# Publication des 14 paquets par TRUSTED PUBLISHING (OIDC) — sans jeton, sans OTP.
+#
+# ## Pourquoi ce workflow existe
+#
+# La publication manuelle du 12/08/2026 a coûté 14 codes d'authenticator, et npm réclame un
+# `EOTP` pour toute écriture de ce compte — quel que soit le type de jeton, `auth-only` ou non
+# (quatre hypothèses éprouvées, quatre réfutées : cf. roadmap `passage-public-npm`, conduite S10).
+# Le trusted publishing supprime le problème à la racine : GitHub Actions présente un jeton
+# OIDC éphémère, npm vérifie qu'il vient bien de CE dépôt et de CE fichier de workflow.
+#
+# 🛑 PRÉREQUIS QUI COMMANDE L'ORDRE — mesuré, non supposé : « The package you're configuring
+# must already exist on the npm registry » (docs.npmjs.com/cli/v11/commands/npm-trust).
+# On ne déclare pas un éditeur de confiance pour un paquet inexistant. Les 14 doivent donc
+# être publiés UNE fois à la main avant que ce workflow puisse servir. C'est le prix d'entrée,
+# et il ne se repaie pas.
+#
+# ## Ce que ce workflow N'EST PAS
+#
+# Ce n'est pas une gate. `scripts/lib/ci-parity.cjs` scanne TOUT `.github/workflows/` et
+# compare chaque commande à `ci:local` — la propriété « ci:local ⊇ CI » vaut pour ce qui
+# VÉRIFIE, pas pour ce qui LIVRE. Poser ce fichier tel quel fait donc rougir la parité sur des
+# commandes qui n'ont rien à faire en local. À trancher avant de le brancher (voir la note de
+# conception à côté de ce fichier).
+
+on:
+    push:
+        tags:
+            - "v*"
+    # Déclenchement manuel : la publication est un acte irréversible, on doit pouvoir la
+    # relancer sans forger un tag.
+    workflow_dispatch:
+
+permissions:
+    # ⚠️ LA ligne qui rend l'OIDC possible. Sans elle, npm refuse et le run meurt sur un EOTP
+    # que personne ne pourra satisfaire depuis un runner.
+    id-token: write
+    contents: read
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        steps:
+            # Les `uses:` sont épinglés par SHA, jamais par étiquette — une étiquette est
+            # mutable, un SHA ne l'est pas. Mêmes SHA que `ci.yml`, délibérément : deux
+            # workflows qui épinglent des versions différentes de la même action divergent
+            # sans que rien ne le dise.
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: ".nvmrc"
+                  registry-url: "https://registry.npmjs.org"
+                  cache: "npm"
+
+            # 🛑 Node 22 embarque npm 10.9.x, et le trusted publishing exige **npm ≥ 11.5.1**
+            # (docs.npmjs.com/trusted-publishers). Sans cette montée, le run échoue sur une
+            # authentification classique — c'est-à-dire sur l'EOTP qu'on cherche à éviter.
+            # Mesuré le 12/08/2026 : `node v22.23.1` → `npm 10.9.8`.
+            - name: npm ≥ 11.5.1 (requis par le trusted publishing)
+              run: |
+                  npm install -g npm@latest
+                  npm --version
+
+            - run: npm ci
+
+            # Le build complet, pas `build:all` : `--filter=@geoleaf/core` ne tire que les
+            # dépendances DU CORE, or les plugins dépendent de lui et non l'inverse — 10 des
+            # 12 garderaient leur `dist/` d'avant (CLAUDE.md §Points d'attention).
+            - run: npx turbo run build
+
+            # Le tarball est immuable : un chunk orphelin publié l'est définitivement.
+            - name: Intégrité de dist/ avant tout pack
+              run: node scripts/check-dist-integrity.cjs
+
+            # ── Publication, dans l'ordre imposé par le graphe de dépendances ──
+            #
+            # Le core d'abord : les 12 plugins le déclarent en `^3.0.0`, donc sans lui leurs
+            # installs échouent toutes. `field-renderer` ensuite : `editor` en dépend.
+            - name: "@geoleaf/core"
+              run: npm publish -w @geoleaf/core --access public
+
+            - name: "@geoleaf/field-renderer"
+              run: npm publish -w @geoleaf/field-renderer --access public
+
+            # Les 12 plugins. Le script est REJOUABLE : un paquet déjà au registre est sauté
+            # en le disant, et son décompte final sépare publiés et sautés — sans quoi
+            # « 12/12 » se lirait comme douze publications là où il pourrait n'y en avoir eu
+            # que cinq.
+            - name: Les 12 plugins
+              run: npm run publish:plugins
+
+            # L'épreuve que les liens symboliques npm ne masquent pas — sur ce qui vient
+            # d'être publié, et non sur le monorepo.
+            - name: Vérifier ce qui est parti
+              run: node scripts/verify-published-types.cjs

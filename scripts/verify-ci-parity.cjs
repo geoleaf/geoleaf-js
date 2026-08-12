@@ -96,6 +96,16 @@ function main() {
         `  ${corpus.workflows} workflow(s), ${corpus.jobs} job(s), ${corpus.steps} étapes ` +
             `(${corpus.runKeys} run: / ${corpus.usesKeys} uses:), ${corpus.ciLeaves} feuilles CI`
     );
+    // ⚠️ Un workflow SORTI de la comparaison doit se voir. Sans cette ligne, « 2 workflow(s) »
+    // au-dessus laisse croire que les deux sont comparés, et un classement erroné en livraison
+    // — la seule erreur silencieuse de ce découpage — passerait inaperçu.
+    if (corpus.deliveryWorkflows?.length) {
+        console.log(
+            `  ${C.d}hors comparaison (livraison, déclenchés sur tag) : ` +
+                `${corpus.deliveryWorkflows.join(", ")} — la propriété « ci:local ⊇ CI » ` +
+                `vaut pour ce qui vérifie, pas pour ce qui livre${C.x}`
+        );
+    }
     console.log(
         `  accord parseur/grep : ${corpus.runKeys}/${corpus.rawRunKeys} run:, ` +
             `${corpus.usesKeys}/${corpus.rawUsesKeys} uses:  ` +
