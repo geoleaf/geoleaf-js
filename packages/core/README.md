@@ -15,12 +15,6 @@ JSON profiles — GeoJSON layers, styles, themes, taxonomy — with no applicati
 > the entry points. Everything else lives on [geoleaf.dev/docs](https://www.geoleaf.dev/docs/),
 > and each fact is written in exactly one place.
 
-> [!IMPORTANT]
-> **The 3.x line documented here is not on the registry yet.** `npm install @geoleaf/core` today
-> resolves to the **2.x** line, which this page does not describe — the version badge above shows
-> it for the same reason. Measure rather than assume: `npm view @geoleaf/core version` reads the
-> registry, `npm run versions:check` reads the repository. Until publication, build from source.
-
 ---
 
 ## Installation

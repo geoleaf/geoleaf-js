@@ -20,18 +20,6 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 
 ---
 
-> [!IMPORTANT]
-> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
-> install command below either fails with `E404` or resolves to an older release than the one
-> this page describes. Measure rather than assume — no version number is copied into this page:
->
-> ```bash
-> npm view @geoleaf-plugins/offline-ui version  # what the registry serves
-> npm run versions:check                        # what this repository declares
-> ```
->
-> Until those agree, build from source.
-
 ## Installation
 
 ```bash

@@ -10,25 +10,6 @@
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> [!IMPORTANT]
-> **Registry status — the 3.x line documented here is not on npm yet.**
->
-> The source is MIT and complete: clone it, build it, use it. But `npm install @geoleaf/core`
-> currently resolves to the **2.x** line, which this document does not describe, and most
-> `@geoleaf-plugins/*` packages have never been published at all. The version badge above reads
-> the registry, so it shows 2.x for the same reason.
->
-> **Two commands, two different objects** — and no number is copied into this page, because one
-> already drifted by a whole major here:
->
-> ```bash
-> npm view @geoleaf/core version   # what the registry serves
-> npm run versions:check           # what this repository declares
-> ```
->
-> Until those agree, install from source. This notice goes away with the 3.x publication, not
-> before.
-
 ---
 
 ## Quick Start
@@ -120,9 +101,10 @@ either one breaks that guarantee.
 
 Usable, but add subresource integrity (`integrity` + `crossorigin`) where the tag accepts it.
 
-Substitute `<version>` with a version the registry actually serves — `npm view @geoleaf/core version`
-prints it. A version pinned in prose here would be a 404 the day it drifts, and this page has
-already carried one: it advertised a version the registry had never seen.
+The URLs below pin the **major** (`@3`), like the `maplibre-gl@6` above them: jsDelivr resolves it to
+the latest 3.x, so the recipe stays copy-pasteable and cannot go stale. Pin a full version only if
+you need byte-for-byte reproducibility — and never write one into prose, which is how this page once
+advertised a version the registry had never seen.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -133,11 +115,11 @@ already carried one: it advertised a version the registry had never seen.
 
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
 ></script>
 ```
 
@@ -530,7 +512,7 @@ import "@geoleaf/core/style.css";
 > `@geoleaf/core/dist/…` throws `ERR_PACKAGE_PATH_NOT_EXPORTED` — the stylesheet is called
 > `@geoleaf/core/style.css`. A **CDN URL**, on the other hand, resolves nothing at all: jsDelivr and
 > unpkg serve the tarball **flat** and ignore the `exports` map, so
-> `…/@geoleaf/core@<version>/dist/geoleaf.esm.js` stays valid. Both forms below are therefore
+> `…/@geoleaf/core@3/dist/geoleaf.esm.js` stays valid. Both forms below are therefore
 > correct **each within its own regime**; aligning the CDN URLs on `./style.css` would break them.
 >
 > The list of subpaths that are actually open:
@@ -538,8 +520,8 @@ import "@geoleaf/core/style.css";
 
 ### CDN (jsDelivr)
 
-`<version>` is a placeholder, exactly as in the paragraph above — `npm view @geoleaf/core version`
-prints what the registry currently serves.
+`@3` pins the major and resolves to the latest 3.x, exactly as `maplibre-gl@6` does beside it.
+`npm view @geoleaf/core version` prints what the registry currently serves.
 
 ```html
 <!-- MapLibre GL JS — peer dependency, to load BEFORE GeoLeaf -->
@@ -551,11 +533,11 @@ prints what the registry currently serves.
 
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
 ></script>
 ```
 

@@ -144,9 +144,15 @@ for (const workspace of PUBLISHED_PLUGINS) {
         );
         console.error(
             `  Le script est REJOUABLE : les paquets déjà au registre seront sautés.\n` +
-                `  ⚠️ Si l'échec est un OTP demandé, le 2FA du compte est en \`auth-and-writes\` —\n` +
-                `     ce script publie par \`execSync\` sans TTY et ne peut pas y répondre.\n` +
-                `     Voir \`npm profile enable-2fa auth-only\`.`
+                `  ⚠️ Si l'échec est \`EOTP\`, npm réclame un code d'authenticator. Ce script publie\n` +
+                `     par \`execSync\` en \`stdio: "inherit"\` : lancé depuis un VRAI TERMINAL, npm\n` +
+                `     hérite du tty et pose la question — répondre, un code par paquet. Ce n'est que\n` +
+                `     depuis une session automatisée (sans tty) qu'il ne peut pas y répondre.\n` +
+                `     🛑 Ce message a dit l'inverse jusqu'au 12/08/2026 — « publie sans TTY et ne peut\n` +
+                `     pas y répondre », sans distinguer les deux cas — et il a envoyé chercher un\n` +
+                `     contournement (bascule 2FA, jeton granulaire) là où il suffisait de le lancer\n` +
+                `     à la main. Aucun des deux n'a levé l'EOTP : npm le réclame quel que soit le\n` +
+                `     type de jeton, et \`auth-only\` n'y change rien.`
         );
         process.exit(1);
     }

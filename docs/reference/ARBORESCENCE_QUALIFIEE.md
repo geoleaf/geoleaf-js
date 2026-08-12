@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 17 |
 | Répertoires | 172 |
 | Fichiers | **1017** — 845 `.ts` · 46 `.css` · 126 `scripts/` |
-| Lignes de code | 192 118 |
+| Lignes de code | 192 124 |
 | Artefacts qualifiés | **1061 / 1189** (89.2 %) |
 
 | Verdict | Artefacts |
@@ -1838,7 +1838,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── probe-tile-cache-arbitration.mjs    |  294 |   ? |   ? | ?         | (à qualifier)
 ├── probe-tile-cache-trim.mjs           |  212 |   ? |   ? | ?         | (à qualifier)
 ├── probe-typedoc-surface.mjs           |  317 |  ok |  ok | justifié  | Sonde de la surface que TypeDoc rendrait s'il était élargi (expand +…
-├── publish-plugins.cjs                 |  161 |  ok |  ok | justifié  | Publie sur npm la liste de plugins retenue par politique, identifiés par…
+├── publish-plugins.cjs                 |  167 |  ok |  ok | justifié  | Publie sur npm la liste de plugins retenue par politique, identifiés par…
 ├── purge-dist.cjs                      |   61 |   ? |   ? | ?         | (à qualifier)
 ├── purge-turbo-cache.cjs               |  309 |  ok |  ok | justifié  | Ramène `.turbo/cache` sous un budget de taille — le seul critère qui…
 ├── run-tests.cjs                       |  175 |  ok |  ok | justifié  | Lanceur unique des tests unitaires : borne ensemble la concurrence turbo…
