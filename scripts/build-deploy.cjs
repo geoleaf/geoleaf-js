@@ -104,10 +104,7 @@ const {
 // à part parce qu'il est mesurable seul : ses deux réglages sont des CHIFFRES qu'on veut
 // pouvoir ré-éprouver sans rebâtir un déployé entier.
 const { slimGeoJSON } = require("./lib/geojson-slim.cjs");
-const {
-    serverContractFiles,
-    carriesServerContract,
-} = require("./lib/server-contract.cjs");
+const { serverContractFiles, carriesServerContract } = require("./lib/server-contract.cjs");
 const { stripDevBackendBindings } = require("./lib/dev-backend.cjs");
 
 // @security (audit L1) Disable the shell on POSIX (CI ubuntu + WSL, where the
@@ -2162,6 +2159,50 @@ function main() {
             }
         }
 
+        // 9a bis — Le TÉLÉCHARGEMENT DE TUILES est coupé dans ce qui s'expose (12/08/2026).
+        //
+        // 🛑 Le motif n'est PAS le backend de preuve, et c'est pour ça que ce traitement a sa
+        // propre fonction plutôt qu'une ligne dans `dev-backend.cjs` : les tuiles du profil de
+        // démo viennent de **tiers** — `server.arcgisonline.com`, `opentopomap.org`,
+        // `basemaps.cartocdn.com` —, dont les conditions d'usage interdisent typiquement
+        // l'aspiration en masse. Un bouton « télécharger hors ligne » sur une page publique est
+        // exactement le geste qu'ils bannissent, et la sanction tombe sur l'origine qui émet.
+        //
+        // ⚠️ Ce veto ne coupe QUE le téléchargement explicite. Le cache du service worker reste
+        // actif, et il le doit : il n'écrit que des réponses **déjà revenues du réseau**
+        // (`sw-core.js` — « LE SEUL ÉCRIVAIN de CACHE_TILES »), donc il RÉDUIT le trafic vers
+        // ces tiers au lieu de l'augmenter. Le confondre avec l'aspiration ferait retirer une
+        // protection en croyant en poser une.
+        //
+        // 🖐 CE QUE ÇA NE PROTÈGE PAS, et il faut le dire : un visiteur maîtrise son navigateur.
+        // Il peut remettre le drapeau à `true` dans la réponse JSON, ou appeler l'API
+        // directement. Ce réglage retire la fonction de l'INTERFACE ; il n'est pas un contrôle
+        // d'accès. La seule protection réelle contre l'aspiration est du côté qui sert les
+        // tuiles (quota, referer, clé) — aucune configuration cliente ne peut la remplacer.
+        //
+        // ⚠️ Passe RÉCURSIVE : le drapeau vit à deux profondeurs — `.cache.enableTileCache` dans
+        // `config/plugins/offline.json`, et `.modules.offline.cache.enableTileCache` dans
+        // `profile-bundle.json`. Traiter l'un sans l'autre laisserait le second vivant, et c'est
+        // LUI que le chargeur lit — le même piège que les liaisons ci-dessous.
+        //
+        // @param {any} node Racine du JSON de profil (muté en place).
+        // @returns {number} Nombre de drapeaux passés à `false`.
+        const vetoTileDownload = (node) => {
+            let n = 0;
+            const walk = (obj) => {
+                if (Array.isArray(obj)) return obj.forEach(walk);
+                if (!obj || typeof obj !== "object") return;
+                for (const [k, val] of Object.entries(obj)) {
+                    if (k === "enableTileCache" && val !== false) {
+                        obj[k] = false;
+                        n += 1;
+                    } else walk(val);
+                }
+            };
+            walk(node);
+            return n;
+        };
+
         // 9a — Le backend de PREUVE ne part pas chez un client.
         //
         // 🛑 Mesuré le 09/08/2026 : `profiles/tourism/.../sites_rosario_config.json` portait
@@ -2181,6 +2222,7 @@ function main() {
         if (!v.includeDevConnector) {
             const profilesOut = path.join(outDir, "profiles");
             let touched = 0;
+            let tilesVetoed = 0;
             let files = 0;
             if (fs.existsSync(profilesOut)) {
                 const stack = [profilesOut];
@@ -2192,14 +2234,22 @@ function main() {
                         else if (entry.name.endsWith(".json")) {
                             const json = JSON.parse(fs.readFileSync(full, "utf-8"));
                             const n = stripDevBackendBindings(json, BACKEND_BASE_URL);
-                            if (n > 0) {
+                            const t = vetoTileDownload(json);
+                            if (n > 0 || t > 0) {
                                 fs.writeFileSync(full, JSON.stringify(json, null, 2), "utf-8");
                                 touched += n;
+                                tilesVetoed += t;
                                 files += 1;
                             }
                         }
                     }
                 }
+            }
+            if (tilesVetoed > 0) {
+                log.ok(
+                    `téléchargement de tuiles — ${tilesVetoed} drapeau(x) enableTileCache ` +
+                        `passé(s) à false (aspiration coupée ; le cache de navigation reste)`
+                );
             }
             if (touched === 0) {
                 log.ok("backend de preuve — aucune liaison à retirer des profils");
