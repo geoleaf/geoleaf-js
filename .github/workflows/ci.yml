@@ -467,8 +467,12 @@ jobs:
             # budget dur 300 Ko gz / alerte 270, plus le budget CSS — mais il n'était étape
             # NULLE PART : il n'était atteint que par `build-deploy.cjs`, donc à la dernière
             # étape du job. Retirer sans remplacer aurait laissé le job sans budget.
-            - name: Bundle size — boot payload gz (dur 300 Ko / alerte 270) + CSS
-              run: npm run size
+            # ⚠️ `--plugins` AJOUTÉ le 12/08/2026 (B-220), des DEUX côtés. Sans lui, cette
+            # étape ne pesait que le core : les 12 budgets de `PLUGIN_BUDGETS_GZ_KB` — 20
+            # seuils boot + total, maintenus et commentés un par un — n'étaient évalués par
+            # AUCUNE gate. Un plugin pouvait doubler de poids sans qu'une ligne rougisse.
+            - name: Bundle size — core (dur 300 Ko / alerte 270) + CSS + 12 plugins
+              run: npm run size -- --plugins
 
             # ── Le poids de l'APPLICATION ────────────────────────────────────────
             #

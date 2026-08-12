@@ -189,7 +189,19 @@ const STEPS = [
     // du 27/02, ère Leaflet ; les 2 autres nommaient un artefact supprimé au S4). Ce gate-ci
     // n'était étape nulle part : il n'était atteint que transitivement par `build-deploy.cjs`,
     // donc sous `--e2e` seulement. Le mode par défaut de `ci:local` n'avait aucun budget.
-    { name: "Bundle size (boot payload gz + CSS, budget dur)", run: ["npm", "run", "size"] },
+    // ⚠️ `--plugins` AJOUTÉ le 12/08/2026 (B-220). Sans lui, cette étape ne pesait que le
+    // CORE : les 12 budgets de `PLUGIN_BUDGETS_GZ_KB` — 20 seuils boot + total — n'étaient
+    // évalués par AUCUNE gate, ni ici ni dans `ci.yml`. Ils existaient, ils étaient
+    // maintenus (une clé morte y est même détectée par la sonde de visibilité), et rien ne
+    // les lisait : un plugin pouvait doubler de poids sans qu'une seule ligne rougisse.
+    //
+    // Trouvé en pré-volant B-220, qui annonçait `editor` à 142,3 Ko gz pour un plafond de
+    // 122 — un dépassement que le dépôt aurait donc porté sans le voir. À la mesure du
+    // 12/08 il rend **95,7 / 122**, mais c'est un fait de version, pas une protection.
+    {
+        name: "Bundle size (core + 12 plugins, budget dur)",
+        run: ["npm", "run", "size", "--", "--plugins"],
+    },
     // ── Le poids de l'APPLICATION (socle-init S4.7) ──────────────────────────
     //
     // La gate juste au-dessus mesure la clôture des imports statiques du CORE et sort verte à
