@@ -1,76 +1,74 @@
 ---
-title: "GeoLeaf.Legend — Documentation du module Legend"
+title: "GeoLeaf.Legend — Legend module documentation"
 ---
 
-# GeoLeaf.Legend — Documentation du module Legend
+# GeoLeaf.Legend — Legend module documentation
 
-**Version** : 2.2.0
-**Fichier source (monorepo)** : `packages/core/src/capabilities/legend/legend-api.ts`
-**Facade publique** : `packages/core/src/modules/geoleaf.legend.ts`
-**Dernière mise à jour** : juillet 2026
+**Source file (monorepo)**: `packages/core/src/capabilities/legend/legend-api.ts`
+**Public facade**: `packages/core/src/modules/geoleaf.legend.ts`
 
 ---
 
-## Rôle fonctionnel
+## Functional role
 
-Le module **GeoLeaf.Legend** gère l'affichage de la **légende cartographique** dans GeoLeaf.
-La légende est générée **automatiquement** depuis les fichiers de style des couches déclarées dans le profil JSON.
-Elle se positionne sur la carte (par défaut en bas à gauche) et affiche l'ensemble des couches visibles avec leurs entrées de style.
+The **GeoLeaf.Legend** module handles the display of the **map legend** in GeoLeaf.
+The legend is generated **automatically** from the style files of the layers declared in the JSON profile.
+It sits on the map (bottom left by default) and lists every visible layer with its style entries.
 
-**Ce module est distinct de `GeoLeaf.LayerManager`** (voir section « Distinction » ci-dessous).
+**This module is distinct from `GeoLeaf.LayerManager`** (see the Legend vs LayerManager section below).
 
-### Architecture interne (v2.2.0 — capacité in-core)
+### Internal architecture (in-core capability)
 
-Depuis S10/F2, la légende est une **capacité in-core** relocalisée sous `capabilities/legend/`
-(auparavant `modules/optional/legend/`). Elle est déclarée auprès du `CapabilityRegistry`
-et gatée par la config `modules.legend.enabled` (opt-out), comme les capacités `filter`,
-`labels` ou `theme-selector`.
+The legend is an **in-core capability** located under `capabilities/legend/`
+(previously `modules/optional/legend/`). It is registered with the `CapabilityRegistry`
+and gated by the `modules.legend.enabled` config key (opt-out), like the `filter`,
+`labels` and `theme-selector` capabilities.
 
 ```
 capabilities/legend/
-├── legend-api.ts        // Module principal — état, initialisation, API publique
-├── legend-control.ts    // Contrôle MapLibre (rendu DOM de la légende)
-├── legend-renderer.ts   // Rendu des items (symboles, accordéons)
-├── legend-generator.ts  // Génération des données légende depuis un style JSON
-├── legend-capability.ts // Déclaration de capacité (gate modules.legend.enabled + configSchema)
-├── config.ts            // Lecture de modules.legend.* et fusion sur les défauts
-└── lifecycle.ts         // LegendLifecycle — montage du contrôle (opt-out sur la config fusionnée)
+├── legend-api.ts        // Main module — state, initialisation, public API
+├── legend-control.ts    // MapLibre control (DOM rendering of the legend)
+├── legend-renderer.ts   // Item rendering (symbols, accordions)
+├── legend-generator.ts  // Generation of legend data from a JSON style
+├── legend-capability.ts // Capability declaration (modules.legend.enabled gate + configSchema)
+├── config.ts            // Reads modules.legend.* and merges it over the defaults
+└── lifecycle.ts         // LegendLifecycle — mounts the control (opt-out on the merged config)
 ```
 
 ---
 
-## API publique
+## Public API
 
 ### `GeoLeaf.Legend.init(mapInstance, options?)`
 
-Initialise la légende et l'attache à la carte MapLibre.
+Initialises the legend and attaches it to the MapLibre map.
 
-**Paramètres** :
+**Parameters**:
 
-- `mapInstance` (maplibre.Map) : Instance MapLibre GL **requis**
-- `options` (Object, optionnel) :
-    - `position` : `"bottomleft"` (défaut), `"bottomright"`, `"topleft"`, `"topright"`
-    - `collapsible` : `true` (défaut)
-    - `collapsed` : `false` (défaut)
-    - `title` : `"Legend"` (défaut)
+- `mapInstance` (maplibre.Map): MapLibre GL instance, **required**
+- `options` (Object, optional):
+    - `position`: `"bottomleft"` (default), `"bottomright"`, `"topleft"`, `"topright"`
+    - `collapsible`: `true` (default)
+    - `collapsed`: `false` (default)
+    - `title`: `"Legend"` (default)
 
-**Retourne** : `boolean` (succès)
+**Returns**: `boolean` (success)
 
 ```javascript
 import * as maplibregl from "maplibre-gl";
 const map = new maplibregl.Map({ container: "map", style: "..." });
 GeoLeaf.Legend.init(map);
 
-// Avec options
+// With options
 GeoLeaf.Legend.init(map, {
     position: "bottomright",
     collapsed: false,
-    title: "Légende des couches",
+    title: "Layer legend",
 });
 ```
 
-> Les paramètres sont aussi lus depuis le bloc **`modules.legend`** (fichier
-> `config/plugins/legend.json`, référencé par `Files.modules.legend` dans `profile.json`) :
+> The same parameters are also read from the **`modules.legend`** block (file
+> `config/plugins/legend.json`, referenced by `Files.modules.legend` in `profile.json`):
 >
 > ```json
 > {
@@ -79,33 +77,33 @@ GeoLeaf.Legend.init(map, {
 >             "enabled": true,
 >             "position": "bottomleft",
 >             "collapsedByDefault": false,
->             "title": "Légende des couches"
+>             "title": "Layer legend"
 >         }
 >     }
 > }
 > ```
 >
-> **Config réveillée (S10/F2)** : `title`, `position` et `collapsedByDefault` étaient
-> auparavant ignorés (écrasés par des défauts internes du contrôle). Ils sont désormais
-> réellement lus et appliqués — un profil qui portait ces clés (via l'ancien `legendConfig`)
-> verra sa légende rendue avec le titre, la position et l'état replié configurés.
+> **Keys actually applied**: `title`, `position` and `collapsedByDefault` are read from this
+> block and applied to the control, including for a profile that carried them under the former
+> `legendConfig` block — such a profile gets its legend rendered with the configured title,
+> position and collapsed state.
 
 ---
 
 ### `GeoLeaf.Legend.loadLayerLegend(layerId, styleId, layerConfig)`
 
-Charge la légende d'une couche GeoJSON à partir de son fichier de style.
-Appelée automatiquement lors du chargement des couches GeoJSON.
+Loads the legend of a GeoJSON layer from its style file.
+Called automatically while GeoJSON layers are loading.
 
-**Paramètres** :
+**Parameters**:
 
-- `layerId` (string) : Identifiant de la couche
-- `styleId` (string) : Identifiant du style actif
-- `layerConfig` (Object) : Configuration de la couche (issue du profil JSON)
+- `layerId` (string): Layer identifier
+- `styleId` (string): Identifier of the active style
+- `layerConfig` (Object): Layer configuration (taken from the JSON profile)
 
 ```javascript
-// Normalement appelée en interne par le module GeoJSON.
-// Pour usage manuel avancé :
+// Normally called internally by the GeoJSON module.
+// For advanced manual use:
 GeoLeaf.Legend.loadLayerLegend("parcs", "default", layerConfig);
 ```
 
@@ -113,18 +111,18 @@ GeoLeaf.Legend.loadLayerLegend("parcs", "default", layerConfig);
 
 ### `GeoLeaf.Legend.setLayerVisibility(layerId, visible)`
 
-Contrôle la visibilité d'une couche dans la légende.
+Controls the visibility of a layer inside the legend.
 
-**Paramètres** :
+**Parameters**:
 
-- `layerId` (string) : Identifiant de la couche
-- `visible` (boolean) : `true` = visible, `false` = cachée
+- `layerId` (string): Layer identifier
+- `visible` (boolean): `true` = visible, `false` = hidden
 
 ```javascript
-// Cacher la couche "parcs" dans la légende
+// Hide the "parcs" layer in the legend
 GeoLeaf.Legend.setLayerVisibility("parcs", false);
 
-// Afficher la couche "zones" dans la légende
+// Show the "zones" layer in the legend
 GeoLeaf.Legend.setLayerVisibility("zones", true);
 ```
 
@@ -132,9 +130,9 @@ GeoLeaf.Legend.setLayerVisibility("zones", true);
 
 ### `GeoLeaf.Legend.getAllLayers()`
 
-Retourne toutes les couches enregistrées dans la légende.
+Returns every layer registered in the legend.
 
-**Retourne** : `Map<string, LayerInfo>` (Map JavaScript)
+**Returns**: `Map<string, LayerInfo>` (JavaScript Map)
 
 ```javascript
 const layers = GeoLeaf.Legend.getAllLayers();
@@ -147,7 +145,7 @@ layers.forEach((info, layerId) => {
 
 ### `GeoLeaf.Legend.hideLegend()`
 
-Masque la légende sans la supprimer.
+Hides the legend without removing it.
 
 ```javascript
 GeoLeaf.Legend.hideLegend();
@@ -157,7 +155,7 @@ GeoLeaf.Legend.hideLegend();
 
 ### `GeoLeaf.Legend.removeLegend()`
 
-Supprime complètement la légende de la carte et efface toutes les données de couches.
+Removes the legend from the map entirely and clears all layer data.
 
 ```javascript
 GeoLeaf.Legend.removeLegend();
@@ -167,13 +165,13 @@ GeoLeaf.Legend.removeLegend();
 
 ### `GeoLeaf.Legend.isLegendVisible()`
 
-Indique si la légende est actuellement visible (contrôle présent + au moins une couche).
+Reports whether the legend is currently visible (control mounted, and at least one layer).
 
-**Retourne** : `boolean`
+**Returns**: `boolean`
 
 ```javascript
 if (GeoLeaf.Legend.isLegendVisible()) {
-    console.log("La légende est affichée");
+    console.log("The legend is visible");
 }
 ```
 
@@ -181,43 +179,43 @@ if (GeoLeaf.Legend.isLegendVisible()) {
 
 ### `GeoLeaf.Legend.showLoadingOverlay()` / `GeoLeaf.Legend.hideLoadingOverlay()`
 
-Affiche ou masque l'overlay de chargement (spinner) sur la légende. Utilisé en interne lors du chargement asynchrone des styles.
+Shows or hides the loading overlay (spinner) on the legend. Used internally while styles are loaded asynchronously.
 
 ```javascript
 GeoLeaf.Legend.showLoadingOverlay();
-// ... chargement
+// ... loading
 GeoLeaf.Legend.hideLoadingOverlay();
 ```
 
 ---
 
-## Résumé de l'API
+## API summary
 
-| Méthode                                          | Rôle                                            |
+| Method                                           | Role                                            |
 | ------------------------------------------------ | ----------------------------------------------- |
-| `init(mapInstance, options?)`                    | Initialise la légende sur la carte              |
-| `loadLayerLegend(layerId, styleId, layerConfig)` | Charge la légende d'une couche GeoJSON          |
-| `setLayerVisibility(layerId, visible)`           | Affiche/masque une couche dans la légende       |
-| `getAllLayers()`                                 | Retourne toutes les couches enregistrées        |
-| `hideLegend()`                                   | Masque la légende                               |
-| `removeLegend()`                                 | Supprime la légende et efface les données       |
-| `isLegendVisible()`                              | Retourne si la légende est actuellement visible |
-| `showLoadingOverlay()`                           | Affiche le spinner de chargement                |
-| `hideLoadingOverlay()`                           | Masque le spinner de chargement                 |
+| `init(mapInstance, options?)`                    | Initialises the legend on the map               |
+| `loadLayerLegend(layerId, styleId, layerConfig)` | Loads the legend of a GeoJSON layer             |
+| `setLayerVisibility(layerId, visible)`           | Shows/hides a layer inside the legend           |
+| `getAllLayers()`                                 | Returns every registered layer                  |
+| `hideLegend()`                                   | Hides the legend                                |
+| `removeLegend()`                                 | Removes the legend and clears its data          |
+| `isLegendVisible()`                              | Reports whether the legend is currently visible |
+| `showLoadingOverlay()`                           | Shows the loading spinner                       |
+| `hideLoadingOverlay()`                           | Hides the loading spinner                       |
 
 ---
 
-## Événements DOM
+## DOM events
 
 ### `geoleaf:legend:ready`
 
-Émis **une seule fois**, au premier montage du contrôle de légende sur la carte.
-Permet à une application ou à un plugin de réagir dès que la légende est en place.
+Emitted **once only**, when the legend control is first mounted on the map.
+It lets an application or a plugin react as soon as the legend is in place.
 
-**Payload** (`event.detail`) :
+**Payload** (`event.detail`):
 
-- `position` (string) : position effective du contrôle (`"bottomleft"`, `"bottomright"`, `"topleft"`, `"topright"`)
-- `layerCount` (number) : nombre de couches enregistrées dans la légende au moment du montage
+- `position` (string): effective position of the control (`"bottomleft"`, `"bottomright"`, `"topleft"`, `"topright"`)
+- `layerCount` (number): number of layers registered in the legend at mount time
 
 ```javascript
 document.addEventListener("geoleaf:legend:ready", (event) => {
@@ -227,11 +225,11 @@ document.addEventListener("geoleaf:legend:ready", (event) => {
 
 ---
 
-## Intégration avec le profil JSON
+## Integration with the JSON profile
 
-La légende est générée automatiquement à partir des couches déclarées dans le profil.
-Sa configuration vit dans le bloc **`modules.legend`** (fichier `config/plugins/legend.json`,
-référencé par `Files.modules.legend`) :
+The legend is generated automatically from the layers declared in the profile.
+Its configuration lives in the **`modules.legend`** block (file `config/plugins/legend.json`,
+referenced by `Files.modules.legend`):
 
 ```json
 {
@@ -253,56 +251,55 @@ référencé par `Files.modules.legend`) :
 }
 ```
 
-> **Migration (S10/F2)** : la légende était auparavant activée par `ui.showLegend` et
-> configurée par le bloc `legendConfig`. Elle est désormais une **capacité in-core** unifiée
-> sous `modules.legend`. `modules.legend.enabled` (défaut `true`, **opt-out**) remplace
-> `ui.showLegend` ; `title` / `position` / `collapsedByDefault` remplacent les clés homonymes
-> de `legendConfig` — et sont désormais réellement appliquées (voir « Config réveillée »
-> ci-dessus). La capacité est intégrée au core.
+> **Migration**: the legend used to be enabled by `ui.showLegend` and configured through the
+> `legendConfig` block. It is now an **in-core capability** unified under `modules.legend`.
+> `modules.legend.enabled` (default `true`, **opt-out**) replaces `ui.showLegend`;
+> `title` / `position` / `collapsedByDefault` replace the same-named keys of `legendConfig`,
+> and are read and applied.
 
-Séquence d'initialisation :
+Initialisation sequence:
 
-1. `GeoLeaf.Config.load()` lit le profil JSON (dont `modules.legend`).
-2. `GeoLeaf.Core.init()` crée la carte MapLibre.
-3. `GeoLeaf.Legend.init(map)` s'initialise depuis `modules.legend` (ou défauts) et émet `geoleaf:legend:ready`.
-4. Le module GeoJSON charge les couches et appelle `GeoLeaf.Legend.loadLayerLegend()` automatiquement.
-5. La légende charge le fichier de style associé et génère les entrées visuelles.
-6. La légende s'affiche avec les accordéons de chaque couche visible.
+1. `GeoLeaf.Config.load()` reads the JSON profile (including `modules.legend`).
+2. `GeoLeaf.Core.init()` creates the MapLibre map.
+3. `GeoLeaf.Legend.init(map)` initialises itself from `modules.legend` (or the defaults) and emits `geoleaf:legend:ready`.
+4. The GeoJSON module loads the layers and calls `GeoLeaf.Legend.loadLayerLegend()` automatically.
+5. The legend loads the associated style file and generates the visual entries.
+6. The legend is displayed, with one accordion per visible layer.
 
 ---
 
 ## Introspection
 
-La capacité `legend` est déclarée auprès du `CapabilityRegistry` : son schéma de configuration
-(clés `enabled` / `title` / `position` / `collapsedByDefault`, avec types, défauts et énumérations)
-est introspectable via la façade publique :
+The `legend` capability is registered with the `CapabilityRegistry`: its configuration schema
+(keys `enabled` / `title` / `position` / `collapsedByDefault`, with their types, defaults and
+enumerations) can be introspected through the public facade:
 
 ```javascript
 GeoLeaf.Introspection.getCapabilitySchema("legend");
 ```
 
-La façade publique `GeoLeaf.Legend` (ses méthodes) reste **inchangée** par la migration S10/F2.
+The public facade `GeoLeaf.Legend` and its methods are **unchanged** by this migration.
 
 ---
 
-## Distinction Legend vs LayerManager
+## Legend vs LayerManager
 
-GeoLeaf expose **deux modules distincts** pour la gestion des couches :
+GeoLeaf exposes **two distinct modules** for layer management:
 
-| Aspect         | `GeoLeaf.Legend`                                           | `GeoLeaf.LayerManager`                                           |
-| -------------- | ---------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Facade**     | `packages/core/src/modules/geoleaf.legend.ts`              | `packages/core/src/modules/geoleaf.layer-manager.ts`             |
-| **Source**     | `src/capabilities/legend/legend-api.ts`                    | `src/modules/built-in/layer-manager/index.ts`                    |
-| **Rôle**       | Légende cartographique automatique (générée depuis styles) | Gestionnaire de couches UI (panneau interactif MapLibre Control) |
-| **Gestion**    | Couches GeoJSON et leur rendu légendaire                   | Sections configurables (basemaps, couches, thèmes)               |
-| **Chargement** | Automatique depuis styles des couches                      | Manuel via sections JSON ou `addSection()`                       |
-| **Alias ?**    | Non — module indépendant                                   | Non — module indépendant                                         |
+| Aspect      | `GeoLeaf.Legend`                              | `GeoLeaf.LayerManager`                                |
+| ----------- | --------------------------------------------- | ----------------------------------------------------- |
+| **Facade**  | `packages/core/src/modules/geoleaf.legend.ts` | `packages/core/src/modules/geoleaf.layer-manager.ts`  |
+| **Source**  | `src/capabilities/legend/legend-api.ts`       | `src/modules/built-in/layer-manager/index.ts`         |
+| **Role**    | Automatic map legend (generated from styles)  | UI layer manager (interactive MapLibre Control panel) |
+| **Scope**   | GeoJSON layers and their legend rendering     | Configurable sections (basemaps, layers, themes)      |
+| **Loading** | Automatic, from the layer styles              | Manual, through JSON sections or `addSection()`       |
+| **Alias?**  | No — independent module                       | No — independent module                               |
 
-Ces deux modules sont **indépendants et non aliasés**.
+These two modules are **independent and not aliased**.
 
 ---
 
-## Modules liés
+## Related modules
 
-- **[GeoLeaf.Core](../core/GeoLeaf_core_README.md)** : Fournit l'instance de carte
-- **[GeoLeaf.LayerManager](../layer-manager/GeoLeaf_LayerManager_README.md)** : Panneau de gestion des couches UI
+- **[GeoLeaf.Core](../core/GeoLeaf_core_README.md)**: Supplies the map instance
+- **[GeoLeaf.LayerManager](../layer-manager/GeoLeaf_LayerManager_README.md)**: UI layer management panel

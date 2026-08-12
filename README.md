@@ -1,27 +1,33 @@
 # GeoLeaf JS
 
-**S'applique à :** `@geoleaf/core` v3.x
+**Applies to:** `@geoleaf/core` v3.x
 **License:** MIT
 **Description:** Modern TypeScript mapping library built on MapLibre GL JS with advanced features for interactive web mapping applications.
-
-> **Versioning policy**
->
-> - Versionnage **indépendant par paquet** — la liste et les versions courantes s'impriment :
->   `npm run versions:check`. Ne pas recopier un numéro ici, il a déjà dérivé d'une majeure.
-> - Details: [docs/VERSIONING_POLICY.md](packages/core/docs/VERSIONING_POLICY.md)
-
-> **Licence scope (important)**
->
-> - **GeoLeaf Core (`@geoleaf/core`, ce depot)** : licence **MIT** (usage, modification, redistribution autorises selon MIT)
-> - **Plugins (`@geoleaf-plugins/*`)** : MIT également, **destinés** à npmjs.org — l'état réel du
->   registre se mesure paquet par paquet (`npm view <paquet> version`), il ne se recopie pas ici
-> - Chaque package embarque son propre fichier `LICENSE`
 
 [![npm version](https://img.shields.io/npm/v/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
 [![npm downloads](https://img.shields.io/npm/dm/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
 [![GitHub license](https://img.shields.io/github/license/geoleaf/geoleaf-js)](LICENSE)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+> [!IMPORTANT]
+> **Registry status — the 3.x line documented here is not on npm yet.**
+>
+> The source is MIT and complete: clone it, build it, use it. But `npm install @geoleaf/core`
+> currently resolves to the **2.x** line, which this document does not describe, and most
+> `@geoleaf-plugins/*` packages have never been published at all. The version badge above reads
+> the registry, so it shows 2.x for the same reason.
+>
+> **Two commands, two different objects** — and no number is copied into this page, because one
+> already drifted by a whole major here:
+>
+> ```bash
+> npm view @geoleaf/core version   # what the registry serves
+> npm run versions:check           # what this repository declares
+> ```
+>
+> Until those agree, install from source. This notice goes away with the 3.x publication, not
+> before.
 
 ---
 
@@ -47,34 +53,36 @@ Core.init({
 });
 ```
 
-> ⚠️ Deux pièges corrigés ici le 31/07/2026, tous deux **mesurés** :
-> `POI` et `Filters` **ne sont pas exportés** (dissous au S9 / retiré au S4.5) ; et la CSS
-> s'importe par le sous-chemin déclaré `@geoleaf/core/style.css` — un `@geoleaf/core/dist/…`
-> lève `ERR_PACKAGE_PATH_NOT_EXPORTED`, la carte `exports` ne l'ouvre pas.
-> La liste des exports réels : `npm run gen:api-surface`.
-> ⚠️ **Ceci ne vaut PAS pour les URLs de CDN plus bas**, qui portent bien un `/dist/` : un CDN
-> sert le tarball à plat et ne lit aucune carte `exports`. Les deux régimes sont détaillés au
-> §Distribution.
+> [!WARNING]
+> Two things that catch people out. `POI` and `Filters` are **not exported** — a POI is now a
+> feature of an ordinary GeoJSON layer. And the stylesheet is imported through the declared
+> `@geoleaf/core/style.css` subpath: a `@geoleaf/core/dist/…` specifier throws
+> `ERR_PACKAGE_PATH_NOT_EXPORTED`, because the `exports` map does not open `dist/`. The list of
+> real exports is printed by `npm run gen:api-surface`.
+>
+> **This does not apply to the CDN URLs further down**, which do carry a `/dist/` segment: a CDN
+> serves the tarball flat and reads no `exports` map. Both regimes are detailed under
+> [Distribution](#distribution).
 
-**Dans le navigateur — auto-hébergé (recommandé) :**
+**In the browser — self-hosted (recommended):**
 
-C'est ce que fait l'application livrée du dépôt. Copiez **les quatre fichiers** de MapLibre
-depuis `node_modules/maplibre-gl/dist/` à côté de vos assets, et servez tout depuis votre
-origine : chaque origine tierce est une dépendance de disponibilité, une fuite de l'adresse IP
-de vos visiteurs, et une entrée de plus dans votre CSP.
+This is what the application shipped in this repository does. Copy **all four** MapLibre files from
+`node_modules/maplibre-gl/dist/` next to your assets and serve everything from your own origin:
+each third-party origin is an availability dependency, a leak of your visitors' IP addresses, and
+one more entry in your CSP.
 
 ```
 vendor/maplibre-gl/
-├── maplibre-gl.mjs          l'entrée
-├── maplibre-gl-shared.mjs   importée par la précédente, en chemin RELATIF
-├── maplibre-gl-worker.mjs   chargée par `new Worker(url, {type:"module"})`
+├── maplibre-gl.mjs          the entry point
+├── maplibre-gl-shared.mjs   imported by the entry, through a RELATIVE path
+├── maplibre-gl-worker.mjs   loaded by `new Worker(url, {type:"module"})`
 ├── maplibre-gl.css
-└── global.mjs               le shim ci-dessous, que vous écrivez
+└── global.mjs               the shim below, which you write
 ```
 
-Le répertoire doit rester **plat et complet** : les trois modules se référencent entre eux par
-chemin relatif. GeoLeaf lit le moteur sur `globalThis.maplibregl`, que la v6 ne publie plus —
-deux lignes le reposent :
+The directory must stay **flat and complete**: the three modules reference each other by relative
+path. GeoLeaf reads the engine from `globalThis.maplibregl`, which v6 no longer publishes — two
+lines put it back:
 
 ```javascript
 // vendor/maplibre-gl/global.mjs
@@ -83,7 +91,7 @@ globalThis.maplibregl = maplibregl;
 ```
 
 ```html
-<!-- MapLibre GL JS — ESM depuis la v6 ; le shim republie le global -->
+<!-- MapLibre GL JS — ESM since v6; the shim republishes the global -->
 <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css" />
 <script type="module" src="/vendor/maplibre-gl/global.mjs"></script>
 
@@ -92,29 +100,29 @@ globalThis.maplibregl = maplibregl;
 <script type="module" src="/dist/geoleaf.esm.js"></script>
 ```
 
-Les deux `<script type="module">` s'exécutent **dans l'ordre du document** (garanti par la
-spec HTML pour tout module non-`async`), donc `maplibregl` est posé avant que GeoLeaf ne le
-lise. Ajouter un `async` sur l'un des deux casse cette garantie.
+Both `<script type="module">` tags execute **in document order** (guaranteed by the HTML spec for
+any non-`async` module), so `maplibregl` is in place before GeoLeaf reads it. Adding `async` to
+either one breaks that guarantee.
 
-> ⚠️ **Votre serveur doit connaître le type MIME de `.mjs`.** Beaucoup de configurations n'ont
-> que `js` dans leur table (nginx, par exemple), et servent alors le module en
-> `application/octet-stream` — le navigateur **refuse de l'exécuter**, sans que rien d'autre
-> ne le signale. Côté nginx : `types { text/javascript mjs; }`.
+> [!WARNING]
+> **Your server must know the MIME type of `.mjs`.** Many configurations only list `js` (nginx,
+> for one) and serve the module as `application/octet-stream` — the browser then **refuses to
+> execute it**, with nothing else to signal the problem. On nginx: `types { text/javascript mjs; }`.
+>
+> MapLibre v6 is ESM-only: `maplibre-gl.js` and `maplibre-gl-csp.js` are no longer published at
+> all, so there is no non-module fallback to fall back to.
 
-> 🛑 **Ce bloc a dit l'exact inverse jusqu'à MapLibre 6, et les deux énoncés étaient justes à
-> leur date.** En v5, le paquet déclarait `main: dist/maplibre-gl.js` **sans `module` ni carte
-> `exports`** : c'était un script classique, le charger en `type="module"` ne publiait pas le
-> global, et l'exemple ne pouvait pas fonctionner — défaut mesuré ici même le 08/08/2026. La
-> v6 est **ESM-only** : `maplibre-gl.js` et `maplibre-gl-csp.js` ne sont plus publiés du tout,
-> et c'est la forme sans `type="module"` qui rend désormais un 404. Les deux recettes sont
-> gardées en sens inverse par `scripts/validate-docs-examples.cjs`.
+> [!IMPORTANT]
+> **Do not forget `dist/chunks/`**: the entry point imports several of them **statically**. Their
+> names carry a content hash, so copy the directory — never list the files by hand.
 
-> ⚠️ **N'oubliez pas `dist/chunks/`** : l'entrée en importe plusieurs **statiquement**. Leurs
-> noms portent un hachage de contenu — on copie le répertoire, on ne liste jamais les fichiers.
+**From a CDN:**
 
-**Depuis un CDN :**
+Usable, but add subresource integrity (`integrity` + `crossorigin`) where the tag accepts it.
 
-Utilisable, mais posez alors une intégrité de sous-ressource (`integrity` + `crossorigin`).
+Substitute `<version>` with a version the registry actually serves — `npm view @geoleaf/core version`
+prints it. A version pinned in prose here would be a 404 the day it drifts, and this page has
+already carried one: it advertised a version the registry had never seen.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -125,18 +133,19 @@ Utilisable, mais posez alors une intégrité de sous-ressource (`integrity` + `c
 
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf-main.min.css"
 />
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf.esm.js"
 ></script>
 ```
 
-> ⚠️ Ce shim-ci est **en ligne**, donc il exige `'unsafe-inline'` (ou un nonce/hash) dans votre
-> `script-src`. La recette auto-hébergée ci-dessus n'a pas ce défaut, puisque son shim est un
-> fichier — c'est une raison de plus de la préférer. `integrity` est par ailleurs inapplicable
-> à un module importé, l'attribut ne portant que sur la balise.
+> [!WARNING]
+> This shim is **inline**, so it requires `'unsafe-inline'` (or a nonce/hash) in your `script-src`.
+> The self-hosted recipe above does not, since its shim is a file — one more reason to prefer it.
+> `integrity` is in any case inapplicable to an imported module, as the attribute only covers the
+> tag itself.
 
 ### Your First Map
 
@@ -157,7 +166,7 @@ Utilisable, mais posez alors une intégrité de sous-ressource (`integrity` + `c
     <body>
         <div id="map"></div>
 
-        <!-- MapLibre GL JS — shim ESM, qui repose le global `maplibregl` -->
+        <!-- MapLibre GL JS — ESM shim, which puts the `maplibregl` global back -->
         <script type="module" src="/vendor/maplibre-gl/global.mjs"></script>
         <!-- GeoLeaf ESM -->
         <script type="module">
@@ -176,17 +185,16 @@ Utilisable, mais posez alors une intégrité de sous-ressource (`integrity` + `c
 </html>
 ```
 
-> **Et pour poser des points ?** Ce bloc s'arrêtait autrefois sur un `GeoLeaf.POI.add({…})`
-> copiable-collable — API **dissoute au S9**. Un POI est désormais une feature d'une couche
-> GeoJSON ordinaire : elle s'écrit par `GeoLeaf.Layers.addFeature(layerId, feature)`, ce qui
-> suppose une couche déclarée, donc un profil. Voir
-> [PROFILES_GUIDE](packages/core/docs/PROFILES_GUIDE.md) puis
-> [GEOJSON_LAYERS_GUIDE](packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md). Pour la création
-> interactive, le plugin [`@geoleaf-plugins/editor`](packages/plugins/editor/README.md), qui a
-> absorbé `addpoi` au Sprint 5 : `GeoLeaf.Editor.AddForm.openAddForm({ lat, lng })`.
+> [!NOTE]
+> **Adding points.** A POI is a feature of an ordinary GeoJSON layer, written with
+> `GeoLeaf.Layers.addFeature(layerId, feature)` — which assumes a declared layer, and therefore a
+> profile. See [PROFILES_GUIDE](packages/core/docs/PROFILES_GUIDE.md) then
+> [GEOJSON_LAYERS_GUIDE](packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md). For interactive
+> creation, use the [`@geoleaf-plugins/editor`](packages/plugins/editor/README.md) plugin:
+> `GeoLeaf.Editor.AddForm.openAddForm({ lat, lng })`.
 >
-> ⚠️ Les deux ordres de coordonnées coexistent et ne s'interchangent pas : `map.center` est
-> `[lat, lng]`, les `coordinates` d'une feature GeoJSON restent `[lng, lat]`.
+> The two coordinate orders coexist and are not interchangeable: `map.center` is `[lat, lng]`,
+> while the `coordinates` of a GeoJSON feature stay `[lng, lat]`.
 
 ---
 
@@ -249,7 +257,7 @@ Switch between different business contexts (Tourism, Custom...) with dedicated c
 
 ### Offline Cache
 
-_(via le plugin [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/README.md) — renommé depuis `storage`)_
+_(through the [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/README.md) plugin)_
 
 - IndexedDB storage for profiles and data
 - Basemap tile caching for offline usage
@@ -289,7 +297,11 @@ _(via le plugin [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/READ
 
 ## Documentation
 
-**[Complete Documentation Index](packages/core/docs/INDEX_CORE.md)** - Browse all documentation organized by category
+**[Complete Documentation Index](packages/core/docs/INDEX_CORE.md)** — browse all documentation
+organized by category, or read it online at [geoleaf.dev/docs](https://www.geoleaf.dev/docs/).
+
+Usage documentation lives in `packages/core/docs/`; the technical contracts live in
+[`docs/specs/`](docs/specs/); the reference material is generated rather than written by hand.
 
 ### Getting Started
 
@@ -303,6 +315,7 @@ _(via le plugin [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/READ
 - **[API Reference](packages/core/docs/API_REFERENCE.md)** - Complete API documentation
 - **[Contributing Guide](CONTRIBUTING.md)** - Contribution guidelines and standards
 - **[Architecture Guide](packages/core/docs/ARCHITECTURE_GUIDE.md)** - System architecture and design patterns
+- **[Versioning Policy](packages/core/docs/VERSIONING_POLICY.md)** - Independent per-package versioning
 
 ### Guides & References
 
@@ -326,36 +339,29 @@ _(via le plugin [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/READ
 
 ## Performance Metrics
 
-GeoLeaf is optimized for production performance. **Chaque ligne ci-dessous porte la commande qui
-la mesure** : un chiffre recopié en prose se périme sans que personne ne le voie — celui du bundle
-avait déjà divergé d'un facteur supérieur à 100.
+GeoLeaf is optimized for production performance. Every line below carries the command that measures
+it, so nothing here can go stale unnoticed:
 
-- **Bundle Size** — la clôture transitive des imports statiques depuis l'entrée, pas l'entrée
-  seule : `npm run size` (budget dur : échec de build au-delà de 300 Ko gz, alerte à 270).
-  MapLibre GL est une peer dependency `external`, hors de ce budget
-- **Bundle des plugins** — `npm run size:plugins`, un budget par plugin
-- **Poids réellement servi par l'application livrée** — `npm run size:app`, mesuré sur
-  `deploy/deploy-core/` et `deploy/deploy-full/` après régénération du déployé
-- **Browser Support**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ — dérivé de la cible de
-  compilation `ES2022`, déclarée dans les `tsconfig` du dépôt
-- **Offline** — capacité in-core, activée par profil ; ce que le navigateur exécute réellement
-  au boot se mesure par `node scripts/verify-e2e-coverage.cjs`
-
-> ⚠️ **Trois métriques ont été retirées d'ici le 10/08/2026 parce qu'aucune commande ne les
-> rendait** : « Tree-Shaking : 75.7 % », « Initialization : < 100 ms » et « Runtime : smooth
-> avec 1000+ POI ». Elles n'étaient pas fausses — elles étaient **infalsifiables**, donc
-> incapables de se périmer. Une mesure qu'on ne peut pas rejouer ne vieillit jamais : elle
-> fossilise. Les rétablir demande d'abord d'écrire l'oracle qui les produit.
+- **Bundle Size** — the transitive closure of static imports from the entry point, not the entry
+  point alone: `npm run size` (hard budget: the build fails above 300 KB gz, warns at 270).
+  MapLibre GL is an `external` peer dependency and sits outside that budget
+- **Plugin bundles** — `npm run size:plugins`, one budget per plugin
+- **Weight actually served by the shipped application** — `npm run size:app`, measured on
+  `deploy/deploy-core/` and `deploy/deploy-full/` after the deploy output is regenerated
+- **Browser Support**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ — derived from the `ES2022`
+  compilation target declared in the repository's `tsconfig` files
+- **Offline** — an in-core capability, enabled per profile; what the browser actually executes at
+  boot is measured by `node scripts/verify-e2e-coverage.cjs`
 
 ### Code Quality
 
 - **Test Coverage**: gated per package, ratcheted upwards only — `npm run test:coverage:all` (Vitest + Istanbul), plus Playwright E2E
-- **Security**: XSS protection, input sanitization, CSP headers — surface gardée par
-  `scripts/audit-innerhtml.cjs` et les règles `security/*` d'ESLint
-- **TypeScript**: strict mode, définitions publiées avec le paquet. ⚠️ La couverture du typage
-  du namespace global n'est **pas** complète (traîne `[key: string]: unknown`) : son avancement
-  se mesure par `node scripts/check-namespace-typing-coverage.cjs`
-- **ESLint**: `npm run lint` — 0 warning est la condition de passage, pas une observation
+- **Security**: XSS protection, input sanitization, CSP headers — the surface is guarded by
+  `scripts/audit-innerhtml.cjs` and the ESLint `security/*` rules
+- **TypeScript**: strict mode, with definitions published alongside the package. Typing coverage of
+  the global namespace is not yet complete (a trailing `[key: string]: unknown` remains); progress
+  is measured by `node scripts/check-namespace-typing-coverage.cjs`
+- **ESLint**: `npm run lint` — zero warnings is the pass condition
 
 ---
 
@@ -381,15 +387,9 @@ GeoLeaf-Js/
 └── scripts/                  # Build, CI and verification scripts
 ```
 
-> **No count is written above, and that is deliberate.** This tree said « 369 source files »,
-> named two packages that had been renamed (`plugin-storage`, `plugin-addpoi`) and two deploy
-> variants that never existed (`deploy-storage`, `deploy-storage-addpoi`) — while listing a `src/`
-> layout (`poi/`, `filters/`, `route/`, `table/`) that had been dissolved or moved. It is the
-> repository's own showcase, and it had not followed eight structure sprints.
->
-> The authoritative tree is **generated and gated**: `npm run docs:tree` writes
-> `docs/reference/ARBORESCENCE_QUALIFIEE.md`, and `ci:local` fails when it drifts. The
-> shipped package list is `npm run versions:check`.
+The tree above is a summary. The authoritative one is **generated and gated**: `npm run docs:tree`
+writes `docs/reference/ARBORESCENCE_QUALIFIEE.md`, and `ci:local` fails when it drifts. The shipped
+package list comes from `npm run versions:check`.
 
 See [Architecture Guide](packages/core/docs/ARCHITECTURE_GUIDE.md) for structure and design details.
 
@@ -411,16 +411,16 @@ Build your own business-specific mapping application using the flexible profile 
 
 GeoLeaf uses a **profile-based configuration system** with JSON files:
 
-### Configuration applicative (`profiles/geoleaf.config.json`)
+### Application configuration (`profiles/geoleaf.config.json`)
 
-Quel profil charger, et les capacités app-globales (`modules.*`) :
+Which profile to load, and the app-wide capabilities (`modules.*`):
 
 ```jsonc
 {
     "debug": false,
     "data": {
         "activeProfile": "tourism",
-        "profilesBasePath": "../profiles", // relatif à CE fichier
+        "profilesBasePath": "../profiles", // relative to THIS file
     },
     "modules": {
         "profile-switcher": { "enabled": true },
@@ -429,11 +429,12 @@ Quel profil charger, et les capacités app-globales (`modules.*`) :
 }
 ```
 
-### Configuration de profil (`profiles/tourism/profile.json`)
+### Profile configuration (`profiles/tourism/profile.json`)
 
-⚠️ **Les sous-configurations ne vivent PAS à la racine du profil** : `profile.json` est un
-manifeste qui les **route** par `Files`. Un exemple qui place `layers`, `ui` ou `basemaps` à
-la racine ne charge rien — sans erreur.
+> [!WARNING]
+> **Sub-configurations do NOT live at the root of the profile.** `profile.json` is a manifest that
+> **routes** them through `Files`. An example that puts `layers`, `ui` or `basemaps` at the root
+> loads nothing — and reports no error.
 
 ```jsonc
 {
@@ -443,9 +444,7 @@ la racine ne charge rien — sans erreur.
     "icon": "🏖️",
     "version": "1.3.0",
     "map": {
-        "bounds": [
-            /* … */
-        ],
+        "bounds": [/* … */],
         "initialMaxZoom": 10,
     },
     "Files": {
@@ -457,15 +456,15 @@ la racine ne charge rien — sans erreur.
         "modules": {
             "legend": "config/plugins/legend.json",
             "filter": "config/plugins/filter.json",
-            // … une entrée par capacité ou plugin configuré
+            // … one entry per configured capability or plugin
         },
     },
 }
 ```
 
-**L'inventaire exhaustif des clés est généré, pas rédigé** — 404 propriétés sur 12 schémas,
-qu'aucun document ne recopie : [`PROFILE_SCHEMA_REFERENCE.md`](docs/reference/PROFILE_SCHEMA_REFERENCE.md)
-(`npm run gen:profile-schema`). Guide de prise en main :
+**The exhaustive key inventory is generated, not written** — see
+[`PROFILE_SCHEMA_REFERENCE.md`](docs/reference/PROFILE_SCHEMA_REFERENCE.md), produced by
+`npm run gen:profile-schema` from the schemas in `profiles/schemas/`. Introductory guide:
 [Configuration Guide](packages/core/docs/CONFIGURATION_GUIDE.md).
 
 ---
@@ -525,21 +524,25 @@ import { Core } from "@geoleaf/core";
 import "@geoleaf/core/style.css";
 ```
 
-> 🛑 **Deux régimes de résolution, et les confondre est l'erreur qui a produit ce paragraphe.**
-> Un `import` (bundler, Node, TypeScript) passe par la carte `exports` du paquet : seuls les
-> sous-chemins qu'elle déclare existent, et `@geoleaf/core/dist/…` lève
-> `ERR_PACKAGE_PATH_NOT_EXPORTED` — la feuille de style s'appelle `@geoleaf/core/style.css`.
-> Une **URL de CDN**, elle, ne résout rien du tout : jsDelivr et unpkg servent le tarball **à
-> plat** et ignorent la carte `exports`, donc `…/@geoleaf/core@<version>/dist/geoleaf.esm.js`
-> reste valide. Les deux formes ci-dessous sont donc justes **chacune dans son régime** ;
-> aligner les URLs de CDN sur `./style.css` les casserait.
-> La liste des sous-chemins réellement ouverts :
+> [!IMPORTANT]
+> **There are two resolution regimes, and they must not be confused.** An `import` (bundler, Node,
+> TypeScript) goes through the package's `exports` map: only the subpaths it declares exist, and
+> `@geoleaf/core/dist/…` throws `ERR_PACKAGE_PATH_NOT_EXPORTED` — the stylesheet is called
+> `@geoleaf/core/style.css`. A **CDN URL**, on the other hand, resolves nothing at all: jsDelivr and
+> unpkg serve the tarball **flat** and ignore the `exports` map, so
+> `…/@geoleaf/core@<version>/dist/geoleaf.esm.js` stays valid. Both forms below are therefore
+> correct **each within its own regime**; aligning the CDN URLs on `./style.css` would break them.
+>
+> The list of subpaths that are actually open:
 > `node -p "Object.keys(require('@geoleaf/core/package.json').exports).join('\n')"`.
 
 ### CDN (jsDelivr)
 
+`<version>` is a placeholder, exactly as in the paragraph above — `npm view @geoleaf/core version`
+prints what the registry currently serves.
+
 ```html
-<!-- MapLibre GL JS — peer dependency, à charger AVANT GeoLeaf -->
+<!-- MapLibre GL JS — peer dependency, to load BEFORE GeoLeaf -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
 <script type="module">
     import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -548,25 +551,20 @@ import "@geoleaf/core/style.css";
 
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf-main.min.css"
 />
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@<version>/dist/geoleaf.esm.js"
 ></script>
 ```
-
-> ⚠️ Charger `geoleaf.esm.js` seul ne lève pas tout de suite — `maplibre-gl` est `external`, et
-> son global n'est lu qu'à la création de la carte. **HTML-04** ne mord donc pas sur ce bloc, qui
-> ne boote rien. Le shim est là parce qu'une recette d'installation doit porter sa peer
-> dependency, pas parce qu'une gate l'exige.
 
 ---
 
 ## Testing
 
-- **Unit tests:** Vitest (ESM, Istanbul coverage) — la version installée se lit dans le
-  `devDependencies` de la racine, elle ne se recopie pas ici
+- **Unit tests:** Vitest (ESM, Istanbul coverage) — the installed version is declared in the root
+  `devDependencies` rather than restated here
 - **E2E tests:** Playwright (Chromium)
 - **Coverage:** per-package thresholds, gated and ratcheted upwards only — `npm run test:coverage:all`
 
@@ -593,11 +591,10 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 
 **License:** MIT (Open Source)
 
-GeoLeaf Core is released under the **MIT License** - free for commercial and personal use.
+GeoLeaf Core is released under the **MIT License** — free for commercial and personal use.
 
-- **Plugins:** optional packages under the `@geoleaf-plugins/*` scope are MIT too, **intended for**
-  npmjs.org and versioned independently. Each ships its own `LICENSE` and documentation.
-  Which of them are actually on the registry is measured, never copied: `npm view <package> version`.
+- **Plugins:** the optional packages under the `@geoleaf-plugins/*` scope are MIT too, versioned
+  independently. Each ships its own `LICENSE` and its own documentation.
 - See [LICENSE](LICENSE) for the complete license text
 - See [NOTICE.md](packages/core/docs/NOTICE.md) for core vs modules and third-party attributions
 

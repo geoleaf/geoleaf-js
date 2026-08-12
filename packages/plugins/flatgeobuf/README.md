@@ -9,6 +9,18 @@ Supports full-file loading and **HTTP Range spatial filtering** via the FGB R-tr
 
 ---
 
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/flatgeobuf version  # what the registry serves
+> npm run versions:check                        # what this repository declares
+> ```
+>
+> Until those agree, build from source.
+
 ## Installation
 
 ```bash
@@ -26,7 +38,7 @@ Load in your HTML after `@geoleaf/core`:
 
 ---
 
-## Configuration JSON déclarative
+## Declarative JSON configuration
 
 The recommended way to integrate FlatGeobuf layers in GeoLeaf profiles is via declarative JSON configuration. Each layer config file declares `"plugin": "flatgeobuf"` and a `data` block. A single call to `loadLayerFromConfig()` handles routing to the correct loading strategy.
 
@@ -57,7 +69,7 @@ interface FgbLayerJsonConfig {
 
 When `data.bbox` is set, the plugin uses the FGB spatial index and HTTP Range requests to fetch only features within the bounding box — minimising transferred bytes. When absent, the complete file is streamed.
 
-### Exemple 1 — zones_desserte (bbox + auto-refresh)
+### Example 1 — zones_desserte (bbox + auto-refresh)
 
 Profile (chemin d'ILLUSTRATION — `france-rail` n'est pas un profil de ce dépôt ; le dépôt livre
 `tourism`, plus la fixture `_reference`, que `build-deploy.cjs` écarte comme tout répertoire
@@ -91,7 +103,7 @@ const layerId = await GeoLeaf.FlatGeobuf.loadLayerFromConfig(config);
 
 Verify the spatial filtering is active: open DevTools → Network → filter `.fgb` → check that the response has a `Content-Range` header.
 
-### Exemple 2 — eco_regions_fgb (fichier local, sans bbox)
+### Example 2 — eco_regions_fgb (local file, no bbox)
 
 Profile: `profiles/tourism/layers/eco_regions_fgb/eco_regions_fgb_config.json`
 
@@ -116,37 +128,27 @@ const layerId = await GeoLeaf.FlatGeobuf.loadLayerFromConfig(config);
 // Streams the complete .fgb file — no bbox filtering
 ```
 
-### Gain de taille FlatGeobuf vs GeoJSON
+### FlatGeobuf vs GeoJSON size
 
-⚠️ **Le tableau chiffré qui vivait ici est retiré — il était fossilisé, et sa seule ligne
-reproductible s'était INVERSÉE.** Il annonçait `eco_regions` (tourism) à 2 106 Ko en GeoJSON
-contre 1 076 Ko en FlatGeobuf, soit **−51 %**. Mesuré le 31/07/2026 sur les fichiers du dépôt :
-le GeoJSON fait **259 Ko** et le `.fgb` **1 076 Ko** — le FlatGeobuf est **4× plus gros**.
-
-La cause n'est pas une erreur de mesure, c'est une désynchronisation datée : le commit
-`5b8c6c8f` (« perf(S2) : allègement GeoJSON −77 %, mapshaper DP 10 %, précision 6 déc. ») a
-simplifié la source **après** la génération du `.fgb` (`b5c74a36`), qui n'a jamais été
-régénéré. Les deux fichiers ne portent donc plus la même géométrie et ne sont plus comparables.
-La seconde ligne citait `france-rail`, **profil absent du dépôt** : sa mesure n'était
-reproductible par personne.
-
-**Mesurer soi-même, sur ses propres données :**
+No comparison table is given here, because the ratio depends entirely on your data. Measure it on
+your own layers:
 
 ```bash
-ls -l <couche>/data/*.geojson <couche>/data/*.fgb
+ls -l <layer>/data/*.geojson <layer>/data/*.fgb
 ```
 
-Le gain FlatGeobuf est réel sur de gros jeux polygonaux **à géométrie équivalente**, et
-l'indexation spatiale + les requêtes HTTP Range restent le vrai bénéfice : elles ne
-transfèrent que les features intersectant la vue, ce qu'aucun GeoJSON ne sait faire.
+> [!IMPORTANT]
+> Compare **equivalent geometry**. A `.fgb` generated before its GeoJSON source was simplified will
+> be larger than the source, and the comparison then measures the simplification rather than the
+> format.
 
-> 📌 Effet de bord constaté et **non corrigé ici** : la couche `eco_regions_fgb` livrée dans
-> `profiles/tourism/` sert donc ~1 Mo de géométrie non simplifiée. Régénérer le `.fgb` depuis
-> la source allégée relève du pipeline de données, pas d'une passe documentaire.
+The FlatGeobuf gain is real on large polygon datasets at equivalent geometry, but the genuine
+benefit is the spatial index plus HTTP Range requests: they transfer only the features intersecting
+the current view, which no GeoJSON can do.
 
 ---
 
-## API programmatique
+## Programmatic API
 
 Four lower-level functions are also available for direct use:
 
@@ -203,7 +205,7 @@ const layerId = await GeoLeaf.FlatGeobuf.loadBboxAsLayer(
 
 ### `loadLayerFromConfig(config)`
 
-Parses a declarative JSON config object (see [Configuration JSON déclarative](#configuration-json-déclarative)) and delegates to `loadAsLayer` or `loadBboxAsLayer` based on whether `data.bbox` is set.
+Parses a declarative JSON config object (see [Declarative JSON configuration](#declarative-json-configuration)) and delegates to `loadAsLayer` or `loadBboxAsLayer` based on whether `data.bbox` is set.
 
 ```typescript
 const layerId = await GeoLeaf.FlatGeobuf.loadLayerFromConfig({
@@ -260,7 +262,8 @@ interface FgbLoadResult {
 
 ## Converting GeoJSON to FlatGeobuf
 
-> **⚠️ Spatial index required for bbox / HTTP Range mode.** Bbox filtering (`loadBbox`,
+> [!IMPORTANT]
+> **Spatial index required for bbox / HTTP Range mode.** Bbox filtering (`loadBbox`,
 > `loadBboxAsLayer`, declarative `data.bbox`, `autoRefresh`) needs the file's R-tree spatial
 > index. **The `flatgeobuf` npm `serialize()` does NOT write an index** (it sets
 > `indexNodeSize = 0`) — files produced that way support full-file `load()` only, and bbox
@@ -300,6 +303,6 @@ writeFileSync("data.fgb", Buffer.from(serialize(geojson))); // full-file load() 
 
 ---
 
-## Licence
+## License
 
 MIT — © 2026 Mattieu Pottier

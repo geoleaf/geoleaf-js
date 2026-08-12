@@ -13,7 +13,7 @@ title: "Cache Button"
 
 The Cache Button is a MapLibre GL JS control injected by the `@geoleaf-plugins/offline-ui` plugin when the option `showCacheButton` is enabled. It provides an offline cache management UI accessible from the map interface.
 
-> This component is part of the Storage plugin and is **not** included in `@geoleaf/core`. The core only detects its presence and delegates initialization to the plugin.
+> This component is part of the Storage plugin and is **not** included in `@geoleaf/core`. The core only detects its presence and delegates initialisation to the plugin.
 
 ---
 
@@ -36,7 +36,7 @@ Enable or disable the button in your GeoLeaf profile:
 When the Storage plugin is loaded, the following methods are available:
 
 ```js
-// Initialized automatically at boot (if showCacheButton: true)
+// Initialised automatically at boot (if showCacheButton: true)
 GeoLeaf.UI.CacheButton.init(map, cfg);
 
 // Open the cache management modal programmatically
@@ -52,7 +52,7 @@ GeoLeaf.UI.CacheButton.closeModal();
 
 - Keyboard shortcut: `Escape` closes the modal
 - ARIA attributes on the control button
-- Color contrast compliant
+- Colour contrast compliant
 
 ---
 

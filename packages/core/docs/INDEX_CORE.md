@@ -6,55 +6,52 @@ title: "GeoLeaf Core — Documentation Index"
 
 **Package:** `@geoleaf/core`
 **Version:** 3.0.0
-**Mise à jour :** Mars 2026
 **License:** MIT
 
 Documentation for the **GeoLeaf Core** library (MIT only). This index covers the public core package only. Each plugin ships its own documentation in its npm package. For available plugins, visit [geoleaf.dev](https://geoleaf.dev).
-
-> **Note:** This documentation index has been fully reviewed and updated for v3.0.0 (MapLibre GL JS engine, refactored module structure, new adapters layer). All files listed below reflect the current codebase state.
 
 ---
 
 ## Quick links
 
-| Document                                                | Description                                                 |
-| ------------------------------------------------------- | ----------------------------------------------------------- |
-| [Getting Started](GETTING_STARTED.md)                   | Installation and first map — v3.0.0                         |
-| [Quickstart Tutorial](QUICKSTART_TUTORIAL.md)           | Projet de A à Z (localisateur de commerces) — v3.0.0        |
-| [User Guide](USER_GUIDE.md)                             | Complete feature documentation — v3.0.0                     |
-| [Configuration Guide](CONFIGURATION_GUIDE.md)           | JSON configuration reference — v3.0.0                       |
-| [API Reference](API_REFERENCE.md)                       | Public API — facades & ESM exports — v3.0.0                 |
-| [Architecture Guide](ARCHITECTURE_GUIDE.md)             | Design, boot sequence, modules — v3.0.0                     |
-| [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) | Créer un plugin custom — v3.0.0                             |
-| [Core Extension Guide](CORE_EXTENSION_GUIDE.md)         | Ajouter un module interne au core (fork MIT) — v3.0.0       |
-| Connector Guide → livré par le plugin                   | Authentification HTTP (@geoleaf-plugins/connector) — v3.0.0 |
-| [Contributing](CONTRIBUTING.md)                         | Contribution guidelines — v3.0.0                            |
+| Document                                                | Description                                               |
+| ------------------------------------------------------- | --------------------------------------------------------- |
+| [Getting Started](GETTING_STARTED.md)                   | Installation and first map — v3.0.0                       |
+| [Quickstart Tutorial](QUICKSTART_TUTORIAL.md)           | End-to-end project (store locator) — v3.0.0               |
+| [User Guide](USER_GUIDE.md)                             | Complete feature documentation — v3.0.0                   |
+| [Configuration Guide](CONFIGURATION_GUIDE.md)           | JSON configuration reference — v3.0.0                     |
+| [API Reference](API_REFERENCE.md)                       | Public API — facades & ESM exports — v3.0.0               |
+| [Architecture Guide](ARCHITECTURE_GUIDE.md)             | Design, boot sequence, modules — v3.0.0                   |
+| [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) | Build a custom plugin — v3.0.0                            |
+| [Core Extension Guide](CORE_EXTENSION_GUIDE.md)         | Add an internal core module (MIT fork) — v3.0.0           |
+| Connector Guide → shipped by the plugin                 | HTTP authentication (@geoleaf-plugins/connector) — v3.0.0 |
+| [Contributing](CONTRIBUTING.md)                         | Contribution guidelines — v3.0.0                          |
 
 ---
 
 ## User & configuration
 
-- [Getting Started](GETTING_STARTED.md) — Installation, deux modes d’initialisation, premiers pas — v3.0.0
-- [Quickstart Tutorial](QUICKSTART_TUTORIAL.md) — Projet complet de A à Z avec profil — v3.0.0
+- [Getting Started](GETTING_STARTED.md) — Installation, two initialization modes, first steps — v3.0.0
+- [Quickstart Tutorial](QUICKSTART_TUTORIAL.md) — Complete end-to-end project with a profile — v3.0.0
 - [User Guide](USER_GUIDE.md) — Features and usage — v3.0.0
 - [Configuration Guide](CONFIGURATION_GUIDE.md) — Profile and layer configuration — v3.0.0
 - [Profiles Guide](PROFILES_GUIDE.md) — Custom business profiles — v3.0.0
 - [Profile JSON Reference](PROFILE_JSON_REFERENCE.md) — Schema and fields (120+ parameters) — v3.0.0
-- [Plugin Configuration Guide](PLUGIN_CONFIGURATION_GUIDE.md) — Clés de profil liées aux plugins (storage, addpoi) — v3.0.0
+- [Plugin Configuration Guide](PLUGIN_CONFIGURATION_GUIDE.md) — Plugin-related profile keys (storage, addpoi) — v3.0.0
 - [CDN / ESM usage](usage-cdn.md) — NPM and CDN integration — v3.0.0
 - [FAQ](FAQ.md) — Common questions and troubleshooting — v3.0.0
 - [Cookbook](COOKBOOK.md) — Practical recipes — v3.0.0
 - [Accessibility](ACCESSIBILITY.md) — RGAA 4.1 compliance — v3.0.0
-- [PWA](pwa/pwa.md) — Progressive Web App configuration — v3.0.0
+- [PWA](pwa.md) — Progressive Web App: configuration, deployment, install prompt
 
 ---
 
 ## Developer
 
-- [Architecture Guide](ARCHITECTURE_GUIDE.md) — Boot sequence, capacités in-core, plugin registry — v3.0.0
-- [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) — Créer un plugin custom (pattern ESM, bridge globalThis, PluginRegistry) — v3.0.0
-- [Core Extension Guide](CORE_EXTENSION_GUIDE.md) — Ajouter un nouveau module interne au core forké (séquence boot, ICoreModule, façades) — v3.0.0
-- Connector Guide — Authentification HTTP transparente avec @geoleaf-plugins/connector (MIT) — v3.0.0. **Le guide n'est plus dans ce tarball** : il est livré par le paquet du plugin, en `docs/CONNECTOR_GUIDE.md` (dépôt : `packages/plugins/connector/docs/CONNECTOR_GUIDE.md`)
+- [Architecture Guide](ARCHITECTURE_GUIDE.md) — Boot sequence, in-core capabilities, plugin registry — v3.0.0
+- [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) — Build a custom plugin (ESM pattern, globalThis bridge, PluginRegistry) — v3.0.0
+- [Core Extension Guide](CORE_EXTENSION_GUIDE.md) — Add a new internal module to a forked core (boot sequence, ICoreModule, facades) — v3.0.0
+- Connector Guide — Transparent HTTP authentication with @geoleaf-plugins/connector (MIT) — v3.0.0. **The guide is not part of this package**: it ships with the plugin package, at `docs/CONNECTOR_GUIDE.md` (repository: `packages/plugins/connector/docs/CONNECTOR_GUIDE.md`)
 - [Contributing](CONTRIBUTING.md) — Monorepo workflow, conventions, TSDoc — v3.0.0
 - [Versioning Policy](VERSIONING_POLICY.md) — SemVer policy — v3.0.0
 - [Performance Metrics](PERFORMANCE_METRICS.md) — Runtime metrics — v3.0.0
@@ -94,7 +91,7 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 | Label Button Manager  | [labels/LABEL_BUTTON_MANAGER.md](labels/LABEL_BUTTON_MANAGER.md)                             | v3.0.0  |
 | Config                | [config/GeoLeaf_Config_README.md](config/GeoLeaf_Config_README.md)                           | v3.0.0  |
 | Config Layers         | [config/LAYER_CONFIG.md](config/LAYER_CONFIG.md)                                             | v3.0.0  |
-| Taxonomy (symboles)   | [API_REFERENCE.md](API_REFERENCE.md#taxonomy--the-point-symbol)                              | v3.0.0  |
+| Taxonomy (symbols)    | [API_REFERENCE.md](API_REFERENCE.md#taxonomy--the-point-symbol)                              | v3.0.0  |
 | Config Scale          | [config/SCALE_CONFIG.md](config/SCALE_CONFIG.md)                                             | v3.0.0  |
 | Data Normalizer       | [config/data-normalizer.md](config/data-normalizer.md)                                       | v3.0.0  |
 | POI Fields Tourism    | [config/poi-fields-tourism.md](config/poi-fields-tourism.md)                                 | v3.0.0  |
@@ -126,16 +123,16 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 
 ## Plugins
 
-### Plugin MIT public
+### Public MIT plugin
 
-- **@geoleaf-plugins/connector** — Authentification HTTP transparente (fetch intercept, JWT, login modal). Documentation : `packages/plugins/connector/README.md` et `packages/plugins/connector/docs/CONNECTOR_GUIDE.md`, tous deux livrés par le paquet du plugin
+- **@geoleaf-plugins/connector** — Transparent HTTP authentication (fetch interception, JWT, login modal). Documentation: `packages/plugins/connector/README.md` and `packages/plugins/connector/docs/CONNECTOR_GUIDE.md`, both shipped by the plugin package
 
-### Plugins commerciaux
+### Commercial plugins
 
 Plugin documentation is **not** duplicated here — it ships inside each `@geoleaf-plugins/*` package.
 
 - **@geoleaf-plugins/offline-ui** — Offline cache, IndexedDB, tile persistence
 
-Pour la configuration des plugins dans un profil : [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)
+For plugin configuration inside a profile: [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)
 
 Visit [geoleaf.dev](https://geoleaf.dev) for licensing information.

@@ -464,6 +464,35 @@ const STEPS = [
         name: "Chemins cités par la prose des TSDoc (TSDOC-PATHS)",
         run: ["npm", "run", "check:tsdoc-paths"],
     },
+    // Même cliquet, autre corpus — les renvois des 45 fiches de `docs/specs/`, posé le
+    // 11/08/2026 (tâche 6.11, classes B et C).
+    //
+    // 🛑 **Le motif est un TROU MESURÉ, pas une précaution.** Par élimination sur les 78 gates
+    // d'alors : `check-dead-links` n'extrait que `[texte](cible)` — un chemin en backticks lui
+    // est invisible ; TSDOC-PATHS s'arrête aux `src/` de paquet et n'a pas `md` dans son
+    // alternance ; les corpus `.md` de `validate-docs-examples` / `typecheck-docs-examples` se
+    // prennent à profondeur 0 de la racine, donc jamais `docs/`. **546 paires (fiche→chemin)
+    // n'étaient gardées par rien**, et c'est exactement ce que la roadmap constatait de la
+    // classe B : « elle se périme sans jamais rougir ». Le premier run a trouvé 115 chemins
+    // morts et 6 déménagés.
+    //
+    // ⚠️ La baseline est le DOMICILE des chemins nommés parce qu'ils sont morts (« ce
+    // répertoire n'existe plus », les CDC consommés puis supprimés) : 15 sur 20 à la classe A.
+    // Les y geler évite de « corriger » des phrases qui disaient juste.
+    {
+        name: "Chemins cités par les fiches docs/specs (SPECS-PATHS)",
+        run: ["npm", "run", "check:specs-paths"],
+    },
+    // B-222 — la 3ᵉ sous-racine publique. `SPECS-PATHS` ne gardait que `docs/specs/`, alors
+    // que `guides/` et `reference/` partent dans le MÊME dépôt public et sont lues par les
+    // mêmes gens. Le trou était mesuré : `TESTING_GUIDE.md` a enseigné pendant des mois une
+    // suite `poi.test.js` disparue avec le module POI, et aucune gate ne pouvait la voir —
+    // `check-dead-links` n'extrait que `[texte](cible)`, jamais un nom en backticks.
+    // Vue rougir sur ses DEUX axes avant d'être crue (01 chemin neuf, 02 baseline périmée).
+    {
+        name: "Chemins cités par docs/guides et docs/reference (GUIDES-PATHS)",
+        run: ["npm", "run", "check:guides-paths"],
+    },
     // API publique S3.4 — même patron de cliquet que MOD-HEADERS, sur un autre objet :
     // tout nom `geoleaf:*` relevé dans les sources doit exister dans `GeoLeafEventMap` ou
     // `GeoLeafRawEventMap`. 23 typés sur 76 relevés au câblage ; les 53 restants sont en

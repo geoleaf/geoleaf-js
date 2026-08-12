@@ -1,62 +1,59 @@
 ---
-title: "Guide : Tuiles Vectorielles MVT / PBF"
+title: "Guide: MVT / PBF Vector Tiles"
 ---
 
-# Guide : Tuiles Vectorielles MVT / PBF
+# Guide: MVT / PBF Vector Tiles
 
-Product Version: GeoLeaf Platform V3
-**Date de création** : 20 mars 2026
-**Mise a jour** : 22 mars 2026 — Migration MapLibre GL JS v2.0.0
-**Reference** : Roadmap phase 1.6 — Sprint 8
+Applies to: @geoleaf/core v3.x
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Les **tuiles vectorielles** (MVT — Mapbox Vector Tiles, format PBF — Protocol Buffers) permettent
-de charger des couches géographiques complexes sans transférer ni parser un fichier GeoJSON complet.
+**Vector tiles** (MVT — Mapbox Vector Tiles, PBF format — Protocol Buffers) load complex
+geographic layers without transferring or parsing a full GeoJSON file.
 
-Les tuiles sont pré-découpées en carreaux (`{z}/{x}/{y}.pbf`) et chargées à la demande selon
-le niveau de zoom et l'emprise visible. Seules les tuiles nécessaires à l'affichage courant sont
-téléchargées — la carte reste fluide même pour des jeux de données très denses.
+Tiles are pre-cut into squares (`{z}/{x}/{y}.pbf`) and loaded on demand according to the zoom
+level and the visible extent. Only the tiles needed for the current view are downloaded — the map
+stays fluid even for very dense datasets.
 
-**Quand utiliser MVT vs GeoJSON ?**
+**When to use MVT rather than GeoJSON?**
 
-| Critere                          | GeoJSON classique       | MVT / PBF                               |
-| -------------------------------- | ----------------------- | --------------------------------------- |
-| Volume features                  | < 5 000 features        | >= 5 000 features (lignes/polygones)    |
-| Interactivite (popups, tooltips) | Complete                | Complete (`interactive: true`)          |
-| Clustering POI                   | Supporte (supercluster) | Non supporte                            |
-| Styles dynamiques (styleRules)   | Complet                 | Complet (MapLibre Style Spec)           |
-| Expressions de style GL          | Non supporte            | Supporte (`match`, `interpolate`, etc.) |
-| Prerequis build                  | Aucun                   | Pre-generer les tuiles                  |
+| Criterion                        | Plain GeoJSON            | MVT / PBF                             |
+| -------------------------------- | ------------------------ | ------------------------------------- |
+| Feature volume                   | < 5,000 features         | >= 5,000 features (lines/polygons)    |
+| Interactivity (popups, tooltips) | Full                     | Full (`interactive: true`)            |
+| POI clustering                   | Supported (supercluster) | Not supported                         |
+| Dynamic styles (styleRules)      | Full                     | Full (MapLibre Style Spec)            |
+| GL style expressions             | Not supported            | Supported (`match`, `interpolate`, …) |
+| Build prerequisite               | None                     | Tiles must be pre-generated           |
 
 ---
 
-## Prerequis
+## Prerequisites
 
-### MapLibre GL JS (source vectorielle native)
+### MapLibre GL JS (native vector source)
 
-Depuis GeoLeaf v2.0.0, les tuiles vectorielles sont gerees nativement par MapLibre GL JS
-via `map.addSource()` + `map.addLayer()`. Aucune dependance supplementaire n'est necessaire.
+Vector tiles are handled natively by MapLibre GL JS through `map.addSource()` +
+`map.addLayer()`. No extra dependency is required.
 
-MapLibre GL JS est la seule peer dependency requise :
+MapLibre GL JS is the only required peer dependency:
 
 ```bash
 npm install maplibre-gl
 ```
 
-### Tuiles pre-generees
+### Pre-generated tiles
 
-Le mode MVT **requiert** que les tuiles PBF aient ete generees avant le deploiement.
-Voir la section « Génération des tuiles » ci-dessous.
+MVT mode **requires** the PBF tiles to have been generated before deployment.
+See the "Tile generation" section below.
 
 ---
 
-## Configuration d'une couche en mode MVT
+## Configuring a layer in MVT mode
 
-Ajoutez un bloc `data.vectorTiles` dans le fichier de configuration de la couche
-(`layers/{layerId}/{layerId}_config.json`) :
+Add a `data.vectorTiles` block to the layer configuration file
+(`layers/{layerId}/{layerId}_config.json`):
 
 ```json
 {
@@ -79,27 +76,27 @@ Ajoutez un bloc `data.vectorTiles` dans le fichier de configuration de la couche
 }
 ```
 
-### Paramètres `data.vectorTiles`
+### `data.vectorTiles` parameters
 
-| #   | Paramètre        | Type      | Défaut    | Obligatoire | Description                                                                                                                                                        |
-| --- | ---------------- | --------- | --------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | `enabled`        | `boolean` | `false`   | ✅          | Active le mode MVT pour cette couche. Si `false` ou absent, GeoLeaf charge le fichier GeoJSON classique.                                                           |
-| 2   | `tilesDirectory` | `string`  | `"tiles"` |             | Sous-dossier relatif au répertoire de la couche contenant les tuiles PBF générées.                                                                                 |
-| 3   | `layerName`      | `string`  | `{id}`    |             | Nom de la couche à l'intérieur du fichier PBF. Un même fichier peut contenir plusieurs couches — ce paramètre indique laquelle extraire. Défaut : id de la couche. |
-| 4   | `minZoom`        | `number`  | `0`       |             | Niveau de zoom minimum auquel les tuiles sont disponibles. En dessous, la couche n'est pas affichée.                                                               |
-| 5   | `maxNativeZoom`  | `number`  | `14`      |             | Zoom maximum pour lequel des tuiles natives existent. Au-delà, les tuiles du dernier niveau sont étirées (over-zoom).                                              |
-| 6   | `maxZoom`        | `number`  | `18`      |             | Zoom maximum total d'affichage de la couche, même en mode over-zoom. Au-delà, la couche disparaît.                                                                 |
-| 7   | `interactive`    | `boolean` | `true`    |             | Active les interactions (clic → popup, survol → tooltip) sur les features des tuiles. Désactiver améliore les performances pour les couches purement visuelles.    |
+| #   | Parameter        | Type      | Default   | Required | Description                                                                                                                                         |
+| --- | ---------------- | --------- | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `enabled`        | `boolean` | `false`   | Yes      | Enables MVT mode for this layer. When `false` or absent, GeoLeaf loads the plain GeoJSON file.                                                      |
+| 2   | `tilesDirectory` | `string`  | `"tiles"` |          | Sub-folder, relative to the layer directory, holding the generated PBF tiles.                                                                       |
+| 3   | `layerName`      | `string`  | `{id}`    |          | Name of the layer inside the PBF file. One file may contain several layers — this parameter selects which one to extract. Defaults to the layer id. |
+| 4   | `minZoom`        | `number`  | `0`       |          | Lowest zoom level at which tiles exist. Below it, the layer is not displayed.                                                                       |
+| 5   | `maxNativeZoom`  | `number`  | `14`      |          | Highest zoom level for which native tiles exist. Beyond it, the last level is stretched (over-zoom).                                                |
+| 6   | `maxZoom`        | `number`  | `18`      |          | Highest zoom level at which the layer is displayed at all, over-zoom included. Beyond it, the layer disappears.                                     |
+| 7   | `interactive`    | `boolean` | `true`    |          | Enables interactions (click → popup, hover → tooltip) on tile features. Turning it off improves performance for purely visual layers.               |
 
-### URL custom
+### Custom URL
 
-Par défaut, GeoLeaf construit l'URL des tuiles depuis le chemin du profil :
+By default, GeoLeaf builds the tile URL from the profile path:
 
 ```
 {profilesBasePath}/{profileId}/{layerDirectory}/{tilesDirectory}/{z}/{x}/{y}.pbf
 ```
 
-Pour pointer vers un serveur de tuiles externe, ajoutez un champ `url` :
+To point at an external tile server, add a `url` field:
 
 ```json
 "vectorTiles": {
@@ -111,55 +108,55 @@ Pour pointer vers un serveur de tuiles externe, ajoutez un champ `url` :
 
 ---
 
-## Génération des tuiles
+## Tile generation
 
-Le script `scripts/generate-vector-tiles.cjs` génère les fichiers PBF depuis les GeoJSON
-du profil. Il supporte deux backends :
+The `scripts/generate-vector-tiles.cjs` script generates the PBF files from the profile
+GeoJSON. It supports two backends:
 
-| Backend           | Qualité  | Plateforme            | Prérequis                                                  |
-| ----------------- | -------- | --------------------- | ---------------------------------------------------------- |
-| **tippecanoe**    | Optimale | macOS, Linux, WSL     | Installer [tippecanoe](https://github.com/felt/tippecanoe) |
-| **Node.js natif** | Bonne    | Windows, macOS, Linux | `geojson-vt` + `vt-pbf` (npm)                              |
+| Backend            | Quality | Platform              | Prerequisite                                             |
+| ------------------ | ------- | --------------------- | -------------------------------------------------------- |
+| **tippecanoe**     | Best    | macOS, Linux, WSL     | Install [tippecanoe](https://github.com/felt/tippecanoe) |
+| **Native Node.js** | Good    | Windows, macOS, Linux | `geojson-vt` + `vt-pbf` (npm)                            |
 
-> Le backend est **auto-détecté** au lancement. Si tippecanoe est disponible (y compris via WSL
-> sur Windows), il est utilisé en priorité. Sinon, le backend Node.js prend le relais.
+> The backend is **auto-detected** at launch. When tippecanoe is available (including through WSL
+> on Windows) it takes priority. Otherwise the Node.js backend takes over.
 
-### Options CLI
+### CLI options
 
 ```bash
 node scripts/generate-vector-tiles.cjs [options]
 ```
 
-| Option             | Défaut     | Description                                          |
-| ------------------ | ---------- | ---------------------------------------------------- |
-| `--profile <id>`   | `tourism`  | Profil à traiter                                     |
-| `--layer <id>`     | _(toutes)_ | Traiter une seule couche VT-enabled                  |
-| `--backend <name>` | `auto`     | Forcer `tippecanoe` ou `node`                        |
-| `--min-zoom <n>`   | `0`        | Zoom minimum de génération                           |
-| `--max-zoom <n>`   | `14`       | Zoom maximum de génération (natif)                   |
-| `--dry-run`        |            | Affiche ce qui serait généré sans écrire de fichiers |
-| `--force`          |            | Écrase les tuiles existantes                         |
+| Option             | Default   | Description                                         |
+| ------------------ | --------- | --------------------------------------------------- |
+| `--profile <id>`   | `tourism` | Profile to process                                  |
+| `--layer <id>`     | _(all)_   | Process a single VT-enabled layer                   |
+| `--backend <name>` | `auto`    | Force `tippecanoe` or `node`                        |
+| `--min-zoom <n>`   | `0`       | Lowest zoom level to generate                       |
+| `--max-zoom <n>`   | `14`      | Highest zoom level to generate (native)             |
+| `--dry-run`        |           | Print what would be generated without writing files |
+| `--force`          |           | Overwrite existing tiles                            |
 
-### Exemples
+### Examples
 
 ```bash
-# Générer toutes les couches VT du profil tourism (auto-detect backend)
+# Generate every VT layer of the tourism profile (backend auto-detected)
 node scripts/generate-vector-tiles.cjs --profile tourism
 
-# Générer une seule couche, forcer Node.js natif, en dry-run
+# Generate a single layer, force the native Node.js backend, dry run
 node scripts/generate-vector-tiles.cjs --profile tourism --layer reseau_ferroviaire --backend node --dry-run
 
-# Régénérer complètement avec tippecanoe (écrase l'existant)
+# Full regeneration with tippecanoe (overwrites existing tiles)
 node scripts/generate-vector-tiles.cjs --profile tourism --backend tippecanoe --force --max-zoom 16
 ```
 
-### Installation des dépendances Node.js (backend natif)
+### Installing the Node.js dependencies (native backend)
 
 ```bash
 npm install --save-dev geojson-vt vt-pbf
 ```
 
-### Structure de sortie
+### Output structure
 
 ```
 profiles/
@@ -168,7 +165,7 @@ profiles/
         └── reseau_ferroviaire/
             ├── data/
             │   └── reseau_ferroviaire.geojson      ← source
-            └── tiles/                              ← tuiles générées
+            └── tiles/                              ← generated tiles
                 ├── 0/
                 │   └── 0/
                 │       └── 0.pbf
@@ -181,7 +178,7 @@ profiles/
 
 ---
 
-## Flow complet
+## Full flow
 
 ```
 GeoJSON source
@@ -200,37 +197,37 @@ layers/{id}/tiles/{z}/{x}/{y}.pbf
   data.vectorTiles.layerName: "{id}"
      |
      v
-GeoLeaf.loadConfig() au boot
+GeoLeaf.loadConfig() at boot
   -> VectorTiles.shouldUseVectorTiles(def) -> true
   -> VectorTiles.loadVectorTileLayer()
   -> map.addSource(id, { type: 'vector', tiles: [url] })
   -> map.addLayer({ id, type, source, 'source-layer', paint })
      |
      v
-Carte MapLibre GL JS — rendu WebGL par tuile a la demande
+MapLibre GL JS map — WebGL rendering, tile by tile, on demand
 ```
 
 ---
 
-## Styles et interactions
+## Styles and interactions
 
-### Style de la couche
+### Layer style
 
-GeoLeaf convertit automatiquement le style GeoLeaf (fichier `styles/default.json`) en
-proprietes de style MapLibre (paint/layout) via `VectorTiles.convertStyleToMapLibre()`.
+GeoLeaf converts the GeoLeaf style (`styles/default.json`) into MapLibre style properties
+(paint/layout) through `VectorTiles.convertStyleToMapLibre()`.
 
-**Proprietes de style supportees en mode MVT (MapLibre Style Spec) :**
+**Style properties supported in MVT mode (MapLibre Style Spec):**
 
-| Propriete GeoLeaf | Propriete MapLibre paint | Type de couche |
-| ----------------- | ------------------------ | -------------- |
-| `fillColor`       | `fill-color`             | `fill`         |
-| `fillOpacity`     | `fill-opacity`           | `fill`         |
-| `color`           | `line-color`             | `line`         |
-| `weight`          | `line-width`             | `line`         |
-| `opacity`         | `line-opacity`           | `line`         |
+| GeoLeaf property | MapLibre paint property | Layer type |
+| ---------------- | ----------------------- | ---------- |
+| `fillColor`      | `fill-color`            | `fill`     |
+| `fillOpacity`    | `fill-opacity`          | `fill`     |
+| `color`          | `line-color`            | `line`     |
+| `weight`         | `line-width`            | `line`     |
+| `opacity`        | `line-opacity`          | `line`     |
 
-**Les `styleRules` sont supportees** — GeoLeaf les convertit en expressions MapLibre
-(`match`, `case`) pour un rendu GPU natif. Exemple de style avec regles thematiques :
+**`styleRules` are supported** — GeoLeaf converts them into MapLibre expressions
+(`match`, `case`) for native GPU rendering. Example of a style with thematic rules:
 
 ```json
 {
@@ -248,7 +245,7 @@ proprietes de style MapLibre (paint/layout) via `VectorTiles.convertStyleToMapLi
 }
 ```
 
-GeoLeaf genere l'equivalent MapLibre Style Spec suivant :
+GeoLeaf produces the following MapLibre Style Spec equivalent:
 
 ```javascript
 // Generated source + layers by VectorTiles.loadVectorTileLayer()
@@ -289,14 +286,14 @@ map.addLayer({
 
 ### Interactions
 
-Activees par defaut (`interactive: true`) — GeoLeaf ecoute les evenements `click`
-et `mouseenter`/`mouseleave` sur les features des tuiles via `map.on('click', layerId, ...)` :
+Enabled by default (`interactive: true`) — GeoLeaf listens for `click` and
+`mouseenter`/`mouseleave` on tile features through `map.on('click', layerId, ...)`:
 
-- **Clic** -> popup construit depuis `PopupTooltip._buildPopupContent()` (meme template que GeoJSON)
-- **Survol** -> tooltip si `def.tooltip.enabled === true`, avec changement de curseur
+- **Click** -> popup built by `PopupTooltip._buildPopupContent()` (same template as GeoJSON)
+- **Hover** -> tooltip when `def.tooltip.enabled === true`, with a cursor change
 
-Pour les couches purement visuelles (ex. fonds cartographiques, reseaux denses), desactiver
-les interactions ameliore les performances :
+For purely visual layers (basemaps, dense networks), turning interactions off improves
+performance:
 
 ```json
 "vectorTiles": {
@@ -308,57 +305,54 @@ les interactions ameliore les performances :
 
 ---
 
-## Limitations et points d'attention
+## Limitations and points of attention
 
-> Ces limitations sont inherentes au mode tuiles vectorielles pre-generees.
-> Elles sont documentees ici pour guider le choix entre MVT et GeoJSON classique.
+> These limitations are inherent to pre-generated vector tiles. They are listed here to guide the
+> choice between MVT and plain GeoJSON.
 
-### 1 — Performance au-dela de 50 000 features
+### 1 — Performance beyond 50,000 features
 
-Pour les couches tres denses (> 50 000 features au niveau de zoom maxNativeZoom), tippecanoe
-applique automatiquement une simplification et un ecretage (**`--drop-densest-as-needed`**).
-Avec le backend Node.js natif (`geojson-vt`), aucun ecretage automatique n'est applique —
-les tuiles peuvent devenir lourdes.
+For very dense layers (more than 50,000 features at the maxNativeZoom level), tippecanoe
+automatically applies simplification and clipping (**`--drop-densest-as-needed`**).
+The native Node.js backend (`geojson-vt`) applies no automatic clipping — tiles can become
+heavy.
 
-**Recommandation :** utiliser tippecanoe avec `--maximum-zoom` adapte et verifier
-la taille des tuiles au zoom max (`ls -la tiles/14/*/*`).
+**Recommendation:** use tippecanoe with a suitable `--maximum-zoom` and check the tile sizes at
+maximum zoom (`ls -la tiles/14/*/*`).
 
-### 2 — Expressions de style GL supportees
+### 2 — GL style expressions supported
 
-Depuis la migration MapLibre GL JS, les expressions de style (`interpolate`, `match`,
-`step`, `case`) sont **pleinement supportees**. GeoLeaf convertit automatiquement
-les `styleRules` en expressions MapLibre natives.
+Style expressions (`interpolate`, `match`, `step`, `case`) are **fully supported**. GeoLeaf
+converts `styleRules` into native MapLibre expressions automatically.
 
-Si vos styles proviennent d'un editeur GL (QGIS, Mapbox Studio), ils peuvent etre
-utilises directement dans la MapLibre Style Specification.
+Styles coming from a GL editor (QGIS, Mapbox Studio) can be used directly in the MapLibre Style
+Specification.
 
-### 3 — Clustering non supporte en mode MVT
+### 3 — Clustering not supported in MVT mode
 
-Le clustering (supercluster, integre dans MapLibre) est une fonctionnalite du pipeline
-GeoJSON/POI. Les couches MVT ne supportent pas le clustering — elles sont destinees
-aux **lignes** et **polygones** denses, pas aux nuages de points POI.
+Clustering (supercluster, built into MapLibre) belongs to the GeoJSON/POI pipeline. MVT layers do
+not support clustering — they target dense **lines** and **polygons**, not POI point clouds.
 
-Pour les couches POI denses, utiliser GeoJSON + clustering natif MapLibre, ou MVT
-avec `interactive: false` pour un affichage purement visuel.
+For dense POI layers, use GeoJSON plus native MapLibre clustering, or MVT with
+`interactive: false` for a purely visual display.
 
 ### 4 — Interactions
 
-En mode `interactive: true`, les popups et tooltips MVT sont construits depuis les
-proprietes de la feature interrogee via `map.queryRenderedFeatures()`. Les fonctionnalites
-suivantes sont disponibles :
+In `interactive: true` mode, MVT popups and tooltips are built from the properties of the queried
+feature through `map.queryRenderedFeatures()`. The following capabilities are available:
 
-- Popup construit depuis le meme template que GeoJSON
-- Tooltip au survol avec changement de curseur
-- Panneau lateral (`openSidePanel`) supporte via `queryRenderedFeatures`
+- Popup built from the same template as GeoJSON
+- Hover tooltip with a cursor change
+- Side panel (`openSidePanel`) supported through `queryRenderedFeatures`
 
-> L'evenement `geoleaf:geojson:visibility-changed` avec comptage de features n'est
-> pas disponible en mode MVT (les features sont streames par tuile).
+> The `geoleaf:geojson:visibility-changed` event carrying a feature count is not available in MVT
+> mode (features are streamed tile by tile).
 
 ---
 
-## Voir aussi
+## See also
 
-- [GEOJSON_LAYERS_GUIDE.md](GEOJSON_LAYERS_GUIDE.md) — Guide couches GeoJSON classiques
-- GUIDE_CONFIGURATIONS_CORE.md — Référence complète de tous les paramètres
-- `generate-vector-tiles.cjs` — Script de génération
-- `vector-tiles.ts` — Implémentation
+- [GEOJSON_LAYERS_GUIDE.md](GEOJSON_LAYERS_GUIDE.md) — plain GeoJSON layers guide
+- GUIDE_CONFIGURATIONS_CORE.md — full reference of every parameter
+- `generate-vector-tiles.cjs` — generation script
+- `vector-tiles.ts` — implementation

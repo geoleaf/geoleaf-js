@@ -4,37 +4,37 @@ title: "Documentation — @geoleaf/core"
 
 # Documentation — @geoleaf/core
 
-> Documentation complète du package `@geoleaf/core` (MIT). Tout le contenu de ce dossier est public et distribué avec le package.
+> Complete documentation for the `@geoleaf/core` package.
 
 ---
 
-## API générée (TypeDoc)
+## Generated API (TypeDoc)
 
-- **[Référence API — geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api/)** — auto-générée depuis les types TypeScript. Régénérable en local par `npm run docs:api` (sortie `docs/api/`, **non versionnée** depuis le T4.1 : c'est un artefact)
+- **[API reference — geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api/)** — auto-generated from the TypeScript types. Can be regenerated locally with `npm run docs:api` (output in `docs/api/`, which is a build artifact and is not committed)
 
 ---
 
-## Guides principaux
+## Main guides
 
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** — démarrage rapide (5 min)
-- **[USER_GUIDE.md](USER_GUIDE.md)** — guide utilisateur complet
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — référence des fichiers JSON de configuration
-- **[PROFILES_GUIDE.md](PROFILES_GUIDE.md)** — création et personnalisation des profils métier
-- **[API_REFERENCE.md](API_REFERENCE.md)** — référence API (80+ méthodes)
-- **[ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md)** — architecture, séquence de boot, modules
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** — quick start (5 min)
+- **[USER_GUIDE.md](USER_GUIDE.md)** — complete user guide
+- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — reference for the JSON configuration files
+- **[PROFILES_GUIDE.md](PROFILES_GUIDE.md)** — creating and customizing business profiles
+- **[API_REFERENCE.md](API_REFERENCE.md)** — API reference (80+ methods)
+- **[ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md)** — architecture, boot sequence, modules
 
-## Référence avancée
+## Advanced reference
 
-- **[PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)** — schéma JSON profil (120+ paramètres)
-- **[schema/README.md](schema/README.md)** — schémas JSON (geoleaf.profile.schema.json, style.schema.json…)
+- **[PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)** — profile JSON schema (120+ parameters)
+- **[schema/README.md](schema/README.md)** — JSON schemas (geoleaf.profile.schema.json, style.schema.json, and others)
 
-## Développement
+## Development
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — conventions et guide de contribution
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — conventions and contribution guide
 
-## Autres
+## Other
 
-- **[COOKBOOK.md](COOKBOOK.md)** — recettes pratiques
-- **[FAQ.md](FAQ.md)** — questions fréquentes
-- **[NOTICE.md](NOTICE.md)** — licences et attributions
-- **[INDEX_CORE.md](INDEX_CORE.md)** — index complet de la documentation
+- **[COOKBOOK.md](COOKBOOK.md)** — practical recipes
+- **[FAQ.md](FAQ.md)** — frequently asked questions
+- **[NOTICE.md](NOTICE.md)** — licenses and attributions
+- **[INDEX_CORE.md](INDEX_CORE.md)** — complete documentation index

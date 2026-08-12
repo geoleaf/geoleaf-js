@@ -1,201 +1,197 @@
 ---
-title: "Guide de Contribution — GeoLeaf.js"
+title: "Contributing Guide — GeoLeaf.js"
 ---
 
-# Guide de Contribution — GeoLeaf.js
+# Contributing Guide — GeoLeaf.js
 
-> **Bienvenue !** Merci de votre intérêt pour contribuer à GeoLeaf.js. Ce guide vous aidera à démarrer.
+> Thank you for your interest in contributing to GeoLeaf.js. This guide covers what is needed to get started.
 
-**Version produit** : GeoLeaf Platform V3
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière mise à jour** : mars 2026
-
-> Convention de versioning : **Platform V3** est le label produit ; le SemVer technique des packages/releases est en **3.0.x**. Voir [VERSIONING_POLICY.md](VERSIONING_POLICY.md).
+**Applies to:** `@geoleaf/core` v3.x
 
 ---
 
-## Table des matières
+## Table of contents
 
-- [Code de Conduite](#code-de-conduite)
-- [Comment Contribuer](#comment-contribuer)
-- [Configuration de Développement](#configuration-de-développement)
-- [Standards de Code](#standards-de-code)
-- [Processus de Pull Request](#processus-de-pull-request)
-- [Architecture et Modules](#architecture-modulaire-v20)
+- [Code of Conduct](#code-of-conduct)
+- [How to contribute](#how-to-contribute)
+- [Development setup](#development-setup)
+- [Code standards](#code-standards)
+- [Pull request process](#pull-request-process)
+- [Architecture and modules](#modular-architecture-v20)
 - [Tests](#tests)
 - [Documentation](#documentation)
 - [Versioning](#versioning)
 
 ---
 
-## Code de Conduite
+## Code of Conduct
 
-### Nos Engagements
+### Our commitments
 
-GeoLeaf.js s'engage à maintenir une communauté ouverte, accueillante et inclusive. Nous attendons de tous les contributeurs qu'ils :
+GeoLeaf.js is committed to an open, welcoming and inclusive community. All contributors are expected to:
 
-- **Respectent** tous les participants, indépendamment de leur niveau d'expérience
-- **Acceptent** les critiques constructives avec grâce
-- **Se concentrent** sur ce qui est le mieux pour la communauté
-- **Communiquent** de manière professionnelle et courtoise
+- **Respect** every participant, whatever their level of experience
+- **Accept** constructive criticism gracefully
+- **Focus** on what is best for the community
+- **Communicate** professionally and courteously
 
-### Comportements Inacceptables
+### Unacceptable behaviour
 
-- Langage ou imagerie sexualisés, attention non désirée
-- Trolling, commentaires insultants/désobligeants
-- Harcèlement public ou privé
-- Publication d'informations privées sans permission
+- Sexualised language or imagery, unwanted attention
+- Trolling, insulting or derogatory comments
+- Public or private harassment
+- Publishing private information without permission
 
 ---
 
-## Comment Contribuer
+## How to contribute
 
-### Types de Contributions
+### Types of contribution
 
-Nous accueillons plusieurs types de contributions :
+Several kinds of contribution are welcome.
 
-#### Rapports de Bugs
+#### Bug reports
 
-- Utilisez le template d'issue GitHub
-- Incluez une description claire du problème
-- Fournissez des étapes pour reproduire
-- Ajoutez des captures d'écran si pertinent
-- Précisez la version de GeoLeaf.js
+- Use the GitHub issue template
+- Include a clear description of the problem
+- Provide steps to reproduce
+- Add screenshots where relevant
+- State the GeoLeaf.js version
 
-#### Suggestions de Fonctionnalités
+#### Feature suggestions
 
-- Ouvrez une issue avec le label "enhancement"
-- Décrivez le cas d'usage et le problème résolu
-- Proposez une solution ou des alternatives
-- Soyez ouvert aux discussions
+- Open an issue with the "enhancement" label
+- Describe the use case and the problem being solved
+- Propose a solution or alternatives
+- Stay open to discussion
 
 #### Documentation
 
-- Corrections de typos
+- Typo corrections
 - Clarifications
-- Nouveaux guides ou tutoriels
+- New guides or tutorials
 
 #### Code
 
-- Corrections de bugs
-- Nouvelles fonctionnalités
-- Optimisations de performance
+- Bug fixes
+- New features
+- Performance optimisations
 - Refactoring
 
 ---
 
-## Configuration de Développement
+## Development setup
 
-### Prérequis
+### Prerequisites
 
 ```bash
-# Node.js >= 22.13.0 (cf. `engines` du package.json racine)
-node --version  # v22.13.0 ou supérieur
+# Node.js >= 22.13.0 (see `engines` in the root package.json)
+node --version  # v22.13.0 or higher
 
-# npm >= 11.x (workspaces support requis)
+# npm >= 11.x (workspaces support required)
 npm --version
 ```
 
 ### Installation
 
 ```bash
-# 1. Fork le repository sur GitHub
+# 1. Fork the repository on GitHub
 
-# 2. Clone votre fork
+# 2. Clone your fork
 git clone https://github.com/VOTRE-USERNAME/geoleaf-js.git
 cd geoleaf-js
 
-# 3. Ajouter le remote upstream
+# 3. Add the upstream remote
 git remote add upstream https://github.com/geoleaf/geoleaf-js.git
 
-# 4. Installer les dépendances (npm workspaces — installe tous les packages)
+# 4. Install dependencies (npm workspaces — installs every package)
 npm install
 
-# 5. Vérifier l'installation
+# 5. Check the installation
 npm test
 ```
 
-### Structure de Branches
+### Branch structure
 
 ```
-main              # Production stable
-├── feature/*     # Nouvelles fonctionnalités
-├── bugfix/*      # Corrections de bugs
-├── hotfix/*      # Corrections urgentes production
-└── release/*     # Préparation releases
+main              # Stable production
+├── feature/*     # New features
+├── bugfix/*      # Bug fixes
+├── hotfix/*      # Urgent production fixes
+└── release/*     # Release preparation
 ```
 
-La branche de développement actif est `main` ; les PR mergent directement dans
-`main` via squash merge.
+Active development happens on `main`; pull requests are squash-merged directly
+into `main`.
 
-### Workflow Git
+### Git workflow
 
 ```bash
-# 1. Créer une branche depuis main
+# 1. Create a branch from main
 git checkout main
 git pull upstream main
-git checkout -b feature/ma-nouvelle-fonctionnalite
+git checkout -b feature/my-new-feature
 
-# 2. Faire vos modifications
-# ... codez, testez, commitez ...
+# 2. Make your changes
+# ... code, test, commit ...
 
-# 3. Mettre à jour depuis upstream
+# 3. Update from upstream
 git fetch upstream
 git rebase upstream/main
 
-# 4. Pousser vers votre fork
-git push origin feature/ma-nouvelle-fonctionnalite
+# 4. Push to your fork
+git push origin feature/my-new-feature
 
-# 5. Créer une Pull Request sur GitHub
+# 5. Open a pull request on GitHub
 ```
 
 ---
 
-## Standards de Code
+## Code standards
 
-### Style TypeScript
+### TypeScript style
 
-GeoLeaf.js utilise **TypeScript strict** (ES2022), **ESLint** et **Prettier** pour l'uniformité du code.
+GeoLeaf.js uses **strict TypeScript** (ES2022), **ESLint** and **Prettier** for a uniform codebase.
 
 ```bash
-# Linter le code
+# Lint the code
 npm run lint
 
-# Fixer automatiquement
+# Fix automatically
 npm run lint:fix
 
-# Formatter avec Prettier
+# Format with Prettier
 npm run format
 
-# Vérification de types
+# Type checking
 cd packages/core && npm run typecheck
 ```
 
-#### Conventions de Nommage
+#### Naming conventions
 
 ```typescript
-// Variables et fonctions : camelCase
+// Variables and functions: camelCase
 const mapInstance = map;
 function createMarker() {}
 
-// Classes et interfaces : PascalCase
+// Classes and interfaces: PascalCase
 class LayerManager {}
 interface POIConfig {}
 
-// Constants : UPPER_SNAKE_CASE
+// Constants: UPPER_SNAKE_CASE
 const MAX_ZOOM_LEVEL = 18;
 const DEFAULT_CONFIG = {};
 
-// Modules : kebab-case
-// fichier : layer-manager.ts
-// répertoire : feature-info/
+// Modules: kebab-case
+// file: layer-manager.ts
+// directory: feature-info/
 ```
 
-#### Organisation du Code
+#### Code organisation
 
 ```typescript
 /**
- * Structure d'un module GeoLeaf v2.
+ * Structure of a GeoLeaf v2 module.
  */
 
 // 1. Imports
@@ -222,9 +218,9 @@ export function publicFunction(config: Config): boolean {
 }
 ```
 
-### TSDoc et Documentation Inline
+### TSDoc and inline documentation
 
-**Toutes les fonctions publiques DOIVENT avoir une TSDoc complète.**
+**Every public function must carry complete TSDoc.**
 
 ```typescript
 /**
@@ -255,40 +251,40 @@ export function createPoiMarker(mapId: string, poi: POIConfig, options: MarkerOp
 }
 ```
 
-### Architecture Modulaire v2.0
+### Modular architecture v2.0
 
-#### Principes de Modularisation
+#### Modularisation principles
 
-1. **Single Responsibility Principle** : Un module = une responsabilité
-2. **Modules < 500 lignes** : Soft limit — fragmenter si dépassé (hard limit : 700)
-3. **Exports explicites** : Toujours nommer les exports
-4. **Dépendances minimales** : Éviter les couplages forts
-5. **ESM pur** : Aucun `require()` ni syntaxe CommonJS
+1. **Single Responsibility Principle** — one module, one responsibility
+2. **Modules under 500 lines** — soft limit; split beyond it (hard limit: 700)
+3. **Explicit exports** — always name exports
+4. **Minimal dependencies** — avoid tight coupling
+5. **Pure ESM** — no `require()`, no CommonJS syntax
 
-#### Structure de Répertoires (packages/core/src/)
+#### Directory structure (packages/core/src/)
 
 ```
 src/
-├── bundle-esm-entry.ts      ← Point d'entrée ESM (27 exports nommés)
-├── kernel-exports.ts        ← La surface kernel, ré-exportée en bloc par l'entrée
-├── app/                     ← boot, registry de modules, helpers
-├── adapters/maplibre/       ← Le SEUL endroit qui importe maplibre-gl
-├── contracts/               ← Interfaces partagées inter-modules
-├── capabilities/            ← Les capacités in-core, chacune avec son install.ts
+├── bundle-esm-entry.ts      ← ESM entry point (27 named exports)
+├── kernel-exports.ts        ← Kernel surface, re-exported as a block by the entry
+├── app/                     ← boot, module registry, helpers
+├── adapters/maplibre/       ← The ONLY place that imports maplibre-gl
+├── contracts/               ← Shared cross-module interfaces
+├── capabilities/            ← In-core capabilities, each with its own install.ts
 │                              (taxonomy, filter, cluster, legend, permalink, offline…)
-├── api/                     ← Façades publiques `geoleaf.*.ts` (namespace GeoLeaf.*), sans logique
-├── globals/                 ← `globals.*.ts` — pose les façades kernel sur window.GeoLeaf
-├── kernel/                  ← Le noyau : api/, config/, geojson/, ui/, security/, shared/…
+├── api/                     ← Public `geoleaf.*.ts` facades (GeoLeaf.* namespace), no logic
+├── globals/                 ← `globals.*.ts` — mounts kernel facades on window.GeoLeaf
+├── kernel/                  ← The kernel: api/, config/, geojson/, ui/, security/, shared/…
 ├── utils/                   ← log, errors, constants, performance, general
-├── css/ · lang/ · presets/  ← Styles sources, traductions, manifestes de préréglages
-└── global.d.ts              ← Typage du namespace global
+├── css/ · lang/ · presets/  ← Source styles, translations, preset manifests
+└── global.d.ts              ← Global namespace typing
 ```
 
-> L'arborescence exhaustive et **générée** vit dans
-> `docs/reference/ARBORESCENCE_QUALIFIEE.md` (`npm run docs:tree`) — ce bloc n'en est
-> qu'un résumé d'orientation.
+> The exhaustive, **generated** tree lives in
+> `docs/reference/ARBORESCENCE_QUALIFIEE.md` (`npm run docs:tree`); the listing
+> above is an orientation summary.
 
-#### Exemple : Créer une Nouvelle Capacité
+#### Example: create a new capability
 
 ```typescript
 // packages/core/src/capabilities/mon-module/mon-module.ts
@@ -339,81 +335,81 @@ export function mainFeature(data: unknown): unknown {
 
 ---
 
-## Processus de Pull Request
+## Pull request process
 
-### Checklist Avant Soumission
+### Pre-submission checklist
 
 #### Code Quality & Style
 
-- [ ] **Code style** : Lint et format validés (`npm run lint`, `npm run format`)
-- [ ] **TypeScript** : `npm run typecheck` passe sans erreur
-- [ ] **Complexity** : Aucune fonction >80 LOC (max : 100 LOC avec justification)
-- [ ] **Duplication** : Pas de code dupliqué (utiliser modules partagés)
-- [ ] **Nomenclature** : Conventions respectées (camelCase, PascalCase, UPPER_SNAKE_CASE)
+- [ ] **Code style** — lint and format pass (`npm run lint`, `npm run format`)
+- [ ] **TypeScript** — `npm run typecheck` reports no error
+- [ ] **Complexity** — no function over 80 LOC (100 LOC maximum, with justification)
+- [ ] **Duplication** — no duplicated code (use shared modules)
+- [ ] **Naming** — conventions respected (camelCase, PascalCase, UPPER_SNAKE_CASE)
 
 #### Security Checklist
 
-- [ ] **XSS Prevention** : Aucun usage de `innerHTML` sans sanitization
-    - Utiliser `GeoLeaf.DOMSecurity.setSafeHTML()` ou `textContent`
-    - Valider avec : `node scripts/audit-innerhtml.cjs`
-- [ ] **Input Validation** : Toutes les entrées utilisateur validées
-    - `JSON.parse()` wrappé dans try-catch
-    - Pas de `Object.assign()` avec données non fiables (prototype pollution)
-- [ ] **CSRF Protection** : Tokens CSRF si formulaires/mutations
-- [ ] **No-plugin-in-core** : Aucune référence à `@geoleaf-plugins/*` dans `packages/core/src/`
+- [ ] **XSS prevention** — no use of `innerHTML` without sanitization
+    - Use `GeoLeaf.DOMSecurity.setSafeHTML()` or `textContent`
+    - Verify with `node scripts/audit-innerhtml.cjs`
+- [ ] **Input validation** — every user input validated
+    - `JSON.parse()` wrapped in try/catch
+    - No `Object.assign()` with untrusted data (prototype pollution)
+- [ ] **CSRF protection** — CSRF tokens for forms and mutations
+- [ ] **No-plugin-in-core** — no reference to `@geoleaf-plugins/*` inside `packages/core/src/`
 
 #### Tests & Coverage
 
-- [ ] **Tests** : Tous les tests passent (`npm test`)
-- [ ] **Coverage** : Couverture ≥ 75% pour nouveau code (`npm run test:coverage`)
-- [ ] **Edge cases** : Tests pour null/undefined/empty values
-- [ ] **Tests ajoutés** : Nouveaux tests pour nouvelles fonctionnalités
+- [ ] **Tests** — all tests pass (`npm test`)
+- [ ] **Coverage** — at least 75% on new code (`npm run test:coverage`)
+- [ ] **Edge cases** — tests for null, undefined and empty values
+- [ ] **New tests** — added for new features
 
 #### Documentation
 
-- [ ] **TSDoc** : Complète sur toutes fonctions et exports publics
-    - `@param` avec types, `@returns`, `@throws` si applicable
-- [ ] **CHANGELOG** : Entrée ajoutée avec description
-- [ ] **Examples** : Code examples fournis si nouvelle feature
+- [ ] **TSDoc** — complete on every public function and export
+    - `@param` with types, `@returns`, `@throws` where applicable
+- [ ] **CHANGELOG** — entry added with a description
+- [ ] **Examples** — code examples provided for a new feature
 
 #### Architecture & Performance
 
-- [ ] **Memory leaks** : Pas de fuites mémoire
-    - Vérifier event listeners cleanup
-    - Vérifier setTimeout/setInterval clearés
-- [ ] **Bundle size** : Pas d'augmentation significative (>5%)
-    - `npm run size` (budget dur : échec build > 300 KB gz, alerte > 270 KB gz)
-- [ ] **Boot order** : `globals.*.ts` non modifié sans vérification séquence B1→B11
+- [ ] **Memory leaks** — none introduced
+    - Check event listener cleanup
+    - Check that setTimeout/setInterval are cleared
+- [ ] **Bundle size** — no significant increase (over 5%)
+    - `npm run size` (hard budget: build fails above 300 KB gz, warning above 270 KB gz)
+- [ ] **Boot order** — `globals.*.ts` not modified without checking the B1→B11 sequence
 
 #### Git & CI/CD
 
-- [ ] **Commits** : Messages clairs (Conventional Commits)
-- [ ] **Branch** : À jour avec `upstream/main`
-- [ ] **CI/CD** : Pipeline passe (lint, typecheck, tests, build)
-- [ ] **No warnings** : Aucun warning ESLint/TypeScript
+- [ ] **Commits** — clear messages (Conventional Commits)
+- [ ] **Branch** — up to date with `upstream/main`
+- [ ] **CI/CD** — pipeline passes (lint, typecheck, tests, build)
+- [ ] **No warnings** — no ESLint or TypeScript warning
 
-### Template de Pull Request
+### Pull request template
 
 ```markdown
 ## Description
 
-Brève description des changements.
+Short description of the changes.
 
-## Type de Changement
+## Type of change
 
-- [ ] Bug fix (changement non-breaking qui corrige un problème)
-- [ ] New feature (changement non-breaking qui ajoute une fonctionnalité)
-- [ ] Breaking change (fix ou feature qui casse la compatibilité)
-- [ ] Documentation (changements de documentation uniquement)
-- [ ] Refactoring (changement qui n'ajoute pas de feature ni ne fixe de bug)
-- [ ] Performance (amélioration des performances)
-- [ ] Tests (ajout ou correction de tests)
+- [ ] Bug fix (non-breaking change that fixes a problem)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (fix or feature that breaks compatibility)
+- [ ] Documentation (documentation changes only)
+- [ ] Refactoring (change that neither adds a feature nor fixes a bug)
+- [ ] Performance (performance improvement)
+- [ ] Tests (test additions or corrections)
 
-## Motivation et Contexte
+## Motivation and context
 
-Pourquoi ce changement est nécessaire ? Quel problème résout-il ?
+Why is this change needed? Which problem does it solve?
 
-## Comment Tester
+## How to test
 
 1.
 2.
@@ -421,65 +417,65 @@ Pourquoi ce changement est nécessaire ? Quel problème résout-il ?
 
 ## Checklist
 
-- [ ] Mon code suit le style du projet
-- [ ] J'ai effectué une auto-revue de mon code
-- [ ] J'ai mis à jour la documentation
-- [ ] Mes changements ne génèrent pas de warnings
-- [ ] J'ai ajouté des tests qui prouvent que mon fix fonctionne
-- [ ] Tous les tests passent localement
+- [ ] My code follows the project style
+- [ ] I have self-reviewed my code
+- [ ] I have updated the documentation
+- [ ] My changes generate no warnings
+- [ ] I have added tests proving that my fix works
+- [ ] All tests pass locally
 
-## Issues Liées
+## Related issues
 
 Fixes #(issue_number)
 ```
 
-### Revue de Code
+### Code review
 
-Les Pull Requests seront reviewées selon ces critères :
+Pull requests are reviewed against these criteria:
 
-1. **Qualité du Code** — Conventions, lisibilité, performance
-2. **Tests** — Couverture adéquate, pas de régression
-3. **Documentation** — TSDoc complète, exemples si nécessaire
-4. **Architecture** — Patterns établis, modules bien découplés, no-plugin-in-core
+1. **Code quality** — conventions, readability, performance
+2. **Tests** — adequate coverage, no regression
+3. **Documentation** — complete TSDoc, examples where needed
+4. **Architecture** — established patterns, well-decoupled modules, no-plugin-in-core
 
-### Processus de Merge
+### Merge process
 
-1. **Review approuvée** par au moins 1 mainteneur
+1. **Review approved** by at least one maintainer
 2. **CI/CD green** (typecheck, lint, tests, build)
-3. **Conflits résolus** avec main
-4. **Squash merge** dans main (commits nettoyés)
+3. **Conflicts resolved** against main
+4. **Squash merge** into main (cleaned-up commits)
 
 ---
 
 ## Tests
 
-### Framework de Tests
+### Test frameworks
 
-- **Vitest 3** : Tests unitaires et d'intégration (ESM, provider Istanbul)
-- **Playwright** : Tests E2E (end-to-end, Chromium)
+- **Vitest 3** — unit and integration tests (ESM, Istanbul provider)
+- **Playwright** — end-to-end tests (Chromium)
 
-### Commandes de Tests
+### Test commands
 
 ```bash
-# Tous les tests unitaires (via Turborepo)
+# All unit tests (through Turborepo)
 npm test
 
-# Tests unitaires (Vitest direct, dans packages/core)
+# Unit tests (Vitest directly, inside packages/core)
 cd packages/core && npm run test:vitest
 
-# Tests avec couverture
+# Tests with coverage
 npm run test:coverage
 
-# Tests E2E (nécessite deploy/ construit)
+# E2E tests (requires a built deploy/)
 npm run test:e2e
 
-# Tests spécifiques (filtre sur le chemin du fichier)
+# Specific tests (filter on the file path)
 cd packages/core && npx vitest run __tests__/legend
 ```
 
-### Écrire des Tests
+### Writing tests
 
-#### Tests Unitaires (Vitest)
+#### Unit tests (Vitest)
 
 ```typescript
 // packages/core/__tests__/capabilities/mon-module.test.ts
@@ -518,14 +514,14 @@ describe("MonModule", () => {
 });
 ```
 
-#### Tests E2E (Playwright)
+#### E2E tests (Playwright)
 
 ```typescript
 // e2e/mon-feature.spec.ts
 
 import { test, expect } from "@playwright/test";
 
-test.describe("Ma Fonctionnalité", () => {
+test.describe("My Feature", () => {
     test.beforeEach(async ({ page }) => {
         // Each spec targets its own deploy variant (ports 8766-8768)
         await page.goto("http://localhost:8766");
@@ -539,54 +535,51 @@ test.describe("Ma Fonctionnalité", () => {
 });
 ```
 
-### Couverture de Tests
+### Test coverage
 
-**Objectif** : ≥ 75% couverture globale (cible atteinte en v2.0.0)
+**Target** — at least 75% overall coverage (reached in v2.0.0)
 
-- **Fonctions critiques** : 100% couverture recommandée
-- **Utilitaires** : >90% couverture
-- **UI components** : >70% couverture
+- **Critical functions** — 100% coverage recommended
+- **Utilities** — above 90% coverage
+- **UI components** — above 70% coverage
 
 ---
 
 ## Documentation
 
-### Types de Documentation
+### Documentation types
 
-1. **TSDoc Inline** : Dans le code source (obligatoire pour les APIs publiques)
-2. **Guides** : Documentation dans `packages/core/docs/`
-3. **API Reference** : Générée depuis TSDoc via TypeDoc (`npm run docs:api`)
-4. **Exemples** : Profils JSON dans `profiles/` et démos dans `packages/core/demo/`
+1. **Inline TSDoc** — in the source code (mandatory for public APIs)
+2. **Guides** — documentation under `packages/core/docs/`
+3. **API reference** — generated from TSDoc by TypeDoc (`npm run docs:api`)
+4. **Examples** — JSON profiles under `profiles/` and demos under `packages/core/demo/`
 
-### Mettre à Jour la Documentation
+### Updating the documentation
 
 ```bash
-# 1. Mettre à jour TSDoc dans le code source
+# 1. Update the TSDoc in the source code
 
-# 2. Régénérer la référence API
+# 2. Regenerate the API reference
 cd packages/core && npm run docs:api
 
-# 3. Mettre à jour le guide concerné dans docs/
+# 3. Update the relevant guide under docs/
 
-# 4. Mettre à jour packages/core/docs/CHANGELOG.md (§[Unreleased])
-#    ⚠️ `_docs_projet/CHANGELOG.md`, écrit ici jusqu'au 31/07/2026, N'EXISTE PAS.
-#    Le CONTRIBUTING de la racine portait le même énoncé et a été corrigé le 30/07 ;
-#    cette copie ne l'a pas été — deux exemplaires d'un même document, un seul réparé.
+# 4. Update packages/core/docs/CHANGELOG.md (the [Unreleased] section)
 ```
 
 ---
 
 ## Versioning
 
-GeoLeaf.js suit le **Semantic Versioning 2.0.0** :
+GeoLeaf.js follows **Semantic Versioning 2.0.0**.
 
-### Format : `MAJOR.MINOR.PATCH`
+### Format: `MAJOR.MINOR.PATCH`
 
-- **MAJOR** : Changements incompatibles (breaking changes)
-- **MINOR** : Nouvelles fonctionnalités compatibles
-- **PATCH** : Corrections de bugs compatibles
+- **MAJOR** — incompatible changes (breaking changes)
+- **MINOR** — backwards-compatible new features
+- **PATCH** — backwards-compatible bug fixes
 
-### Exemples
+### Examples
 
 ```
 2.0.0 → 2.0.1   # Bug fix
@@ -594,31 +587,31 @@ GeoLeaf.js suit le **Semantic Versioning 2.0.0** :
 2.x.x → 3.0.0   # Breaking change
 ```
 
-### Messages de Commit
+### Commit messages
 
-Format : **Conventional Commits**
+Format: **Conventional Commits**
 
 ```bash
 # Format
-<type>(<scope>): <description courte>
+<type>(<scope>): <short description>
 
-[corps optionnel]
+[optional body]
 
-[footer optionnel]
+[optional footer]
 ```
 
-#### Types de Commits
+#### Commit types
 
-- `feat` : Nouvelle fonctionnalité
-- `fix` : Correction de bug
-- `docs` : Documentation uniquement
-- `style` : Formatage, point-virgules manquants, etc.
-- `refactor` : Refactoring sans changer le comportement
-- `perf` : Amélioration des performances
-- `test` : Ajout ou correction de tests
-- `chore` : Maintenance, build, dépendances
+- `feat` — new feature
+- `fix` — bug fix
+- `docs` — documentation only
+- `style` — formatting, missing semicolons, and similar
+- `refactor` — refactoring without behaviour change
+- `perf` — performance improvement
+- `test` — test additions or corrections
+- `chore` — maintenance, build, dependencies
 
-#### Exemples
+#### Examples
 
 ```bash
 # Feature
@@ -635,19 +628,19 @@ BREAKING CHANGE: init() now requires options object instead of individual parame
 
 ---
 
-## Bonnes Pratiques
+## Best practices
 
 ### Performance
 
-- **Payload** : ne jamais importer une capacité (`src/capabilities/*`) depuis le kernel — c'est ce qui la rend indétachable du bundle. Le gate `npm run size:example` le vérifie sur les sourcemaps
-- **Debounce/Throttle** : Sur événements fréquents (scroll, resize, input)
-- **Cache** : Mettre en cache les résultats coûteux
-- **Memory Management** :
-    - Cleanup event listeners dans destroy()
+- **Payload** — never import a capability (`src/capabilities/*`) from the kernel; that is what makes it undetachable from the bundle. `npm run size:example` checks this against the sourcemaps
+- **Debounce/throttle** — on frequent events (scroll, resize, input)
+- **Cache** — cache expensive results
+- **Memory management**
+    - Clean up event listeners in destroy()
     - Clear setTimeout/setInterval
-    - Éviter circular references (utiliser WeakMap si nécessaire)
+    - Avoid circular references (use WeakMap where needed)
 
-### Sécurité
+### Security
 
 #### XSS Prevention
 
@@ -705,22 +698,22 @@ npm audit
 npm run lint
 ```
 
-### Maintenabilité
+### Maintainability
 
-- **DRY** : Don't Repeat Yourself
-- **KISS** : Keep It Simple, Stupid
-- **YAGNI** : You Aren't Gonna Need It
-- **Documentation** : Expliquer le "pourquoi", pas le "comment"
+- **DRY** — Don't Repeat Yourself
+- **KISS** — Keep It Simple, Stupid
+- **YAGNI** — You Aren't Gonna Need It
+- **Documentation** — explain the "why", not the "how"
 
 ---
 
-## Besoin d'Aide ?
+## Need help?
 
-### Ressources
+### Resources
 
-- **Documentation** : `packages/core/docs/`
-- **Issues GitHub** : [Issues](https://github.com/geoleaf/geoleaf-js/issues)
-- **Contact** : Mattieu Pottier — contact@geoleaf.dev
+- **Documentation** — `packages/core/docs/`
+- **GitHub issues** — [Issues](https://github.com/geoleaf/geoleaf-js/issues)
+- **Contact** — Mattieu Pottier, contact@geoleaf.dev
 
 ---
 
@@ -739,11 +732,11 @@ All TypeScript/JavaScript files contributed to GeoLeaf Core must include the MIT
  */
 ```
 
-**Important** : This header must be placed **before all other code and comments** in the file.
+**Important**: this header must be placed **before all other code and comments** in the file.
 
 ### License Agreement
 
-By contributing to GeoLeaf Core, you agree that :
+By contributing to GeoLeaf Core, you agree that:
 
 1. Your contributions are licensed under the **MIT License**
 2. You have the right to license your contributions
@@ -754,6 +747,6 @@ See the [LICENSE](https://github.com/geoleaf/geoleaf-js/blob/main/LICENSE) file 
 
 ---
 
-**Merci de contribuer à GeoLeaf.js !**
+**Thank you for contributing to GeoLeaf.js.**
 
-Votre aide fait de GeoLeaf.js un meilleur outil pour tous.
+Every contribution makes GeoLeaf.js a better tool for everyone.

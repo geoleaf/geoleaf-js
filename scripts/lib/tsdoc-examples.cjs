@@ -137,12 +137,33 @@ function walkMd(dir, out, maxDepth = Infinity) {
  * ## Ce que « surface produit » veut dire, et ce que ça exclut
  *
  * Ce que le corpus contient est ce qu'un lecteur peut **copier-coller depuis npm ou GitHub** :
- * la racine du dépôt, la racine de chaque paquet (les vitrines npm), les `docs/` de paquet, et
- * le scaffold. C'est le trou mesuré le 31/07 : les deux documents les plus lus du projet —
- * `README.md` et `packages/core/README.md` — portaient chacun un `GeoLeaf.POI.add()`
- * copiable-collable sur une API dissoute, alors qu'une règle de `validate-docs-examples`
- * l'interdit **depuis l'item 4 de la refonte V3**. La règle était bonne ; son corpus s'arrêtait
- * à `packages/core/docs/`.
+ * la racine du dépôt, la racine de chaque paquet (les vitrines npm), les `docs/` de paquet, la
+ * racine documentaire PUBLIQUE `docs/`, et le scaffold. C'est le trou mesuré le 31/07 : les deux
+ * documents les plus lus du projet — `README.md` et `packages/core/README.md` — portaient chacun
+ * un `GeoLeaf.POI.add()` copiable-collable sur une API dissoute, alors qu'une règle de
+ * `validate-docs-examples` l'interdit **depuis l'item 4 de la refonte V3**. La règle était bonne ;
+ * son corpus s'arrêtait à `packages/core/docs/`.
+ *
+ * ## 11/08/2026 — `docs/` entre dans le corpus, et c'était le dernier trou du même genre
+ *
+ * ⚠️ **Le paragraphe ci-dessus décrit le corpus d'avant la scission documentaire du 10/08.** À
+ * cette date `docs/` n'existait pas comme racine publique : ce module prenait la racine du dépôt
+ * à **profondeur 0**, donc il n'y descendait pas — et personne ne l'a remarqué parce qu'il n'y
+ * avait rien à y descendre.
+ *
+ * 🛑 **Le coût, mesuré par élimination sur les 79 gates** : `SPECS-PATHS` (posée la veille) garde
+ * les CHEMINS cités par `docs/specs/`, `check-dead-links` garde les LIENS `[texte](cible)` des
+ * trois sous-racines, et les 3 guards gardent des TABLES nommées. **Aucune ne regardait le CODE
+ * des blocs clôturés.** Un `GeoLeaf.POI.*` copiable-collable y était donc aussi invisible qu'il
+ * l'était dans `README.md` avant le 31/07 — même défaut, même cause, un répertoire plus loin.
+ * Vérifié en lançant la gate sur les trois sous-racines avant de toucher à cette fonction :
+ * `--dir docs/specs` **0**, `--dir docs/reference` **0**, `--dir docs/guides` **3 violations
+ * réelles** (`TESTING_GUIDE.md` enseignait `GeoLeaf.POI.addPoi()` sous un `// CORRECT`).
+ *
+ * 📌 **Une seule marche récursive sur `DOCS_ROOT`, pas trois sur les sous-racines.** Nommer
+ * `specs`/`reference`/`guides` ici aurait laissé toute quatrième sous-racine future hors du scan
+ * **en silence** — c'est la panne que cette fonction existe pour rendre impossible. Les trois
+ * planchers ci-dessous sont l'anti-cécité, pas le périmètre.
  *
  * Sont hors périmètre, et c'est délibéré :
  *   `_docs_projet/`        doc interne, pas une surface publiée ; ses classes sont gardées par
@@ -152,10 +173,12 @@ function walkMd(dir, out, maxDepth = Infinity) {
  *   `archives/`            des enregistrements : ils citent le code de leur date
  *
  * @returns {string[]} chemins absolus, triés.
- * @throws {Error} si le corpus est vide, ou si un `README.md` présent sur le disque en est absent.
+ * @throws {Error} si le corpus est vide, si un `README.md` présent sur le disque en est absent,
+ *   ou si l'une des trois sous-racines de `docs/` n'y est représentée par aucun fichier.
  */
 function productDocsFiles() {
     const registry = require("./packages.cjs");
+    const docsPaths = require("./docs-paths.cjs");
     const repoRoot = path.resolve(__dirname, "..", "..");
     const out = [];
 
@@ -164,6 +187,11 @@ function productDocsFiles() {
         walkMd(pkg.absDir, out, 0); // la vitrine npm du paquet
         walkMd(path.join(pkg.absDir, "docs"), out); // sa doc embarquée
     }
+    // La racine documentaire PUBLIQUE, marchée en entier (voir l'en-tête, 11/08/2026). Résolue
+    // par `docs-paths.cjs` et jamais par `path.join(repoRoot, "docs")` : la racine est
+    // surchargeable par `GEOLEAF_DOCS_ROOT`, et un chemin en dur cesserait silencieusement de
+    // matcher au lieu de casser.
+    walkMd(docsPaths.docs(), out);
     // Hors `workspaces` (`!packages/_*`), donc invisible au registre. Nommé en dur pour
     // cette raison précise : c'est le SCAFFOLD, et un défaut qu'il porte est re-semé dans
     // chaque plugin créé après lui.
@@ -186,6 +214,20 @@ function productDocsFiles() {
         throw new Error(
             `[tsdoc-examples] ${missing.length} README.md sur le disque hors du corpus : ` +
                 missing.map((f) => path.relative(repoRoot, f)).join(", ")
+        );
+    }
+    // Même anti-cécité, appliquée aux trois sous-racines de `docs/` — c'est le régime que
+    // `check-dead-links` leur donne déjà (`mustNotBeEmpty`), pour le motif écrit dans son
+    // en-tête : un scope qui perd sa cible ne rougit pas, il SE TAIT. Un renommage de
+    // `docs/specs/` ferait ici passer le corpus de ~148 à ~103 en sortant 0.
+    const emptyRoots = ["specs", "reference", "guides"].filter(
+        (name) => !kept.some((f) => f.startsWith(docsPaths.docs(name) + path.sep))
+    );
+    if (emptyRoots.length > 0) {
+        throw new Error(
+            `[tsdoc-examples] ${emptyRoots.length} sous-racine(s) de ${docsPaths.rel(docsPaths.docs())}/ ` +
+                `sans aucun .md dans le corpus : ${emptyRoots.join(", ")} — le consommateur ` +
+                "sortirait vert en ayant lu beaucoup moins."
         );
     }
     return kept;

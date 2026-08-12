@@ -4,8 +4,6 @@ title: "GeoLeaf Notice and License Attribution"
 
 # GeoLeaf Notice and License Attribution
 
-Product Version: GeoLeaf Platform V3
-
 ## License
 
 **GeoLeaf Core** is released under the **MIT License**.
@@ -16,7 +14,7 @@ Released under the MIT License
 https://geoleaf.dev
 ```
 
-See the [LICENSE](../LICENSE) file for the complete license text.
+See the [LICENSE](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/LICENSE) file for the complete license text.
 
 ---
 
@@ -42,17 +40,17 @@ GeoLeaf offers **optional** plugins that extend Core functionality — offline c
 
 Every plugin is released under the **MIT License**, under the `@geoleaf-plugins/*` scope. **The whole client-side library is MIT: install it, use it, ship it.**
 
-> **Which plugins are on the public registry, and at which version, is measured — never declared here.**
-> Run `npm view <package> version` for the registry, and `npm run versions:check` for this repository.
-> The two answer different questions, and a list copied into this file would be stale the day it is written.
+> To find out which plugins are on the public registry, and at which version, run
+> `npm view <package> version`. That is the only authoritative answer, and it is why no such
+> list is reproduced here.
 
 Plugins:
 
-- ✅ Are **optional** — Core works fully without them
-- ✅ Are **independently versioned** — each ships its own `LICENSE`, all MIT
-- ✅ Do **not** affect the MIT License of GeoLeaf Core
+- Are **optional** — Core works fully without them
+- Are **independently versioned** — each ships its own `LICENSE`, all MIT
+- Do **not** affect the MIT License of GeoLeaf Core
 
-`packages/core/` never references a plugin package. That boundary is an **architectural** one — it keeps the Core standalone and tree-shakeable — and it is enforced automatically by `scripts/verify-core-standalone.cjs`. It is not, and never was, a licence boundary.
+`packages/core/` never references a plugin package. That boundary is an **architectural** one — it keeps the Core standalone and tree-shakeable — not a licence boundary.
 
 ---
 

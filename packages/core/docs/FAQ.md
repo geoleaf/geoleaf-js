@@ -5,7 +5,7 @@ title: "GeoLeaf-JS — FAQ"
 # GeoLeaf-JS — FAQ
 
 **Package:** `@geoleaf/core`
-**S'applique à :** `@geoleaf/core` v3.x
+**Applies to:** `@geoleaf/core` v3.x
 **License:** MIT
 
 ---
@@ -20,13 +20,13 @@ title: "GeoLeaf-JS — FAQ"
 npm install @geoleaf/core maplibre-gl
 ```
 
-> Le nom `geoleaf` (sans scope) est **incorrect** et fait reference a un
-> package different sans rapport.
+> The name `geoleaf` (without a scope) is **incorrect** and refers to a different,
+> unrelated package.
 
 ### What is the CDN URL?
 
 ```html
-<!-- MapLibre GL JS — peer dependency, à charger AVANT GeoLeaf -->
+<!-- MapLibre GL JS — peer dependency, load it BEFORE GeoLeaf -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
 <script type="module">
     import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -46,7 +46,7 @@ npm install @geoleaf/core maplibre-gl
 ></script>
 ```
 
-Variante **unpkg** — mêmes quatre balises, autre origine :
+**unpkg** variant — the same four tags, a different origin:
 
 ```html
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -58,21 +58,16 @@ Variante **unpkg** — mêmes quatre balises, autre origine :
 <script type="module" src="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"></script>
 ```
 
-⚠️ Cette recette a porté **deux blocs jsDelivr identiques** jusqu'au 08/08/2026, le second
-étiqueté « jsDelivr alternative » — et **aucun des deux ne chargeait MapLibre**. Le second est
-désormais la variante unpkg qu'il prétendait être.
-
 ### What are the required peer dependencies?
 
 ```bash
 npm install maplibre-gl
 ```
 
-MapLibre GL JS (^6.0.0) est la seule dependance externe requise — la borne est celle que
-`packages/core/package.json` déclare en `peerDependencies`, pas une valeur recopiée.
-⚠️ Cette ligne a écrit `^5.0.0` jusqu'au 08/08/2026, soit après la montée en v6.
-Le clustering est integre nativement via supercluster (source clustering MapLibre)
-et les tuiles vectorielles sont gerees par les sources vectorielles natives de MapLibre.
+MapLibre GL JS (^6.0.0) is the only external dependency required — the range is the one
+`packages/core/package.json` declares under `peerDependencies`.
+Clustering is built in natively through supercluster (MapLibre clustering source) and vector
+tiles are handled by MapLibre's own vector sources.
 
 ---
 
@@ -94,7 +89,7 @@ et les tuiles vectorielles sont gerees par les sources vectorielles natives de M
     import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
     Core.init({
         mapId: "map",
-        center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+        center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], conversion is internal
         zoom: 12,
     });
 </script>
@@ -187,7 +182,7 @@ GeoLeaf.Core.setTheme("dark"); // via Core facade
 ### How do I load secondary modules?
 
 **You don't — and you can't.** `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()`
-were removed in v3 (S5). Every in-core capability ships in the bundle and is available as soon as
+were removed in v3. Every in-core capability ships in the bundle and is available as soon as
 it is parsed. If your code called them, delete the call.
 
 To ship _less code_, compose your own entry — see
@@ -222,13 +217,23 @@ GeoLeaf.plugins.isLoaded("storage"); // → true/false
 GeoLeaf.plugins.getLoadedPlugins(); // → ["core", "storage"]
 ```
 
-> **ESM import :** `import { PluginRegistry } from "@geoleaf/core"` pour les bundlers.
+> **ESM import:** `import { PluginRegistry } from "@geoleaf/core"` for bundlers.
 
 ---
 
 ## Geocoding (address search)
 
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+::: warning
+
+**Moved out to a plugin.** Address search (geocoding) is no longer part of `@geoleaf/core` — it
+is now provided by the MIT plugin **`@geoleaf-plugins/geocoding`** (public on npmjs.org). The
+configuration moves from the root key **`geocodingConfig`** to **`modules.geocoding.*`**
+(declared in `config/plugins/geocoding.json` through `Files.modules.geocoding`) — a **breaking
+migration, with no shim**. The `GeoLeaf.Geocoding` API, the `geoleaf:geocoding:result` event and
+the search control are supplied by the plugin. See the plugin README
+(`packages/plugins/geocoding/README.md`).
+
+:::
 
 ---
 
@@ -236,8 +241,8 @@ GeoLeaf.plugins.getLoadedPlugins(); // → ["core", "storage"]
 
 ### "GeoLeaf is not defined"
 
-Verifiez que le script GeoLeaf utilise `type="module"`, et surtout que **le JavaScript de
-MapLibre** est charge avant lui — pas seulement sa feuille de style :
+Check that the GeoLeaf script uses `type="module"`, and above all that **the MapLibre
+JavaScript** is loaded before it — not only its stylesheet:
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -252,13 +257,15 @@ MapLibre** est charge avant lui — pas seulement sa feuille de style :
 <script type="module" src="geoleaf.esm.js"></script>
 ```
 
-🛑 **Cette recette de dépannage ne listait que les CSS jusqu'au 08/08/2026** — et sa phrase
-disait « que les CSS MapLibre sont chargés », comme si la feuille de style suffisait. La
-réponse à « GeoLeaf is not defined » omettait donc la cause la plus fréquente de l'erreur :
-`geoleaf.esm.js` déclare `maplibre-gl` en `external` et ne l'atteint que par
-`globalThis.maplibregl`, que la v6 ne pose plus d'elle-même.
+::: warning
 
-> GeoLeaf v2 est ESM-only. Le `type="module"` est obligatoire.
+Loading only the MapLibre stylesheet is the most frequent cause of this error:
+`geoleaf.esm.js` declares `maplibre-gl` as `external` and reaches it solely through
+`globalThis.maplibregl`, which v6 no longer sets by itself.
+
+:::
+
+> GeoLeaf v2 is ESM-only. The `type="module"` attribute is mandatory.
 
 ### "APIController missing"
 
@@ -267,7 +274,7 @@ Wrap in an `init` callback or use `await GeoLeaf.init(options)`.
 
 ### `GeoLeaf._loadModule is not a function`
 
-It was removed in v3 (S5), along with the whole lazy-loading machinery. Delete the call —
+It was removed in v3, along with the whole lazy-loading machinery. Delete the call —
 whatever you were loading is already in the bundle. See
 [COOKBOOK Recipe 8](COOKBOOK.md#recipe-8--shipping-less-than-the-whole-library) if what you
 wanted was a _smaller_ bundle rather than a deferred one.

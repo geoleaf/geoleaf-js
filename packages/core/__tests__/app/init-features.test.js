@@ -63,8 +63,48 @@ describe("app/init-features (R5)", () => {
                 expect.any(Function)
             );
             const handler = onFn.mock.calls[0][1];
-            handler({ detail: { count: 2 } });
+            // B-226 — la forme RÉELLEMENT émise. `loader/profile.ts:399` fait
+            // `map.fire(type, { count, layers })`, et MapLibre fusionne la charge utile au
+            // premier niveau de l'objet d'événement ; l'adaptateur ne la ré-enveloppe pas.
+            handler({ count: 2, layers: ["a", "b"] });
             expect(showNotification).toHaveBeenCalledWith("2 GeoJSON layers loaded", 3000);
+        });
+
+        // 🛑 Ce cas est la RAISON de B-226, et il vaut d'être gardé explicitement.
+        // Le test ci-dessus nourrissait le handler avec `{ detail: { count } }` — la forme
+        // DOM `CustomEvent`, que rien dans cette chaîne ne produit. Il passait donc en vert
+        // pendant que le toast de boot ne s'affichait jamais en production : un test qui
+        // encode la croyance de son auteur plutôt que le contrat de l'émetteur.
+        it("n'affiche RIEN sur une enveloppe `detail` — la forme que personne n'émet (B-226)", () => {
+            const onFn = vi.fn();
+            const showNotification = vi.fn();
+            initGeoJSON({
+                GeoLeaf: { GeoJSON: { init: vi.fn() } },
+                _cfg: {},
+                map: { ...map, on: onFn },
+                AppLog,
+                _app: { showNotification },
+            });
+            const handler = onFn.mock.calls[0][1];
+            handler({ detail: { count: 2 } });
+            expect(showNotification).not.toHaveBeenCalled();
+        });
+
+        it("ne notifie pas si `count` n'est pas un nombre", () => {
+            const onFn = vi.fn();
+            const showNotification = vi.fn();
+            initGeoJSON({
+                GeoLeaf: { GeoJSON: { init: vi.fn() } },
+                _cfg: {},
+                map: { ...map, on: onFn },
+                AppLog,
+                _app: { showNotification },
+            });
+            const handler = onFn.mock.calls[0][1];
+            handler({ count: "2" });
+            handler({});
+            handler(undefined);
+            expect(showNotification).not.toHaveBeenCalled();
         });
     });
 
@@ -125,7 +165,7 @@ describe("app/init-features (R5)", () => {
             const GeoLeaf = { GeoJSON: { init: vi.fn() } };
             initGeoJSON({ GeoLeaf, _cfg: {}, map: mapWithOn, AppLog, _app: { showNotification } });
             const handler = onFn.mock.calls[0][1];
-            handler({ detail: { count: 1 } });
+            handler({ count: 1 }); // B-226 — forme réellement émise, pas `detail`
             expect(showNotification).toHaveBeenCalledWith("1 GeoJSON layer loaded", 3000);
         });
         it("handler sans count valide — showNotification pas appelé", () => {
@@ -135,7 +175,7 @@ describe("app/init-features (R5)", () => {
             const GeoLeaf = { GeoJSON: { init: vi.fn() } };
             initGeoJSON({ GeoLeaf, _cfg: {}, map: mapWithOn, AppLog, _app: { showNotification } });
             const handler = onFn.mock.calls[0][1];
-            handler({ detail: {} });
+            handler({}); // B-226 — `{ detail: {} }` passait pour la mauvaise raison
             expect(showNotification).not.toHaveBeenCalled();
         });
         // F2/S8: the ThemeSelector.init pipeline (warn-if-absent, containers guard, init

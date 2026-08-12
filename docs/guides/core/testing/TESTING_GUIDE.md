@@ -95,19 +95,18 @@ Tests core GeoLeaf functionality (`geoleaf.core.ts`):
 
 - Multi-map support
 
-### 6. `poi.test.js`
-
-Tests POI module functionality:
-
-- Module initialization (8 tests)
-
-- POI addition and validation (14 tests)
-
-- Data retrieval and reload (5 tests)
-
-- Popup generation (3 tests)
-
-- Security (HTML escaping, URL sanitization) (5 tests)
+> ⚠️ **Une sixième entrée, `poi.test.js`, a été retirée le 11/08/2026 — le fichier n'existe
+> pas.** Il est parti avec la dissolution du module POI au S9 (une POI est désormais une couche
+> point GeoJSON générique), et la section a survécu en annonçant 35 tests répartis sur cinq
+> thèmes. Les cinq entrées ci-dessus ont été **vérifiées sur le disque**, une par une.
+>
+> 🛑 **Ce défaut a tenu parce qu'aucune gate ne lit les chemins cités par `docs/guides/`** :
+> `SPECS-PATHS` ne couvre que `docs/specs/`, et `check-dead-links` n'extrait que la forme
+> markdown d'un lien — un nom de fichier en backticks lui est invisible. Suivi au backlog.
+>
+> 📌 Écrire ici la forme extraite entre crochets-parenthèses, même à titre d'exemple, fait
+> rougir `check-dead-links` : son extracteur ne distingue pas un lien d'une citation de lien.
+> C'est arrivé à la rédaction de cette annotation, et la gate l'a vu.
 
 ---
 
@@ -115,22 +114,23 @@ Tests POI module functionality:
 
 ### Pattern 1: No Exceptions, Only Logging
 
-**Discovery**: The POI module logs errors instead of throwing exceptions.
+**Discovery**: the layer-data API logs errors instead of throwing exceptions. Reading an
+unknown — or not-yet-loaded — layer yields an empty result, not a crash.
 
 **Example**:
 
 ```javascript
 // INCORRECT - Test expects exception
-test("should throw error without map", () => {
+test("should throw on an unknown layer", () => {
     expect(() => {
-        GeoLeaf.POI.init({});
+        GeoLeaf.Layers.getFeatures("no-such-layer");
     }).toThrow();
 });
 
 // CORRECT - Test checks return value
-test("should return undefined without map", () => {
-    const result = GeoLeaf.POI.init({});
-    expect(result).toBeUndefined();
+test("should return an empty array on an unknown layer", () => {
+    const result = GeoLeaf.Layers.getFeatures("no-such-layer");
+    expect(result).toEqual([]);
 });
 ```
 
@@ -195,35 +195,36 @@ test("should create the side panel on demand", () => {
 
 ### Pattern 3: Render-Time Normalization
 
-**Discovery**: POI data is stored raw, normalization/sanitization happens during rendering.
+**Discovery**: feature data is stored raw, normalization/sanitization happens during rendering.
 
 **Example**:
 
 ```javascript
 // INCORRECT - Checks stored data
-test("should sanitize URLs in POI data", () => {
-    const poi = {
+test("should sanitize URLs in feature properties", () => {
+    const feature = {
+        type: "Feature",
         id: "poi-url",
-        latlng: [45.5, -73.6],
-        attributes: { link: "javascript:alert(1)" },
+        geometry: { type: "Point", coordinates: [-73.6, 45.5] },
+        properties: { link: "javascript:alert(1)" },
     };
-    GeoLeaf.POI.addPoi(poi);
-    const stored = GeoLeaf.POI.getPoiById("poi-url");
-    expect(stored.attributes.link).toBeNull(); // FAILS - raw data stored
+    GeoLeaf.Layers.addFeature("points", feature);
+    const stored = GeoLeaf.Layers.getFeatureById("points", "poi-url");
+    expect(stored.properties.link).toBeNull(); // FAILS - raw data stored
 });
 
 // CORRECT - Checks rendered output
-test("should sanitize URLs in popup", () => {
-    const poi = {
+test("should sanitize URLs in the rendered panel", () => {
+    const feature = {
+        type: "Feature",
         id: "poi-url",
-        latlng: [45.5, -73.6],
-        attributes: { link: "javascript:alert(1)" },
+        geometry: { type: "Point", coordinates: [-73.6, 45.5] },
+        properties: { link: "javascript:alert(1)" },
     };
-    GeoLeaf.POI.addPoi(poi);
-    const marker = getLastCreatedMarker();
-    const popup = marker.bindPopup.mock.calls[0][0];
+    GeoLeaf.Layers.addFeature("points", feature);
+    const rendered = getRenderedFeatureInfo("poi-url");
     // Malicious URL should not appear in rendered HTML
-    expect(popup).not.toContain("javascript:");
+    expect(rendered).not.toContain("javascript:");
 });
 ```
 
@@ -237,7 +238,7 @@ test("should sanitize URLs in popup", () => {
 
 - Easier to update sanitization rules (one place)
 
-**Affected data**: POI attributes, URLs, HTML content, coordinates
+**Affected data**: feature properties, URLs, HTML content, coordinates
 
 ---
 
@@ -250,22 +251,26 @@ test("should sanitize URLs in popup", () => {
 ```javascript
 // INCORRECT - Checks for absence of dangerous string
 test("should escape XSS in description", () => {
-    const poi = {
+    const feature = {
+        type: "Feature",
         id: "xss-desc",
-        description: "<img src=x onerror=alert(1)>",
+        geometry: { type: "Point", coordinates: [-73.6, 45.5] },
+        properties: { description: "<img src=x onerror=alert(1)>" },
     };
-    GeoLeaf.POI.addPoi(poi);
+    GeoLeaf.Layers.addFeature("points", feature);
     const popup = getPopupContent();
     expect(popup).not.toContain("onerror="); // FAILS - string still present (escaped)
 });
 
 // CORRECT - Checks for escaped characters
 test("should escape XSS in description", () => {
-    const poi = {
+    const feature = {
+        type: "Feature",
         id: "xss-desc",
-        description: "<img src=x onerror=alert(1)>",
+        geometry: { type: "Point", coordinates: [-73.6, 45.5] },
+        properties: { description: "<img src=x onerror=alert(1)>" },
     };
-    GeoLeaf.POI.addPoi(poi);
+    GeoLeaf.Layers.addFeature("points", feature);
     const popup = getPopupContent();
     // Verify characters are escaped
     expect(popup).toContain("&lt;img");
@@ -329,7 +334,7 @@ pas une dépendance à Jest.
 npm test
 
 # Run specific test file
-npm test -- __tests__/poi.test.js
+npm test -- __tests__/geojson/geojson-layers.test.js
 
 # Run with coverage
 npm test -- --coverage

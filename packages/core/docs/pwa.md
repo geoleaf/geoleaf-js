@@ -1,57 +1,63 @@
 ---
-title: "PWA — Configuration et déploiement"
+title: "PWA — Configuration and deployment"
 ---
 
-# PWA — Configuration et déploiement
+# PWA — Configuration and deployment
 
-GeoLeaf prend en charge l'installation en tant qu'**application web progressive (PWA)** sur Android et iOS, sans développement spécifique. Cette page documente la configuration, les prérequis de déploiement, et les comportements par plateforme.
+::: info
 
----
+**Usage here, contract elsewhere.** This page explains **how to use the feature**. The contract — scope, configuration, exposed API, boundaries — lives in [`pwa.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/specs/capacites/pwa.md). Where the two disagree, the specification wins.
 
-## Prérequis de déploiement
+:::
 
-| Critère                                    | Requis pour                                           |
-| ------------------------------------------ | ----------------------------------------------------- |
-| **HTTPS**                                  | Lighthouse PWA, Service Worker, `beforeinstallprompt` |
-| **Service Worker actif**                   | Offline, Lighthouse PWA                               |
-| **`manifest.json` valide**                 | Installabilité, Lighthouse PWA                        |
-| **Icônes 192 et 512 px** (dont `maskable`) | Lighthouse PWA score 100                              |
-| **`<link rel="manifest">`** dans le HTML   | Détection par le navigateur                           |
-| **`theme-color` meta tag**                 | Couleur du Chrome navigateur                          |
-
-> Le Service Worker (`sw-core.js`) et le manifest (`manifest.json`) sont automatiquement inclus dans les variantes deployées par `build-deploy.cjs`.
+GeoLeaf supports installation as a **progressive web app (PWA)** on Android and iOS, with no application-specific development. This page documents the configuration, the deployment prerequisites, and the per-platform behaviour.
 
 ---
 
-## Génération des icônes
+## Deployment prerequisites
 
-Les icônes PWA doivent être générées à partir du logo source avant le premier déploiement :
+| Requirement                                     | Needed for                                            |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| **HTTPS**                                       | Lighthouse PWA, Service Worker, `beforeinstallprompt` |
+| **Active Service Worker**                       | Offline support, Lighthouse PWA                       |
+| **Valid `manifest.json`**                       | Installability, Lighthouse PWA                        |
+| **192 and 512 px icons** (including `maskable`) | Lighthouse PWA score of 100                           |
+| **`<link rel="manifest">`** in the HTML         | Browser detection                                     |
+| **`theme-color` meta tag**                      | Browser chrome colour                                 |
+
+> The Service Worker (`sw-core.js`) and the manifest (`manifest.json`) are included automatically in the variants built by `build-deploy.cjs`.
+
+---
+
+## Generating the icons
+
+The PWA icons must be generated from the source logo before the first deployment:
 
 ```bash
 node scripts/generate-pwa-icons.cjs
 ```
 
-Produit 4 fichiers dans `apps/geoleaf-app/src/assets/icons/` :
+This produces 4 files in `apps/geoleaf-app/src/assets/icons/`:
 
-| Fichier                 | Taille  | Usage                             |
+| File                    | Size    | Purpose                           |
 | ----------------------- | ------- | --------------------------------- |
 | `icon-192.png`          | 192×192 | Standard — Android, Windows       |
 | `icon-512.png`          | 512×512 | Standard — splash screen          |
 | `icon-192-maskable.png` | 192×192 | Maskable — Android adaptive icons |
-| `icon-512-maskable.png` | 512×512 | Maskable — splash screen maskable |
+| `icon-512-maskable.png` | 512×512 | Maskable — maskable splash screen |
 
-> Prérequis : `sharp` installé dans `packages/core` (`npm install --prefix packages/core`).
+> Prerequisite: `sharp` installed in `packages/core` (`npm install --prefix packages/core`).
 
 ---
 
-## Configurer le branding PWA
+## Configuring the PWA branding
 
-Le manifest est généré dynamiquement par `build-deploy.cjs` en fusionnant :
+The manifest is generated at build time by `build-deploy.cjs`, by merging:
 
-1. Le template source `apps/geoleaf-app/manifest.json`
-2. La section `pwa` de `profiles/geoleaf.config.json`
+1. The source template `apps/geoleaf-app/manifest.json`
+2. The `pwa` section of `profiles/geoleaf.config.json`
 
-Les champs `pwa.*` de la config écrasent les valeurs du template :
+The `pwa.*` fields of the configuration override the template values:
 
 ```json
 // profiles/geoleaf.config.json
@@ -71,9 +77,9 @@ Les champs `pwa.*` de la config écrasent les valeurs du template :
 
 ---
 
-## Activer le prompt d'installation
+## Enabling the install prompt
 
-Le prompt est **désactivé par défaut** (`enabled: false`). Pour l'activer :
+The prompt is **disabled by default** (`enabled: false`). To enable it:
 
 ```json
 // profiles/geoleaf.config.json
@@ -86,43 +92,43 @@ Le prompt est **désactivé par défaut** (`enabled: false`). Pour l'activer :
 }
 ```
 
-`GeoLeaf.PWA.init()` est appelé automatiquement après le chargement de la config (dans `app/boot.ts`).
+`GeoLeaf.PWA.init()` is called automatically once the configuration has loaded (in `app/boot.ts`).
 
-### Comportement par plateforme
+### Per-platform behaviour
 
-| Plateforme                  | Comportement                                                                                                                          |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Android / Chrome / Edge** | Capture `beforeinstallprompt` → affiche une bannière custom avec bouton « Installer »                                                 |
-| **iOS Safari**              | `beforeinstallprompt` n'existe pas → affiche une bannière manuelle expliquant comment ajouter à l'écran d'accueil via le menu Partage |
-| **Autres navigateurs**      | `beforeinstallprompt` absent → aucune bannière                                                                                        |
+| Platform                    | Behaviour                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Android / Chrome / Edge** | Captures `beforeinstallprompt` → shows a custom banner with an install button                                                        |
+| **iOS Safari**              | `beforeinstallprompt` does not exist → shows a manual banner explaining how to add the app to the home screen through the Share menu |
+| **Other browsers**          | No `beforeinstallprompt` → no banner                                                                                                 |
 
-#### Bannière Android
+#### Android banner
 
-- Apparaît uniquement lorsque le navigateur juge l'app installable (HTTPS + SW + manifest valide)
-- Persistance du refus : `localStorage['gl_pwa_install_dismissed']`
-- Auto-masquage après installation (`appinstalled` event)
+- Appears only once the browser considers the app installable (HTTPS + Service Worker + valid manifest)
+- Dismissal is persisted in `localStorage['gl_pwa_install_dismissed']`
+- Hides itself after installation (`appinstalled` event)
 
-#### Bannière iOS
+#### iOS banner
 
-- Détecte `/(iPhone|iPad|iPod)/i` sur `navigator.userAgent`
-- Non affichée si l'app est déjà en mode standalone (`navigator.standalone === true`)
-- Apparaît 1,5 seconde après le chargement pour éviter de masquer le contenu initial
-- Persistance du refus : `localStorage['gl_pwa_ios_dismissed']`
+- Detects `/(iPhone|iPad|iPod)/i` in `navigator.userAgent`
+- Not shown when the app already runs in standalone mode (`navigator.standalone === true`)
+- Appears 1.5 seconds after load, so it does not hide the initial content
+- Dismissal is persisted in `localStorage['gl_pwa_ios_dismissed']`
 
 ---
 
-## Utilisation programmatique (ESM)
+## Programmatic use (ESM)
 
 ```typescript
 import { PWA } from "@geoleaf/core";
 
-// Initialisation manuelle (normalement appelé par boot.ts)
+// Manual initialisation (normally called by boot.ts)
 PWA.init({
     installPrompt: { enabled: true },
 });
 ```
 
-Via le namespace global (CDN/ESM) :
+Through the global namespace (CDN/ESM):
 
 ```javascript
 GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
@@ -130,53 +136,73 @@ GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
 
 ---
 
-## Validation Lighthouse
+## Testing locally
 
-Pour obtenir un score PWA ≥ 90 (idéalement 100) :
+The Service Worker and the manifest are **not** active when the sources are served directly: they only exist in the built variants. A deployment must therefore be regenerated, **in four steps — the first one is not optional**:
+
+```bash
+npx turbo run build && npm run build:deploy && node scripts/build-deploy-coverage.cjs && npm run build:deploy:local
+```
+
+Then point a browser at the vhost that serves `deploy/` (a server is already running; do not start a second one). The Service Worker requires **HTTPS**, or `localhost` for testing.
+
+::: warning
+
+Running `npm run build:deploy` on its own rebuilds only part of what it copies, so it produces a **stale** deployment while still exiting 0. Any test run against that output measures the previous bundle.
+
+:::
+
+---
+
+## Lighthouse validation
+
+To reach a PWA score of 90 or more (ideally 100):
 
 ```bash
 npx lighthouse https://your-domain.com --preset=pwa --output=html --output-path=./lighthouse-report.html
 ```
 
-Checklist :
+Checklist:
 
-- [ ] HTTPS actif sur le serveur
-- [ ] `manifest.json` présent à la racine, champs `name`, `icons` 192+512, `start_url`, `display` renseignés
-- [ ] Icônes avec `purpose: maskable` (générées par `generate-pwa-icons.cjs`)
-- [ ] `<link rel="manifest">` dans le HTML
-- [ ] `theme-color` meta tag présent
-- [ ] Service Worker enregistré, `fetch` event handler actif
-- [ ] `start_url` répond HTTP 200 (y compris offline)
+- [ ] HTTPS active on the server
+- [ ] `manifest.json` present at the root, with `name`, 192+512 `icons`, `start_url` and `display` filled in
+- [ ] Icons with `purpose: maskable` (produced by `generate-pwa-icons.cjs`)
+- [ ] `<link rel="manifest">` in the HTML
+- [ ] `theme-color` meta tag present
+- [ ] Service Worker registered, `fetch` event handler active
+- [ ] `start_url` answers HTTP 200 (including offline)
 
 ---
 
-## Architecture des fichiers
+## File layout
 
 ```
-packages/core/
-├── manifest.json               ← Template source (mergé par build-deploy.cjs)
-├── init.js                     ← Enregistrement SW (navigator.serviceWorker.register)
-├── sw-core.js                  ← Service Worker lite (cache statique + profils)
-└── src/
-    ├── assets/icons/
-    │   ├── icon-192.png        ← Généré par generate-pwa-icons.cjs
-    │   ├── icon-192-maskable.png
-    │   ├── icon-512.png
-    │   └── icon-512-maskable.png
-    └── modules/
-        ├── geoleaf.pwa.ts      ← Façade publique (GeoLeaf.PWA)
-        └── pwa/
-            ├── pwa-manager.ts  ← Orchestrateur + interface PWAConfig
-            ├── install-prompt.ts ← Android banner
-            ├── ios-banner.ts   ← iOS instructions banner
-            └── index.ts        ← Exports du module
+apps/geoleaf-app/               ← the deployable APPLICATION, source of the deploy/ variants
+├── manifest.json               ← Source template (merged by build-deploy.cjs)
+├── init.js                     ← SW registration (navigator.serviceWorker.register)
+└── src/assets/icons/
+    ├── icon-192.png            ← Generated by generate-pwa-icons.cjs
+    ├── icon-192-maskable.png
+    ├── icon-512.png
+    └── icon-512-maskable.png
+
+packages/core/src/
+├── api/geoleaf.pwa.ts          ← Public facade (GeoLeaf.PWA)
+├── kernel/storage/sw-core.js   ← Lite Service Worker (static cache + profiles)
+└── capabilities/pwa/
+    ├── pwa-capability.ts       ← Capability declaration (gate, configSchema)
+    ├── pwa-manager.ts          ← Orchestrator + PWAConfig interface
+    ├── install-prompt.ts       ← Android banner
+    ├── ios-banner.ts           ← iOS instructions banner
+    ├── platform.ts             ← Platform detection
+    ├── lifecycle.ts · install.ts · public-api.ts
 
 scripts/
-└── generate-pwa-icons.cjs      ← Générateur d'icônes (sharp)
+└── generate-pwa-icons.cjs      ← Icon generator (sharp)
 ```
 
 ---
 
-## Référence de l'interface `PWAConfig`
+## `PWAConfig` interface reference
 
-Voir {@link PWAConfig} pour la documentation complète des champs.
+See {@link PWAConfig} for the complete field documentation.

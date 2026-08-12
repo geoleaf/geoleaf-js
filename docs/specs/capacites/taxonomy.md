@@ -13,11 +13,15 @@ date: 28 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/taxonomy/` ·
 **Vérifié contre :** `81aa8d29` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Capacité de POLITIQUE, purement en lecture tirée.** Elle n'a **ni module, ni cycle de vie,
 > ni écouteur, ni installeur de preset au-delà du montage du namespace**. Elle ne s'exécute jamais
@@ -274,15 +278,15 @@ capacité sans module.
 
 Personne n'importe cette capacité : tout le monde la lit tardivement sur `GeoLeaf.Taxonomy`.
 
-| Consommateur                                          | Ce qu'il demande                                           |
-| ----------------------------------------------------- | ---------------------------------------------------------- |
-| `globals.geojson.ts` — l'injecteur de symboles        | `resolvePoiIcon` → `properties.symbolId`                   |
-| `adapters/maplibre/maplibre-poi-icons.ts`             | `getIconVariants`, `getIcons`                              |
-| `adapters/maplibre/maplibre-taxonomy-paint.ts`        | `getIcons().iconSize`, `resolveMarkerPaint`                |
-| `legend` — `legend.ts`, `legend-generator.ts`         | `getCategories`, `getFieldMappings`, `getIcons`            |
-| `filter` — `engine/options.ts`, `taxonomy-options.ts` | `getCategories`                                            |
-| `feature-info` — `render/dom.ts`                      | `resolveTitleIcon`, `resolveBadgeStyle`                    |
-| **Plugin `addpoi`** — `add-form/fields-manager.ts`    | Les catégories d'une couche, pour construire le formulaire |
+| Consommateur                                                                                                                      | Ce qu'il demande                                           |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `packages/core/src/globals/globals.geojson.ts` — l'injecteur de symboles                                                          | `resolvePoiIcon` → `properties.symbolId`                   |
+| `adapters/maplibre/maplibre-poi-icons.ts`                                                                                         | `getIconVariants`, `getIcons`                              |
+| `adapters/maplibre/maplibre-taxonomy-paint.ts`                                                                                    | `getIcons().iconSize`, `resolveMarkerPaint`                |
+| `legend` — `packages/core/src/capabilities/legend/legend.ts`, `packages/core/src/capabilities/legend/legend-generator.ts`         | `getCategories`, `getFieldMappings`, `getIcons`            |
+| `filter` — `packages/core/src/capabilities/filter/engine/options.ts`, `packages/core/src/capabilities/filter/taxonomy-options.ts` | `getCategories`                                            |
+| `feature-info` — `packages/core/src/capabilities/feature-info/render/dom.ts`                                                      | `resolveTitleIcon`, `resolveBadgeStyle`                    |
+| **Plugin `addpoi`** — `add-form/fields-manager.ts`                                                                                | Les catégories d'une couche, pour construire le formulaire |
 
 ⚠️ **Le dernier traverse la frontière `core → plugin` dans le bon sens** : c'est le plugin qui lit le
 namespace du core, jamais l'inverse. La règle `no-plugin-in-core` reste tenue.

@@ -1,40 +1,37 @@
 ---
-title: "GeoLeaf — Configuration des plugins dans un profil"
+title: "GeoLeaf — Plugin configuration in a profile"
 ---
 
-# GeoLeaf — Configuration des plugins dans un profil
+# GeoLeaf — Plugin configuration in a profile
 
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière vérification :** 29 juillet 2026
+**Applies to:** `@geoleaf/core` v3.x
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Certaines clés de configuration dans `profile.json` et `ui.json` n'ont d'effet que lorsque le plugin correspondant est chargé. Sans le plugin, la clé est **lue sans erreur et ignorée silencieusement**. Cette conception permet de définir les configurations à l'avance et de charger les plugins optionnellement selon l'environnement.
+Some configuration keys in `profile.json` and `ui.json` only take effect once the matching plugin is loaded. Without the plugin, the key is **read without error and silently ignored**. This design makes it possible to declare configurations up front and load plugins optionally, depending on the environment.
 
-| Clé de profil                    | Plugin requis                     | Effet quand le plugin est chargé                 |
-| -------------------------------- | --------------------------------- | ------------------------------------------------ |
-| `ui.showCacheButton`             | `@geoleaf-plugins/offline-ui`     | Affiche le bouton de gestion du cache offline    |
-| `modules.editor.showAddPoi`      | `@geoleaf-plugins/editor`         | Affiche le bouton d'ajout de POI                 |
-| `storage`                        | `@geoleaf-plugins/offline-ui`     | Configure le cache offline (tiles, profil)       |
-| `layer.attributes.fields[].edit` | `@geoleaf-plugins/editor`         | Rend le champ saisissable, par couche            |
-| _(aucune clé)_                   | `@geoleaf-plugins/connector`      | Intercepteur fetch — auto-activé à l'import      |
-| _(aucune clé)_                   | `@geoleaf-plugins/file-import`    | Active l'API `GeoLeaf.FileImport.*`              |
-| _(aucune clé)_                   | `@geoleaf-plugins/flatgeobuf`     | Active l'API `GeoLeaf.FlatGeobuf.*`              |
-| _(aucune clé)_                   | `@geoleaf-plugins/cog`            | Active l'API `GeoLeaf.COG.*`                     |
-| _(aucune clé)_                   | `@geoleaf-plugins/websocket`      | Flux temps réel POI via WebSocket (roadmap)      |
-| _(aucune clé)_                   | `@geoleaf-plugins/realtime-layer` | Couches à rafraîchissement automatique (roadmap) |
-
-> **Note :** tous les plugins `@geoleaf-plugins/*` sont MIT et publiés sur npmjs.org. `@geoleaf-plugins/connector`, `@geoleaf-plugins/file-import` et `@geoleaf-plugins/flatgeobuf` sont MIT et distribués via `npmjs.org`.
+| Profile key                      | Required plugin                   | Effect once the plugin is loaded              |
+| -------------------------------- | --------------------------------- | --------------------------------------------- |
+| `ui.showCacheButton`             | `@geoleaf-plugins/offline-ui`     | Shows the offline cache management button     |
+| `modules.editor.showAddPoi`      | `@geoleaf-plugins/editor`         | Shows the add-POI button                      |
+| `storage`                        | `@geoleaf-plugins/offline-ui`     | Configures the offline cache (tiles, profile) |
+| `layer.attributes.fields[].edit` | `@geoleaf-plugins/editor`         | Makes the field editable, per layer           |
+| _(no key)_                       | `@geoleaf-plugins/connector`      | fetch interceptor — enabled on import         |
+| _(no key)_                       | `@geoleaf-plugins/file-import`    | Enables the `GeoLeaf.FileImport.*` API        |
+| _(no key)_                       | `@geoleaf-plugins/flatgeobuf`     | Enables the `GeoLeaf.FlatGeobuf.*` API        |
+| _(no key)_                       | `@geoleaf-plugins/cog`            | Enables the `GeoLeaf.COG.*` API               |
+| _(no key)_                       | `@geoleaf-plugins/websocket`      | Real-time POI stream over WebSocket (planned) |
+| _(no key)_                       | `@geoleaf-plugins/realtime-layer` | Auto-refreshing layers (planned)              |
 
 ---
 
 ## Plugin Storage — `@geoleaf-plugins/offline-ui`
 
-### Activer le bouton cache
+### Enable the cache button
 
-Dans `ui.json` → section `ui` :
+In `ui.json` → the `ui` section:
 
 ```json
 {
@@ -44,11 +41,11 @@ Dans `ui.json` → section `ui` :
 }
 ```
 
-Sans ce flag à `true`, le bouton n'apparaît pas même si le plugin est chargé.
+Without this flag set to `true`, the button does not appear, even when the plugin is loaded.
 
-### Bloc `storage` dans `profile.json`
+### The `storage` block in `profile.json`
 
-Configure le comportement du cache offline :
+Configures the behaviour of the offline cache:
 
 ```json
 {
@@ -62,15 +59,15 @@ Configure le comportement du cache offline :
 }
 ```
 
-| Clé                        | Type    | Défaut  | Description                                                           |
-| -------------------------- | ------- | ------- | --------------------------------------------------------------------- |
-| `enableOfflineDetector`    | boolean | `false` | Surveille la connectivité réseau et affiche un indicateur offline     |
-| `cache.enableProfileCache` | boolean | `true`  | Met en cache les fichiers du profil (JSON de config, taxonomie, etc.) |
-| `cache.enableTileCache`    | boolean | `true`  | Met en cache les tuiles cartographiques (raster + vecteur)            |
+| Key                        | Type    | Default | Description                                                 |
+| -------------------------- | ------- | ------- | ----------------------------------------------------------- |
+| `enableOfflineDetector`    | boolean | `false` | Watches network connectivity and shows an offline indicator |
+| `cache.enableProfileCache` | boolean | `true`  | Caches the profile files (config JSON, taxonomy, and so on) |
+| `cache.enableTileCache`    | boolean | `true`  | Caches the map tiles (raster + vector)                      |
 
-### Cache par couche (dans `basemaps.json`)
+### Per-layer cache (in `basemaps.json`)
 
-La configuration du cache peut être affinée au niveau de chaque fond de carte :
+Cache configuration can be refined for each basemap:
 
 ```json
 {
@@ -93,20 +90,20 @@ La configuration du cache peut être affinée au niveau de chaque fond de carte 
 }
 ```
 
-| Clé             | Description                                                               |
-| --------------- | ------------------------------------------------------------------------- |
-| `offline`       | Autorise la mise en cache offline pour ce fond de carte                   |
-| `cacheMinZoom`  | Niveau de zoom minimum à précharger                                       |
-| `cacheMaxZoom`  | Niveau de zoom maximum à précharger                                       |
-| `offlineBounds` | Emprise géographique à mettre en cache (`north`, `south`, `east`, `west`) |
+| Key             | Description                                                   |
+| --------------- | ------------------------------------------------------------- |
+| `offline`       | Allows offline caching for this basemap                       |
+| `cacheMinZoom`  | Lowest zoom level to pre-fetch                                |
+| `cacheMaxZoom`  | Highest zoom level to pre-fetch                               |
+| `offlineBounds` | Geographic extent to cache (`north`, `south`, `east`, `west`) |
 
 ---
 
 ## Plugin Editor — `@geoleaf-plugins/editor`
 
-### Activer le bouton d'ajout
+### Enable the add button
 
-Dans `config/plugins/editor.json` → bloc `modules.editor` :
+In `config/plugins/editor.json` → the `modules.editor` block:
 
 ```json
 {
@@ -116,22 +113,26 @@ Dans `config/plugins/editor.json` → bloc `modules.editor` :
 }
 ```
 
-⚠️ La clé vivait sous `ui.showAddPoi` jusqu'au Sprint 5 ; elle a été retirée du schéma `ui`
-(`additionalProperties: false`, donc l'écrire y fait désormais échouer `validate:profiles`) et
-son défaut a changé — `false` (opt-in) devient `true` (opt-out).
+::: warning
+This key used to live under `ui.showAddPoi`. It has been removed from the `ui` schema
+(`additionalProperties: false`), so writing it there now makes `npm run validate:profiles` fail.
+Its default has changed as well: `false` (opt-in) became `true` (opt-out).
+:::
 
-### ~~Bloc `poiAddConfig` dans `profile.json`~~ — RETIRÉ (Sprint 5, 05/08/2026)
+### ~~The `poiAddConfig` block in `profile.json`~~ — REMOVED
 
-🛑 **Ce bloc n'existe plus, et le recopier fait ÉCHOUER `npm run validate:profiles`.** Il
-configurait le formulaire d'ajout de POI du plugin `addpoi`, fusionné dans
-`@geoleaf-plugins/editor`. `profile.schema.json` est `additionalProperties: false` et ne
-déclare que dix clés racine (`$schema`, `id`, `label`, `displayLabel`, `icon`, `description`,
-`version`, `Files`, `map`, `modules`) : une clé racine inconnue est **refusée**, pas ignorée.
+::: danger
+**This block no longer exists, and copying it makes `npm run validate:profiles` FAIL.** It
+configured the POI add form of the `addpoi` plugin, since merged into
+`@geoleaf-plugins/editor`. `profile.schema.json` is `additionalProperties: false` and declares
+only ten root keys (`$schema`, `id`, `label`, `displayLabel`, `icon`, `description`, `version`,
+`Files`, `map`, `modules`): an unknown root key is **rejected**, not ignored.
+:::
 
-| Ancien                         | Nouveau                                                                           |
-| ------------------------------ | --------------------------------------------------------------------------------- |
-| `poiAddConfig.enabled`         | plus de clé — le plugin se charge **paresseusement** quand le bouton est actionné |
-| `poiAddConfig.defaultPosition` | `modules.editor.poiAddDefaultPosition` (dans `config/plugins/editor.json`)        |
+| Old                            | New                                                                          |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `poiAddConfig.enabled`         | no key any more — the plugin is loaded **lazily** when the button is pressed |
+| `poiAddConfig.defaultPosition` | `modules.editor.poiAddDefaultPosition` (in `config/plugins/editor.json`)     |
 
 ### Installation
 
@@ -139,13 +140,13 @@ déclare que dix clés racine (`$schema`, `id`, `label`, `displayLabel`, `icon`,
 npm install @geoleaf-plugins/connector
 ```
 
-### Utilisation
+### Usage
 
 ```js
 import "@geoleaf/core";
-import "@geoleaf-plugins/connector"; // intercepteur actif immédiatement
+import "@geoleaf-plugins/connector"; // interceptor active immediately
 
-// Configurer l'authentification pour une source
+// Configure authentication for a source
 GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
     auth: {
@@ -155,24 +156,24 @@ GeoLeaf.Connector.configure({
 });
 ```
 
-### Paramètres de configuration
+### Configuration parameters
 
-| Paramètre         | Type      | Description                                                          |
-| ----------------- | --------- | -------------------------------------------------------------------- |
-| `baseUrl`         | string    | URL de base à intercepter                                            |
-| `auth.type`       | string    | `"bearer"` / `"apikey"` / `"cookie"`                                 |
-| `auth.token`      | string/fn | Token statique ou fonction retournant le token dynamiquement         |
-| `auth.headerName` | string    | Nom du header (défaut : `"Authorization"` pour bearer, configurable) |
+| Parameter         | Type      | Description                                                       |
+| ----------------- | --------- | ----------------------------------------------------------------- |
+| `baseUrl`         | string    | Base URL to intercept                                             |
+| `auth.type`       | string    | `"bearer"` / `"apikey"` / `"cookie"`                              |
+| `auth.token`      | string/fn | Static token, or a function returning the token dynamically       |
+| `auth.headerName` | string    | Header name (default: `"Authorization"` for bearer, configurable) |
 
-> L'option `auth.token` accepte une valeur statique ou une fonction synchrone/asynchrone — utile pour les tokens à renouvellement automatique.
+> The `auth.token` option accepts a static value or a synchronous/asynchronous function — useful for tokens that refresh automatically.
 
 ---
 
 ## Plugin File Import — `@geoleaf-plugins/file-import`
 
-**Licence :** MIT | **Registre :** `npmjs.org` | **Statut :** Disponible (~70 KB gzip)
+**Status:** available (~70 KB gzip)
 
-Permet l'import de fichiers géographiques côté client (GPX, KML/KMZ, CSV, TopoJSON) et leur conversion en GeoJSON. Les données importées peuvent être affichées directement comme couche sur la carte.
+Imports geographic files on the client side (GPX, KML/KMZ, CSV, TopoJSON) and converts them to GeoJSON. Imported data can be displayed directly as a map layer.
 
 ### Installation
 
@@ -180,48 +181,48 @@ Permet l'import de fichiers géographiques côté client (GPX, KML/KMZ, CSV, Top
 npm install @geoleaf-plugins/file-import
 ```
 
-### API principale
+### Main API
 
 ```js
 import "@geoleaf/core";
 import "@geoleaf-plugins/file-import";
 
-// Convertir un fichier File en GeoJSON
+// Convert a File object into GeoJSON
 const geojson = await GeoLeaf.FileImport.convert(file, {
-    type: "auto", // détection automatique — ou "gpx", "kml", "csv", "topojson"
+    type: "auto", // automatic detection — or "gpx", "kml", "csv", "topojson"
 });
 
-// Importer et afficher comme couche sur la carte
+// Import and display as a map layer
 const layer = await GeoLeaf.FileImport.importAsLayer(file, {
     layerId: "imported-data",
     style: { color: "#e74c3c", weight: 2 },
 });
 ```
 
-### Formats supportés
+### Supported formats
 
 | Format   | Extension            | Notes                               |
 | -------- | -------------------- | ----------------------------------- |
 | GPX      | `.gpx`               | Tracks, routes, waypoints → GeoJSON |
-| KML/KMZ  | `.kml`, `.kmz`       | KMZ décompressé automatiquement     |
-| CSV      | `.csv`               | Colonnes lat/lon configurables      |
-| TopoJSON | `.json`, `.topojson` | Conversion automatique → GeoJSON    |
+| KML/KMZ  | `.kml`, `.kmz`       | KMZ is decompressed automatically   |
+| CSV      | `.csv`               | Configurable lat/lon columns        |
+| TopoJSON | `.json`, `.topojson` | Automatic conversion → GeoJSON      |
 
-### Options `importAsLayer`
+### `importAsLayer` options
 
-| Option    | Type   | Défaut   | Description                                       |
-| --------- | ------ | -------- | ------------------------------------------------- |
-| `layerId` | string | généré   | Identifiant de la couche résultante               |
-| `style`   | object | défaut   | Style MapLibre GL JS appliqué à la couche         |
-| `type`    | string | `"auto"` | Force le format (`"gpx"`, `"kml"`, `"csv"`, etc.) |
+| Option    | Type   | Default   | Description                                              |
+| --------- | ------ | --------- | -------------------------------------------------------- |
+| `layerId` | string | generated | Identifier of the resulting layer                        |
+| `style`   | object | default   | MapLibre GL JS style applied to the layer                |
+| `type`    | string | `"auto"`  | Forces the format (`"gpx"`, `"kml"`, `"csv"`, and so on) |
 
 ---
 
 ## Plugin FlatGeobuf — `@geoleaf-plugins/flatgeobuf`
 
-**Licence :** MIT | **Registre :** `npmjs.org` | **Statut :** Disponible (~20 KB gzip)
+**Status:** available (~20 KB gzip)
 
-Chargement streaming de fichiers FlatGeobuf avec filtrage spatial par bounding-box (HTTP Range + index R-tree). Idéal pour des jeux de données volumineux sans serveur intermédiaire.
+Streaming load of FlatGeobuf files with spatial bounding-box filtering (HTTP Range + R-tree index). Suited to large datasets served without an intermediate server.
 
 ### Installation
 
@@ -229,21 +230,21 @@ Chargement streaming de fichiers FlatGeobuf avec filtrage spatial par bounding-b
 npm install @geoleaf-plugins/flatgeobuf
 ```
 
-### Configuration déclarative dans un layer config
+### Declarative configuration in a layer config
 
-Chaque couche FlatGeobuf est déclarée dans un fichier `<layer>_config.json` avec `"plugin": "flatgeobuf"`. L'entrée dans `layers.json` est identique aux autres couches.
+Each FlatGeobuf layer is declared in a `<layer>_config.json` file with `"plugin": "flatgeobuf"`. The entry in `layers.json` is identical to any other layer.
 
-**Schéma du bloc `data` :**
+**Schema of the `data` block:**
 
-| Clé           | Type                       | Défaut    | Description                                                                       |
-| ------------- | -------------------------- | --------- | --------------------------------------------------------------------------------- |
-| `url`         | string                     | —         | URL du fichier `.fgb` (relative à la racine du profil ou absolue)                 |
-| `bbox`        | `[W, S, E, N]` (4 nombres) | absent    | Filtre spatial : seules les features dans la bbox sont transférées via HTTP Range |
-| `limit`       | number                     | `100 000` | Nombre maximum de features à charger (protection anti-DoS)                        |
-| `autoRefresh` | boolean                    | `false`   | Recharge les features à chaque déplacement de la carte (`moveend`)                |
-| `debounceMs`  | number                     | `300`     | Délai de debounce de l'auto-refresh en ms                                         |
+| Key           | Type                       | Default   | Description                                                                   |
+| ------------- | -------------------------- | --------- | ----------------------------------------------------------------------------- |
+| `url`         | string                     | —         | URL of the `.fgb` file (relative to the profile root, or absolute)            |
+| `bbox`        | `[W, S, E, N]` (4 numbers) | absent    | Spatial filter: only features inside the bbox are transferred over HTTP Range |
+| `limit`       | number                     | `100 000` | Maximum number of features to load (anti-DoS protection)                      |
+| `autoRefresh` | boolean                    | `false`   | Reloads the features on every map move (`moveend`)                            |
+| `debounceMs`  | number                     | `300`     | Auto-refresh debounce delay, in ms                                            |
 
-**Exemple — couche avec bbox + auto-refresh (zones_desserte) :**
+**Example — layer with bbox and auto-refresh (zones_desserte):**
 
 ```json
 {
@@ -270,7 +271,7 @@ Chaque couche FlatGeobuf est déclarée dans un fichier `<layer>_config.json` av
 }
 ```
 
-**Exemple — couche fichier local sans bbox (eco_regions_fgb) :**
+**Example — local file layer without bbox (eco_regions_fgb):**
 
 ```json
 {
@@ -287,25 +288,25 @@ Chaque couche FlatGeobuf est déclarée dans un fichier `<layer>_config.json` av
 }
 ```
 
-### Chargement depuis le code d'initialisation
+### Loading from initialisation code
 
 ```js
 import "@geoleaf/core";
 import "@geoleaf-plugins/flatgeobuf";
 
-// Lire la config depuis le profil, puis charger la couche :
+// Read the config from the profile, then load the layer:
 const layerId = await GeoLeaf.FlatGeobuf.loadLayerFromConfig(layerConfig);
-// Si layerConfig.data.bbox est défini → loadBboxAsLayer (HTTP Range)
-// Sinon → loadAsLayer (fichier complet)
+// If layerConfig.data.bbox is set → loadBboxAsLayer (HTTP Range)
+// Otherwise → loadAsLayer (whole file)
 ```
 
-### API bas niveau
+### Low-level API
 
 ```js
-// Chargement complet → GeoJSON FeatureCollection
+// Full load → GeoJSON FeatureCollection
 const result = await GeoLeaf.FlatGeobuf.load("https://example.com/data.fgb");
 
-// Chargement par bbox (HTTP Range — seules les features dans la bbox sont téléchargées)
+// Load by bbox (HTTP Range — only the features inside the bbox are downloaded)
 const result = await GeoLeaf.FlatGeobuf.loadBbox("https://example.com/data.fgb", {
     minX: 2.2,
     minY: 48.8,
@@ -313,38 +314,42 @@ const result = await GeoLeaf.FlatGeobuf.loadBbox("https://example.com/data.fgb",
     maxY: 49.0,
 });
 
-// Ajouter directement comme couche sur la carte
+// Add straight to the map as a layer
 const layerId = await GeoLeaf.FlatGeobuf.loadAsLayer("https://example.com/data.fgb", {
     layerId: "ma-couche",
-    layerName: "Mes données",
+    layerName: "My data",
     visible: true,
 });
 ```
 
-> **Prérequis serveur :** Le serveur hébergeant les fichiers `.fgb` doit supporter les requêtes HTTP Range (header `Content-Range`) pour que le filtrage bbox fonctionne. Nginx, Apache, Amazon S3 et GitHub Pages supportent cela par défaut.
+::: warning
+**Server prerequisite:** the server hosting the `.fgb` files must support HTTP Range requests
+(`Content-Range` header) for bbox filtering to work. Nginx, Apache, Amazon S3 and GitHub Pages
+support it by default.
+:::
 
 ---
 
 ## Plugin COG — `@geoleaf-plugins/cog`
 
-**Licence :** MIT | **Registre :** npmjs.org | **Statut :** Disponible (~156 KB gzip)
+**Status:** available (~156 KB gzip)
 
-Lecture et affichage de Cloud Optimized GeoTIFF (COG) directement dans MapLibre GL JS. Supporte les images multi-bandes, les colorMaps LUT et l'injection de source raster personnalisée.
+Reads and displays Cloud Optimized GeoTIFF (COG) directly in MapLibre GL JS. Supports multi-band images, LUT colour maps and custom raster source injection.
 
 ### Installation
 
 ```bash
-# npmjs.org — accès public
+# public npm registry
 npm install @geoleaf-plugins/cog
 ```
 
-### API principale
+### Main API
 
 ```js
 import "@geoleaf/core";
 import "@geoleaf-plugins/cog";
 
-// Ajouter une couche COG sur la carte
+// Add a COG layer to the map
 await GeoLeaf.COG.addLayer("https://example.com/ortho.tif", {
     layerId: "ortho",
     bands: [1, 2, 3],
@@ -352,54 +357,54 @@ await GeoLeaf.COG.addLayer("https://example.com/ortho.tif", {
     opacity: 0.85,
 });
 
-// Supprimer la couche
+// Remove the layer
 GeoLeaf.COG.removeLayer("ortho");
 ```
 
-### Options `addLayer`
+### `addLayer` options
 
-| Option     | Type     | Défaut    | Description                                 |
-| ---------- | -------- | --------- | ------------------------------------------- |
-| `layerId`  | string   | généré    | Identifiant de la couche MapLibre           |
-| `bands`    | number[] | `[1,2,3]` | Bandes raster à afficher (RGB)              |
-| `colorMap` | string   | `null`    | LUT : `"viridis"`, `"gray"`, `"rdbu"`, etc. |
-| `opacity`  | number   | `1`       | Opacité de la couche (0–1)                  |
-| `nodata`   | number   | `null`    | Valeur nodata à masquer                     |
+| Option     | Type     | Default   | Description                                     |
+| ---------- | -------- | --------- | ----------------------------------------------- |
+| `layerId`  | string   | generated | Identifier of the MapLibre layer                |
+| `bands`    | number[] | `[1,2,3]` | Raster bands to display (RGB)                   |
+| `colorMap` | string   | `null`    | LUT: `"viridis"`, `"gray"`, `"rdbu"`, and so on |
+| `opacity`  | number   | `1`       | Layer opacity (0–1)                             |
+| `nodata`   | number   | `null`    | nodata value to mask out                        |
 
 ---
 
 ## Plugin WebSocket — `@geoleaf-plugins/websocket`
 
-> **Statut : Roadmap Q3 2026** — Plugin MIT prévu pour le suivi POI en temps réel.
+> **Status: planned for Q3 2026** — MIT plugin for real-time POI tracking.
 
-Ce plugin permettra la mise à jour en temps réel des POI via WebSocket — positions live, alertes géographiques, flux IoT. La documentation de configuration sera disponible à la release.
+This plugin will provide real-time POI updates over WebSocket — live positions, geographic alerts, IoT streams. Configuration documentation will land with the release.
 
 ---
 
 ## Plugin Realtime Layer — `@geoleaf-plugins/realtime-layer`
 
-> **Statut : disponible** — Plugin MIT pour les couches à rafraîchissement automatique.
+> **Status: available** — MIT plugin for auto-refreshing layers.
 
-Ce plugin active des couches à rafraîchissement automatique via polling HTTP, WebSocket ou Server-Sent Events. La configuration vit dans le bloc `data.realtime` de chaque `<layer>_config.json`.
+This plugin enables auto-refreshing layers over HTTP polling, WebSocket or Server-Sent Events. The configuration lives in the `data.realtime` block of each `<layer>_config.json`.
 
-### Clés supportées (bloc `data.realtime`)
+### Supported keys (`data.realtime` block)
 
-| Clé              | Type                                | Obligatoire                    | Description                                                                                                                                                                                         |
-| ---------------- | ----------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`        | `boolean`                           | oui                            | Active la couche RT au boot. Si `false`, le bloc reste descriptif.                                                                                                                                  |
-| `source`         | `"polling" \| "websocket" \| "sse"` | oui                            | Type de transport.                                                                                                                                                                                  |
-| `decoder`        | `"json" \| "gtfs-rt" \| <custom>`   | oui                            | Décodeur appliqué au payload reçu. Custom via `registerDecoder()`.                                                                                                                                  |
-| `url`            | `string`                            | si `source` = polling/sse      | URL de l'endpoint distant.                                                                                                                                                                          |
-| `intervalMs`     | `number`                            | non (défaut 30 000)            | Période de polling. Polling uniquement.                                                                                                                                                             |
-| `fallbackUrl`    | `string`                            | non                            | URL de repli servie quand `url` renvoie HTTP non-2xx ou échoue (réseau). Polling uniquement. Le snapshot est émis une seule fois par panne ; retour automatique au primaire dès son premier succès. |
-| `channel`        | `string`                            | si `source` = websocket        | Canal consommé via `GeoLeaf.Ws.subscribe()`.                                                                                                                                                        |
-| `updateMode`     | `"upsert" \| "replace" \| "merge"`  | non (défaut `"upsert"`)        | Stratégie d'application des updates.                                                                                                                                                                |
-| `idField`        | `string`                            | requis pour `upsert` / `merge` | Propriété utilisée comme identifiant stable des features.                                                                                                                                           |
-| `staleTimeoutMs` | `number`                            | non                            | Durée après laquelle une feature non rafraîchie devient « stale ».                                                                                                                                  |
-| `staleAction`    | `"remove" \| "dim" \| <custom>`     | non (défaut `"remove"`)        | Action appliquée aux features stale. Custom via `registerStaleAction()`.                                                                                                                            |
-| `mapping`        | `object`                            | non                            | Hints pour le décodeur GTFS-RT (`idField`, `delayField`, `targetLayerId`).                                                                                                                          |
+| Key              | Type                                | Required                        | Description                                                                                                                                                                        |
+| ---------------- | ----------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`        | `boolean`                           | yes                             | Starts the RT layer at boot. When `false`, the block stays descriptive.                                                                                                            |
+| `source`         | `"polling" \| "websocket" \| "sse"` | yes                             | Transport type.                                                                                                                                                                    |
+| `decoder`        | `"json" \| "gtfs-rt" \| <custom>`   | yes                             | Decoder applied to the received payload. Custom decoders via `registerDecoder()`.                                                                                                  |
+| `url`            | `string`                            | when `source` = polling/sse     | URL of the remote endpoint.                                                                                                                                                        |
+| `intervalMs`     | `number`                            | no (default 30 000)             | Polling period. Polling only.                                                                                                                                                      |
+| `fallbackUrl`    | `string`                            | no                              | Fallback URL served when `url` returns a non-2xx status or fails (network). Polling only. The snapshot is emitted once per outage; the primary is used again on its first success. |
+| `channel`        | `string`                            | when `source` = websocket       | Channel consumed through `GeoLeaf.Ws.subscribe()`.                                                                                                                                 |
+| `updateMode`     | `"upsert" \| "replace" \| "merge"`  | no (default `"upsert"`)         | Strategy used to apply updates.                                                                                                                                                    |
+| `idField`        | `string`                            | required for `upsert` / `merge` | Property used as the stable feature identifier.                                                                                                                                    |
+| `staleTimeoutMs` | `number`                            | no                              | Delay after which a feature that has not been refreshed becomes stale.                                                                                                             |
+| `staleAction`    | `"remove" \| "dim" \| <custom>`     | no (default `"remove"`)         | Action applied to stale features. Custom actions via `registerStaleAction()`.                                                                                                      |
+| `mapping`        | `object`                            | no                              | Hints for the GTFS-RT decoder (`idField`, `delayField`, `targetLayerId`).                                                                                                          |
 
-### Exemple — polling GeoJSON avec fallback CDN (USGS)
+### Example — GeoJSON polling with a CDN fallback (USGS)
 
 ```json
 {
@@ -420,7 +425,7 @@ Ce plugin active des couches à rafraîchissement automatique via polling HTTP, 
 }
 ```
 
-### Exemple — GTFS-RT SNCF avec fallback protobuf
+### Example — SNCF GTFS-RT with a protobuf fallback
 
 ```json
 {
@@ -448,7 +453,7 @@ Ce plugin active des couches à rafraîchissement automatique via polling HTTP, 
 }
 ```
 
-### API publique
+### Public API
 
 ```ts
 GeoLeaf.RealtimeLayer.start(layerId: string): void;
@@ -459,11 +464,11 @@ GeoLeaf.RealtimeLayer.registerDecoder(name: string, decoder: IDecoder): void;
 GeoLeaf.RealtimeLayer.registerStaleAction(name: string, handler: StaleActionHandler): void;
 ```
 
-Les couches avec `data.realtime.enabled: true` sont démarrées automatiquement sur l'event `geoleaf:app:ready`.
+Layers with `data.realtime.enabled: true` start automatically on the `geoleaf:app:ready` event.
 
 ---
 
-## Exemple : profil avec les deux plugins activés
+## Example: a profile with both plugins enabled
 
 ### `profile.json`
 
@@ -497,16 +502,13 @@ Les couches avec `data.realtime.enabled: true` sont démarrées automatiquement 
 }
 ```
 
-⚠️ Cet exemple portait un bloc racine `poiAddConfig`, retiré au Sprint 5 : il ferait échouer
-la validation de profil. Son remplaçant vit sous `modules.editor` (voir ci-dessus).
-
 ### `ui.json`
 
 ```json
 {
     "ui": {
         "theme": "auto",
-        "language": "fr",
+        "language": "en",
         "showLayerManager": true,
         "showFilterPanel": true,
         "showLegend": true,
@@ -533,13 +535,13 @@ la validation de profil. Son remplaçant vit sous `modules.editor` (voir ci-dess
 }
 ```
 
-### Chargement des plugins (ESM)
+### Loading the plugins (ESM)
 
 ```js
 import "@geoleaf/core";
-import "@geoleaf-plugins/connector"; // optionnel — si API auth requise
-import "@geoleaf-plugins/offline-ui"; // débloque showCacheButton + storage.*
-import "@geoleaf-plugins/editor"; // débloque modules.editor.* (édition + capture de POI)
+import "@geoleaf-plugins/connector"; // optional — when an authenticated API is required
+import "@geoleaf-plugins/offline-ui"; // unlocks showCacheButton + storage.*
+import "@geoleaf-plugins/editor"; // unlocks modules.editor.* (POI editing and capture)
 
 GeoLeaf.init({
     map: { target: "map" },
@@ -551,34 +553,40 @@ GeoLeaf.init({
 GeoLeaf.boot();
 ```
 
-> **Ordre d'import :** les plugins doivent être importés **après** `@geoleaf/core`. Voir [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) → section "Ordre de chargement".
+::: warning
+**Import order:** plugins must be imported **after** `@geoleaf/core`. See
+[PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) → section "Load order".
+:::
 
 ---
 
 ## Table — `modules.table` (plugin `@geoleaf-plugins/table`)
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. Voir le README du plugin pour l'installation, la configuration (`modules.table.*`) et la migration.
+::: info
+The data table has been moved out of the core into the MIT plugin `@geoleaf-plugins/table`. See
+the plugin README for installation, configuration (`modules.table.*`) and migration.
+:::
 
-La table est désormais le plugin MIT `@geoleaf-plugins/table`. Sa configuration vit sous `modules.table.*` (fichier `config/plugins/table.json` + `Files.modules.table`), et non plus sous la clé racine `tableConfig`. Les clés ci-dessous décrivent le comportement de la table, notamment les formats d'export disponibles. L'API `GeoLeaf.Table.*` reste valide une fois le plugin chargé.
+The table is now the MIT plugin `@geoleaf-plugins/table`. Its configuration lives under `modules.table.*` (file `config/plugins/table.json` + `Files.modules.table`), no longer under the root key `tableConfig`. The keys below describe the table behaviour, in particular the available export formats. The `GeoLeaf.Table.*` API stays valid once the plugin is loaded.
 
-### Clés `modules.table`
+### `modules.table` keys
 
-| Clé                  | Type                                          | Défaut           | Description                                                                                                    |
-| -------------------- | --------------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------- |
-| `enabled`            | `boolean`                                     | `true`           | Active ou désactive entièrement le module table.                                                               |
-| `defaultVisible`     | `boolean`                                     | `false`          | Ouvre le panneau table au chargement du profil.                                                                |
-| `pageSize`           | `number`                                      | `50`             | Nombre de lignes par page (pagination virtuelle).                                                              |
-| `maxRowsPerLayer`    | `number`                                      | `5000`           | Limite de features chargées dans la table par couche. N'affecte pas `Table.exportLayer()`.                     |
-| `enableExportButton` | `boolean`                                     | `true`           | Affiche les boutons export (sélection + couche) dans la toolbar.                                               |
-| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | tous les formats | Restreint les formats affichés dans les dropdowns export. Si absent, tous les formats sont disponibles.        |
-| `csvSeparator`       | `',' \| ';'`                                  | `','`            | Séparateur utilisé lors de l'export CSV. Utile pour la compatibilité Excel dans les locales qui utilisent `;`. |
-| `csvIncludeGeometry` | `boolean`                                     | `false`          | Inclut une colonne `__geometry` (WKT/GeoJSON) dans l'export CSV.                                               |
-| `resizable`          | `boolean`                                     | `true`           | Autorise le redimensionnement vertical du panneau table.                                                       |
-| `defaultHeight`      | `string`                                      | `'320px'`        | Hauteur initiale du panneau.                                                                                   |
-| `minHeight`          | `string`                                      | `'180px'`        | Hauteur minimale lors du redimensionnement.                                                                    |
-| `maxHeight`          | `string`                                      | `'80vh'`         | Hauteur maximale lors du redimensionnement.                                                                    |
+| Key                  | Type                                          | Default      | Description                                                                                    |
+| -------------------- | --------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`                                     | `true`       | Enables or disables the table module entirely.                                                 |
+| `defaultVisible`     | `boolean`                                     | `false`      | Opens the table panel when the profile loads.                                                  |
+| `pageSize`           | `number`                                      | `50`         | Number of rows per page (virtual pagination).                                                  |
+| `maxRowsPerLayer`    | `number`                                      | `5000`       | Limit of features loaded into the table per layer. Does not affect `Table.exportLayer()`.      |
+| `enableExportButton` | `boolean`                                     | `true`       | Shows the export buttons (selection + layer) in the toolbar.                                   |
+| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | every format | Restricts the formats offered in the export dropdowns. When absent, every format is available. |
+| `csvSeparator`       | `',' \| ';'`                                  | `','`        | Separator used for CSV export. Useful for Excel compatibility in locales that use `;`.         |
+| `csvIncludeGeometry` | `boolean`                                     | `false`      | Includes a `__geometry` column (WKT/GeoJSON) in the CSV export.                                |
+| `resizable`          | `boolean`                                     | `true`       | Allows vertical resizing of the table panel.                                                   |
+| `defaultHeight`      | `string`                                      | `'320px'`    | Initial height of the panel.                                                                   |
+| `minHeight`          | `string`                                      | `'180px'`    | Minimum height when resizing.                                                                  |
+| `maxHeight`          | `string`                                      | `'80vh'`     | Maximum height when resizing.                                                                  |
 
-### Exemple — restreindre les formats et forcer le séparateur `;`
+### Example — restrict the formats and force the `;` separator
 
 ```json
 {
@@ -593,59 +601,65 @@ La table est désormais le plugin MIT `@geoleaf-plugins/table`. Sa configuration
 }
 ```
 
-### Formats d'export disponibles
+### Available export formats
 
-| Format        | Clé       | Poids additionnel | Notes                                                                                     |
-| ------------- | --------- | ----------------- | ----------------------------------------------------------------------------------------- |
-| GeoJSON       | `geojson` | 0 (déjà présent)  | Format par défaut.                                                                        |
-| CSV           | `csv`     | ~0 KB             | UTF-8 BOM, séparateur configurable, colonne `__geometry` optionnelle.                     |
-| KML           | `kml`     | ~0 KB             | XML natif sans dépendance externe. Propriétés en CDATA. Compatible Google Earth / QGIS.   |
-| GPX           | `gpx`     | ~0 KB             | XML natif. `<wpt>` pour Points, `<trk>` pour LineStrings, `<rte>` pour Polygons.          |
-| Excel (.xlsx) | `excel`   | ~150 KB gzip      | Chargé en lazy (SheetJS) uniquement au premier clic — aucun impact sur le bundle initial. |
+| Format        | Key       | Extra weight       | Notes                                                                                    |
+| ------------- | --------- | ------------------ | ---------------------------------------------------------------------------------------- |
+| GeoJSON       | `geojson` | 0 (already loaded) | Default format.                                                                          |
+| CSV           | `csv`     | ~0 KB              | UTF-8 BOM, configurable separator, optional `__geometry` column.                         |
+| KML           | `kml`     | ~0 KB              | Native XML, no external dependency. Properties in CDATA. Works with Google Earth / QGIS. |
+| GPX           | `gpx`     | ~0 KB              | Native XML. `<wpt>` for Points, `<trk>` for LineStrings, `<rte>` for Polygons.           |
+| Excel (.xlsx) | `excel`   | ~150 KB gzip       | Loaded lazily (SheetJS) on the first click only — no impact on the initial bundle.       |
 
-### API publique étendue
+### Extended public API
 
 ```ts
-// Exporter la sélection courante
-GeoLeaf.Table.exportSelection(); // GeoJSON (défaut)
+// Export the current selection
+GeoLeaf.Table.exportSelection(); // GeoJSON (default)
 GeoLeaf.Table.exportSelection("csv"); // CSV
-GeoLeaf.Table.exportSelection("csv", { csvSeparator: ";" }); // CSV avec séparateur custom
+GeoLeaf.Table.exportSelection("csv", { csvSeparator: ";" }); // CSV with a custom separator
 
-// Exporter toute la couche active (sans limite maxRowsPerLayer)
-GeoLeaf.Table.exportLayer(); // GeoJSON (défaut)
+// Export the whole active layer (ignores the maxRowsPerLayer limit)
+GeoLeaf.Table.exportLayer(); // GeoJSON (default)
 GeoLeaf.Table.exportLayer("kml");
 GeoLeaf.Table.exportLayer("excel");
 ```
 
-### Événements émis
+### Emitted events
 
-| Événement               | Payload                                  | Déclencheur               |
+| Event                   | Payload                                  | Trigger                   |
 | ----------------------- | ---------------------------------------- | ------------------------- |
 | `table:exportSelection` | `{ layerId, format, selectedIds, rows }` | `Table.exportSelection()` |
 | `table:exportLayer`     | `{ layerId, format, count }`             | `Table.exportLayer()`     |
 
 ---
 
-## Règle fondamentale : dégradation silencieuse
+## Core rule: silent degradation
 
-⚠️ **Cette phrase affirmait que `storage`, `poiAddConfig`, `showCacheButton` et `showAddPoi` sont « toujours valides dans le schéma » — c'est FAUX depuis le Sprint 5 pour trois d'entre elles.** `poiAddConfig` et `ui.showAddPoi` ont été retirés du schéma avec la fusion du plugin `addpoi` ; les objets à forme fixe sont `additionalProperties: false`, donc les écrire fait **échouer** `npm run validate:profiles` au lieu d'être ignoré. Seule `ui.showCacheButton` reste déclarée. Le principe ci-dessous ne vaut que pour les clés **effectivement déclarées** au schéma : Les plugins sans clé de profil (`connector`, `file-import`, `flatgeobuf`, `cog`) ne nécessitent aucune configuration JSON — ils s'activent dès l'import. Si le plugin correspondant n'est pas chargé :
+Only keys **actually declared in the schema** degrade silently. `poiAddConfig` and
+`ui.showAddPoi` are no longer declared; fixed-shape objects are `additionalProperties: false`, so
+writing them makes `npm run validate:profiles` **fail** instead of being ignored. Of the keys
+listed above, `ui.showCacheButton` is the one still declared.
 
-- Aucune erreur n'est levée
-- La clé est lue et ignorée
-- Le bouton ou la fonctionnalité n'apparaît pas
+Plugins with no profile key (`connector`, `file-import`, `flatgeobuf`, `cog`) need no JSON
+configuration at all — they activate on import. When the matching plugin is not loaded:
 
-Ce comportement est intentionnel : il permet de maintenir un profil unique pour différents environnements (avec ou sans plugins commerciaux).
+- No error is raised
+- The key is read and ignored
+- The button or the feature does not appear
+
+This behaviour is intentional: it allows a single profile to serve several environments, with or without the optional plugins.
 
 ---
 
-## Vérifier l'état des plugins au runtime
+## Check plugin status at runtime
 
 ```js
-// Liste des plugins chargés
+// List of loaded plugins
 GeoLeaf.plugins.getLoadedPlugins();
 // → ["core", "connector", "storage", "addpoi", "file-import", "flatgeobuf", "cog"]
 
-// Vérifier un plugin spécifique
+// Check one specific plugin
 GeoLeaf.plugins.isLoaded("storage"); // → true / false
 GeoLeaf.plugins.isLoaded("file-import"); // → true / false
 GeoLeaf.plugins.isLoaded("flatgeobuf"); // → true / false
@@ -654,13 +668,13 @@ GeoLeaf.plugins.isLoaded("cog"); // → true / false
 
 ---
 
-## Voir aussi
+## See also
 
-- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — développer un plugin custom
-- `CONNECTOR_GUIDE.md` — authentification HTTP avec `@geoleaf-plugins/connector`. Le guide est
-  livré **par le paquet du plugin** (`docs/CONNECTOR_GUIDE.md` de `@geoleaf-plugins/connector`),
-  pas par celui du core : c'est le plugin qu'il documente
-- [PROFILES_GUIDE.md](PROFILES_GUIDE.md) — structure complète d'un profil
-- [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md) — configuration du clustering (`modules.cluster`) ; la clé `poiConfig` a été supprimée en v3
-- [ui/PERMALINK.md](ui/PERMALINK.md) — configuration du permalink
-- [GETTING_STARTED.html](https://geoleaf.dev/docs/GETTING_STARTED.html) — guide de démarrage rapide
+- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — build a custom plugin
+- `CONNECTOR_GUIDE.md` — HTTP authentication with `@geoleaf-plugins/connector`. The guide ships
+  **with the plugin package** (`docs/CONNECTOR_GUIDE.md` of `@geoleaf-plugins/connector`), not
+  with the core: it documents the plugin
+- [PROFILES_GUIDE.md](PROFILES_GUIDE.md) — full structure of a profile
+- [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md) — clustering configuration (`modules.cluster`); the `poiConfig` key was removed in v3
+- [ui/PERMALINK.md](ui/PERMALINK.md) — permalink configuration
+- [GETTING_STARTED.html](https://geoleaf.dev/docs/GETTING_STARTED.html) — quick-start guide

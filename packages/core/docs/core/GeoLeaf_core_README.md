@@ -1,87 +1,85 @@
 ---
-title: "GeoLeaf.Core — Documentation du module Core"
+title: "GeoLeaf.Core — Core module documentation"
 ---
 
-# GeoLeaf.Core — Documentation du module Core
+# GeoLeaf.Core — Core module documentation
 
-**Version** : 3.0.0
-**Plateforme** : GeoLeaf Platform V3 (MapLibre GL JS ^6.0.0)
-**Fichier (monorepo)** : `packages/core/src/modules/built-in/map/`
-**Derniere mise a jour** : Mars 2026
-
----
-
-Le module **GeoLeaf.Core** constitue le noyau de la librairie **GeoLeaf**.
-
-Il gere :
-
-- l'initialisation de la carte **MapLibre GL JS** ;
-- la conservation d'une instance unique de carte via `IMapAdapter` (abstraction moteur) ;
-- la gestion et la synchronisation du **theme UI** (clair / sombre) avec les autres modules.
-
-Les autres modules (Baselayers, UI, POI, GeoJSON, Route, Legend, Config, etc.) s'appuient **tous** sur la carte creee par `GeoLeaf.Core`.
-
-> Note sur l'architecture : GeoLeaf.Core n'expose jamais directement `maplibregl.Map`. Il retourne un `IMapAdapter` (interface `MaplibreAdapter`) qui abstrait toutes les operations cartographiques. Cela garantit l'independance vis-a-vis du moteur de rendu.
+**Applies to**: @geoleaf/core v3.x (MapLibre GL JS ^6.0.0)
+**Source (monorepo)**: `packages/core/src/modules/built-in/map/`
 
 ---
 
-## 1. Role fonctionnel du Core
+The **GeoLeaf.Core** module is the kernel of the **GeoLeaf** library.
 
-GeoLeaf.Core a trois responsabilites principales :
+It handles:
 
-1. Creer et initialiser une carte MapLibre GL JS dans un conteneur DOM via `MaplibreAdapter`.
-2. Exposer l'instance de carte aux autres modules via `GeoLeaf.Core.getMap()` (retourne un `IMapAdapter`).
-3. Centraliser le **theme UI courant** (`"light"` / `"dark"`) et offrir une API simple pour le lire et le modifier.
+- initialisation of the **MapLibre GL JS** map;
+- keeping a single map instance behind an `IMapAdapter` (engine abstraction);
+- managing and synchronising the **UI theme** (light / dark) with the other modules.
 
-> Important : GeoLeaf.Core ne gere **pas** :
+The other modules (Baselayers, UI, POI, GeoJSON, Route, Legend, Config, and so on) **all** rely on the map created by `GeoLeaf.Core`.
+
+> Architecture note: GeoLeaf.Core never exposes `maplibregl.Map` directly. It returns an `IMapAdapter` (implemented by `MaplibreAdapter`) that abstracts every map operation. This keeps the library independent of the rendering engine.
+
+---
+
+## 1. Functional role of the Core
+
+GeoLeaf.Core has three main responsibilities:
+
+1. Create and initialise a MapLibre GL JS map in a DOM container through `MaplibreAdapter`.
+2. Expose the map instance to the other modules through `GeoLeaf.Core.getMap()` (returns an `IMapAdapter`).
+3. Centralise the **current UI theme** (`"light"` / `"dark"`) and offer a simple API to read and change it.
+
+> Important: GeoLeaf.Core does **not** handle:
 >
-> - les couches de fond (basemaps) ;
-> - les POI / GeoJSON / itineraires ;
-> - les controles UI avances.
+> - base layers (basemaps);
+> - POIs / GeoJSON / routes;
+> - advanced UI controls.
 >
-> Ces responsabilites sont confiees aux autres modules GeoLeaf.
+> Those responsibilities belong to the other GeoLeaf modules.
 
 ---
 
-## 2. API publique de GeoLeaf.Core
+## 2. Public API of GeoLeaf.Core
 
-L'objet `Core` exporte les methodes suivantes :
+The `Core` object exports the following methods:
 
-| Methode                | Role                                        |
-| ---------------------- | ------------------------------------------- |
-| `Core.init(options)`   | Initialise la carte MapLibre GL JS          |
-| `Core.getMap()`        | Retourne l'instance `IMapAdapter` active    |
-| `Core.getAdapter()`    | Alias de `getMap()` (usage interne modules) |
-| `Core.setTheme(theme)` | Change le theme UI apres initialisation     |
-| `Core.getTheme()`      | Retourne le theme UI courant                |
+| Method                 | Role                                          |
+| ---------------------- | --------------------------------------------- |
+| `Core.init(options)`   | Initialises the MapLibre GL JS map            |
+| `Core.getMap()`        | Returns the active `IMapAdapter` instance     |
+| `Core.getAdapter()`    | Alias of `getMap()` (internal use by modules) |
+| `Core.setTheme(theme)` | Changes the UI theme after initialisation     |
+| `Core.getTheme()`      | Returns the current UI theme                  |
 
 ---
 
 ### 2.1 `GeoLeaf.Core.init(options)`
 
-Fonction principale d'initialisation.
-Resout le conteneur DOM, cree un `MaplibreAdapter`, applique le theme UI et initialise la legende.
+Main initialisation function.
+It resolves the DOM container, creates a `MaplibreAdapter`, applies the UI theme and initialises the legend.
 
 ```js
 const adapter = GeoLeaf.Core.init(options);
 ```
 
-**Parametres :**
+**Parameters:**
 
-- `options.mapId` — **obligatoire** — `id` de l'element DOM conteneur de la carte.
-- `options.center` — initial center sous forme de tableau `[lat, lng]`.
-- `options.zoom` — niveau de zoom initial.
-- `options.theme` — theme UI (`"light"` par defaut).
-- `options.mapOptions` — options supplementaires du moteur (voir §3.5).
+- `options.mapId` — **required** — `id` of the DOM element hosting the map.
+- `options.center` — initial centre, as a `[lat, lng]` array.
+- `options.zoom` — initial zoom level.
+- `options.theme` — UI theme (`"light"` by default).
+- `options.mapOptions` — additional engine options (see §3.5).
 
-**Retour :**
+**Returns:**
 
-- L'instance `IMapAdapter` si l'initialisation reussit.
-- `null` en cas d'erreur (conteneur introuvable, exception du moteur, etc.).
+- The `IMapAdapter` instance when initialisation succeeds.
+- `null` on error (container not found, engine exception, and so on).
 
-> En mode boot automatique (`GeoLeaf.boot()`), `Core.init()` est appele internement par `app/init.ts` via `GeoLeaf.init()`. Il n'est pas necessaire de l'appeler manuellement.
+> In automatic boot mode (`GeoLeaf.boot()`), `Core.init()` is called internally by `app/init.ts` through `GeoLeaf.init()`. Calling it manually is not required.
 
-#### Exemple direct (mode standalone)
+#### Direct example (standalone mode)
 
 ```js
 // Direct usage — bypasses the boot system
@@ -101,7 +99,7 @@ if (!adapter) {
 
 ### 2.2 `GeoLeaf.Core.getMap()`
 
-Retourne l'instance `IMapAdapter` deja initialisee, ou `null` si aucune carte n'existe.
+Returns the `IMapAdapter` instance already initialised, or `null` when no map exists.
 
 ```js
 const adapter = GeoLeaf.Core.getMap();
@@ -113,16 +111,16 @@ if (adapter) {
 }
 ```
 
-**Usage recommande :**
+**Recommended usage:**
 
-- dans les autres modules GeoLeaf (POI, GeoJSON, Route, Legend, etc.) ;
-- dans du code externe qui souhaite manipuler la carte sans la reinitialiser.
+- inside the other GeoLeaf modules (POI, GeoJSON, Route, Legend, and so on);
+- in external code that needs to drive the map without reinitialising it.
 
 ---
 
 ### 2.3 `GeoLeaf.Core.getAdapter()`
 
-Alias strict de `getMap()`. Utilise en interne par les modules POI, Route et GeoJSON pour indiquer explicitement qu'ils consomment l'adaptateur.
+Strict alias of `getMap()`. Used internally by the POI, Route and GeoJSON modules to state explicitly that they consume the adapter.
 
 ```js
 const adapter = GeoLeaf.Core.getAdapter();
@@ -132,141 +130,141 @@ const adapter = GeoLeaf.Core.getAdapter();
 
 ### 2.4 `GeoLeaf.Core.setTheme(theme)`
 
-Permet de changer le theme UI apres l'initialisation.
+Changes the UI theme after initialisation.
 
 ```js
 GeoLeaf.Core.setTheme("dark");
 ```
 
-**Parametre :**
+**Parameter:**
 
-- `theme` : `"light"` ou `"dark"`.
+- `theme`: `"light"` or `"dark"`.
 
-**Comportement :**
+**Behaviour:**
 
-- Si `GeoLeaf.UI` est present, delegue au moteur de theme canonique : classes CSS
-  `gl-theme-light` / `gl-theme-dark` sur `document.body` **et** sur le conteneur
-  `#geoleaf-map` (support plein ecran), persistance dans `localStorage`
-  (`geoleaf_theme`), synchronisation de l'etat `aria-pressed` du bouton de theme,
-  et emission de l'evenement `geoleaf:ui-theme-changed`.
-- Sinon (UI non chargee), applique les classes `gl-theme-*` sur `document.body`.
+- When `GeoLeaf.UI` is present, the call is delegated to the canonical theme engine: CSS classes
+  `gl-theme-light` / `gl-theme-dark` on `document.body` **and** on the `#geoleaf-map`
+  container (full-screen support), persistence in `localStorage`
+  (`geoleaf_theme`), synchronisation of the theme button `aria-pressed` state,
+  and emission of the `geoleaf:ui-theme-changed` event.
+- Otherwise (UI not loaded), the `gl-theme-*` classes are applied to `document.body`.
 
-En cas de valeur invalide :
+On an invalid value:
 
-- GeoLeaf.Core logue un avertissement : `[GeoLeaf.Core] setTheme() ignored an invalid theme: {valeur}`.
-- Le theme courant n'est pas modifie.
+- GeoLeaf.Core logs a warning: `[GeoLeaf.Core] setTheme() ignored an invalid theme: {value}`.
+- The current theme is left unchanged.
 
-`GeoLeaf.Core.setTheme()`, `GeoLeaf.setTheme()` et `GeoLeaf.UI.applyTheme()`
-aboutissent donc au meme moteur : ils sont interchangeables.
+`GeoLeaf.Core.setTheme()`, `GeoLeaf.setTheme()` and `GeoLeaf.UI.applyTheme()`
+therefore reach the same engine: they are interchangeable.
 
 ---
 
 ### 2.5 `GeoLeaf.Core.getTheme()`
 
-Retourne le theme UI courant.
+Returns the current UI theme.
 
 ```js
 const currentTheme = GeoLeaf.Core.getTheme(); // "light" | "dark"
 ```
 
-Lit a travers le moteur de theme canonique quand `GeoLeaf.UI` est present : la
-valeur reflete donc aussi les changements faits par le bouton de theme, par
-`GeoLeaf.setTheme()` ou par la sequence de boot. Sans `GeoLeaf.UI`, la valeur est
-deduite de la classe presente sur `document.body` (defaut `"light"`).
+It reads through the canonical theme engine when `GeoLeaf.UI` is present, so the
+value also reflects changes made by the theme button, by `GeoLeaf.setTheme()` or
+by the boot sequence. Without `GeoLeaf.UI`, the value is derived from the class
+present on `document.body` (default `"light"`).
 
-**Usage typique :** synchroniser un composant externe avec l'etat visuel de GeoLeaf.
+**Typical usage:** synchronising an external component with the visual state of GeoLeaf.
 
 ---
 
-## 3. Detail des options Core
+## 3. Core options in detail
 
-### 3.1 `mapId` (obligatoire)
+### 3.1 `mapId` (required)
 
-- **Type** : `string`
-- **Obligatoire** : **oui**
-- **Description** : identifiant (`id`) de l'element DOM dans lequel la carte doit etre creee.
+- **Type**: `string`
+- **Required**: **yes**
+- **Description**: `id` of the DOM element in which the map must be created.
 
-Exemple HTML :
+HTML example:
 
 ```html
 <div id="geoleaf-map"></div>
 ```
 
-**Validations :**
+**Validation:**
 
-- `mapId` doit etre une chaine non vide.
-- Un element DOM avec cet `id` doit exister au moment de l'appel.
+- `mapId` must be a non-empty string.
+- A DOM element carrying that `id` must exist when the call is made.
 
-En cas de probleme (`mapId` manquant ou DOM introuvable) :
+If either fails (`mapId` missing, or DOM element not found):
 
-- `Core.init()` leve une exception interceptee internement.
-- Logue une erreur : `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`
-- Retourne `null`.
+- `Core.init()` throws an exception, caught internally.
+- An error is logged: `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`
+- `null` is returned.
 
 ---
 
-### 3.2 `center` (recommande)
+### 3.2 `center` (recommended)
 
-- **Type** : `[number, number]` — tableau `[latitude, longitude]`
-- **Convention** : latitude en premier (ordre GeoLeaf), longitude en second.
-- **Description** : centre initial de la carte.
+- **Type**: `[number, number]` — `[latitude, longitude]` array
+- **Convention**: latitude first (GeoLeaf order), longitude second.
+- **Description**: initial centre of the map.
 
-Exemple :
+Example:
 
 ```js
 center: [45.76, 4.84]; // Lyon, FR
 ```
 
-En pratique, lors du boot automatique, le centre est calcule depuis les bornes `map.bounds` du profil actif. Il n'est pas necessaire de le specifier manuellement dans ce mode.
+In practice, during automatic boot the centre is computed from the `map.bounds` of the active profile. Specifying it manually is not required in that mode.
 
 ---
 
-### 3.3 `zoom` (recommande)
+### 3.3 `zoom` (recommended)
 
-- **Type** : `number`
-- **Valeur par defaut** : `CONSTANTS.DEFAULT_ZOOM` (defini dans `modules/utils/constants/`)
-- **Description** : niveau de zoom initial de la carte.
+- **Type**: `number`
+- **Default value**: `CONSTANTS.DEFAULT_ZOOM` (defined in `modules/utils/constants/`)
+- **Description**: initial zoom level of the map.
 
-**Intervalles recommandes :**
+**Recommended ranges:**
 
-- plage pratique : `2` a `18` pour la plupart des fonds de carte ;
-- certains fonds montent a `19` ou `20` selon le fournisseur.
+- practical range: `2` to `18` for most base maps;
+- some base maps go up to `19` or `20` depending on the provider.
 
 ---
 
-### 3.4 `theme` (optionnel)
+### 3.4 `theme` (optional)
 
-- **Type** : `"light"` | `"dark"`
-- **Valeur par defaut** : `"light"`
-- **Description** : theme UI courant. S'applique a l'interface (header, boutons, panneaux, legende) et **jamais** aux tuiles.
+- **Type**: `"light"` | `"dark"`
+- **Default value**: `"light"`
+- **Description**: current UI theme. It applies to the interface (header, buttons, panels, legend) and **never** to the tiles.
 
 ```js
 theme: "dark";
 ```
 
-**Comportement :**
+**Behaviour:**
 
-- Si `theme` vaut `"light"` ou `"dark"` : enregistre et applique le theme.
-- Si `theme` est absent : utilise `"light"` par defaut.
-- Si `theme` a une valeur inconnue : logue un avertissement, ne modifie pas le theme courant.
+- When `theme` is `"light"` or `"dark"`: the theme is stored and applied.
+- When `theme` is absent: `"light"` is used.
+- When `theme` holds an unknown value: a warning is logged and the current theme is left unchanged.
 
-> Rappel : le choix des tuiles (Street / Topo / Satellite) est gere par `GeoLeaf.Baselayers` et ne depend pas du theme UI.
+> Reminder: the tile choice (Street / Topo / Satellite) is handled by `GeoLeaf.Baselayers` and does not depend on the UI theme.
 
 ---
 
-### 3.5 `mapOptions` (optionnel)
+### 3.5 `mapOptions` (optional)
 
-Options supplementaires transmises au moteur MapLibre GL JS via l'adaptateur.
+Additional options forwarded to the MapLibre GL JS engine through the adapter.
 
-| Cle         | Type            | Description                                  |
-| ----------- | --------------- | -------------------------------------------- |
-| `minZoom`   | `number`        | Zoom minimum autorise                        |
-| `maxZoom`   | `number`        | Zoom maximum autorise                        |
-| `maxBounds` | `GeoLeafBounds` | Restreint le panning a une zone geographique |
+| Key         | Type            | Description                       |
+| ----------- | --------------- | --------------------------------- |
+| `minZoom`   | `number`        | Minimum allowed zoom              |
+| `maxZoom`   | `number`        | Maximum allowed zoom              |
+| `maxBounds` | `GeoLeafBounds` | Restricts panning to a given area |
 
-`GeoLeafBounds` est un objet `{ north, south, east, west }` (tous en degres decimaux).
+`GeoLeafBounds` is an object `{ north, south, east, west }` (all in decimal degrees).
 
-Exemple avec contrainte de position :
+Example with a position constraint:
 
 ```js
 GeoLeaf.Core.init({
@@ -283,11 +281,11 @@ GeoLeaf.Core.init({
 
 ---
 
-## 4. L'interface IMapAdapter
+## 4. The IMapAdapter interface
 
-`GeoLeaf.Core.getMap()` retourne un objet `IMapAdapter`, pas une instance `maplibregl.Map` directe. Cette abstraction isole les modules du moteur de rendu.
+`GeoLeaf.Core.getMap()` returns an `IMapAdapter` object, not a direct `maplibregl.Map` instance. That abstraction isolates the modules from the rendering engine.
 
-### 4.1 Navigation et vue
+### 4.1 Navigation and view
 
 ```js
 const adapter = GeoLeaf.Core.getMap();
@@ -313,7 +311,7 @@ const zoom = adapter.getZoom(); // number
 const bounds = adapter.getBounds(); // { north, south, east, west }
 ```
 
-### 4.2 Evenements
+### 4.2 Events
 
 ```js
 const adapter = GeoLeaf.Core.getMap();
@@ -327,14 +325,14 @@ adapter.once("load", () => console.log("Map loaded"));
 adapter.off("moveend", onMoveEnd);
 ```
 
-Evenements disponibles via `IMapAdapter` :
+Events available through `IMapAdapter`:
 `"click"`, `"dblclick"`, `"contextmenu"`, `"moveend"`, `"movestart"`, `"zoomend"`, `"zoomstart"`, `"load"`, `"unload"`, `"resize"`.
 
-### 4.3 Coordonnees — convention d'ordre
+### 4.3 Coordinates — ordering convention
 
-GeoLeaf utilise toujours `{ lat, lng }` (latitude en premier).
-MapLibre GL JS utilise `[lng, lat]` (ordre GeoJSON, longitude en premier).
-La conversion est geree internement par `MaplibreAdapter` — les consommateurs n'ont jamais a s'en preoccuper.
+GeoLeaf always uses `{ lat, lng }` (latitude first).
+MapLibre GL JS uses `[lng, lat]` (GeoJSON order, longitude first).
+The conversion is handled internally by `MaplibreAdapter` — consumers never have to deal with it.
 
 ```js
 // GeoLeaf convention throughout the public API
@@ -345,52 +343,52 @@ const center: GeoLeafLatLng = { lat: 45.764, lng: 4.835 };
 
 ## 5. Boot System v2
 
-### 5.1 Vue d'ensemble
+### 5.1 Overview
 
-Depuis la v2.0.0, l'initialisation de GeoLeaf est entierement orchestree par le **boot system** situe dans `packages/core/src/app/`. Ce systeme gere le chargement sequentiel via un `ModuleRegistry` a tri topologique.
+Since v2.0.0, GeoLeaf initialisation is fully orchestrated by the **boot system** located in `packages/core/src/app/`. That system handles sequential loading through a topologically sorted `ModuleRegistry`.
 
-**Fichiers du boot system :**
+**Boot system files:**
 
-| Fichier                      | Role                                                                        |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| `src/app/app-namespace.ts`   | Logging, detection de chemin, verification plugins, helpers notification    |
-| `src/app/boot.ts`            | Expose `GeoLeaf.boot()`, charge la config, enregistre les modules           |
-| `src/app/init.ts`            | Orchestre la creation de la carte, UI, POI, Route, GeoJSON, legende         |
-| `src/app/module-registry.ts` | `ModuleRegistry` — gestion du cycle de vie des modules avec tri topologique |
-| `src/app/init-features.ts`   | Initialisation granulaire des modules secondaires                           |
+| File                         | Role                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `src/app/app-namespace.ts`   | Logging, path detection, plugin checks, notification helpers            |
+| `src/app/boot.ts`            | Exposes `GeoLeaf.boot()`, loads the config, registers the modules       |
+| `src/app/init.ts`            | Orchestrates map, UI, POI, Route, GeoJSON and legend creation           |
+| `src/app/module-registry.ts` | `ModuleRegistry` — module lifecycle management with topological sorting |
+| `src/app/init-features.ts`   | Fine-grained initialisation of the secondary modules                    |
 
-### 5.2 Flux de demarrage complet
+### 5.2 Full startup sequence
 
 ```
-1. Chargement du bundle
-   <script type="module" src="geoleaf.esm.js">  → Bundle ESM (CDN ou bundler)
-   <script type="module" src="geoleaf-offline-ui.plugin.js"> → Plugin optionnel (avant GeoLeaf.boot())
-   <script type="module" src="geoleaf-offline-ui.plugin.js">  → Plugin optionnel (avant GeoLeaf.boot())
+1. Bundle loading
+   <script type="module" src="geoleaf.esm.js">  → ESM bundle (CDN or bundler)
+   <script type="module" src="geoleaf-offline-ui.plugin.js"> → Optional plugin (before GeoLeaf.boot())
+   <script type="module" src="geoleaf-offline-ui.plugin.js">  → Optional plugin (before GeoLeaf.boot())
 
-2. Appel GeoLeaf.boot()
-   └─ Verifie document.readyState
-   └─ Appelle _app.startApp()
+2. GeoLeaf.boot() call
+   └─ Checks document.readyState
+   └─ Calls _app.startApp()
 
 3. _app.startApp()
-   └─ Enregistre les modules dans ModuleRegistry (B1 → B8 core)
-   └─ Charge geoleaf.config.json via GeoLeaf.loadConfig()
-   └─ Enregistre les modules optionnels selon le profil (Route, Labels, Legend, Table, Search)
-   └─ Charge les ressources du profil actif
-   └─ Execute ModuleRegistry.init() (ordre topologique) — voir 4.
+   └─ Registers the modules in ModuleRegistry (B1 → B8 core)
+   └─ Loads geoleaf.config.json through GeoLeaf.loadConfig()
+   └─ Registers the optional modules according to the profile (Route, Labels, Legend, Table, Search)
+   └─ Loads the resources of the active profile
+   └─ Runs ModuleRegistry.init() (topological order) — see 4.
 
-4. ModuleRegistry.init(cfg) — CoreMapModule → SharedModule → UIModule (parmi les autres)
-   └─ CoreMapModule : lit les bornes du profil (map.bounds obligatoire), appelle
+4. ModuleRegistry.init(cfg) — CoreMapModule → SharedModule → UIModule (among others)
+   └─ CoreMapModule: reads the profile bounds (map.bounds required), calls
       GeoLeaf.init() → GeoLeaf.Core.init() → MaplibreAdapter
-   └─ SharedModule : i18n, plugin check, lifecycles app-globales (pwa, offline)
-   └─ UIModule : lance le preload des modules secondaires (code splitting ESM),
-      initialise UI, Storage, POI, Route, GeoJSON, Legend, LayerManager
-   └─ Revele l'application apres evenement geoleaf:theme:applied
-   └─ Emet geoleaf:map:ready puis geoleaf:app:ready
+   └─ SharedModule: i18n, plugin check, app-wide lifecycles (pwa, offline)
+   └─ UIModule: starts preloading the secondary modules (ESM code splitting),
+      initialises UI, Storage, POI, Route, GeoJSON, Legend, LayerManager
+   └─ Reveals the application after the geoleaf:theme:applied event
+   └─ Emits geoleaf:map:ready then geoleaf:app:ready
 ```
 
 ### 5.3 `GeoLeaf.boot()`
 
-Point d'entree unique recommande pour demarrer GeoLeaf.
+The single recommended entry point to start GeoLeaf.
 
 ```js
 // Minimal usage — auto DOMContentLoaded guard
@@ -406,9 +404,9 @@ GeoLeaf.boot({
 });
 ```
 
-`GeoLeaf.boot()` gere automatiquement `DOMContentLoaded` : l'appeler avant ou apres que le DOM soit pret est sans consequence.
+`GeoLeaf.boot()` handles `DOMContentLoaded` on its own: calling it before or after the DOM is ready makes no difference.
 
-**Signature complete :**
+**Full signature:**
 
 ```ts
 GeoLeaf.boot(options?: {
@@ -421,19 +419,19 @@ GeoLeaf.boot(options?: {
 }): void
 ```
 
-### 5.4 Evenements du cycle de vie
+### 5.4 Lifecycle events
 
-Le boot system emet les evenements suivants sur `document` :
+The boot system emits the following events on `document`:
 
-| Evenement                | Moment d'emission                                      | Payload `detail`            |
-| ------------------------ | ------------------------------------------------------ | --------------------------- |
-| `geoleaf:theme:applying` | Debut du chargement d'un theme (couches en cours)      | —                           |
-| `geoleaf:theme:applied`  | Fin du chargement d'un theme (toutes couches visibles) | `{ themeName, layerCount }` |
-| `geoleaf:profile:loaded` | Profil JSON charge et parse                            | `{ profileId, data }`       |
-| `geoleaf:map:ready`      | Carte visible, loader retire, fitBounds effectue       | —                           |
-| `geoleaf:app:ready`      | Application completement initialisee                   | `{ version, timestamp }`    |
-| `geoleaf:map:move`       | Fin d'un deplacement de carte                          | `{ center, zoom }`          |
-| `geoleaf:map:zoom`       | Fin d'un changement de zoom                            | `{ zoom }`                  |
+| Event                    | Emitted when                                      | `detail` payload            |
+| ------------------------ | ------------------------------------------------- | --------------------------- |
+| `geoleaf:theme:applying` | A theme starts loading (layers still being added) | —                           |
+| `geoleaf:theme:applied`  | A theme has finished loading (all layers visible) | `{ themeName, layerCount }` |
+| `geoleaf:profile:loaded` | The JSON profile has been loaded and parsed       | `{ profileId, data }`       |
+| `geoleaf:map:ready`      | Map visible, loader removed, fitBounds done       | —                           |
+| `geoleaf:app:ready`      | Application fully initialised                     | `{ version, timestamp }`    |
+| `geoleaf:map:move`       | End of a map movement                             | `{ center, zoom }`          |
+| `geoleaf:map:zoom`       | End of a zoom change                              | `{ zoom }`                  |
 
 ```js
 // Listen for app ready
@@ -449,38 +447,67 @@ document.addEventListener("geoleaf:theme:applied", (event) => {
 });
 ```
 
-### 5.5 ModuleRegistry et sequence d'initialisation
+### 5.5 ModuleRegistry and initialisation sequence
 
-Le `ModuleRegistry` orchestre l'initialisation des modules en resolvant leurs dependances par tri topologique (algorithme de Kahn).
+The `ModuleRegistry` orchestrates module initialisation by resolving dependencies through a topological sort (Kahn's algorithm).
 
-**Modules core enregistres par defaut :**
+**Core modules registered by default:**
 
-| ID module  | Classe           | Role                                   |
-| ---------- | ---------------- | -------------------------------------- |
-| `security` | `SecurityModule` | Sanitisation XSS/CSRF, securite DOM    |
-| `core-map` | `CoreMapModule`  | Creation de la carte MapLibre GL JS    |
-| `config`   | `ConfigModule`   | Chargement et gestion des profils JSON |
-| `shared`   | `SharedModule`   | Etat partage inter-modules             |
-| `geojson`  | `GeoJSONModule`  | Couches GeoJSON et styles              |
-| `ui`       | `UIModule`       | Interface, controles, filtres          |
-| `poi`      | `POIModule`      | Markers, popups, sidepanel POI         |
-| `api`      | `APIModule`      | API publique et factory manager        |
+| Module ID      | Class               | Role                                     |
+| -------------- | ------------------- | ---------------------------------------- |
+| `core-map`     | `CoreMapModule`     | Creation of the MapLibre GL JS map       |
+| `config`       | `ConfigModule`      | Loading and management of JSON profiles  |
+| `shared`       | `SharedModule`      | State shared between modules             |
+| `geojson`      | `GeoJSONModule`     | GeoJSON layers and styles                |
+| `ui`           | `UIModule`          | Interface, controls, filters             |
+| `theme-engine` | `ThemeEngineModule` | Applies the default theme of the profile |
 
-**Modules optionnels (enregistres selon le profil) :**
+::: info
 
-| Condition profil                   | Module enregistre |
+There are six kernel modules, not eight. `SecurityModule` and `APIModule` are not registered
+modules: their subsystems are facades installed at import time, so there is nothing to
+sequence. `POIModule` no longer exists either — a POI is a generic GeoJSON point layer. The
+six identifiers above are declared in `app/boot-modules/*.module.ts`.
+
+:::
+
+**Optional modules (registered according to the profile):**
+
+| Profile condition                  | Registered module |
 | ---------------------------------- | ----------------- |
 | `route.enabled !== false`          | `RouteModule`     |
 | `labels.enabled !== false`         | `LabelsModule`    |
 | `modules.legend.enabled !== false` | `LegendModule`    |
 
-> ℹ️ Le moteur de recherche full-text (`flexsearch`) a été retiré du core en S6 (dormant, 0 consommateur). `SearchModule` n'est plus enregistré et le drapeau `ui.showSearch` a disparu ; la recherche textuelle de l'UI est assurée par la capacité in-core `filter` (champ texte du panneau Filtrer, désormais insensible aux accents et à l'ordre des mots).
+::: info
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. `TableModule` n'est plus enregistré par le core ; le drapeau `ui.showTable` a migré vers `modules.table.showButton`. Voir le README du plugin pour la configuration (`modules.table.*`) et la migration.
+The full-text search engine (`flexsearch`) has been removed from the core: it was dormant, with
+no consumer. `SearchModule` is no longer registered and the `ui.showSearch` flag no longer
+exists; UI text search is provided by the in-core `filter` capability (text field of the Filter
+panel, now insensitive to accents and to word order).
 
-> ℹ️ La légende est une capacité in-core unifiée sous `modules.legend` (S10/F2). `LegendModule` reste enregistré, mais via le `CapabilityRegistry` (gate `modules.legend.enabled`, opt-out) ; le drapeau `ui.showLegend` et le bloc `legendConfig` ont migré vers `modules.legend.enabled` / `modules.legend.{title,position,collapsedByDefault}` (fichier `config/plugins/legend.json`). Voir le [README Legend](../legend/GeoLeaf_Legend_README.md).
+:::
 
-**Enregistrement de module tiers :**
+::: info
+
+The data table has been moved out of the core into the MIT plugin `@geoleaf-plugins/table`.
+`TableModule` is no longer registered by the core, and the `ui.showTable` flag has moved to
+`modules.table.showButton`. See the plugin README for the configuration (`modules.table.*`) and
+the migration.
+
+:::
+
+::: info
+
+The legend is an in-core capability unified under `modules.legend`. `LegendModule` is still
+registered, but through the `CapabilityRegistry` (gate `modules.legend.enabled`, opt-out); the
+`ui.showLegend` flag and the `legendConfig` block have moved to `modules.legend.enabled` /
+`modules.legend.{title,position,collapsedByDefault}` (file `config/plugins/legend.json`). See
+the [Legend README](../legend/GeoLeaf_Legend_README.md).
+
+:::
+
+**Registering a third-party module:**
 
 ```js
 // Third-party module self-registration (public API)
@@ -489,19 +516,19 @@ GeoLeaf.registry.register(new MyCustomModule());
 
 ### 5.6 Guard system (`checkPlugins`)
 
-Au demarrage, `helpers.ts` verifie la coherence des plugins avec la configuration du profil :
+At startup, `helpers.ts` checks that the loaded plugins are consistent with the profile configuration:
 
-- Logue un avertissement si `ui.showAddPoi=true` sans le plugin AddPOI charge.
-- Logue un avertissement si `storage` est defini sans le plugin Storage charge.
-- Logue un avertissement si `SyncHandler` est charge sans le plugin Storage.
+- Logs a warning when `ui.showAddPoi=true` without the AddPOI plugin loaded.
+- Logs a warning when `storage` is defined without the Storage plugin loaded.
+- Logs a warning when `SyncHandler` is loaded without the Storage plugin.
 
-Ces avertissements sont consultatifs — l'application demarre quand meme en mode degrade.
+These warnings are advisory — the application still starts, in degraded mode.
 
 ---
 
-## 6. Integration avec la configuration JSON
+## 6. Integration with JSON configuration
 
-### 6.1 Profil JSON minimal (geoleaf.config.json)
+### 6.1 Minimal JSON profile (geoleaf.config.json)
 
 ```json
 {
@@ -525,24 +552,24 @@ Ces avertissements sont consultatifs — l'application demarre quand meme en mod
 }
 ```
 
-> **Important** : `map.bounds` est **obligatoire** depuis la v2.0.0. Si absent, l'application refuse de demarrer et logue une erreur explicite. Il n'y a pas de carte monde par defaut.
+> **Important**: `map.bounds` is **required** since v2.0.0. When it is missing, the application refuses to start and logs an explicit error. There is no default world map.
 
-### 6.2 Correspondance champs JSON -> options Core
+### 6.2 Mapping between JSON fields and Core options
 
-| Champ JSON                      | Option Core equivalente                  | Obligatoire |
-| ------------------------------- | ---------------------------------------- | ----------- |
-| `map.target` / `map.id`         | `options.mapId`                          | oui         |
-| `map.bounds`                    | calcul du centre + fitBounds             | **oui**     |
-| `map.initialMaxZoom`            | `options.zoom`                           | recommande  |
-| `map.minZoom`                   | `options.mapOptions.minZoom`             | non         |
-| `map.maxZoom`                   | `options.mapOptions.maxZoom`             | non         |
-| `map.boundsMargin` (defaut 0.3) | padding `maxBounds`                      | non         |
-| `map.positionFixed`             | `options.mapOptions.maxBounds` (calcule) | non         |
-| `ui.theme`                      | `options.theme`                          | non         |
+| JSON field                       | Equivalent Core option                    | Required    |
+| -------------------------------- | ----------------------------------------- | ----------- |
+| `map.target` / `map.id`          | `options.mapId`                           | yes         |
+| `map.bounds`                     | centre computation + fitBounds            | **yes**     |
+| `map.initialMaxZoom`             | `options.zoom`                            | recommended |
+| `map.minZoom`                    | `options.mapOptions.minZoom`              | no          |
+| `map.maxZoom`                    | `options.mapOptions.maxZoom`              | no          |
+| `map.boundsMargin` (default 0.3) | `maxBounds` padding                       | no          |
+| `map.positionFixed`              | `options.mapOptions.maxBounds` (computed) | no          |
+| `ui.theme`                       | `options.theme`                           | no          |
 
-### 6.3 Chargement du profil actif
+### 6.3 Loading the active profile
 
-En mode multi-profil, GeoLeaf lit `sessionStorage.getItem("gl-selected-profile")` au demarrage pour charger le bon profil. Uniquement les identifiants alphanumeriques (`/^[a-zA-Z0-9_-]{1,50}$/`) sont acceptes.
+In multi-profile mode, GeoLeaf reads `sessionStorage.getItem("gl-selected-profile")` at startup to load the right profile. Only alphanumeric identifiers (`/^[a-zA-Z0-9_-]{1,50}$/`) are accepted.
 
 ```js
 // Select a profile before boot
@@ -552,22 +579,22 @@ GeoLeaf.boot();
 
 ---
 
-## 7. Gestion des erreurs et comportements de fallback
+## 7. Error handling and fallback behaviour
 
-GeoLeaf.Core privilegia un comportement explicite (logs clairs) plutot qu'un echec silencieux.
+GeoLeaf.Core favours explicit behaviour (clear logs) over silent failure.
 
-### 7.1 Resume des cas principaux
+### 7.1 Summary of the main cases
 
-| Situation                          | Log emis                                                               | Retour             |
-| ---------------------------------- | ---------------------------------------------------------------------- | ------------------ |
-| `mapId` manquant                   | `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`        | `null`             |
-| DOM introuvable pour `mapId`       | `[GeoLeaf.Core] ERROR: No DOM element found for mapId='...'`           | `null`             |
-| `map.bounds` absent dans le profil | `[GeoLeaf] Active profile does not define valid map.bounds`            | —                  |
-| `theme` valeur inconnue            | `[GeoLeaf.Core] setTheme() → {valeur}`                                 | theme inchange     |
-| `Core.init()` deja appele          | `[GeoLeaf.Core] Map already initialized. Recycling existing instance.` | instance existante |
-| Exception moteur MapLibre          | `[GeoLeaf.Core] ERROR: {message}`                                      | `null`             |
+| Situation                            | Log emitted                                                            | Return value      |
+| ------------------------------------ | ---------------------------------------------------------------------- | ----------------- |
+| `mapId` missing                      | `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`        | `null`            |
+| DOM element not found for `mapId`    | `[GeoLeaf.Core] ERROR: No DOM element found for mapId='...'`           | `null`            |
+| `map.bounds` absent from the profile | `[GeoLeaf] Active profile does not define valid map.bounds`            | —                 |
+| Unknown `theme` value                | `[GeoLeaf.Core] setTheme() → {value}`                                  | theme unchanged   |
+| `Core.init()` already called         | `[GeoLeaf.Core] Map already initialized. Recycling existing instance.` | existing instance |
+| MapLibre engine exception            | `[GeoLeaf.Core] ERROR: {message}`                                      | `null`            |
 
-### 7.2 Callback d'erreur optionnel
+### 7.2 Optional error callback
 
 ```js
 // Register an error callback before boot
@@ -581,7 +608,7 @@ window.GeoLeaf.Core.onError = function (err) {
 GeoLeaf.boot();
 ```
 
-### 7.3 Bonne pratique post-init
+### 7.3 Post-init best practice
 
 ```js
 document.addEventListener("geoleaf:app:ready", () => {
@@ -599,53 +626,53 @@ document.addEventListener("geoleaf:app:ready", () => {
 
 ---
 
-## 8. Resume rapide des options Core.init()
+## 8. Quick summary of Core.init() options
 
-| Option                 | Type                  | Obligatoire | Valeur par defaut        | Role                            |
-| ---------------------- | --------------------- | ----------- | ------------------------ | ------------------------------- |
-| `mapId`                | `string`              | oui         | —                        | ID du conteneur DOM de la carte |
-| `center`               | `[number, number]`    | recommande  | calcule depuis `bounds`  | Centre initial `[lat, lng]`     |
-| `zoom`                 | `number`              | recommande  | `CONSTANTS.DEFAULT_ZOOM` | Zoom initial                    |
-| `theme`                | `"light"` \| `"dark"` | non         | `"light"`                | Theme UI (interface uniquement) |
-| `mapOptions.minZoom`   | `number`              | non         | —                        | Zoom minimum autorise           |
-| `mapOptions.maxZoom`   | `number`              | non         | —                        | Zoom maximum autorise           |
-| `mapOptions.maxBounds` | `GeoLeafBounds`       | non         | —                        | Restreint le panning a une zone |
-
----
-
-## 9. Bonnes pratiques d'utilisation
-
-1. **Toujours utiliser `GeoLeaf.boot()`** en mode production :
-    - c'est le seul point d'entree qui charge la configuration, orchestre les modules et emet `geoleaf:app:ready`.
-    - l'appel direct a `GeoLeaf.Core.init()` est reserve aux tests et a l'integration avancee.
-
-2. **Ecouter `geoleaf:app:ready`** plutot que `DOMContentLoaded` pour agir sur la carte :
-    - a ce moment, tous les modules sont initialises et la carte est visible.
-
-3. **Utiliser `GeoLeaf.Core.getMap()`** pour recuperer l'adaptateur dans le code applicatif :
-    - ne jamais stocker une reference directe a `maplibregl.Map` — l'abstraction `IMapAdapter` garantit la portabilite.
-
-4. **Charger les plugins avant `GeoLeaf.boot()`** :
-    - `geoleaf-offline-ui.plugin.js` enrichit le namespace `GeoLeaf.*` avant le demarrage ; les plugins paresseux (`editor`, `table`, `print`, `measure`) le font a leur premier usage.
-
-5. **Centraliser la configuration dans `geoleaf.config.json`** :
-    - toutes les options (map, ui, poi, storage, route) dans un seul fichier de profil.
-    - evite les divergences entre modules et deploiements.
-
-6. **Surveiller les logs `[GeoLeaf.Core]` en developpement** :
-    - activez les logs detailles avec `?debug=true` dans l'URL.
-    - ils indiquent precisement quelle option est manquante ou invalide.
-
-7. **Securite popups** : le contenu HTML passe a `adapter.createPopup()` doit etre sanitise par l'appelant via `GeoLeaf.Security.sanitize()` avant passage. L'adaptateur ne sanitise pas le contenu.
+| Option                 | Type                  | Required    | Default value            | Role                         |
+| ---------------------- | --------------------- | ----------- | ------------------------ | ---------------------------- |
+| `mapId`                | `string`              | yes         | —                        | ID of the map DOM container  |
+| `center`               | `[number, number]`    | recommended | computed from `bounds`   | Initial centre `[lat, lng]`  |
+| `zoom`                 | `number`              | recommended | `CONSTANTS.DEFAULT_ZOOM` | Initial zoom                 |
+| `theme`                | `"light"` \| `"dark"` | no          | `"light"`                | UI theme (interface only)    |
+| `mapOptions.minZoom`   | `number`              | no          | —                        | Minimum allowed zoom         |
+| `mapOptions.maxZoom`   | `number`              | no          | —                        | Maximum allowed zoom         |
+| `mapOptions.maxBounds` | `GeoLeafBounds`       | no          | —                        | Restricts panning to an area |
 
 ---
 
-## 10. Voir aussi
+## 9. Usage best practices
 
-- **Architecture generale** : `docs/ARCHITECTURE_GUIDE.md`
-- **Guide developpeur** : `docs/DEVELOPER_GUIDE.md`
-- **Flux d'initialisation** : `docs/architecture/INITIALIZATION_FLOW.md`
-- **Contrat IMapAdapter** : `packages/core/src/contracts/map-adapter.contract.ts`
-- **MaplibreAdapter** : `packages/core/src/adapters/maplibre/maplibre-adapter.ts`
-- **ModuleRegistry** : `packages/core/src/app/module-registry.ts`
-- **Plugins** : chaque `@geoleaf-plugins/*` embarque sa documentation dans son package npm
+1. **Always use `GeoLeaf.boot()`** in production:
+    - it is the only entry point that loads the configuration, orchestrates the modules and emits `geoleaf:app:ready`.
+    - calling `GeoLeaf.Core.init()` directly is reserved for tests and advanced integration.
+
+2. **Listen for `geoleaf:app:ready`** rather than `DOMContentLoaded` before acting on the map:
+    - by then every module is initialised and the map is visible.
+
+3. **Use `GeoLeaf.Core.getMap()`** to retrieve the adapter in application code:
+    - never store a direct reference to `maplibregl.Map` — the `IMapAdapter` abstraction is what keeps the code portable.
+
+4. **Load the plugins before `GeoLeaf.boot()`**:
+    - `geoleaf-offline-ui.plugin.js` extends the `GeoLeaf.*` namespace before startup; lazy plugins (`editor`, `table`, `print`, `measure`) do so on first use.
+
+5. **Centralise the configuration in `geoleaf.config.json`**:
+    - every option (map, ui, poi, storage, route) in a single profile file.
+    - this avoids divergence between modules and deployments.
+
+6. **Watch the `[GeoLeaf.Core]` logs during development**:
+    - enable verbose logs with `?debug=true` in the URL.
+    - they state precisely which option is missing or invalid.
+
+7. **Popup security**: HTML content passed to `adapter.createPopup()` must be sanitised by the caller through `GeoLeaf.Security.sanitize()` beforehand. The adapter does not sanitise content.
+
+---
+
+## 10. See also
+
+- **General architecture**: `docs/ARCHITECTURE_GUIDE.md`
+- **Developer guide**: `docs/DEVELOPER_GUIDE.md`
+- **Initialisation flow**: `docs/architecture/INITIALIZATION_FLOW.md`
+- **IMapAdapter contract**: `packages/core/src/contracts/map-adapter.contract.ts`
+- **MaplibreAdapter**: `packages/core/src/adapters/maplibre/maplibre-adapter.ts`
+- **ModuleRegistry**: `packages/core/src/app/module-registry.ts`
+- **Plugins**: each `@geoleaf-plugins/*` ships its documentation inside its npm package

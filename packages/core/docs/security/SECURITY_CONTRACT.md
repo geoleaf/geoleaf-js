@@ -4,280 +4,251 @@ title: "GeoLeaf Security Contract v3.0.0"
 
 # GeoLeaf Security Contract v3.0.0
 
-**Date :** 17 juillet 2026 (§1.1, §3.1 et §6 réinstruits — tâche 4.3)
-**S'applique à :** `@geoleaf/core` v3.x — audit sécurité MapLibre GL JS
+**Applies to:** `@geoleaf/core` v3.x — MapLibre GL JS security audit
 
-> Ce document est la reference de securite. Chaque vecteur d'injection identifie, la methode de sanitisation utilisee et le fichier de test correspondant sont listes ci-dessous. **Apres chaque sprint, verifier que tous les vecteurs listes ont toujours un test qui passe.**
-
-```callout error label="Réinstruction du 17/07/2026 — les 12 lignes de §1.1 avaient dérivé, et 2 fichiers de test cités ne testaient pas ce qu'on croyait"
-Ce tableau datait du **21 mars 2026** et n'avait pas suivi les refontes S9 (dissolution du sous-système POI), S13 (extraction du panneau de filtre) ni le passage du rendu de fiche à la capacité `feature-info`. **6 lignes sur 12 pointaient vers des fichiers supprimés**, et sur les 6 restantes, 4 avaient un chemin faux et 2 décrivaient une sanitisation inexacte.
-
-🟢 **Aucun trou de sécurité.** Chaque contenu utilisateur encore rendu passe par une sanitisation **sur le chemin vivant** — vérifié un par un. Les protections ont suivi les refontes ; c'est la carte qui ne les a pas suivies.
-
-🔴 **En revanche, la colonne « Fichier test » était en partie fictive** — voir §6 :
-
-- **`xss-prevention.test.js` ne teste rien.** 269 lignes, 12 tests, **zéro `import`** : il crée lui-même un bouton, lui assigne lui-même `textContent`, puis vérifie que le navigateur échappe. **Il passerait si tout `packages/` était supprimé.** Tous les autres fichiers de `__tests__/security/` importent le code qu'ils testent.
-- **`xss-injection-vectors.test.js` ne couvre aucun des 3 vecteurs pour lesquels il était cité.** Il n'importe que `Security` et `DOMSecurity` (`:17-18`) et teste les **primitives** — il n'atteint jamais le popup, le tooltip ni la toolbar.
-
-**Convention de chemin — le piège qui a coûté l'enquête** : l'ancien tableau utilisait des chemins relatifs à `packages/core/src/modules/built-in/`, sans le dire. Le nouveau est relatif à **`packages/core/src/`**, sauf mention explicite d'un plugin.
-```
+This document is the security reference. Every identified injection vector, the sanitisation method
+applied to it and the matching test file are listed below. **After each sprint, verify that every
+listed vector still has a passing test.**
 
 ---
 
-## 1. Inventaire des vecteurs d'injection
+## 1. Injection vector inventory
 
-### 1.1 Vecteurs DOM (injection HTML/SVG dans le DOM)
+### 1.1 DOM vectors (HTML/SVG injection into the DOM)
 
-> Chemins relatifs à **`packages/core/src/`** (sauf mention d'un plugin). Tests sous `packages/core/__tests__/` (ou `packages/<plugin>/src/__tests__/`).
+Source paths are relative to **`packages/core/src/`** unless a plugin is named. Tests live under
+`packages/core/__tests__/` (or `packages/<plugin>/src/__tests__/`).
 
-| Vecteur                                 | Fichier source (sink)                                                                          | Sanitisation                                                                                                                                                                                                                 | Fichier test                                                                                                                                  |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Popup feature** (clic sur une entité) | `capabilities/feature-info/surfaces/popup.ts:131` → `.setDOMContent(node)`                     | **Plus aucun sink `innerHTML`** : le popup est un **nœud DOM construit**. Titre `render/popup-content.ts:132-138` + champs `render/fields.ts:95,109,152,189` en `textContent` ; URLs via `safeUrl` (`render/dom.ts:202-214`) | `capabilities/feature-info/popup.test.js` · `renderers.test.js:60,122,184`                                                                    |
-| **Tooltip feature** (survol)            | `capabilities/feature-info/surfaces/tooltip.ts:84` et `:89` (`innerHTML`)                      | `escapeHtml(String(value))` — `render/popup-content.ts:310` ; `escapeHtml` = `render/dom.ts:185-189`                                                                                                                         | `capabilities/feature-info/tooltip.test.js:94-100` ✅ **couvre le chemin vivant**                                                             |
-| **Sidepanel feature** (3ᵉ surface)      | `capabilities/feature-info/render/sidepanel-content.ts:140,144,146,224,228`                    | `textContent`                                                                                                                                                                                                                | ⚠️ **aucun test XSS**                                                                                                                         |
-| **Catégories de filtre**                | `capabilities/filter/panel/render.ts:205` (catégorie), `:237` (sous-catégorie), `:308` (badge) | `createElement({ textContent })` → `modules/utils/general/dom-helpers.ts:92` _(l'alias `$create` a été déserté côté capacités — B.18)_                                                                                       | ✅ `capabilities/filter/panel-dom-golden.test.js` — payload `<img onerror>` sur les 3 sites, + `DOMSecurity.setSafeHTML` jamais appelé (B.18) |
-| **Résultats de recherche d'adresse**    | `geocoding/src/control.ts:132` (`li.textContent = result.label`)                               | `textContent`                                                                                                                                                                                                                | `geocoding/src/__tests__/control.test.ts:130`                                                                                                 |
-| **Noms de couches** (layer manager)     | `modules/built-in/layer-manager/section-renderer.ts:22,52`                                     | `textContent` _(le code est plus strict que ne le disait ce contrat, qui annonçait `setSafeHTML`)_                                                                                                                           | `layer-manager.test.js`                                                                                                                       |
-| **Icônes toolbar mobile**               | `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:324`                                        | `DOMSecurity.setSafeHTML(btn, icon.icon, _MOBILE_SVG_TAGS)` — whitelist `:32`                                                                                                                                                | ⚠️ **aucun** _(le fichier cité auparavant ne l'atteint pas)_                                                                                  |
-| **Icônes toolbar desktop**              | `modules/built-in/ui/desktop/desktop-panel-registry.ts:156`                                    | `DOMSecurity.setSafeHTML(btn, btnDef.icon, _SVG_ALLOWED)`                                                                                                                                                                    | ⚠️ **aucun** _(jumeau de la ligne mobile, jamais recensé)_                                                                                    |
-| **Icônes de marqueur** (SVG profil)     | `adapters/maplibre/maplibre-adapter.ts:431`                                                    | `DOMSecurity.setSafeHTML(el, iconHtml, SVG_ALLOWED_TAGS)`                                                                                                                                                                    | ⚠️ **aucun**                                                                                                                                  |
-| **SVG du QR code de partage**           | `capabilities/permalink/share/share-modal.ts:125`                                              | `setSafeHTML(container, svg, QR_ALLOWED_TAGS)` ; URL en `:65` via `input.value`                                                                                                                                              | ⚠️ **aucun**                                                                                                                                  |
-| **Labels sélecteur de thème**           | `capabilities/theme-selector/theme-selector-primary.ts:129,132` · `-secondary.ts:114`          | `textContent`                                                                                                                                                                                                                | `theme-selector.test.js`                                                                                                                      |
-| **Barre de recherche (permalink → UI)** | `capabilities/filter/panel/write.ts:64` (`input.value = sf?.text ?? ""`)                       | `element.value` (jamais `innerHTML`) + troncature `MAX_TEXT_LEN = 200` (`permalink-url.ts:50,87,207`)                                                                                                                        | `permalink-injection.test.js`                                                                                                                 |
-| **Couleurs de badge taxonomie** (CSSOM) | `capabilities/feature-info/render/fields.ts:155-157` ← `render/dom.ts:294-303`                 | Valeurs pré-validées par le seam taxonomy ; écriture propriété-par-propriété (CSP `style-src`)                                                                                                                               | ⚠️ **aucun**                                                                                                                                  |
-| **Référence sprite SVG**                | `capabilities/feature-info/render/dom.ts:250-251` (`use.setAttribute("href", "#" + symbolId)`) | `symbolId` = id allowlisté résolu par taxonomy                                                                                                                                                                               | ⚠️ **aucun**                                                                                                                                  |
-| **Flèches de navigation**               | `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:377-378` et `:407-408`                      | Littéraux SVG codés en dur                                                                                                                                                                                                   | N/A (safe by design)                                                                                                                          |
-| **Bannière iOS PWA**                    | `capabilities/pwa/ios-banner.ts:112` et `:122` (`innerHTML = SHARE_ICON_SVG`)                  | Constante SVG (`:26`). ⚠️ Le titre `:80` est **codé en dur, pas i18n** — ce contrat annonçait « i18n hardcodes »                                                                                                             | N/A (safe by design)                                                                                                                          |
-| **Marqueur temporaire addpoi**          | `addpoi/src/poi/poi-placement.ts:280` (`el.innerHTML`)                                         | `color` (`:268`) est un ternaire de 2 littéraux hex — **aucune donnée utilisateur**                                                                                                                                          | N/A (safe by design)                                                                                                                          |
+| Vector                                 | Source file (sink)                                                                             | Sanitisation                                                                                                                                                                                                                         | Test file                                                                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Feature popup** (click on an entity) | `capabilities/feature-info/surfaces/popup.ts:131` → `.setDOMContent(node)`                     | **No `innerHTML` sink at all**: the popup is a **constructed DOM node**. Title `render/popup-content.ts:132-138` and fields `render/fields.ts:95,109,152,189` use `textContent`; URLs go through `safeUrl` (`render/dom.ts:202-214`) | `capabilities/feature-info/popup.test.js` · `renderers.test.js:60,122,184`                                                              |
+| **Feature tooltip** (hover)            | `capabilities/feature-info/surfaces/tooltip.ts:84` and `:89` (`innerHTML`)                     | `escapeHtml(String(value))` — `render/popup-content.ts:310`; `escapeHtml` is `render/dom.ts:185-189`                                                                                                                                 | `capabilities/feature-info/tooltip.test.js:94-100` — covers the live path                                                               |
+| **Feature sidepanel** (3rd surface)    | `capabilities/feature-info/render/sidepanel-content.ts:140,144,146,224,228`                    | `textContent`                                                                                                                                                                                                                        | None                                                                                                                                    |
+| **Filter categories**                  | `capabilities/filter/panel/render.ts:205` (category), `:237` (subcategory), `:308` (badge)     | `createElement({ textContent })` → `modules/utils/general/dom-helpers.ts:92`                                                                                                                                                         | `capabilities/filter/panel-dom-golden.test.js` — `<img onerror>` payload on all three sites, and `DOMSecurity.setSafeHTML` never called |
+| **Address search results**             | `geocoding/src/control.ts:132` (`li.textContent = result.label`)                               | `textContent`                                                                                                                                                                                                                        | `geocoding/src/__tests__/control.test.ts:130`                                                                                           |
+| **Layer names** (layer manager)        | `modules/built-in/layer-manager/section-renderer.ts:22,52`                                     | `textContent`                                                                                                                                                                                                                        | `layer-manager.test.js`                                                                                                                 |
+| **Mobile toolbar icons**               | `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:324`                                        | `DOMSecurity.setSafeHTML(btn, icon.icon, _MOBILE_SVG_TAGS)` — allowlist at `:32`                                                                                                                                                     | None                                                                                                                                    |
+| **Desktop toolbar icons**              | `modules/built-in/ui/desktop/desktop-panel-registry.ts:156`                                    | `DOMSecurity.setSafeHTML(btn, btnDef.icon, _SVG_ALLOWED)`                                                                                                                                                                            | None                                                                                                                                    |
+| **Marker icons** (profile SVG)         | `adapters/maplibre/maplibre-adapter.ts:431`                                                    | `DOMSecurity.setSafeHTML(el, iconHtml, SVG_ALLOWED_TAGS)`                                                                                                                                                                            | None                                                                                                                                    |
+| **Share QR code SVG**                  | `capabilities/permalink/share/share-modal.ts:125`                                              | `setSafeHTML(container, svg, QR_ALLOWED_TAGS)`; URL at `:65` through `input.value`                                                                                                                                                   | None                                                                                                                                    |
+| **Theme selector labels**              | `capabilities/theme-selector/theme-selector-primary.ts:129,132` · `-secondary.ts:114`          | `textContent`                                                                                                                                                                                                                        | `theme-selector.test.js`                                                                                                                |
+| **Search bar (permalink → UI)**        | `capabilities/filter/panel/write.ts:64` (`input.value = sf?.text ?? ""`)                       | `element.value` (never `innerHTML`) plus a `MAX_TEXT_LEN = 200` truncation (`permalink-url.ts:50,87,207`)                                                                                                                            | `permalink-injection.test.js`                                                                                                           |
+| **Taxonomy badge colours** (CSSOM)     | `capabilities/feature-info/render/fields.ts:155-157` ← `render/dom.ts:294-303`                 | Values pre-validated by the taxonomy seam; written property by property (CSP `style-src`)                                                                                                                                            | None                                                                                                                                    |
+| **SVG sprite reference**               | `capabilities/feature-info/render/dom.ts:250-251` (`use.setAttribute("href", "#" + symbolId)`) | `symbolId` is an allowlisted id resolved by taxonomy                                                                                                                                                                                 | None                                                                                                                                    |
+| **Navigation arrows**                  | `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:377-378` and `:407-408`                     | Hard-coded SVG literals                                                                                                                                                                                                              | N/A (safe by design)                                                                                                                    |
+| **iOS PWA banner**                     | `capabilities/pwa/ios-banner.ts:112` and `:122` (`innerHTML = SHARE_ICON_SVG`)                 | SVG constant (`:26`). The title at `:80` is hard-coded rather than localised                                                                                                                                                         | N/A (safe by design)                                                                                                                    |
+| **Temporary addpoi marker**            | `addpoi/src/poi/poi-placement.ts:280` (`el.innerHTML`)                                         | `color` (`:268`) is a ternary over two hex literals — **no user data**                                                                                                                                                               | N/A (safe by design)                                                                                                                    |
 
-**Sorties du périmètre XSS** _(le vecteur lui-même a disparu — ne pas les rechercher)_ :
+**Out of XSS scope.** GeoJSON labels no longer reach the DOM:
+`capabilities/labels/label-renderer.ts:120` sets `"text-field": ["get", labelId]` on a **native
+MapLibre `symbol` layer** (GPU rendering), so the file contains no `textContent` or `innerHTML` —
+the data never meets an HTML parser.
 
-| Ancien vecteur                            | Ce qu'il est devenu                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Labels GeoJSON** (`textContent`)        | **N'atteint plus le DOM.** `capabilities/labels/label-renderer.ts:120` pose `"text-field": ["get", labelId]` sur une **couche `symbol` MapLibre native** (rendu GPU) : zéro `textContent`/`innerHTML` dans le fichier. La donnée ne rencontre jamais un parseur HTML.                                                                                |
-| **Boutons delete POI**                    | **Vecteur disparu.** Le sous-système POI est dissous (S9) ; la suppression passe par un `confirm()` natif (`addpoi/src/add-form/controller.ts:404-405`), sans injection DOM. ⚠️ De plus, le fichier historiquement cité (`poi/renderers/field-renderers.ts`) ne contenait **aucune** occurrence de « delete » — la ligne était fausse dès l'origine. |
-| **Résultats recherche → content-builder** | Ligne **fausse dès l'origine** : `ui/content-builder/core.ts` construisait les popups POI, pas les résultats de recherche (**zéro** occurrence de « search » sur ses 533 lignes). Le vrai vecteur est le plugin geocoding, désormais recensé ci-dessus.                                                                                              |
+### 1.2 URL vectors (injection through protocol or parameters)
 
-### 1.2 Vecteurs URL (injection via protocole ou parametres)
+| Vector                                                | Sanitisation                                                    | Test file                                           |
+| ----------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------- |
+| POI URLs (`url`, `website`, `image`, `photo`, `icon`) | `validateUrl()` — protocol allowlist (http/https/data:image)    | `security.test.js`, `xss-injection-vectors.test.js` |
+| Data URLs                                             | `_validateDataUrl()` — MIME allowlist (image/\* only)           | `security.test.js`                                  |
+| Permalink lat/lng/zoom                                | `validateNumber()` and `validateCoordinates()`                  | `permalink-injection.test.js`                       |
+| Permalink layer IDs                                   | String filtering, capped at 100 entries                         | `permalink-injection.test.js`                       |
+| Permalink filter text                                 | Truncated to 200 characters (`MAX_TEXT_LEN`)                    | `permalink-injection.test.js`                       |
+| Permalink compact form (base64)                       | `JSON.parse(atob())` followed by `_validateRaw()` re-validation | `permalink-injection.test.js`                       |
+| Permalink rating                                      | `Number()` and a `> 0` check                                    | `permalink-injection.test.js`                       |
 
-| Vecteur                                                      | Sanitisation                                                  | Fichier test                                        |
-| ------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------- |
-| URLs POI (champs `url`, `website`, `image`, `photo`, `icon`) | `validateUrl()` — whitelist protocole (http/https/data:image) | `security.test.js`, `xss-injection-vectors.test.js` |
-| Data URLs                                                    | `_validateDataUrl()` — whitelist MIME (image/\* uniquement)   | `security.test.js`                                  |
-| Permalink lat/lng/zoom                                       | `validateNumber()` + `validateCoordinates()`                  | `permalink-injection.test.js`                       |
-| Permalink layer IDs                                          | Filtrage string + cap 100 entrees                             | `permalink-injection.test.js`                       |
-| Permalink texte filtre                                       | Troncature a 200 caracteres (`MAX_TEXT_LEN`)                  | `permalink-injection.test.js`                       |
-| Permalink compact (base64)                                   | `JSON.parse(atob())` + `_validateRaw()` re-validation         | `permalink-injection.test.js`                       |
-| Permalink rating                                             | `Number()` + validation `> 0`                                 | `permalink-injection.test.js`                       |
+### 1.3 Prototype pollution vectors
 
-### 1.3 Vecteurs prototype pollution
+Every protection below calls the same blocklist — `isUnsafeKey()` / `hasUnsafeSegment()` from
+`modules/utils/general/object-path-guard.ts`. That module has **no imports of its own**, which is
+what makes it importable from any layer without creating an edge or a cycle.
 
-> ⚠️ **Ce tableau a menti jusqu'au S5 (optimisation KERNEL, 18/07).** Il attribuait 3 vecteurs sur 4
-> à `_safeAssign()` et à `normalizePoiArray()`. `_safeAssign()` n'avait plus **aucun appelant de
-> production** depuis le 18/02/2026 (commit `15cc5cf7` — la copie par POI supprimée pour raison de
-> perf) ; il a été retiré au S5. **`normalizePoiArray()` n'a jamais existé** (`grep` repo-wide : 0
-> résultat) — deux vecteurs étaient donc documentés comme protégés par une fonction fantôme. Dans le
-> même temps, `setValueByPath()` — le **seul** sink atteignable depuis le pipeline de chargement de
-> couches — n'était gardé par rien. Corrigé au S5 ; le tableau ci-dessous est vérifié ligne par ligne
-> contre le code.
+| Vector                               | Protection                                                                                                                                 | Test file                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Profile JSON config                  | `_isUnsafeKey()` (`built-in/config/storage.ts`, logging wrapper) on `set()`, `merge()` and `deepMerge()`                                   | `sprint1-sink-hardening.test.js` (M3)                    |
+| POI properties (mapping.json)        | `_isUnsafeKey()` on `setValueByPath()` — the write path of `normalizePoiWithMapping`                                                       | `prototype-pollution.test.js`                            |
+| **A profile's `modules` bag**        | `isUnsafeKey()` on `mergeModulesBag()`, `mergeModuleBags()` and the `Files.modules` loader                                                 | `module-config-pollution.test.js`                        |
+| Permalink compact base64             | `JSON.parse()` (safe) plus `_validateRaw()` type checks                                                                                    | `permalink-injection.test.js`                            |
+| GeoJSON styles (paint normalisation) | `_safeCopy()`, `_mergeNativePaint()`, `_resolveRuleStyle()` and `_buildPaintFromRules()` (`adapters/maplibre/maplibre-style-converter.ts`) | `s14-style-converter-paint.test.js`                      |
+| Public path utilities                | `deepMerge()` (`utils/general/utils-base.ts`) and `setNestedValue()` (`utils/general/object-utils.ts`)                                     | `utils-base.test.js`, `object-utils.test.js` (@security) |
+| **The inventory itself**             | `check-dynamic-key-writes.cjs` — any new unguarded `X[k] = …` write fails at commit time and in CI                                         | `guards/prototype-pollution-sinks.guard.test.js`         |
 
-| Vecteur | Protection | Fichier test |
-| ------- | ---------- | ------------ |
+::: tip Scope of the guarantee
+On `setValueByPath`, **global** pollution of `Object.prototype` was never reachable: the own-property
+check replaces the intermediate with a fresh object and breaks the `constructor.prototype` chain.
+What was reachable is a prototype injection **scoped** to the POIs under construction
+(`"__proto__.x"` yielding an inherited property on every POI), which then flowed into feature
+properties, popups and table columns. Medium severity, not critical.
 
-> **Source unique depuis le S13.2** — toutes les protections ci-dessous appellent la même
-> blocklist, `isUnsafeKey()` / `hasUnsafeSegment()` de
-> `modules/utils/general/object-path-guard.ts`. Elle n'a **aucun import**, ce qui est ce
-> qui la rend importable depuis n'importe quelle couche sans créer d'arête ni de cycle —
-> l'objection qui avait maintenu quatre copies privées divergentes jusque-là.
-
-| Vecteur                               | Protection                                                                                                                                | Fichier test                                             |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Profil JSON config                    | `_isUnsafeKey()` (`built-in/config/storage.ts`, wrapper logueur) sur `set()`, `merge()` et `deepMerge()`                                  | `sprint1-sink-hardening.test.js` (M3)                    |
-| Proprietes POI (mapping.json)         | `_isUnsafeKey()` sur `setValueByPath()` — le chemin d'écriture de `normalizePoiWithMapping`                                               | `prototype-pollution.test.js`                            |
-| **Sac `modules` d'un profil** (S13.2) | `isUnsafeKey()` sur `mergeModulesBag()`, `mergeModuleBags()` et le chargeur `Files.modules` — 3 sinks ouverts jusqu'au S13.2              | `module-config-pollution.test.js`                        |
-| Permalink compact base64              | `JSON.parse()` (safe) + `_validateRaw()` type checks                                                                                      | `permalink-injection.test.js`                            |
-| Styles GeoJSON (normalisation paint)  | `_safeCopy()`, `_mergeNativePaint()`, `_resolveRuleStyle()` et `_buildPaintFromRules()` (`adapters/maplibre/maplibre-style-converter.ts`) | `s14-style-converter-paint.test.js`                      |
-| Utilitaires publics par chemin        | `deepMerge()` (`utils/general/utils-base.ts`) et `setNestedValue()` (`utils/general/object-utils.ts`)                                     | `utils-base.test.js`, `object-utils.test.js` (@security) |
-| **Inventaire lui-même** (S13.2)       | `check-dynamic-key-writes.cjs` — toute nouvelle écriture `X[k] = …` non gardée échoue au commit et en CI                                  | `guards/prototype-pollution-sinks.guard.test.js`         |
-
-> 🟢 **Note de portée, mesurée au S5** — sur `setValueByPath` la pollution **globale** de
-> `Object.prototype` n'était pas atteignable : le contrôle de propriété propre remplace
-> l'intermédiaire par un objet neuf et casse la chaîne `constructor.prototype`. Ce qui l'était : une
-> injection de prototype **scopée** aux POI en cours de construction (`"__proto__.x"` →
-> propriété héritée sur chaque POI), qui coulait ensuite dans les properties de features, popups et
-> colonnes de table. Sévérité moyenne, pas critique — le garde est posé, mais le contrat ne doit pas
-> surestimer ce qu'il referme.
->
-> ⚠️ Les propriétés de features GeoJSON ne sont **que lues** dans le pipeline core (validation par
-> `feature-validator.ts`), jamais fusionnées dans un autre objet — il n'y a donc pas de sink à garder
-> pour elles. La ligne « styles » ci-dessus couvre le seul chemin où elles sont recopiées.
+GeoJSON feature properties are only **read** in the core pipeline (validated by
+`feature-validator.ts`), never merged into another object, so there is no sink to guard for them.
+The "styles" row above covers the only path where they are copied.
+:::
 
 ---
 
-## 2. API du module Security
+## 2. Security module API
 
-### Fonctions de sanitisation
+### Sanitisation functions
 
-| Fonction                        | Entree                       | Garantie sortie                                                                   | Usage                     |
-| ------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- | ------------------------- |
-| `escapeHtml(str)`               | String quelconque            | Caracteres HTML (`<`, `>`, `&`, `"`, `'`) echappes en entites                     | Contenu texte dans le DOM |
-| `escapeAttribute(str)`          | String quelconque            | Memes caracteres + `'` echappes                                                   | Valeurs d'attributs HTML  |
-| `containsDangerousHtml(str)`    | String quelconque            | `true` si patterns XSS detectes                                                   | Detection/rejet rapide    |
-| `stripHtml(html)`               | String HTML                  | Texte brut sans aucun tag                                                         | Affichage texte pur       |
-| `sanitizeSvgContent(svg)`       | String SVG brute             | SVGElement sans `<script>`, `<foreignObject>`, handlers `on*`, `javascript:` href | Icones SVG externes       |
-| `parseHtmlSafely(html, tags)`   | String HTML + whitelist tags | DocumentFragment avec uniquement les tags autorises                               | Contenu riche controle    |
-| `sanitizeHTML(el, html, opts)`  | Element DOM + HTML           | Injection sanitisee via `parseHtmlSafely`                                         | Wrapper principal         |
-| `validateUrl(url, base, opts)`  | String URL                   | URL validee (protocole whiteliste) ou throw                                       | Liens, images, medias     |
-| `validateCoordinates(lat, lng)` | Nombres                      | Tuple `[lat, lng]` valide ou throw                                                | Coordonnees carte         |
-| `validateNumber(val, min, max)` | Valeur quelconque            | Nombre fini dans [min, max] ou `null`                                             | Parametres numeriques     |
+| Function                        | Input                          | Output guarantee                                                                           | Usage                    |
+| ------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------ |
+| `escapeHtml(str)`               | Any string                     | HTML characters (`<`, `>`, `&`, `"`, `'`) escaped as entities                              | Text content in the DOM  |
+| `escapeAttribute(str)`          | Any string                     | Same characters plus `'` escaped                                                           | HTML attribute values    |
+| `containsDangerousHtml(str)`    | Any string                     | `true` when XSS patterns are detected                                                      | Fast detection/rejection |
+| `stripHtml(html)`               | HTML string                    | Plain text with every tag removed                                                          | Plain-text display       |
+| `sanitizeSvgContent(svg)`       | Raw SVG string                 | An SVGElement without `<script>`, `<foreignObject>`, `on*` handlers or `javascript:` hrefs | External SVG icons       |
+| `parseHtmlSafely(html, tags)`   | HTML string plus tag allowlist | A DocumentFragment containing only the allowed tags                                        | Controlled rich content  |
+| `sanitizeHTML(el, html, opts)`  | DOM element plus HTML          | Sanitised injection through `parseHtmlSafely`                                              | Main wrapper             |
+| `validateUrl(url, base, opts)`  | URL string                     | A validated URL (allowlisted protocol), or throws                                          | Links, images, media     |
+| `validateCoordinates(lat, lng)` | Numbers                        | A valid `[lat, lng]` tuple, or throws                                                      | Map coordinates          |
+| `validateNumber(val, min, max)` | Any value                      | A finite number within [min, max], or `null`                                               | Numeric parameters       |
 
-### Fonctions DOM securisees
+### Safe DOM functions
 
-| Fonction                                          | Entree                                 | Garantie                                                    | Usage               |
-| ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------- | ------------------- |
-| `DOMSecurity.setTextContent(el, text)`            | Element + texte                        | Assignation via `textContent` (jamais `innerHTML`)          | Tout texte non-HTML |
-| `DOMSecurity.setSafeHTML(el, html, tags?)`        | Element + HTML + whitelist optionnelle | Passe par `Security.sanitizeHTML()`, fallback `textContent` | HTML controle       |
-| `DOMSecurity.clearElement(el)`                    | Element                                | Suppression enfants via `removeChild` loop                  | Nettoyage DOM       |
-| `DOMSecurity.createElement(tag, attrs, children)` | Tag + attributs + enfants              | Element cree via DOM API safe                               | Creation elements   |
-| `DOMSecurity.createSVGIcon(w, h, path, opts)`     | Dimensions + path data                 | SVGElement via `createElementNS` (pas `innerHTML`)          | Icones SVG internes |
+| Function                                          | Input                             | Guarantee                                                             | Usage              |
+| ------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------- | ------------------ |
+| `DOMSecurity.setTextContent(el, text)`            | Element plus text                 | Assignment through `textContent` (never `innerHTML`)                  | Any non-HTML text  |
+| `DOMSecurity.setSafeHTML(el, html, tags?)`        | Element, HTML, optional allowlist | Routed through `Security.sanitizeHTML()`, falls back to `textContent` | Controlled HTML    |
+| `DOMSecurity.clearElement(el)`                    | Element                           | Children removed through a `removeChild` loop                         | DOM cleanup        |
+| `DOMSecurity.createElement(tag, attrs, children)` | Tag, attributes, children         | Element created through the safe DOM API                              | Element creation   |
+| `DOMSecurity.createSVGIcon(w, h, path, opts)`     | Dimensions plus path data         | An SVGElement built with `createElementNS` (not `innerHTML`)          | Internal SVG icons |
 
-### Protection CSRF
+### CSRF protection
 
-| Fonction                                     | Description                                          |
-| -------------------------------------------- | ---------------------------------------------------- |
-| `CSRFToken.init()`                           | Genere un token crypto-random (32 octets, base64url) |
-| `CSRFToken.getToken()`                       | Retourne le token courant, regenere si expire        |
-| `CSRFToken.validateToken(token)`             | Validation constante-time du token                   |
-| `CSRFToken.rotateToken()`                    | Rotation manuelle + event `geoleaf:csrf:rotated`     |
-| `CSRFToken.addTokenToHeaders(opts)`          | Ajoute `X-CSRF-Token` aux headers                    |
-| `CSRFToken.addTokenToForm(form)`             | Ajoute `<input type="hidden" name="csrf_token">`     |
-| `CSRFToken.setSecureCookie(name, val, opts)` | Cookie avec `Secure`, `SameSite`, `HttpOnly`         |
-
----
-
-## 3. Patterns dangereux — resultat audit
-
-| Pattern                    | Occurrences         | Statut                                       |
-| -------------------------- | ------------------- | -------------------------------------------- |
-| `eval()`                   | 0                   | OK                                           |
-| `new Function(`            | 0                   | OK                                           |
-| `setTimeout(string, ...)`  | 0                   | OK                                           |
-| `setInterval(string, ...)` | 0                   | OK                                           |
-| `document.write`           | 0                   | OK                                           |
-| `insertAdjacentHTML`       | 0                   | OK                                           |
-| `outerHTML` (ecriture)     | 0                   | OK (1 lecture dans label-renderer.ts — safe) |
-| `innerHTML` (total)        | 31 dans 14 fichiers | Tous safe — voir section 3.1                 |
-
-### 3.1 Classification innerHTML
-
-> ⚠️ **Comptage à rejouer.** Cette classification date du 21/03/2026 et cite **4 fichiers supprimés depuis** (`poi/normalizers.ts`, `geojson/popup-tooltip.ts`, `renderers/abstract-renderer.ts`, `ui/filter-panel/lazy-loader.ts`) ainsi que 2 chemins déplacés (`ui/mobile-toolbar-pill.ts` → `ui/mobile/`). Le total « 31 occ. dans 14 fichiers » du tableau ci-dessus n'a pas été rejoué. Les **catégories** restent justes ; ce sont les fichiers et les chiffres qui ont bougé. Les sinks réels sont recensés en §1.1, à jour au 17/07.
-
-- **Construction DOM (aucun `innerHTML`)** 🆕 — le popup de fiche : `capabilities/feature-info/surfaces/popup.ts:131` passe un **nœud** à `.setDOMContent()`. C'est le remplaçant de l'ancien « escape pattern » de `geojson/popup-tooltip.ts`, et c'est plus sûr.
-- **Escape pattern** (textContent→innerHTML read) : `modules/built-in/security/index.ts` · `capabilities/feature-info/surfaces/tooltip.ts:84,89` (via `escapeHtml`, `render/popup-content.ts:310`).
-- **`DOMSecurity.setSafeHTML` wrapper** : `modules/utils/general/dom-helpers.ts` · `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:324` · `modules/built-in/ui/desktop/desktop-panel-registry.ts:156` · `adapters/maplibre/maplibre-adapter.ts:431` · `capabilities/permalink/share/share-modal.ts:125`.
-- **Clearing** (`innerHTML = ""`) : `modules/built-in/ui/mobile/mobile-toolbar.ts` · `mobile-toolbar-sheet.ts`.
-- **Constantes codées en dur** (SVG) : `capabilities/pwa/ios-banner.ts:112,122` · `capabilities/theme-selector/theme-selector-primary.ts` · `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:377-378,407-408` · `addpoi/src/poi/poi-placement.ts:280`.
+| Function                                     | Description                                           |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `CSRFToken.init()`                           | Generates a crypto-random token (32 bytes, base64url) |
+| `CSRFToken.getToken()`                       | Returns the current token, regenerating it if expired |
+| `CSRFToken.validateToken(token)`             | Constant-time token validation                        |
+| `CSRFToken.rotateToken()`                    | Manual rotation plus a `geoleaf:csrf:rotated` event   |
+| `CSRFToken.addTokenToHeaders(opts)`          | Adds `X-CSRF-Token` to the headers                    |
+| `CSRFToken.addTokenToForm(form)`             | Adds `<input type="hidden" name="csrf_token">`        |
+| `CSRFToken.setSecureCookie(name, val, opts)` | Cookie with `Secure`, `SameSite` and `HttpOnly`       |
 
 ---
 
-## 4. Compatibilite CSP (Content Security Policy)
+## 3. Dangerous patterns — audit result
 
-Directives minimales requises pour GeoLeaf + MapLibre GL JS v6 :
+| Pattern                    | Occurrences | Status                                           |
+| -------------------------- | ----------- | ------------------------------------------------ |
+| `eval()`                   | 0           | OK                                               |
+| `new Function(`            | 0           | OK                                               |
+| `setTimeout(string, ...)`  | 0           | OK                                               |
+| `setInterval(string, ...)` | 0           | OK                                               |
+| `document.write`           | 0           | OK                                               |
+| `insertAdjacentHTML`       | 0           | OK                                               |
+| `outerHTML` (write)        | 0           | OK (one read in `label-renderer.ts` — safe)      |
+| `innerHTML`                | see 3.1     | All safe — every occurrence is classified in 3.1 |
 
-| Directive     | Valeur                | Raison                                                                                                                                                                                                                                 |
-| ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `script-src`  | `'self'`              | Zero `eval`/`Function`/inline scripts. Workers meme-origine.                                                                                                                                                                           |
-| `style-src`   | `'self'`              | Styles dynamiques posés via le **CSSOM** (`element.style.setProperty` / helper `applyCssText`) ou des **classes CSS** — non soumis à `style-src`. `'unsafe-inline'` **retiré** (roadmap B.5, gardé par e2e `18-security`, 0 violation) |
-| `img-src`     | `'self' data: https:` | Data URLs pour markers/icones, tuiles HTTPS                                                                                                                                                                                            |
-| `connect-src` | `'self' https:`       | Fetch GeoJSON, profils, URLs de tuiles                                                                                                                                                                                                 |
-| `worker-src`  | `'self' blob:`        | GeoJSON worker via blob URLs (`worker-manager.ts`)                                                                                                                                                                                     |
-| `font-src`    | `'self'`              | Aucune fonte externe chargee par le core                                                                                                                                                                                               |
-| `default-src` | `'self'`              | Fallback securise                                                                                                                                                                                                                      |
+The `innerHTML` count is not restated here because it moves with every refactor. Re-measure it with
+`grep -rn "innerHTML" packages/core/src --include="*.ts"`; the sinks that actually carry user data
+are the ones listed in 1.1.
 
-**Points notables :**
+### 3.1 innerHTML classification
 
-- `unsafe-eval` **non requis** — confirme pour MapLibre GL JS v6 et GeoLeaf
-- `unsafe-inline` **non requis** (depuis B.5) — les styles dynamiques passent par le CSSOM (`element.style.setProperty`, helper `applyCssText`) ou des classes CSS ; les écritures CSSOM propriété-par-propriété échappent à `style-src`. Les styles inline résiduels (string-emitters, sprite SVG, `<style>` démo) ont été refactorés ; gardé par l'e2e `18-security` (0 violation)
-- Apres migration MapLibre : verifier si MapLibre GL exige des directives supplementaires (WebGL, workers)
-
----
-
-## 5. Checklist de revue
-
-> **La migration MapLibre est terminée** (v3.0.0, moteur natif de bout en bout) : cette
-> section n'est plus une checklist de migration mais **la revue à passer sur ce contrat**
-> à chaque sprint qui touche un rendu. La leçon du 17/07 en dicte la première ligne.
-
-- [ ] **Chaque `Fichier source` de §1.1 existe-t-il encore ?** _(6/12 pointaient dans le vide au 17/07 — une refonte déplace les protections, jamais la carte)_
-- [ ] **Chaque `Fichier test` de §1.1 IMPORTE-t-il le code qu'il prétend tester ?** _(un test sans `import` ne teste que le navigateur — cf. §6)_
-- [ ] Chaque test cité atteint-il le **sink réel**, pas seulement la primitive de sanitisation ?
-- [ ] Le rendu de fiche (popup / tooltip / sidepanel) construit-il toujours du **DOM** ou passe-t-il par `escapeHtml` avant `innerHTML` ?
-- [ ] Les marqueurs et icônes SVG passent-ils toujours par `DOMSecurity.setSafeHTML` + whitelist ?
-- [ ] `validateUrl` couvre-t-il les URLs de tuiles et de médias ?
-- [ ] Toute **nouvelle** surface d'injection est-elle inscrite en §1.1 ? _(7 vecteurs protégés existaient sans y figurer au 17/07)_
-- [ ] CSP : une nouvelle dépendance exige-t-elle `unsafe-eval` / `unsafe-inline` ? _(non requis à ce jour)_
-- [ ] Prototype pollution : les nouveaux points d'entrée de configuration sont-ils couverts ?
-- [ ] Prototype pollution : tout nouveau writer par chemin (`a.b.c`) applique-t-il un garde **sur chaque segment, le dernier inclus** ? _(un chemin d'un seul segment saute la boucle de descente — c'est le trou du S5)_
-- [ ] Le garde est-il testé **contre l'implémentation réelle**, sans mock du sink ? _(le mock était le camouflage du S5)_
-- [ ] `npm run check:dynamic-key-writes` est-il vert **sans nouvelle entrée de baseline** ? _(mécanise les deux points ci-dessus depuis le S13.2 ; une entrée ajoutée doit être justifiée en message de commit)_
-- [ ] Le garde importe-t-il `object-path-guard.js` plutôt que de redéclarer sa liste ? _(le test-garde `prototype-pollution-sinks.guard.test.js` refuse une 5ᵉ copie)_
-- [ ] **Le nouveau test MEURT-il quand on neutralise le garde ?** _(protocole de mutation manuelle : faire retourner `false` à `isUnsafeKey`, vérifier que le test rougit, restaurer. Au S13.2 la mutation tue 13 tests sur 4 fichiers. Un test de sécurité jamais vu rouge ne prouve rien — `sprint1-sink-hardening.test.js:174-184` documente un cas qui passait pour une raison sans rapport avec la blocklist)_
-- [ ] Tous les tests `__tests__/security/` passent
+- **DOM construction (no `innerHTML`)** — the feature popup:
+  `capabilities/feature-info/surfaces/popup.ts:131` passes a **node** to `.setDOMContent()`.
+- **Escape pattern** (textContent → innerHTML read): `modules/built-in/security/index.ts` ·
+  `capabilities/feature-info/surfaces/tooltip.ts:84,89` (through `escapeHtml`,
+  `render/popup-content.ts:310`).
+- **`DOMSecurity.setSafeHTML` wrapper**: `modules/utils/general/dom-helpers.ts` ·
+  `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:324` ·
+  `modules/built-in/ui/desktop/desktop-panel-registry.ts:156` ·
+  `adapters/maplibre/maplibre-adapter.ts:431` · `capabilities/permalink/share/share-modal.ts:125`.
+- **Clearing** (`innerHTML = ""`): `modules/built-in/ui/mobile/mobile-toolbar.ts` ·
+  `mobile-toolbar-sheet.ts`.
+- **Hard-coded SVG constants**: `capabilities/pwa/ios-banner.ts:112,122` ·
+  `capabilities/theme-selector/theme-selector-primary.ts` ·
+  `modules/built-in/ui/mobile/mobile-toolbar-pill.ts:377-378,407-408` ·
+  `addpoi/src/poi/poi-placement.ts:280`.
 
 ---
 
-## 6. Fichiers de test securite
+## 4. CSP compatibility (Content Security Policy)
 
-| Fichier                                          | Tests | Couverture                                                                                                                                                                                                                                       |
-| ------------------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `security/security.test.js`                      | 42    | escapeHtml, escapeAttribute, validateUrl, validateCoordinates                                                                                                                                                                                    |
-| `security/sprint1-sink-hardening.test.js`        | 12    | Gardes câblés au sink : sprite loader (M1), Config `deepMerge`/`set`/`merge` (M3), `setValueByPath` (S5) — **StorageHelper réel, non mocké**                                                                                                     |
-| `security/csrf-token.test.js`                    | 23    | CSRFToken lifecycle complet                                                                                                                                                                                                                      |
-| `security/security-comprehensive.test.js`        | ~60   | Couverture etendue escapeHtml, coordinates                                                                                                                                                                                                       |
-| `security/security-extended.test.js`             | ~50   | sanitizeSvgContent, validateNumber, parseHtmlSafely                                                                                                                                                                                              |
-| `security/security.esm.test.js`                  | ~70   | Tests ESM de toutes les fonctions                                                                                                                                                                                                                |
-| `security/prototype-pollution.test.js`           | 6     | **Réécrit S5** — pipeline réel `normalizePoiWithMapping` → `setValueByPath`, **sans mock** du sink. L'ancienne version (annoncée « 16 tests » alors qu'elle en avait 7) testait `_safeAssign` — sans appelant prod — **en mockant** le vrai sink |
-| 🔴 `security/xss-prevention.test.js`             | 12    | **RIEN — 269 lignes, ZÉRO `import`.** Voir l'encadré ci-dessous                                                                                                                                                                                  |
-| ⚠️ `security/xss-injection-vectors.test.js`      | ~90   | **Les PRIMITIVES uniquement** (`Security`, `DOMSecurity` — seuls imports, `:17-18`). Ne couvre **aucun** vecteur de §1.1                                                                                                                         |
-| `security/permalink-injection.test.js`           | ~30   | Injection URL params + compact mode                                                                                                                                                                                                              |
-| `security/file-validator.test.js`                | ~25   | Upload securise (taille, extension, MIME)                                                                                                                                                                                                        |
-| `security/dom-security.test.js`                  | 24    | DOMSecurity wrapper complet                                                                                                                                                                                                                      |
-| 🆕 `capabilities/feature-info/tooltip.test.js`   | —     | ✅ `:94-100` — injecte `<b>x</b>`, assert `querySelector("b")` null. **Vrai test sur le chemin vivant**                                                                                                                                          |
-| 🆕 `capabilities/feature-info/renderers.test.js` | —     | ✅ `:60,122,184` — payloads `javascript:`. Écrits après la refonte, jamais reportés ici                                                                                                                                                          |
+Minimum directives required for GeoLeaf plus MapLibre GL JS v6:
 
-**Total :** ~440 tests annoncés — **à rejouer**, et à minorer d'au moins 12 (voir ci-dessous).
+| Directive     | Value                 | Reason                                                                                                                                                                                                               |
+| ------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `script-src`  | `'self'`              | No `eval`, no `Function`, no inline scripts. Same-origin workers.                                                                                                                                                    |
+| `style-src`   | `'self'`              | Dynamic styles are applied through the **CSSOM** (`element.style.setProperty`, `applyCssText` helper) or through **CSS classes**, neither of which is subject to `style-src`. `'unsafe-inline'` is **not** required. |
+| `img-src`     | `'self' data: https:` | Data URLs for markers and icons, HTTPS tiles                                                                                                                                                                         |
+| `connect-src` | `'self' https:`       | Fetching GeoJSON, profiles and tile URLs                                                                                                                                                                             |
+| `worker-src`  | `'self' blob:`        | The GeoJSON worker is loaded from a blob URL (`worker-manager.ts`)                                                                                                                                                   |
+| `font-src`    | `'self'`              | The core loads no external font                                                                                                                                                                                      |
+| `default-src` | `'self'`              | Safe fallback                                                                                                                                                                                                        |
 
-```callout error label="🔴 xss-prevention.test.js ne teste rien — et il compte dans le total"
-**269 lignes, 12 tests, ZÉRO `import` / `require`.** Il ne charge aucun code de GeoLeaf.
+**Notable points:**
 
-Son premier bloc, « POI Fields Renderer - Delete Button XSS Prevention », fait
-`document.createElement("button")`, **assigne lui-même** `deleteBtn.textContent = "✕"`
-(`:41`), puis vérifie que… le navigateur a bien échappé (`:47-48`). **Il teste l'API DOM
-de Chrome, pas GeoLeaf.** Il passerait si l'intégralité de `packages/` était supprimée.
+- `unsafe-eval` is **not required** — confirmed for MapLibre GL JS v6 and GeoLeaf.
+- `unsafe-inline` is **not required**: dynamic styles go through the CSSOM
+  (`element.style.setProperty`, the `applyCssText` helper) or CSS classes, and property-by-property
+  CSSOM writes escape `style-src` entirely. This is guarded by the `18-security` end-to-end suite.
+- After a MapLibre upgrade, check whether the new version requires additional directives (WebGL,
+  workers).
 
-Son commentaire (`:35`) dit « as in fields-renderer.js » — un fichier disparu avec la
-dissolution du sous-système POI (S9). Le test a survécu à son sujet **et à sa raison
-d'être**, en continuant de compter dans le total affiché ci-dessus.
+---
 
-**Contrôle qui le prouve** : tous les autres fichiers de `__tests__/security/` importent
-le code qu'ils testent (`security.test.js` : 1 · `prototype-pollution.test.js` : 2 ·
-`permalink-injection.test.js` : 1 · `xss-injection-vectors.test.js` : 2). Celui-ci : **0**.
+## 5. Review checklist
 
-C'est le 3ᵉ test tautologique démasqué sur ce projet (après le S3 et le C-8) — et le
-premier dans `__tests__/security/`. **Action : à réécrire sur un sink réel de §1.1, ou à
-supprimer. Ne pas le laisser gonfler un compteur de sécurité.**
-```
+The MapLibre migration is complete (v3.0.0, native engine end to end), so this section is no longer
+a migration checklist but **the review to run against this contract** on every sprint that touches
+rendering.
 
-### 6.1 🕳️ Vecteurs protégés mais NON testés (trous d'assurance, pas de code)
+- [ ] Does every `Source file` in 1.1 still exist? A refactor moves the protections, never the map.
+- [ ] Does every `Test file` in 1.1 actually **import** the code it claims to test? A test with no
+      `import` only tests the browser.
+- [ ] Does each cited test reach the **real sink**, and not just the sanitisation primitive?
+- [ ] Does feature rendering (popup / tooltip / sidepanel) still build **DOM**, or does it route
+      through `escapeHtml` before `innerHTML`?
+- [ ] Do markers and SVG icons still go through `DOMSecurity.setSafeHTML` plus an allowlist?
+- [ ] Does `validateUrl` cover tile and media URLs?
+- [ ] Is every **new** injection surface recorded in 1.1?
+- [ ] CSP: does a new dependency require `unsafe-eval` or `unsafe-inline`? Neither is required today.
+- [ ] Prototype pollution: are new configuration entry points covered?
+- [ ] Prototype pollution: does every new path writer (`a.b.c`) apply a guard **to each segment,
+      including the last**? A single-segment path skips the descent loop entirely.
+- [ ] Is the guard tested **against the real implementation**, with no mock of the sink?
+- [ ] Is `npm run check:dynamic-key-writes` green **with no new baseline entry**? A new entry must be
+      justified in the commit message.
+- [ ] Does the guard import `object-path-guard.js` rather than redeclaring its list? The
+      `prototype-pollution-sinks.guard.test.js` guard test refuses a fifth copy.
+- [ ] **Does the new test fail when the guard is neutralised?** Manual mutation protocol: make
+      `isUnsafeKey` return `false`, check that the test turns red, then restore. A security test that
+      has never been seen failing proves nothing.
+- [ ] Do all `__tests__/security/` tests pass?
 
-Ces vecteurs sont **réellement protégés** (§1.1) — mais aucun test ne le vérifie. La
-protection tient à la relecture, pas à un filet.
+---
 
-| Vecteur                                  | Sanitisation en place                          |
-| ---------------------------------------- | ---------------------------------------------- |
-| Catégories de filtre                     | `createElement({ textContent })`               |
-| Icônes toolbar **mobile** et **desktop** | `DOMSecurity.setSafeHTML` + whitelist SVG      |
-| Icônes de marqueur (SVG profil)          | `DOMSecurity.setSafeHTML` + `SVG_ALLOWED_TAGS` |
-| SVG du QR code de partage                | `setSafeHTML` + `QR_ALLOWED_TAGS`              |
-| Sidepanel feature-info                   | `textContent`                                  |
-| Couleurs de badge taxonomie (CSSOM)      | Valeurs pré-validées par le seam taxonomy      |
+## 6. Security test files
+
+| File                                          | Tests | Coverage                                                                                                                                   |
+| --------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `security/security.test.js`                   | 42    | escapeHtml, escapeAttribute, validateUrl, validateCoordinates                                                                              |
+| `security/sprint1-sink-hardening.test.js`     | 12    | Guards wired at the sink: sprite loader (M1), Config `deepMerge`/`set`/`merge` (M3), `setValueByPath` — **real StorageHelper, not mocked** |
+| `security/csrf-token.test.js`                 | 23    | Full CSRFToken lifecycle                                                                                                                   |
+| `security/security-comprehensive.test.js`     | ~60   | Extended coverage of escapeHtml and coordinates                                                                                            |
+| `security/security-extended.test.js`          | ~50   | sanitizeSvgContent, validateNumber, parseHtmlSafely                                                                                        |
+| `security/security.esm.test.js`               | ~70   | ESM tests across all functions                                                                                                             |
+| `security/prototype-pollution.test.js`        | 6     | The real `normalizePoiWithMapping` → `setValueByPath` pipeline, **with no mock** of the sink                                               |
+| `security/xss-prevention.test.js`             | 12    | Browser DOM escaping only — the file has **no `import`** and loads no GeoLeaf code. To rewrite against a real sink from 1.1, or to delete  |
+| `security/xss-injection-vectors.test.js`      | ~90   | The **primitives only** (`Security`, `DOMSecurity`, its sole imports at `:17-18`). Reaches **none** of the 1.1 vectors                     |
+| `security/permalink-injection.test.js`        | ~30   | URL parameter injection plus compact mode                                                                                                  |
+| `security/file-validator.test.js`             | ~25   | Safe upload (size, extension, MIME)                                                                                                        |
+| `security/dom-security.test.js`               | 24    | Full DOMSecurity wrapper                                                                                                                   |
+| `capabilities/feature-info/tooltip.test.js`   | —     | `:94-100` injects `<b>x</b>` and asserts `querySelector("b")` is null. A real test on the live path                                        |
+| `capabilities/feature-info/renderers.test.js` | —     | `:60,122,184` — `javascript:` payloads                                                                                                     |
+
+### 6.1 Vectors that are protected but not tested
+
+These vectors are **genuinely protected** (see 1.1), but no test verifies it. The protection rests on
+review, not on a safety net.
+
+| Vector                                   | Sanitisation in place                             |
+| ---------------------------------------- | ------------------------------------------------- |
+| Filter categories                        | `createElement({ textContent })`                  |
+| **Mobile** and **desktop** toolbar icons | `DOMSecurity.setSafeHTML` plus an SVG allowlist   |
+| Marker icons (profile SVG)               | `DOMSecurity.setSafeHTML` plus `SVG_ALLOWED_TAGS` |
+| Share QR code SVG                        | `setSafeHTML` plus `QR_ALLOWED_TAGS`              |
+| feature-info sidepanel                   | `textContent`                                     |
+| Taxonomy badge colours (CSSOM)           | Values pre-validated by the taxonomy seam         |

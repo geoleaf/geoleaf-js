@@ -13,11 +13,15 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/geolocation/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Son contrôle est invisible, et ce n'est pas un défaut.** `.geoleaf-ctrl-geolocation` est en
 > `display: none !important` : toutes les interactions passent par la **pastille de la barre
@@ -190,7 +194,7 @@ Sa position dans `presets/manifest.full.ts` est celle du lot des contrôles de c
 
 ### ⚠️ Le seul lien capacité → capacité de ce palier
 
-`capabilities/filter/panel/proximity/proximity-gps-mode.ts` importe **`geolocation/state.js`**
+`capabilities/filter/panel/proximity/proximity-gps-mode.ts` importe **`packages/core/src/capabilities/geolocation/state.js`**
 directement. La règle R.8 encadre `capabilities/` → `kernel/`, pas `capabilities/` →
 `capabilities/` : cet import n'est donc interdit par rien, et il est assumé sur place dans l'en-tête
 de `state.ts`.

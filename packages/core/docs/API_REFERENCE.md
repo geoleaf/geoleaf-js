@@ -8,7 +8,7 @@ title: "GeoLeaf-JS — API Reference"
 **Version:** 3.0.0
 **License:** MIT
 
-> **Auto-generated HTML docs:** Run `npm run docs:api` in `packages/core` to generate the TypeDoc API reference at `packages/core/docs/api/`. This produces per-module HTML pages for all named exports including full method signatures, parameter types, and return types.
+> **Auto-generated HTML docs:** Run `npm run docs:api` in `packages/core` to generate the TypeDoc API reference at `packages/core/docs/api/`. This produces per-module HTML pages for all named exports including full method signatures, parameter types, and return types. Published at **[geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api/)**.
 
 ---
 
@@ -80,7 +80,7 @@ import { Config } from "@geoleaf/core"; // Config access
 // Capability system
 import { CapabilityRegistry } from "@geoleaf/core"; // Declare / gate a capability (since v3.31)
 
-// Capability facades (this entry embarks all 18 in-core capabilities)
+// Capability facades (this entry bundles all 18 in-core capabilities)
 import { Legend } from "@geoleaf/core"; // Legend panel
 import { Permalink } from "@geoleaf/core"; // URL deep linking
 import { Share } from "@geoleaf/core"; // Share dialog
@@ -103,10 +103,9 @@ export default GeoLeaf; // default export: window.GeoLeaf (CDN/global passthroug
 
 > **`GeoJSON` is not a named ESM export — but `GeoLeaf.GeoJSON` does exist.** It is mounted on
 > `window.GeoLeaf` at boot, like the global-only facades above, and it is typed in
-> `GeoLeafHost` (`@geoleaf/host-runtime`) since v3.31. This note previously said "there is no
-> `GeoLeaf.GeoJSON` public API", which was wrong in a way worth flagging: it is the **most-called
-> member of the host surface**. Use `GeoLeaf.Layers` for per-layer feature data (`LayerDataApi`),
-> and `GeoLeaf.GeoJSON` for layer-level operations (`getLayerById`, `showLayer`, `setLayerStyle`…).
+> `GeoLeafHost` (`@geoleaf/host-runtime`) since v3.31. Use `GeoLeaf.Layers` for per-layer feature
+> data (`LayerDataApi`), and `GeoLeaf.GeoJSON` for layer-level operations (`getLayerById`,
+> `showLayer`, `setLayerStyle`…).
 
 ---
 
@@ -143,7 +142,7 @@ exported from the entry point only.
 > **These six modules are `type`-only.** They declare a `types` condition and emit no JavaScript:
 > `import type` works, and a **value** import fails outright rather than resolving to nothing.
 
-### ⚠️ `ICoreModule` is a union — implement `ILifecycleModule`
+### `ICoreModule` is a union — implement `ILifecycleModule`
 
 ```ts
 type ICoreModule = ILifecycleModule | IUISlotModule;
@@ -154,7 +153,7 @@ bare UI slot `{ id, ui }` — which is what any plugin does when it adds a toolb
 running code at startup. TypeScript does not allow an `implements` clause on a union, so:
 
 ```ts
-// ✅ correct
+// Correct
 class MyModule implements ILifecycleModule {
     id = "my-module";
     dependencies = [];
@@ -162,10 +161,10 @@ class MyModule implements ILifecycleModule {
     destroy() {}
 }
 
-// ✅ also valid — registered as a UI slot, no lifecycle
+// Also valid — registered as a UI slot, no lifecycle
 GeoLeaf.registry.register({ id: "my-toolbar-button", ui: myElement });
 
-// ❌ TypeScript error: a class cannot implement a union type
+// Invalid — TypeScript error: a class cannot implement a union type
 class MyModule implements ICoreModule {}
 ```
 
@@ -180,20 +179,20 @@ The top-level GeoLeaf API. Available as `GeoLeaf` (CDN/global) or `GeoLeafAPI` (
 
 ### Methods
 
-| Method         | Signature                                          | Description                                         |
-| -------------- | -------------------------------------------------- | --------------------------------------------------- |
-| `init`         | `(options: object) => Promise<void>`               | Initialize GeoLeaf with a map container and options |
-| `loadConfig`   | `(input: string \| object) => Promise<void>`       | Load config from URL or inline object               |
-| `setTheme`     | `(theme: string) => void`                          | Apply a visual theme                                |
-| `createMap`    | `(id: string, options?: object) => object \| null` | Create a new managed map instance                   |
-| `getMap`       | `(id: string) => object \| null`                   | Get a map instance by container id                  |
-| `getAllMaps`   | `() => object[]`                                   | Get all active map instances                        |
-| `removeMap`    | `(id: string) => boolean`                          | ⚠️ Deprecated — alias of `Core.destroy(id)`         |
-| `getModule`    | `(name: string) => object \| null`                 | Get a registered module by name                     |
-| `hasModule`    | `(name: string) => boolean`                        | Check if a module is registered                     |
-| `getNamespace` | `(name: string) => object \| null`                 | Get a top-level GeoLeaf namespace by name           |
-| `getHealth`    | `() => object \| null`                             | Get APIController health/metrics                    |
-| `getMetrics`   | `() => object \| null`                             | Alias for `getHealth()`                             |
+| Method         | Signature                                          | Description                                                                                  |
+| -------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `init`         | `(options: object) => Promise<void>`               | Initialize GeoLeaf with a map container and options                                          |
+| `loadConfig`   | `(input: string \| object) => Promise<void>`       | Load config from URL or inline object                                                        |
+| `setTheme`     | `(theme: string) => void`                          | Apply a visual theme                                                                         |
+| `createMap`    | `(id: string, options?: object) => object \| null` | Create a new managed map instance                                                            |
+| `getMap`       | `(id: string) => object \| null`                   | Get a map instance by container id                                                           |
+| `getAllMaps`   | `() => object[]`                                   | Get all active map instances                                                                 |
+| `removeMap`    | —                                                  | **Removed, not deprecated** — the method does not exist. Use **`Core.destroy(id)`** instead. |
+| `getModule`    | `(name: string) => object \| null`                 | Get a registered module by name                                                              |
+| `hasModule`    | `(name: string) => boolean`                        | Check if a module is registered                                                              |
+| `getNamespace` | `(name: string) => object \| null`                 | Get a top-level GeoLeaf namespace by name                                                    |
+| `getHealth`    | `() => object \| null`                             | Get APIController health/metrics                                                             |
+| `getMetrics`   | `() => object \| null`                             | Alias for `getHealth()`                                                                      |
 
 ### Properties
 
@@ -375,9 +374,11 @@ A layer receives a taxonomy only if it is **bound** to one: `modules.taxonomy.la
 | `resolveBadgeStyle`  | `(layerId, feature, surface, field) => ResolvedBadgeStyle \| null` | Pill badge colours (needs `render.<surface>.colorBadges`).                                                   |
 | `ensureSprite`       | `() => void`                                                       | Ensures the SVG sprite is fetched and injected.                                                              |
 
-> ⚠️ **`resolvePoiIcon` and `resolveTitleIcon` are not interchangeable.** `resolvePoiIcon` returns a
-> **tinted MapLibre atlas id** (a raster image registered on the map); `resolveTitleIcon` returns a
-> **raw DOM id**, for `<use href="#…">` in an info surface. Swapping them renders nothing.
+::: warning
+**`resolvePoiIcon` and `resolveTitleIcon` are not interchangeable.** `resolvePoiIcon` returns a
+**tinted MapLibre atlas id** (a raster image registered on the map); `resolveTitleIcon` returns a
+**raw DOM id**, for `<use href="#…">` in an info surface. Swapping them renders nothing.
+:::
 
 **Prefer `getLayerCategories(layerId)` over `getCategories(ref)` whenever you start from a layer.**
 `getCategories` expects the _name_ of a taxonomy, which only the `layers` binding table knows.
@@ -404,10 +405,12 @@ UI manages controls, panels, content builder, and notification system.
 GeoLeaf.Filter.getActiveFilter();
 ```
 
-> ⚠️ **`Filter` (singular) and `Filters` (plural) are two different things.** `Filter` is the
-> in-core filter **capability** — the panel your users actually interact with. `Filters` is a
-> small legacy helper namespace (see below). If you are looking for text, category or proximity
-> filtering, it is **`Filter`**.
+::: warning
+**`Filter` (singular) and `Filters` (plural) are two different things.** `Filter` is the in-core
+filter **capability** — the panel your users actually interact with. `Filters` is a small legacy
+helper namespace (see below). If you are looking for text, category or proximity filtering, it is
+**`Filter`**.
+:::
 
 > **Global only — not an ESM named export.**
 
@@ -454,7 +457,9 @@ Configured under `modules.filter` (`config/plugins/filter.json`), **opt-out** (a
 
 ## Table — data table
 
-> ℹ️ The data table has been extracted from the core into the MIT plugin `@geoleaf-plugins/table`. See the plugin README for installation, configuration (`modules.table.*`), and migration.
+::: info
+The data table has been extracted from the core into the MIT plugin `@geoleaf-plugins/table`. See the plugin README for installation, configuration (`modules.table.*`), and migration.
+:::
 
 ---
 
@@ -469,16 +474,16 @@ Legend is lazy-loaded.
 
 > **Note:** `GeoLeaf.Legend` and `GeoLeaf.LayerManager` are **independent modules** with separate implementations. `Legend` manages visual legend panels generated from layer style data. `LayerManager` manages GeoJSON layer loading and visibility controls.
 
-| Method               | Signature                                                         | Description                                                                                                                                                                                                                                                                       |
-| -------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `init`               | `(mapInstance: any, options?: object) => boolean`                 | Initialise le module avec une instance de carte                                                                                                                                                                                                                                   |
-| `loadLayerLegend`    | `(layerId: string, styleId: string, layerConfig: object) => void` | Charge et affiche la légende d'une couche                                                                                                                                                                                                                                         |
-| `setLayerVisibility` | `(layerId: string, visible: boolean) => void`                     | Masque / affiche une couche depuis la légende                                                                                                                                                                                                                                     |
-| `getAllLayers`       | `() => Map<string, object>`                                       | Retourne l'ensemble des couches connues de la légende                                                                                                                                                                                                                             |
-| `hideLegend`         | `() => void`                                                      | Masque le panneau légende                                                                                                                                                                                                                                                         |
-| `removeLegend`       | `() => void`                                                      | Supprime le panneau légende du DOM                                                                                                                                                                                                                                                |
-| `isLegendVisible`    | `() => boolean`                                                   | Retourne la visibilité courante du panneau                                                                                                                                                                                                                                        |
-| `toggleAccordion`    | `(layerId: string) => void`                                       | ⚠️ **Ne pilote pas l'accordéon.** Hook de notification que le rendu appelle **après** avoir basculé l'accordéon lui-même ; son corps est vide. L'appeler n'ouvre ni ne ferme rien. L'accordéon se pilote au clic, ou en basculant `gl-legend__accordion--collapsed` sur l'élément |
+| Method               | Signature                                                         | Description                                                                                                                                                                                                                                                                             |
+| -------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `init`               | `(mapInstance: any, options?: object) => boolean`                 | Initialise the module with a map instance                                                                                                                                                                                                                                               |
+| `loadLayerLegend`    | `(layerId: string, styleId: string, layerConfig: object) => void` | Load and display the legend of a layer                                                                                                                                                                                                                                                  |
+| `setLayerVisibility` | `(layerId: string, visible: boolean) => void`                     | Show / hide a layer from the legend                                                                                                                                                                                                                                                     |
+| `getAllLayers`       | `() => Map<string, object>`                                       | Return every layer known to the legend                                                                                                                                                                                                                                                  |
+| `hideLegend`         | `() => void`                                                      | Hide the legend panel                                                                                                                                                                                                                                                                   |
+| `removeLegend`       | `() => void`                                                      | Remove the legend panel from the DOM                                                                                                                                                                                                                                                    |
+| `isLegendVisible`    | `() => boolean`                                                   | Return the current visibility of the panel                                                                                                                                                                                                                                              |
+| `toggleAccordion`    | `(layerId: string) => void`                                       | **Does not drive the accordion.** Notification hook the renderer calls **after** it has toggled the accordion itself; its body is empty. Calling it neither opens nor closes anything. Drive the accordion by clicking, or by toggling `gl-legend__accordion--collapsed` on the element |
 
 ---
 
@@ -555,22 +560,21 @@ GeoLeaf.plugins.registerLazy("name", fn); // called by bundle-entry
 ```ts
 import { showBootInfo } from "@geoleaf/core";
 
-// Le namespace est le PREMIER paramètre et n'est PAS optionnel. Appelé sans lui, la fonction
-// sort immédiatement (`if (!GeoLeaf) return;`) : elle n'avertit pas, elle ne fait rien.
-// Cet exemple s'écrivait `showBootInfo()` jusqu'au 31/07/2026 — il ne compilait pas, et le
-// diagnostic était gelé dans la baseline de `check:docs-typecheck`.
+// The namespace is the FIRST parameter and is NOT optional. Called without it, the function
+// returns immediately (`if (!GeoLeaf) return;`): it does not warn, it does nothing.
 type BootNs = Parameters<typeof showBootInfo>[0];
 
-showBootInfo(GeoLeaf as BootNs); // affiche le toast de démarrage
-showBootInfo(GeoLeaf as BootNs, { force: true, duration: 8000 }); // outrepasse `debug.showBootInfo`
+showBootInfo(GeoLeaf as BootNs); // show the boot toast
+showBootInfo(GeoLeaf as BootNs, { force: true, duration: 8000 }); // override `debug.showBootInfo`
 ```
 
-> ⚠️ **Le cast est requis aujourd'hui, et c'est un défaut suivi (backlog B-81), pas un idiome.**
-> `showBootInfo` est exporté publiquement, mais le type de son paramètre (`BootInfoNamespace`)
-> ne l'est pas — un intégrateur ne peut donc même pas le nommer, d'où le `Parameters<…>[0]`
-> ci-dessus. Et `GeoLeafGlobal` ne le satisfait pas structurellement : son `_APIController` est
-> déclaré `unknown` là où le contrat attend `{ init(): boolean } | null`. En pratique, cette
-> fonction est appelée par le boot du core ; un appel manuel est rarement utile.
+::: warning
+**The cast is required today.** `showBootInfo` is exported publicly, but the type of its parameter
+(`BootInfoNamespace`) is not — an integrator cannot even name it, hence the `Parameters<…>[0]`
+above. And `GeoLeafGlobal` does not satisfy it structurally: its `_APIController` is declared
+`unknown` where the contract expects `{ init(): boolean } | null`. In practice this function is
+called by the core boot sequence; a manual call is rarely useful.
+:::
 
 ---
 
@@ -610,10 +614,12 @@ CONSTANTS.MAX_ZOOM_ON_FIT; // Zoom ceiling applied by fitBounds
 // … see constants/GeoLeaf_Constants_README.md for full list
 ```
 
-> ⚠️ **`CONSTANTS` ne porte PAS de `VERSION`** — cet exemple l'annonçait jusqu'au 31/07/2026,
-> et l'objet est `Object.freeze`é sur 15 clés de carte, POI, route, GeoJSON et UI. La version
-> de la bibliothèque n'a pas d'accesseur public : elle est posée sur `GeoLeaf._version`, dont
-> le préfixe `_` dit exactement ce qu'il faut en penser. Lire `package.json` côté intégrateur.
+::: warning
+**`CONSTANTS` carries no `VERSION`.** The object is `Object.freeze`d over 15 keys covering map,
+POI, route, GeoJSON and UI. The library version has no public accessor: it is posted on
+`GeoLeaf._version`, whose `_` prefix says exactly what to make of it. Read `package.json` on the
+integrator side.
+:::
 
 ---
 
@@ -638,14 +644,16 @@ import { Utils } from "@geoleaf/core";
 | `TimerManager`               | Managed timers/debounce      |
 | `ObjectUtils` / `ScaleUtils` | Object & scale helpers       |
 
-⚠️ **`PerformanceProfiler.analyzeMemoryLeaks()` will normally answer `unavailable`, and that is
-the honest answer.** Its only source of heap figures is `performance.memory`, which Chrome
-quantises and then caches for the lifetime of the page (and which no other browser exposes at
-all), so the samples it judges are usually identical to the byte. Rather than return a reassuring
-`normal` computed from an input that never moved, the method reports
-`{ status: "unavailable", reason }` and explains itself in `recommendation`. **Do not read
-`unavailable` as "no leak"** — it means the browser gave nothing to judge. Timing marks,
-measures and the rest of `generateReport()` are unaffected.
+::: warning
+**`PerformanceProfiler.analyzeMemoryLeaks()` will normally answer `unavailable`, and that is the
+honest answer.** Its only source of heap figures is `performance.memory`, which Chrome quantises
+and then caches for the lifetime of the page (and which no other browser exposes at all), so the
+samples it judges are usually identical to the byte. Rather than return a reassuring `normal`
+computed from an input that never moved, the method reports `{ status: "unavailable", reason }` and
+explains itself in `recommendation`. **Do not read `unavailable` as "no leak"** — it means the
+browser gave nothing to judge. Timing marks, measures and the rest of `generateReport()` are
+unaffected.
+:::
 
 ---
 
@@ -675,7 +683,9 @@ Config.get("modules.storage.cache.enableProfileCache");
 
 ## Geocoding — address search
 
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+::: warning
+**Extracted into a plugin.** Address search (geocoding) is no longer part of `@geoleaf/core` — it is provided by the MIT plugin **`@geoleaf-plugins/geocoding`** (public on npmjs.org). Configuration moves from the root key **`geocodingConfig`** to **`modules.geocoding.*`** (declared in `config/plugins/geocoding.json` through `Files.modules.geocoding`) — a **breaking** migration, with no shim. The `GeoLeaf.Geocoding` API, the `geoleaf:geocoding:result` event and the search control are provided by the plugin. See the plugin README (`packages/plugins/geocoding/README.md`).
+:::
 
 ```ts
 import { Permalink } from "@geoleaf/core";
@@ -732,13 +742,13 @@ Displays non-blocking toast messages. Queued automatically when the DOM is not y
 The second argument is **either** a duration in milliseconds **or** an options object — never both. The third argument only applies to `notify` / `show`, and only when the second one is a type string.
 
 ```ts
-Notifications.success("Données chargées");
-Notifications.error("Échec du chargement", { persistent: true, dismissible: true });
+Notifications.success("Data loaded");
+Notifications.error("Loading failed", { persistent: true, dismissible: true });
 Notifications.notify("Info", "info", 8000); // positional: type + duration (ms)
 Notifications.notify("Info", { type: "info", duration: 8000 }); // or an options object
 
 // Keep the handle to dismiss a persistent toast yourself
-const toast = Notifications.info("Import en cours…", { persistent: true });
+const toast = Notifications.info("Import in progress…", { persistent: true });
 if (toast) Notifications.dismiss(toast);
 ```
 
@@ -798,9 +808,11 @@ It mirrors the platform split of the banner:
   `beforeinstallprompt`, so this is the only signal available there.
 - **Android / Chrome / Edge** — `true` once the browser has offered a deferred install prompt.
 
-> ⚠️ On Android this answers **"a prompt is available"**, not "this browser could install the
-> app". The deferred prompt is only captured when `installPrompt.enabled` is `true` — with the
-> banner disabled, it returns `false` even on an installable Chrome. iOS is unaffected.
+::: warning
+On Android this answers **"a prompt is available"**, not "this browser could install the app". The
+deferred prompt is only captured when `installPrompt.enabled` is `true` — with the banner disabled,
+it returns `false` even on an installable Chrome. iOS is unaffected.
+:::
 
 ```ts
 // Opt-in via geoleaf.config.json:
@@ -816,7 +828,7 @@ GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
 
 ## Composing a lighter bundle
 
-> **REMOVED in v3 (S5)** — `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()` no
+> **REMOVED in v3** — `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()` no
 > longer exist, and nothing replaces them. The `lite` build is gone too. Delete the calls.
 
 Every in-core capability ships in `geoleaf.esm.js`. A config flag (`modules.<id>.enabled`) turns
@@ -832,7 +844,7 @@ recipe in `examples/minimal/entry.ts`.
 After loading `dist/geoleaf.esm.js` via CDN (`<script type="module">`), properties are available on
 `window.GeoLeaf` in **two waves**.
 
-**1. Kernel façades — posted at import, before `GeoLeaf.boot()`**
+**1. Kernel facades — posted at import, before `GeoLeaf.boot()`**
 
 A script or plugin loaded before `boot()` can already call them. _(This restored a behaviour that an
 internal v2.x refactor had silently removed: the surface available at import went back from 64 to
@@ -857,7 +869,7 @@ internal v2.x refactor had silently removed: the surface available at import wen
 | `GeoLeaf.notify()`                       | Notification primitive (buffered)                  |
 | `GeoLeaf._version`                       | Version string                                     |
 
-**2. Capability façades — mounted at boot, gated by configuration**
+**2. Capability facades — mounted at boot, gated by configuration**
 
 Each is posted by its capability's installer and **only if its gate is open** (`modules.<id>.enabled`).
 Most are opt-out (active unless set to `false`); check the individual section.
@@ -880,7 +892,7 @@ Most are opt-out (active unless set to `false`); check the individual section.
 `GeoLeaf.Measure`, `GeoLeaf.Print`… — load the plugin script **after** `geoleaf.esm.js` and
 **before** `GeoLeaf.boot()`.
 
-> `GeoLeaf._loadModule` / `GeoLeaf._loadAllSecondaryModules` were **removed in v3 (S5)** — see
+> `GeoLeaf._loadModule` / `GeoLeaf._loadAllSecondaryModules` were **removed in v3** — see
 > [Composing a lighter bundle](#composing-a-lighter-bundle).
 
 > **TypeDoc (generated):** Run `npm run docs:api` in `packages/core` to generate
@@ -898,21 +910,18 @@ Most are opt-out (active unless set to `false`); check the individual section.
 // Resolves to: node_modules/@geoleaf/core/dist/types/bundle-esm-entry.d.ts
 ```
 
-> ✅ **The package exports 19 named types.** See [Extension contracts](#extension-contracts-typescript)
-> for the list and the per-contract subpaths.
->
-> ⚠️ **This paragraph said the opposite until v3.31, and it named `GeoLeafEventMap` as an example
-> of a type that is _not_ public.** That type is now exported from the entry point. If you worked
-> around this section by re-declaring the interfaces in your own project, you can delete those
-> declarations — that duplication is exactly what publishing the contracts was meant to end.
->
-> The generated declarations ship in **`dist/types/bundle-esm-entry.d.ts`** (resolved by
-> `package.json#types`). Types that remain internal — `LayerConfig`, `ThemeConfig` and the rest of
-> the source's type surface — are **not** part of the public API: do not import them by path, it is
-> not a supported entry point. The rule is simple: **if it is not re-exported from `@geoleaf/core`
-> or from a `./contracts/*` subpath, it is not public.**
->
-> _(There is no hand-written `index.d.ts` anywhere — the declarations are generated from the
-> source at build time. A hand-maintained one used to sit at the repository root; it was never
-> published and had drifted from the code, so it was removed. The generated `dist/types/` is the
-> only contract.)_
+::: tip
+**The package exports 19 named types.** See [Extension contracts](#extension-contracts-typescript)
+for the list and the per-contract subpaths. If you previously re-declared these interfaces in your
+own project, delete those declarations — that duplication is exactly what publishing the contracts
+was meant to end.
+:::
+
+The generated declarations ship in **`dist/types/bundle-esm-entry.d.ts`** (resolved by
+`package.json#types`). Types that remain internal — `LayerConfig`, `ThemeConfig` and the rest of
+the source's type surface — are **not** part of the public API: do not import them by path, it is
+not a supported entry point. The rule is simple: **if it is not re-exported from `@geoleaf/core`
+or from a `./contracts/*` subpath, it is not public.**
+
+_(There is no hand-written `index.d.ts` anywhere — the declarations are generated from the source
+at build time. The generated `dist/types/` is the only contract.)_

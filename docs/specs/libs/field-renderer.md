@@ -13,17 +13,21 @@ date: 28 juillet 2026
 **Type :** bibliothèque partagée · **Paquet :** `@geoleaf/field-renderer` ·
 **Code :** `packages/libs/field-renderer/` · **Vérifié contre :** `21630103` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Ce n'est NI une capacité, NI un plugin — et aucune gate documentaire ne lit cette fiche.**
 > Les deux gardes du §2.4 de la refonte visent `specs/capacites/` (table de configuration ↔
 > `configSchema`) et `specs/plugins/` (manifeste ↔ `entry.ts`). Une bibliothèque n'a ni l'un ni
 > l'autre. **La véracité de ce document repose donc entièrement sur sa relecture** — c'est la règle
-> ⛔ de `CLAUDE.md`, sans filet mécanique. Le dire ici plutôt que laisser croire l'inverse.
+> documentaire du dépôt, sans filet mécanique. Le dire ici plutôt que laisser croire l'inverse.
 
 ---
 
@@ -164,7 +168,7 @@ bibliothèque n'a coûté que **deux commentaires** : `FieldConfig` disait « fr
 
 Le motif est structurant et vaut d'être écrit : **`FieldConfig` décrit ce qu'un composant REÇOIT,
 jamais où le profil le range.** La traduction vit chez l'appelant — `editor`
-(`modal/attributes-to-form.ts`) — qui aplatit le sac `options` du modèle attributaire sur le
+(`packages/plugins/editor/src/modal/attributes-to-form.ts`) — qui aplatit le sac `options` du modèle attributaire sur le
 descripteur, parce que c'est là que les composants le lisent (`fieldConfig.rows`,
 `fieldConfig.maxItems`, `fieldConfig.uploadEndpoint`…). Déplacer cette traduction ici ferait entrer
 le vocabulaire des profils dans une lib qui l'ignore, et lui ferait perdre exactement

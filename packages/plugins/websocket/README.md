@@ -1,8 +1,21 @@
 # @geoleaf-plugins/websocket
 
-Plugin de transport WebSocket pour [GeoLeaf JS](https://github.com/geoleaf/geoleaf-js). Fournit une connexion temps réel avec reconnexion automatique, buffering offline et métriques intégrées.
+WebSocket transport plugin for [GeoLeaf JS](https://github.com/geoleaf/geoleaf-js). It provides a
+real-time connection with automatic reconnection, offline buffering and built-in metrics.
 
 ---
+
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/websocket version  # what the registry serves
+> npm run versions:check                       # what this repository declares
+> ```
+>
+> Until those agree, build from source.
 
 ## Installation
 
@@ -10,16 +23,17 @@ Plugin de transport WebSocket pour [GeoLeaf JS](https://github.com/geoleaf/geole
 npm install @geoleaf-plugins/websocket
 ```
 
-> **Prérequis :** `@geoleaf/core` doit être chargé avant ce plugin.
+> [!NOTE]
+> **Prerequisite:** `@geoleaf/core` must be loaded before this plugin.
 
 ---
 
-## Démarrage rapide
+## Quick start
 
 ```js
 import "@geoleaf-plugins/websocket";
 
-// Après GeoLeaf.boot() — GeoLeaf.Ws est disponible sur globalThis.GeoLeaf
+// After GeoLeaf.boot() — GeoLeaf.Ws is available on globalThis.GeoLeaf
 await GeoLeaf.Ws.init({
     transport: "native-ws",
     url: "wss://api.example.com/ws",
@@ -27,15 +41,15 @@ await GeoLeaf.Ws.init({
     heartbeat: { enabled: true },
 });
 
-// S'abonner à un canal
+// Subscribe to a channel
 const unsubscribe = GeoLeaf.Ws.subscribe("poi-updates", (payload) => {
-    console.log("Mise à jour POI reçue :", payload);
+    console.log("POI update received:", payload);
 });
 
-// Envoyer un message
+// Send a message
 GeoLeaf.Ws.send("user-action", { type: "map-click", lngLat: [2.35, 48.85] });
 
-// Arrêt propre
+// Clean shutdown
 GeoLeaf.Ws.destroy();
 ```
 
@@ -43,23 +57,23 @@ GeoLeaf.Ws.destroy();
 
 ## Configuration — `WsPluginConfig`
 
-Passé à `GeoLeaf.Ws.init()`.
+Passed to `GeoLeaf.Ws.init()`.
 
-| Option                     | Type                         | Défaut      | Description                                                                                   |
-| -------------------------- | ---------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
-| `transport`                | `string`                     | —           | Clé de transport. Intégré : `"native-ws"`. Voir [Transport custom](#transport-custom).        |
-| `url`                      | `string`                     | —           | URL de l'endpoint WebSocket. Obligatoire. `wss://` requis en production.                      |
-| `auth`                     | `JwtAuth \| CredentialsAuth` | `undefined` | Configuration d'authentification (réservée — non active en v1.0).                             |
-| `reconnect.initialDelayMs` | `number`                     | `1000`      | Délai initial avant la première tentative (ms).                                               |
-| `reconnect.maxDelayMs`     | `number`                     | `30000`     | Plafond du backoff exponentiel (ms).                                                          |
-| `reconnect.maxRetries`     | `number`                     | `10`        | Nombre max de tentatives. `0` = infini (recommandé pour PWA offline-first).                   |
-| `heartbeat.enabled`        | `boolean`                    | `false`     | Active le keep-alive ping/pong.                                                               |
-| `heartbeat.intervalMs`     | `number`                     | `25000`     | Intervalle entre chaque ping (ms).                                                            |
-| `heartbeat.timeoutMs`      | `number`                     | `5000`      | Délai d'attente du pong avant de déclarer la connexion perdue (ms). Doit être `< intervalMs`. |
-| `queueOnDisconnect`        | `boolean`                    | `true`      | Bufferise les messages sortants pendant la déconnexion.                                       |
-| `maxQueueSize`             | `number`                     | `100`       | Taille max du buffer. En cas de dépassement, le message le plus ancien est évincé.            |
+| Option                     | Type                         | Default     | Description                                                                                      |
+| -------------------------- | ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| `transport`                | `string`                     | —           | Transport key. Built in: `"native-ws"`. See [Custom transport](#custom-transport).               |
+| `url`                      | `string`                     | —           | WebSocket endpoint URL. Required. `wss://` is required in production.                            |
+| `auth`                     | `JwtAuth \| CredentialsAuth` | `undefined` | Authentication configuration (reserved — not active in v1.0).                                    |
+| `reconnect.initialDelayMs` | `number`                     | `1000`      | Delay before the first retry (ms).                                                               |
+| `reconnect.maxDelayMs`     | `number`                     | `30000`     | Ceiling of the exponential backoff (ms).                                                         |
+| `reconnect.maxRetries`     | `number`                     | `10`        | Maximum number of retries. `0` means unlimited (recommended for offline-first PWAs).             |
+| `heartbeat.enabled`        | `boolean`                    | `false`     | Enables ping/pong keep-alive.                                                                    |
+| `heartbeat.intervalMs`     | `number`                     | `25000`     | Interval between pings (ms).                                                                     |
+| `heartbeat.timeoutMs`      | `number`                     | `5000`      | How long to wait for the pong before declaring the connection lost (ms). Must be `< intervalMs`. |
+| `queueOnDisconnect`        | `boolean`                    | `true`      | Buffers outgoing messages while disconnected.                                                    |
+| `maxQueueSize`             | `number`                     | `100`       | Maximum buffer size. On overflow, the oldest message is evicted.                                 |
 
-### Exemple complet
+### Full example
 
 ```js
 await GeoLeaf.Ws.init({
@@ -68,7 +82,7 @@ await GeoLeaf.Ws.init({
     reconnect: {
         initialDelayMs: 500,
         maxDelayMs: 60000,
-        maxRetries: 0, // infini — PWA offline-first
+        maxRetries: 0, // unlimited — offline-first PWA
     },
     heartbeat: {
         enabled: true,
@@ -80,7 +94,7 @@ await GeoLeaf.Ws.init({
 });
 ```
 
-### Auth JWT (v1.0 — types définis, logique à implémenter côté transport custom)
+### JWT auth (v1.0 — types defined, logic to implement in a custom transport)
 
 ```ts
 import type { JwtAuth } from "@geoleaf-plugins/websocket";
@@ -97,166 +111,172 @@ const auth: JwtAuth = {
 
 ## API — `GeoLeaf.Ws`
 
-| Méthode / propriété | Signature                                                  | Description                                                                                 |
-| ------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `init`              | `(config: WsPluginConfig) => Promise<void>`                | Initialise et connecte. Résout quand la connexion est prête.                                |
-| `destroy`           | `() => void`                                               | Déconnecte, purge les subscriptions et remet les métriques à zéro. Idempotent.              |
-| `reconnect`         | `() => void`                                               | Force une reconnexion. Remet le compteur de tentatives à zéro. Sans effet si déjà connecté. |
-| `state`             | `readonly TransportState`                                  | État courant de la connexion. Voir [États de connexion](#états-de-connexion).               |
-| `subscribe`         | `(channel: string, handler: MessageHandler) => () => void` | S'abonne à un canal. Retourne une fonction de désinscription idempotente.                   |
-| `unsubscribe`       | `(channel: string) => void`                                | Se désabonne d'un canal par nom. Sans effet si non abonné.                                  |
-| `send`              | `(channel: string, payload: unknown) => void`              | Envoie un message. Bufferisé si déconnecté et `queueOnDisconnect: true`.                    |
-| `getSubscriptions`  | `() => string[]`                                           | Liste des noms de canaux actifs.                                                            |
-| `getMetrics`        | `() => WsMetrics`                                          | Snapshot des métriques. Utilisable avant `init()`.                                          |
+| Method / property  | Signature                                                  | Description                                                                     |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `init`             | `(config: WsPluginConfig) => Promise<void>`                | Initialises and connects. Resolves once the connection is ready.                |
+| `destroy`          | `() => void`                                               | Disconnects, drops subscriptions and resets metrics. Idempotent.                |
+| `reconnect`        | `() => void`                                               | Forces a reconnection and resets the retry counter. No-op if already connected. |
+| `state`            | `readonly TransportState`                                  | Current connection state. See [Connection states](#connection-states).          |
+| `subscribe`        | `(channel: string, handler: MessageHandler) => () => void` | Subscribes to a channel. Returns an idempotent unsubscribe function.            |
+| `unsubscribe`      | `(channel: string) => void`                                | Unsubscribes from a channel by name. No-op if not subscribed.                   |
+| `send`             | `(channel: string, payload: unknown) => void`              | Sends a message. Buffered when disconnected and `queueOnDisconnect: true`.      |
+| `getSubscriptions` | `() => string[]`                                           | Names of the active channels.                                                   |
+| `getMetrics`       | `() => WsMetrics`                                          | Metrics snapshot. Usable before `init()`.                                       |
 
-### États de connexion
+### Connection states
 
 ```
 disconnected → connecting → connected
 connected    → disconnected → reconnecting → connected
-reconnecting → failed  (si maxRetries > 0 et épuisés)
+reconnecting → failed  (when maxRetries > 0 and exhausted)
 ```
 
-| État           | Description                                             |
-| -------------- | ------------------------------------------------------- |
-| `disconnected` | Pas de connexion active.                                |
-| `connecting`   | Tentative de connexion initiale en cours.               |
-| `connected`    | Connexion établie et prête.                             |
-| `reconnecting` | Connexion perdue, tentative de rétablissement en cours. |
-| `failed`       | Toutes les tentatives épuisées ou erreur irrécupérable. |
+| State          | Description                                       |
+| -------------- | ------------------------------------------------- |
+| `disconnected` | No active connection.                             |
+| `connecting`   | Initial connection attempt in progress.           |
+| `connected`    | Connection established and ready.                 |
+| `reconnecting` | Connection lost, recovery attempt in progress.    |
+| `failed`       | All retries exhausted, or an unrecoverable error. |
 
 ---
 
-## Pattern `queueOnDisconnect`
+## The `queueOnDisconnect` pattern
 
-Quand `queueOnDisconnect: true` (défaut), les messages envoyés via `GeoLeaf.Ws.send()` pendant une déconnexion sont bufferisés en FIFO et réexpédiés automatiquement à la reconnexion.
+With `queueOnDisconnect: true` (the default), messages sent through `GeoLeaf.Ws.send()` while
+disconnected are buffered FIFO and replayed automatically on reconnection.
 
-### Cycle de vie offline / online
+### Offline / online lifecycle
 
 ```
-Connexion perdue
-  → État : reconnecting
-  → send() → message placé dans le buffer (geoleaf:ws:send-queued)
+Connection lost
+  → state: reconnecting
+  → send() → message placed in the buffer (geoleaf:ws:send-queued)
 
-Reconnexion réussie
-  → resubscribeAll() — tous les canaux sont réactivés
-  → SendQueue.flush() — messages buffferisés réexpédiés en ordre FIFO
-  → État : connected
+Reconnection succeeds
+  → resubscribeAll() — every channel is reactivated
+  → SendQueue.flush() — buffered messages are replayed in FIFO order
+  → state: connected
 ```
 
-### Overflow du buffer
+### Buffer overflow
 
-Si le buffer atteint `maxQueueSize`, **le message le plus ancien est évincé** pour faire de la place au nouveau :
+When the buffer reaches `maxQueueSize`, **the oldest message is evicted** to make room for the new
+one:
 
 ```js
-// Écouter les débordements
+// Listen for overflows
 document.addEventListener("geoleaf:ws:send-queued-overflow", (e) => {
-    console.warn("Message évincé du buffer :", e.detail.channel, e.detail.droppedPayload);
+    console.warn("Message evicted from the buffer:", e.detail.channel, e.detail.droppedPayload);
 });
 ```
 
-### Désactiver le buffering
+### Disabling buffering
 
 ```js
 await GeoLeaf.Ws.init({
     transport: "native-ws",
     url: "wss://api.example.com/ws",
-    queueOnDisconnect: false, // messages perdus si déconnecté
+    queueOnDisconnect: false, // messages are lost while disconnected
 });
 
-// Détecter les messages abandonnés
+// Detect dropped messages
 document.addEventListener("geoleaf:ws:send-dropped", (e) => {
-    console.warn("Message abandonné sur canal :", e.detail.channel);
+    console.warn("Message dropped on channel:", e.detail.channel);
 });
 ```
 
 ---
 
-## Métriques et monitoring
+## Metrics and monitoring
 
-`GeoLeaf.Ws.getMetrics()` retourne un snapshot immutable `WsMetrics` à tout moment, y compris avant `init()`.
+`GeoLeaf.Ws.getMetrics()` returns an immutable `WsMetrics` snapshot at any time, including before
+`init()`.
 
-### Interface `WsMetrics`
+### The `WsMetrics` interface
 
-| Champ              | Type             | Description                                                                      |
+| Field              | Type             | Description                                                                      |
 | ------------------ | ---------------- | -------------------------------------------------------------------------------- |
-| `connectedAt`      | `string \| null` | Horodatage ISO 8601 de la dernière connexion réussie. `null` si jamais connecté. |
-| `reconnectCount`   | `number`         | Nombre total de reconnexions réussies depuis `init()`.                           |
-| `messagesSent`     | `number`         | Messages envoyés (y compris les messages réexpédiés depuis le buffer).           |
-| `messagesReceived` | `number`         | Messages reçus sur les canaux abonnés.                                           |
-| `lastPingMs`       | `number \| null` | Dernière latence ping aller-retour en ms. `null` si heartbeat désactivé.         |
-| `activeChannels`   | `string[]`       | Noms des canaux actuellement abonnés.                                            |
-| `queueLength`      | `number`         | Nombre de messages en attente dans le buffer.                                    |
+| `connectedAt`      | `string \| null` | ISO 8601 timestamp of the last successful connection. `null` if never connected. |
+| `reconnectCount`   | `number`         | Total successful reconnections since `init()`.                                   |
+| `messagesSent`     | `number`         | Messages sent, including those replayed from the buffer.                         |
+| `messagesReceived` | `number`         | Messages received on subscribed channels.                                        |
+| `lastPingMs`       | `number \| null` | Last round-trip ping latency in ms. `null` when the heartbeat is disabled.       |
+| `activeChannels`   | `string[]`       | Names of the currently subscribed channels.                                      |
+| `queueLength`      | `number`         | Number of messages waiting in the buffer.                                        |
 
-### Exemples de monitoring
+### Monitoring examples
 
 ```js
-// Dashboard de métriques
+// Metrics dashboard
 function logMetrics() {
     const m = GeoLeaf.Ws.getMetrics();
     console.table({
-        "Connecté depuis": m.connectedAt ?? "—",
-        Reconnexions: m.reconnectCount,
-        "Msgs envoyés": m.messagesSent,
-        "Msgs reçus": m.messagesReceived,
-        "Latence ping": m.lastPingMs != null ? `${m.lastPingMs} ms` : "—",
-        "Canaux actifs": m.activeChannels.join(", ") || "—",
+        "Connected since": m.connectedAt ?? "—",
+        Reconnections: m.reconnectCount,
+        "Msgs sent": m.messagesSent,
+        "Msgs received": m.messagesReceived,
+        "Ping latency": m.lastPingMs != null ? `${m.lastPingMs} ms` : "—",
+        "Active channels": m.activeChannels.join(", ") || "—",
         Buffer: m.queueLength,
     });
 }
 
-// Snapshot périodique
+// Periodic snapshot
 setInterval(logMetrics, 10_000);
 
-// Réagir aux mises à jour de métriques
+// React to metrics updates
 document.addEventListener("geoleaf:ws:metrics-updated", (e) => {
     const metrics = e.detail; // WsMetrics
     if (metrics.lastPingMs > 500) {
-        console.warn("Latence élevée :", metrics.lastPingMs, "ms");
+        console.warn("High latency:", metrics.lastPingMs, "ms");
     }
 });
 ```
 
-### Alertes sur les événements de connexion
+### Alerting on connection events
 
 ```js
 document.addEventListener("geoleaf:ws:reconnecting", (e) => {
     const { attempt, nextDelayMs } = e.detail;
-    console.warn(`Reconnexion #${attempt}, prochain essai dans ${nextDelayMs} ms`);
+    console.warn(`Reconnection #${attempt}, next attempt in ${nextDelayMs} ms`);
 });
 
 document.addEventListener("geoleaf:ws:failed", (e) => {
     const { error } = e.detail;
-    console.error(`Connexion définitivement perdue [${error.code}] :`, error.message);
+    console.error(`Connection permanently lost [${error.code}]:`, error.message);
 });
 ```
 
 ---
 
-## Événements
+## Events
 
-Tous les événements sont émis via `document.dispatchEvent()` et se consomment avec `document.addEventListener()`.
+All events are dispatched through `document.dispatchEvent()` and consumed with
+`document.addEventListener()`.
 
-> **Note :** Ces événements sont distincts du système `GeoLeaf.Events` — ils n'y transitent pas.
+> [!NOTE]
+> These events are separate from the `GeoLeaf.Events` system — they do not travel through it.
 
-| Événement                         | Payload                       | Déclencheur                                              |
-| --------------------------------- | ----------------------------- | -------------------------------------------------------- |
-| `geoleaf:ws:connected`            | `{ transport, channels }`     | Connexion établie et prête.                              |
-| `geoleaf:ws:disconnected`         | `{ transport, reason }`       | Connexion perdue.                                        |
-| `geoleaf:ws:reconnecting`         | `{ attempt, nextDelayMs }`    | Tentative de reconnexion en cours.                       |
-| `geoleaf:ws:failed`               | `{ transport, error }`        | Échec irrécupérable (maxRetries atteint ou erreur auth). |
-| `geoleaf:ws:auth-required`        | `{ transport }`               | Session expirée, action utilisateur requise.             |
-| `geoleaf:ws:channel-subscribed`   | `{ channel }`                 | Abonnement ajouté ou remplacé.                           |
-| `geoleaf:ws:channel-unsubscribed` | `{ channel }`                 | Abonnement supprimé.                                     |
-| `geoleaf:ws:send-queued`          | `{ channel, queueLength }`    | Message placé dans le buffer offline.                    |
-| `geoleaf:ws:send-dropped`         | `{ channel }`                 | Message abandonné (`queueOnDisconnect: false`).          |
-| `geoleaf:ws:send-queued-overflow` | `{ channel, droppedPayload }` | Message évincé du buffer (maxQueueSize atteint).         |
-| `geoleaf:ws:heartbeat-timeout`    | `{ transport }`               | Timeout du pong — reconnexion déclenchée.                |
-| `geoleaf:ws:metrics-updated`      | `WsMetrics`                   | Snapshot métriques mis à jour.                           |
+| Event                             | Payload                       | Fired when                                                 |
+| --------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `geoleaf:ws:connected`            | `{ transport, channels }`     | The connection is established and ready.                   |
+| `geoleaf:ws:disconnected`         | `{ transport, reason }`       | The connection is lost.                                    |
+| `geoleaf:ws:reconnecting`         | `{ attempt, nextDelayMs }`    | A reconnection attempt is in progress.                     |
+| `geoleaf:ws:failed`               | `{ transport, error }`        | Unrecoverable failure (maxRetries reached, or auth error). |
+| `geoleaf:ws:auth-required`        | `{ transport }`               | The session expired and user action is required.           |
+| `geoleaf:ws:channel-subscribed`   | `{ channel }`                 | A subscription was added or replaced.                      |
+| `geoleaf:ws:channel-unsubscribed` | `{ channel }`                 | A subscription was removed.                                |
+| `geoleaf:ws:send-queued`          | `{ channel, queueLength }`    | A message was placed in the offline buffer.                |
+| `geoleaf:ws:send-dropped`         | `{ channel }`                 | A message was dropped (`queueOnDisconnect: false`).        |
+| `geoleaf:ws:send-queued-overflow` | `{ channel, droppedPayload }` | A message was evicted from the buffer (maxQueueSize hit).  |
+| `geoleaf:ws:heartbeat-timeout`    | `{ transport }`               | The pong timed out — a reconnection was triggered.         |
+| `geoleaf:ws:metrics-updated`      | `WsMetrics`                   | The metrics snapshot was updated.                          |
 
-### Exemple : écouter les messages entrants
+### Example: listening for incoming messages
 
-Les messages d'un canal sont délivrés via le **callback** passé à `subscribe()` — il n'existe pas d'événement `document` dédié aux messages (voir le tableau d'événements ci-dessus) :
+Channel messages are delivered through the **callback** passed to `subscribe()`; there is no
+dedicated `document` event for messages (see the event table above):
 
 ```js
 GeoLeaf.Ws.subscribe("layer-updates", (payload) => {
@@ -266,9 +286,9 @@ GeoLeaf.Ws.subscribe("layer-updates", (payload) => {
 
 ---
 
-## Transport custom
+## Custom transport
 
-Pour remplacer ou compléter `native-ws`, enregistrez votre propre implémentation de `IWsTransport` :
+To replace or complement `native-ws`, register your own `IWsTransport` implementation:
 
 ```js
 import { registerTransport } from "@geoleaf-plugins/websocket";
@@ -303,36 +323,37 @@ await GeoLeaf.Ws.init({
 });
 ```
 
-> `registerTransport()` doit être appelé **avant** `GeoLeaf.Ws.init()`. Une clé inconnue au moment de `init()` lève une erreur `INVALID_TRANSPORT`.
+> [!IMPORTANT]
+> `registerTransport()` must be called **before** `GeoLeaf.Ws.init()`. An unknown key at `init()`
+> time raises an `INVALID_TRANSPORT` error.
 
 ---
 
-## Tests consommateurs
+## Consumer tests
 
-Le package livre un `MockTransport` pour faciliter les tests unitaires dans les projets qui intègrent le plugin.
+The package ships a `MockTransport` to make unit testing easier in projects that integrate the
+plugin.
 
-> ⚠️ **`./test-utils` n'est PAS un sous-chemin public à ce jour, et l'exemple ci-dessous ne
-> résout donc pas en l'état.** Le fichier part bien dans le tarball (`files[]` porte
-> `test-utils/`) et son en-tête l'annonce public, mais la carte `exports` ne le déclare pas :
-> un `import` depuis ce chemin lève `ERR_PACKAGE_PATH_NOT_EXPORTED` (mesuré, pas déduit).
-> Déclarer le sous-chemin est une décision de contrat de paquet — il pointerait du TypeScript
-> **non compilé**, là où tous les autres sous-chemins du dépôt visent `dist/`. Ouvert en
-> **B-97**. En attendant, copier `test-utils/mock-transport.ts` depuis le tarball.
+> [!WARNING]
+> **`./test-utils` is not a public subpath, so the import below does not resolve as written.** The
+> file does travel in the tarball (`files[]` carries `test-utils/`), but the `exports` map does not
+> declare it, so importing that path raises `ERR_PACKAGE_PATH_NOT_EXPORTED`. In the meantime, copy
+> `test-utils/mock-transport.ts` out of the tarball.
 
 ```js
-import { MockTransport } from "@geoleaf-plugins/websocket/test-utils"; // ⚠️ voir la note ci-dessus
+import { MockTransport } from "@geoleaf-plugins/websocket/test-utils"; // see the warning above
 import { registerTransport } from "@geoleaf-plugins/websocket";
 
-// Enregistrer le mock avant init()
+// Register the mock before init()
 registerTransport("mock", () => new MockTransport());
 
 await GeoLeaf.Ws.init({ transport: "mock", url: "wss://test" });
 
-// Simuler la réception d'un message
+// Simulate an incoming message
 const mock = MockTransport.lastInstance;
 mock.simulateMessage("poi-updates", { id: 42, name: "Test" });
 
-// Vérifier les messages envoyés
+// Assert on the sent messages
 expect(mock.sentMessages).toContainEqual({
     channel: "user-action",
     payload: { type: "map-click" },
@@ -341,18 +362,18 @@ expect(mock.sentMessages).toContainEqual({
 
 ---
 
-## Gestion d'erreurs
+## Error handling
 
-Les erreurs irrécupérables émettent `geoleaf:ws:failed` avec un objet `WsError` :
+Unrecoverable errors emit `geoleaf:ws:failed` with a `WsError` object:
 
-| Code                   | Description                                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------------------- |
-| `CONNECTION_REFUSED`   | Backend inaccessible, URL invalide, ou `ws://` en production.                                 |
-| `AUTH_FAILED`          | Handshake refusé (ex. close code 1008).                                                       |
-| `AUTH_EXPIRED`         | Session ou token expiré en cours de connexion.                                                |
-| `MAX_RETRIES_EXCEEDED` | Toutes les tentatives de reconnexion épuisées.                                                |
-| `INVALID_TRANSPORT`    | Clé de transport inconnue dans `WsPluginConfig.transport`.                                    |
-| `SEND_QUEUE_OVERFLOW`  | Dépassement de `maxQueueSize` (informationnel — émis comme événement `send-queued-overflow`). |
+| Code                   | Description                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `CONNECTION_REFUSED`   | Backend unreachable, invalid URL, or `ws://` used in production.             |
+| `AUTH_FAILED`          | Handshake refused (for example close code 1008).                             |
+| `AUTH_EXPIRED`         | The session or token expired while connected.                                |
+| `MAX_RETRIES_EXCEEDED` | All reconnection attempts were exhausted.                                    |
+| `INVALID_TRANSPORT`    | Unknown transport key in `WsPluginConfig.transport`.                         |
+| `SEND_QUEUE_OVERFLOW`  | `maxQueueSize` exceeded (informational — emitted as `send-queued-overflow`). |
 
 ```js
 document.addEventListener("geoleaf:ws:failed", (e) => {
@@ -361,17 +382,17 @@ document.addEventListener("geoleaf:ws:failed", (e) => {
     switch (code) {
         case "AUTH_FAILED":
         case "AUTH_EXPIRED":
-            // Demander un nouveau token, puis reconnecter
+            // Fetch a fresh token, then reconnect
             refreshToken().then(() => GeoLeaf.Ws.reconnect());
             break;
         case "MAX_RETRIES_EXCEEDED":
-            // Notifier l'utilisateur
-            GeoLeaf.Notifications?.show("Connexion temps réel perdue.", "error");
+            // Notify the user
+            GeoLeaf.Notifications?.show("Real-time connection lost.", "error");
             break;
         default:
             console.error(
                 `[ws:${transport}] ${code}: ${message}`,
-                attempt != null ? `(tentative ${attempt})` : ""
+                attempt != null ? `(attempt ${attempt})` : ""
             );
     }
 });

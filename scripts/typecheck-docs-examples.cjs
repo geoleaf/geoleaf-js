@@ -655,7 +655,7 @@ try {
             `${JSON.stringify(
                 {
                     _comment:
-                        "Erreurs de type CONNUES dans les exemples ts/typescript de la doc core, figées par scripts/typecheck-docs-examples.cjs. Le gate ne bloque que sur une erreur ABSENTE d'ici. Clé = fichier::codeTS::message (sans numéro de ligne, qui bouge à chaque édition du texte autour du bloc). Régénérer via `--update-baseline` après avoir corrigé un lot.",
+                        "Erreurs de type CONNUES dans les exemples ts/typescript de la doc PRODUIT (lib/tsdoc-examples.cjs::productDocsFiles), figées par scripts/typecheck-docs-examples.cjs. Le gate ne bloque que sur une erreur ABSENTE d'ici. Clé = fichier::codeTS::message (sans numéro de ligne, qui bouge à chaque édition du texte autour du bloc). Régénérer via `--update-baseline` après avoir corrigé un lot. ⚠️ La quasi-totalité des entrées est TS18048 « 'GeoLeaf…' is possibly 'undefined' » : ce n'est PAS un défaut par exemple, c'est une propriété de l'ambiant publié, qui déclare `var GeoLeaf: GeoLeafGlobal | undefined` (global.d.ts:915). Tout exemple qui écrit `GeoLeaf.X` la déclenche. La corriger exemple par exemple enseignerait un idiome (`GeoLeaf!.X`) que le reste de la doc n'emploie pas ; elle se corrige à la source, dans la déclaration, ou pas du tout — suivi au backlog.",
                     generatedCount: keys.length,
                     diagnostics: keys,
                 },

@@ -4,8 +4,6 @@ title: "Layer Configuration Schema"
 
 # Layer Configuration Schema
 
-**Version:** 3.0.0
-
 ## Overview
 
 This document defines the structure and requirements for layer configuration files in GeoLeaf. Each layer in a profile requires a `*_config.json` file that defines how the layer should be loaded, displayed, and styled.
@@ -186,7 +184,7 @@ All layer configuration files should be validated against the schemas documented
 
 ## Common Mistakes
 
-❌ **Incorrect**: Missing `label` at top level
+**Incorrect**: missing `label` at top level
 
 ```jsonc
 {
@@ -197,7 +195,7 @@ All layer configuration files should be validated against the schemas documented
 }
 ```
 
-✅ **Correct**: Include readable label
+**Correct**: include a readable label
 
 ```jsonc
 {
@@ -210,7 +208,7 @@ All layer configuration files should be validated against the schemas documented
 
 ---
 
-❌ **Incorrect**: Style IDs not matching in file name and content
+**Incorrect**: style IDs not matching between file name and content
 
 ```jsonc
 "available": [
@@ -222,7 +220,7 @@ All layer configuration files should be validated against the schemas documented
 ]
 ```
 
-✅ **Correct**: Consistent naming
+**Correct**: consistent naming
 
 ```jsonc
 "available": [

@@ -167,7 +167,11 @@ describe("config B5 — orphan / legacy / plugin keys (schema-accepted, locked i
     // la REFUSE désormais, et la saisie se déclare sur `attributes.fields[].edit` — couvert
     // par `attributes-opposability` (A14/A17) et `write-capture-parity`, pas par un renvoi.
     it.todo("B7 renvoi — edition.{create,update,delete}/editableGeometryTypes (editor)");
+    // ⚠️ `pointStyle` a quitté cette ligne le 11/08/2026 (B-225), pour la même raison que
+    // `formSchema` ci-dessus : la clé n'existe plus. Elle a été retirée du résolveur au S3
+    // (`e17e41a6`, BREAKING v3.0.0) et ne figure ni en source, ni dans les schémas, ni dans
+    // les profils livrés — un renvoi vers elle certifierait une dette sans objet.
     it.todo(
-        "B7 renvoi — data.limit/data.realtime/realtimeLayer/write/pointStyle (flatgeobuf/realtime/editor/legacy)"
+        "B7 renvoi — data.limit/data.realtime/realtimeLayer/write (flatgeobuf/realtime/editor)"
     );
 });

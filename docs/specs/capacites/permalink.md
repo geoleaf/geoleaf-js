@@ -13,11 +13,20 @@ date: 28 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/permalink/` ·
 **Vérifié contre :** `abc43942` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
+> faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
+> et les exemples pas à pas sont dans [`packages/core/docs/ui/PERMALINK.md`](../../../packages/core/docs/ui/PERMALINK.md). **Les deux ne se recopient pas** — une
+> divergence entre elles est un défaut, pas une nuance de point de vue.
+
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Cette fiche en décrit DEUX : `permalink` et sa sous-feature `share`.** Ce n'est pas un
 > raccourci d'écriture — c'est la forme réelle. `share` a son propre répertoire, son propre module
@@ -101,7 +110,7 @@ Bloc `modules.permalink` d'un profil. Conformité de cette table au code gardée
 
 ⚠️ **`fields` est en divergence CONNUE et quarantainée.** Le schéma annonce le jeu complet ; le
 lecteur `getPermalinkConfig()` ne matérialise que `enabled` et `mode`. C'est l'entrée
-`permalink.fields` de `KNOWN_DEFAULT_DRIFT` (`config-schema-defaults.test.js`), que le test-garde
+`permalink.fields` de `KNOWN_DEFAULT_DRIFT` (`packages/core/__tests__/capabilities/config-schema-defaults.test.js`), que le test-garde
 de cette fiche **lit à sa source** au lieu de la recopier — le jour où la divergence est soldée, la
 vérification reprend ici sans qu'on y touche.
 
@@ -121,7 +130,7 @@ que laissés comme une promesse que le runtime ne tient pas.
 
 | Étage                         | Clé                               | Ce qu'il commande                  | Défaut |
 | ----------------------------- | --------------------------------- | ---------------------------------- | ------ |
-| Gate de la capacité           | `modules.permalink.enabled`       | La synchronisation URL ↔ état     | `true` |
+| Gate de la capacité           | `modules.permalink.enabled`       | La synchronisation URL ↔ état      | `true` |
 | **Gate du module de `share`** | `modules.permalink.share.enabled` | Le bouton et la fenêtre de partage | `true` |
 
 ⚠️ **Éteindre `permalink` n'éteint PAS `share`**, et l'installeur l'exprime comme un **champ de
@@ -242,7 +251,7 @@ d'enregistrement » — **elle ne le fait plus** (socle-init 7.5) : `ui.mobileIc
 dernier ne « garde » donc plus rien de l'ordre rendu. Reste vrai en revanche : **seules `legend` et
 `share` déclarent une icône mobile côté core** (mesuré — deux `mobileIcon:` sous
 `src/capabilities/`), et le rang du manifeste reste porteur pour les **autres** raisons
-(départage du tri topologique, séquence des `sharedLifecycle`). Garde : `mobile-toolbar-pill-order.test.ts`,
+(départage du tri topologique, séquence des `sharedLifecycle`). Garde : `packages/core/__tests__/ui/mobile-toolbar-pill-order.test.ts`,
 qui enregistre `share` **avant** `legend` et exige quand même legend→share.
 
 ⚠️ **La question de rang de B-57 ne se pose pas ici** :
@@ -281,7 +290,7 @@ dossier de tri — ligne au §Journal des décisions de
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | §1 — « **12 champs** », dont `subCategories`                      | **10** : 3 de vue + 7 facettes. `subCategories` et `gl_subs` n'existent **nulle part** — le §5 du même document acte pourtant leur aplatissement en un seul paramètre. Le document se contredit lui-même      |
 | §2 — « **Full-only**, absent du Lite »                            | **Le build Lite n'existe plus** ; `share/public-api.ts` porte encore la mention. Gisement : **B-07**                                                                                                          |
-| §6 — crochet 1 dans `core-map.module.ts:59-68`                    | Il vit dans `core-map-lifecycle.ts`. Le fichier a été scindé depuis ; la plage de lignes ne désigne plus rien                                                                                                 |
+| §6 — crochet 1 dans `core-map.module.ts:59-68`                    | Il vit dans `packages/core/src/app/boot-modules/core-map-lifecycle.ts`. Le fichier a été scindé depuis ; la plage de lignes ne désigne plus rien                                                              |
 | §2 et §8 — « `PermalinkModule.destroy()` détache les listeners »  | ⚠️ **Il n'y a pas de `PermalinkModule`** — la capacité n'a aucun `ICoreModule`, et le CDC le dit lui-même ailleurs. Le démontage est `stopSync()` / `_reset()`, qui existent bien et font ce qui était promis |
 | §5 — le contrat `Filter` à 8 membres                              | ✅ **Vérifié exact** — les huit sont implémentés (`isEnabled`, `getConfig`, `getActiveFilter`, `applyFilter`, `applyNow`, `reset`, `hasActiveFilters`, `proximity`)                                           |
 | §2 — « `startSync` attache sans jamais détacher »                 | ✅ **Corrigé depuis** : `startSync` rend son démontage, `stopSync()` l'expose, et `startSync` démonte la session précédente avant d'en ouvrir une                                                             |

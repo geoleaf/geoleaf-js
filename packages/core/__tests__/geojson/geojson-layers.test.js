@@ -331,7 +331,6 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
                         url: "poi.geojson",
                         visible: true,
                         clustering: true,
-                        pointStyle: { radius: 8, fillColor: "#00FF00" },
                     },
                 ],
             });
@@ -375,10 +374,6 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
                         label: "Test POI",
                         url: "test.geojson",
                         visible: true,
-                        pointStyle: {
-                            radius: 8,
-                            fillColor: "#00FF00",
-                        },
                     },
                 ],
             });

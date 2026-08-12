@@ -13,12 +13,16 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/branding/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa
 >    place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 >    Cette fiche renvoie, elle ne recopie pas.
 
 ---
@@ -110,7 +114,7 @@ Un changement de langue après l'import ne réécrit pas le texte par défaut d'
 
 Un seul étage, contrairement à [`theme-toggle`](theme-toggle.md) : `gate: { configPath: "modules.branding.enabled" }`,
 **sans** `enableWhenAbsent` — donc opt-in franc, absent ⇒ désactivé. C'est possible parce que
-branding est **app-global** (bloc porté par le `geoleaf.config.json` de base) : le gate pré-fusion
+branding est **app-global** (bloc porté par le `profiles/geoleaf.config.json` de base) : le gate pré-fusion
 lit déjà la bonne valeur, il n'y a pas d'opt-in tardif à préserver. Le cycle de vie ne re-teste
 donc pas `enabled` — il ne tourne que si la capacité est activée.
 
@@ -204,5 +208,5 @@ relevé de coordonnées) ont été repris un par un. **Ne pas rouvrir cette réd
 six vérifications.**
 
 La feuille est portée par la couche `@layer gl.capabilities` ; les variables de thème viennent de
-`css/geoleaf-theme.css`, chargée plus tôt dans la cascade de `geoleaf-main.css` — la feuille ne les
+`css/geoleaf-theme.css`, chargée plus tôt dans la cascade de `packages/core/src/css/geoleaf-main.css` — la feuille ne les
 réimporte pas.

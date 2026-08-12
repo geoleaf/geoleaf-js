@@ -1,144 +1,187 @@
-# Documentation — Gouvernance et synchronisation vers le repo public
+# La règle documentaire — où s'écrit quoi, et qui fait foi
 
-**Règle de travail** pour la documentation du monorepo GeoLeaf-Js et pour la publication de la documentation publique du core.
-
-> **Mis à jour mars 2026** — Le dossier `docs/` présent dans d'anciens documents n'existe plus. La documentation est désormais répartie en trois zones décrites ci-dessous.
-
----
-
-## 1. Zones documentaires
-
-### Zone 1 — `packages/core/docs/` (documentation publique)
-
-- **Source principale publique** (100 % MIT, maintenue manuellement).
-- Contenu : Getting Started, API reference, guides d'intégration, module READMEs, architecture technique, schemas JSON.
-- ⚠️ **N'est PLUS synchronisée** vers `GeoLeaf-Core` : les 3 workflows de miroir sont supprimés (ARCHI S9.0, voir §2). Cette ligne affirmait le contraire de son propre §2 — corrigé le 27/07/2026. Le canal réel est **npm**.
-- **À modifier directement** dans `packages/core/docs/` pour tout ajout ou correction de documentation publique.
-
-### Zone 2 — `_docs_projet/` (documentation interne privée)
-
-- Documentation **non publiée**, réservée à l'équipe.
-- Contenu : voir `_docs_projet/INDEX.md`, qui n'indexe que ce qui existe.
-  ⚠️ _Les quatre emplacements listés ici jusqu'au 27/07/2026 — `docs_de_travail/`, `legal/`,
-  `guides/` avec SonarQube, `docs_de_travail/md/` — **n'existent aucun**. L'arborescence a été
-  refondue par régime de maintenance : `specs/` · `reference/` · `guides/` · `travail/` ·
-  `registres/` · `vision/`._
-- **Jamais synchronisée** vers le dépôt public.
-
-### Zone 3 — `_docs_communs/` (conventions partagées)
-
-- Conventions de code, gabarits de documents (audits, roadmaps, CDC), méthodologie projet.
-- Partagée entre projets via **jonction NTFS**. Non synchronisée.
+> **Ce document est la règle.** S'il contredit une autre page sur l'emplacement ou l'autorité
+> d'une documentation, c'est lui qui a raison — et l'autre page est à corriger.
+>
+> Réécrit le **11/08/2026**. Ce qu'il disait avant est en fin de page, avec ce qui l'a démenti :
+> trois de ses affirmations étaient fausses au moment où on les a mesurées.
 
 ---
 
-## 2. Synchronisation vers le repo public — ⚠️ **supprimée (ARCHI S9.0, 20/07/2026)**
+## 1. La règle — trois régimes, trois lieux, et rien ne se dit deux fois
 
-Les workflows `sync-core-public.yml`, `sync-demo-public.yml` et `sync-plugins-mit-public.yml` **n'existent plus**. `packages/core/docs/` n'est plus copié vers `GeoLeaf-Core` ; ce dépôt est figé sur son dernier état.
+| Régime        | Lieu                                                 | Lecteur             | Ce qu'on y écrit                                                                    |
+| ------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------- |
+| **USAGE**     | `packages/core/docs/` → site `www.geoleaf.dev/docs/` | l'**intégrateur**   | démarrage, tutoriels, recettes, guides de configuration, README de module           |
+| **CONTRAT**   | `docs/specs/`                                        | le **contributeur** | périmètre, table de configuration, API exposée, décisions, frontières               |
+| **RÉFÉRENCE** | **générée, jamais rédigée**                          | les deux            | TypeDoc + les 6 artefacts de `docs/reference/` (voir §3)                            |
+| _(interne)_   | `_docs_projet/`                                      | l'atelier           | journal, état, registres, roadmaps, rapports — **ne part pas dans le dépôt public** |
+| _(partagé)_   | `_docs_communs/`                                     | l'atelier           | conventions et gabarits inter-projets — jonction NTFS, non versionnée ici           |
 
-**Comment la doc publique atteint son lectorat aujourd'hui :**
+**La clause qui gouverne les quatre : ce dont on n'est pas sûr n'est pas publié.** Il reste suivi
+dans le dépôt de travail et bascule après vérification. Publier une page douteuse coûte plus que
+de ne pas la publier : un tarball npm est immuable, et un dépôt public ne se dé-publie pas.
 
-| Canal       | Contenu                                                 | Mécanisme                                                                                                                                                                                                                  |
-| ----------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **npm**     | `packages/core/docs/` — **le markdown SEUL** (62 `.md`) | Embarqué dans le tarball de `@geoleaf/core` (`files[]`) — publié par `npm run publish:core`. ⚠️ **T4.3** : `docs/api/` et `docs/public/` en sont exclus par négation, la référence générée ne part plus sur npm            |
-| **TypeDoc** | API générée depuis les TSDoc                            | ⚠️ **Plus AUCUNE automatisation depuis T4.2** — `docs-typedoc.yml` est supprimé. La référence est régénérée à la demande, en local, par `npm run docs:api` (step 1 de `docs:deploy`), et ne vit plus que sur `geoleaf.dev` |
+### Les deux corollaires qui évitent le doublon
 
-Motif de la suppression : `GeoLeaf-Core` étant passé privé, le miroir synchronisait du privé vers du privé — la justification « seul canal public » était devenue fausse. Le workflow bloquait par ailleurs ARCHI S9 (copie verbatim de `tsconfig.json` / `rollup.config.mjs`, échec silencieux sur source absente).
-
-Le gate `verify-core-standalone.cjs` s'exécutait dans ce workflow **et** dans `ci:local` / `ci.yml` / `.husky/pre-commit` depuis ARCHI S0 : il reste pleinement appliqué.
-
----
-
-## 3. Résumé
-
-| Question                                           | Réponse                                                                                                                                                                                                                                                    |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Où rédiger la doc publique (core) ?                | Dans **`packages/core/docs/`** directement.                                                                                                                                                                                                                |
-| Où rédiger la doc interne (guides, légal, CDC) ?   | Dans **`_docs_projet/`**.                                                                                                                                                                                                                                  |
-| Comment la doc core arrive-t-elle à son lectorat ? | Via **npm** — `packages/core/docs/` est dans le tarball de `@geoleaf/core`. Le miroir CI `sync-core-public.yml` est supprimé (ARCHI S9.0).                                                                                                                 |
-| La doc publique inclut-elle la doc des plugins ?   | **Non.** Chaque `@geoleaf-plugins/*` embarque la sienne dans son package npm.                                                                                                                                                                              |
-| Faut-il utiliser sync-core-docs.cjs ?              | **Non**, il n'existe plus — et **le workflow CI non plus**. ⚠️ _Cette ligne renvoyait vers « le workflow CI » alors que §2 le déclare supprimé : deuxième contradiction interne, corrigée le 27/07/2026._ Il n'y a **aucune** synchronisation automatique. |
+1. **Un sujet, un lieu.** Une capacité a **une** fiche de contrat et **une** page d'usage. Les
+   deux se renvoient l'une à l'autre en une ligne ; elles ne se recopient pas. Une divergence
+   entre elles est un **défaut**, pas une nuance de point de vue.
+2. **Ce qui peut être dérivé ne s'écrit pas à la main.** Une table qui restate un schéma
+   rediverge — c'est mesuré, pas supposé (§4).
 
 ---
 
-## 4. Schémas JSON — source de vérité et synchronisation
+## 2. Où atteint-elle son lectorat — les trois canaux, et ce que chacun emporte
 
-### Règle de gouvernance
+| Canal        | Contenu                                                | Mécanisme                                                                             |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| **le site**  | `packages/core/docs/` rendu par VitePress + le TypeDoc | `npm run docs:deploy` — **manuel**, écrit hors du dépôt sous `GEOLEAF_DOCS_SITE_ROOT` |
+| **le dépôt** | `docs/` + `packages/core/docs/` + les 20 README        | GitHub, en clair                                                                      |
+| **npm**      | `README.md` + `dist/` **seulement**                    | `files[]` de chaque paquet ; le TSDoc voyage dans les `.d.ts`                         |
 
-**`profiles/schemas/` est la source de vérité opérationnelle pour tous les schémas JSON.** C'est dans ce répertoire que vivent les schémas actifs. ⚠️ _La version précédente en annonçait **11** et citait `taxonomy.schema.json` : il y en a **12**, et celui-là **n'existe pas** — la taxonomie est un module depuis le Lot 2. Le décompte ne se recopie pas : `ls profiles/schemas/`._
+⚠️ **`docs/` a quitté les `files[]` le 11/08/2026** (`@geoleaf/core`, `connector`, `offline-ui`).
+Un tarball n'emporte plus que sa vitrine et son `dist/`. **Conséquence à ne pas oublier en
+écrivant un README de paquet : ses liens relatifs vers `./docs/` seraient morts chez le
+consommateur npm — les écrire en URL absolue.** Aucune gate ne peut le voir : `check-dead-links`
+résout contre le disque du dépôt, où les fichiers sont toujours là.
 
-**`packages/core/docs/schema/` est la copie documentaire** destinée aux consommateurs publics (`@geoleaf/core`). ⚠️ _Il n'est **plus** synchronisé par la CI (ARCHI S9.0) — troisième contradiction interne, corrigée le 27/07/2026._ Il atteint son lectorat par le **tarball npm** de `@geoleaf/core`. Vérifié le 27/07/2026 : il ne contient toujours qu'un `README.md`, les schémas y sont **à copier** manuellement.
+### 🛑 Le site et le dépôt sont DEUX espaces de liens, et un lien qui les traverse doit être absolu
 
-### Règle de synchronisation
+Mesuré le 11/08/2026, en faisant échouer le build : VitePress a pour racine
+`packages/core/docs/` (`srcDir: "."`). **Un lien relatif qui sort de ce répertoire — vers
+`docs/specs/`, vers `docs/reference/` — est un lien mort POUR LE SITE**, même s'il résout
+parfaitement sur le disque et même si `check-dead-links` l'accepte. `ignoreDeadLinks: false`
+fait alors échouer `docs:build`, qui est une gate de `ci:local`.
 
-> **Tout ajout ou modification d'un schéma dans `profiles/schemas/` doit être répercuté dans `packages/core/docs/schema/`.**
+**Le geste : depuis `packages/core/docs/`, tout renvoi hors du site s'écrit en URL absolue**
+(`https://github.com/geoleaf/geoleaf-js/blob/main/…`). Dans l'autre sens — depuis `docs/specs/`
+vers `packages/core/docs/` — le relatif convient : ces fichiers ne sont pas servis par VitePress.
 
-Ordre des opérations :
+⚠️ **`docs.geoleaf.dev` n'existe pas** : le sous-domaine rend **NXDOMAIN**. La doc est servie sur
+**`www.geoleaf.dev/docs/`** (HTTP 200), et le TypeDoc sur `www.geoleaf.dev/docs/api/` (200).
+Ne pas recopier ces mesures : `curl -sSI` les rend.
 
-1. Modifier / créer le schéma dans `profiles/schemas/`
-2. Copier le fichier dans `packages/core/docs/schema/`
-3. Mettre à jour le `README.md` de `packages/core/docs/schema/` si un nouveau fichier est ajouté
-4. Committer les deux modifications ensemble
-
-### État au 27 juillet 2026
-
-| Répertoire                   | Contenu                                                 | Statut              |
-| ---------------------------- | ------------------------------------------------------- | ------------------- |
-| `profiles/schemas/`          | les schémas JSON opérationnels (`ls profiles/schemas/`) | ✅ Source de vérité |
-| `packages/core/docs/schema/` | README uniquement — schémas absents                     | ⚠️ À synchroniser   |
-
----
-
-## 5. Déploiement automatique des docs — GitHub Pages (A3)
-
-### Flux complet
-
-```
-[1] ÉCRITURE — Monorepo privé
-    packages/core/docs/*.md  ← modifier ici
-         │
-         ├──────────────────────────────┐
-         │  npm run publish:core        │  ✂️ CHAÎNE COUPÉE — ARCHI S9.0
-         ▼                              ▼
-[2] PUBLICATION — npm          [2'] SYNC — sync-core-public.yml  ❌ SUPPRIMÉ
-    docs/*.md dans le                packages/core/ → GeoLeaf-Core
-    tarball @geoleaf/core                 │
-                                          ▼
-                               [3] BUILD — deploy-docs.yml (dans GeoLeaf-Core)
-                                   VitePress → actions/deploy-pages
-                                          │
-                                          ▼
-                               [4] GitHub Pages → docs.geoleaf.dev
-                                   ⚠️ FIGÉ sur le dernier build
-```
-
-```callout warn label="Conséquence assumée de S9.0 — docs.geoleaf.dev ne se met plus à jour"
-`deploy-docs.yml` ne vit **pas** dans ce dépôt : il s'exécute **dans `GeoLeaf-Core`**, sur push vers son `main`. Le seul producteur de ces push était `sync-core-public.yml`, supprimé. Le site reste **en ligne** (GitHub Pages sert le dernier build) mais **gelé**.
-
-~~`packages/core/.github/workflows/deploy-docs.yml` subsiste dans ce dépôt~~ — **supprimé à T3.3** (l'affirmation était déjà fausse avant T4). Il était inerte : GitHub ne lit que `.github/workflows/` à la racine. C'était le fichier que le miroir recopiait, et son **intention** — build VitePress → GitHub Pages — n'a jamais eu d'équivalent racine (dette tranchée à T4.8, option (c) : la porteuse est T5.1).
-
-**Les trois issues sont tranchées — T5.1 a rendu 4.8 (option (c)) exécutoire (25/07/2026).**
-
-| # | Issue | Sort |
-| --- | --- | --- |
-| 1 | Rapatrier la publication ici (`deploy-docs.yml` → racine + Pages sur `GeoLeaf-Js`) | ❌ **Écartée.** Publier des Pages depuis un dépôt privé demande un plan payant, et le quota Actions du compte est rare |
-| 2 | Attendre ARCHI S3.6 (passage public) | ❌ **Écartée comme condition** — elle ferait dépendre la publication documentaire d'une décision qui n'a pas de date |
-| 3 | Accepter le gel de `docs.geoleaf.dev` | ✅ **Retenue, et rendue explicite** |
-
-**Le canal est UNIQUE et MANUEL : `npm run docs:deploy` (`scripts/deploy-docs.cjs`).** Aucun workflow GitHub ne le déclenche — c'est un choix, pas un oubli, et le recréer rouvrirait 4.8. Le script porte cet énoncé dans son en-tête, ARCHITECTURE.md le répète à l'entrée `docs-dist/`.
-
-⚠️ **Depuis T5.1, la cible externe vient de `GEOLEAF_DOCS_SITE_ROOT`** — obligatoire, sans valeur par défaut : absente, le script sort en 1 **sans rien écrire ni supprimer**. Invocation : `GEOLEAF_DOCS_SITE_ROOT=/chemin/vers/Sites_Web/geoleaf.dev npm run docs:deploy`. La variable remplace quatre `..` en dur qui rendaient indéterminée la cible d'un `rmSync` récursif, et T5.1 a corrigé au passage un défaut plus grave que le chemin : `syncDir` **détruisait avant de constater** — destination effacée, source manquante réduite à un `console.warn`, **exit 0**.
-
-⚠️ « la doc reste distribuée par npm **et par TypeDoc** » est devenu faux à T4.2/4.3 : la référence générée n'est plus ni publiée automatiquement, ni embarquée dans le tarball. Le markdown, lui, y reste.
-
-### Activation manuelle requise (une seule fois sur GitHub)
-
-| #   | Action                                          | Où                                                                             |
-| --- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | Activer GitHub Pages sur `GeoLeaf-Core`         | Settings → Pages → Source : **GitHub Actions**                                 |
-| 2   | Configurer le domaine custom `docs.geoleaf.dev` | Settings → Pages → Custom domain ; CNAME DNS → `mattpottier-ship-it.github.io` |
+⚠️ **Le rendu publié est en retard sur le dépôt** — il s'intitule « GeoLeaf Core API - v2.1.5 »
+au 11/08/2026. Le producteur est **vivant** (`scripts/deploy-docs.cjs`) ; il est simplement
+manuel et n'a pas été relancé. Ce n'est pas une chaîne cassée, c'est une chaîne non déclenchée.
 
 ---
 
-_Voir aussi : [MONOREPO_WORKFLOW.md](MONOREPO_WORKFLOW.md), [INDEX.md](../INDEX.md), [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md)._
-```
+## 3. Ce qui est GÉNÉRÉ — la liste, et sa gate
+
+Aucun de ces fichiers ne s'édite à la main. Chacun a un `--check` câblé dans `ci:local` **et**
+`ci.yml`, donc une modification de la source sans régénération **rougit**.
+
+| Artefact                                        | Producteur                      | Gate                          |
+| ----------------------------------------------- | ------------------------------- | ----------------------------- |
+| `reference/ARBORESCENCE_QUALIFIEE.md` + `.html` | `npm run docs:tree`             | `docs:tree:check`             |
+| `reference/PROFILE_SCHEMA_REFERENCE.md`         | `npm run gen:profile-schema`    | `gen:profile-schema:check`    |
+| `reference/MODELE_ATTRIBUTAIRE.md`              | `npm run gen:attributes-report` | `gen:attributes-report:check` |
+| `reference/API_SURFACE.txt`                     | `npm run gen:api-surface`       | `gen:api-surface:check`       |
+| `reference/reference_parametres_config.html`    | `npm run gen:config-reference`  | `gen:config-reference:check`  |
+| `packages/core/docs/api/` (TypeDoc)             | `npm run docs:api`              | **aucune** — voir ci-dessous  |
+
+⚠️ **Le rendu TypeDoc n'est pas gatable, et c'est délibéré** : il grave `git rev-parse HEAD` dans
+29 fichiers sur 54 mesurés, donc il n'a pas de point fixe — la gate rougirait au commit même qui
+vient de le régénérer. C'est **`API_SURFACE.txt`** qui porte la garde : un manifeste d'une ligne
+par réflexion, avec l'empreinte du TSDoc, insensible au re-wrap de Prettier. Il n'est pas fait
+pour être lu ; il est fait pour qu'aucun changement d'API ne passe inaperçu.
+
+### Deux références restent RÉDIGÉES, et la raison est mesurée
+
+- **`packages/core/docs/API_REFERENCE.md`** — TypeDoc ne rend **aucune page pour
+  `GeoLeafGlobal`**, l'interface qui décrit le namespace `GeoLeaf.*`. Vérifié : le nom
+  n'apparaît dans le rendu que comme _type de retour_, sur 23 pages. Or `GeoLeaf.Layers`,
+  `GeoLeaf.Config`… sont ce qu'un intégrateur appelle. La remplacer par un renvoi **retirerait**
+  de l'information au lieu d'en dériver.
+- **`packages/core/docs/EVENTS_API.md`** — un nom d'événement est une **chaîne**, jamais un
+  symbole exporté : rien ne peut le dériver des signatures. La gate `EVENT-MAP` garde en
+  revanche que tout événement émis est déclaré dans `GeoLeafEventMap`.
+
+Ce sont les **deux seules** exceptions. Elles portent leur motif sur leur propre page ; toute
+autre référence rédigée est un défaut à instruire, pas un précédent à invoquer.
+
+---
+
+## 4. Ce que coûte une table écrite à la main — trois mesures du 11/08/2026
+
+Ce ne sont pas des exemples pédagogiques : ce sont les trois cas trouvés le jour où `docs/` est
+entré dans le corpus des gates de doc.
+
+| Où                                                            | Ce qu'elle annonçait       | Ce qui était vrai                                                               |
+| ------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------- |
+| `PROFILE_JSON_REFERENCE.md`                                   | « Référence **Complète** » | **127 chemins sur 476**, et **46 clés** qu'aucun schéma n'impose                |
+| `GeoLeaf_GeoJSON_README.md`                                   | 14 propriétés de couche    | **3** existent dans le schéma ; `clustering` donné `boolean`, c'est un `object` |
+| `ARCHITECTURE_GUIDE.md` · `GeoLeaf_core_README.md` · 2 fiches | 8 modules noyau            | **6** — et `boot-install.ts:110` l'écrit sur place depuis le S6                 |
+
+**La leçon opératoire** : citer une commande au lieu d'un chiffre ne protège que si la commande
+**voit tout**. `npm run gen:profile-schema:audit` imprime l'écart dans les deux sens ; c'est lui
+qu'on cite, jamais le chiffre qu'il a rendu un jour.
+
+---
+
+## 5. Ce qui garde quoi — et ce que rien ne garde
+
+| Objet gardé                                              | Par quoi                                               |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| API fantômes et noms de paquet périmés dans les exemples | `validate-docs-examples` — corpus `productDocsFiles()` |
+| Compilation des exemples `ts` et des `@example`          | `typecheck-docs-examples` — **même corpus**            |
+| Clés de config d'un exemple JSON absentes du schéma      | `check-doc-config-examples` — **même corpus**          |
+| Liens markdown morts                                     | `check-dead-links` — 10 scopes, 3 avec plancher        |
+| Chemins cités en backticks par `docs/specs/`             | `SPECS-PATHS`, baseline décroissante                   |
+| Table `## Configuration` d'une fiche ↔ le `configSchema` | `doc-capability-config.guard.test.js`, **deux sens**   |
+| Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`     | `doc-plugin-manifest.guard.test.js`                    |
+| Liens morts du site                                      | `docs:build` (`ignoreDeadLinks: false`)                |
+
+⚠️ **Le corpus des trois premières est `productDocsFiles()`** (`scripts/lib/tsdoc-examples.cjs`) :
+**un seul corpus, trois consommateurs**. L'élargir les élargit toutes les trois — c'est voulu, et
+c'est ce qui a fermé le trou du 11/08. Il porte trois planchers (`specs`, `reference`, `guides`)
+qui font **jeter** si une sous-racine devient invisible : une gate qui perd sa cible ne rougit
+pas, elle **se tait**.
+
+🖐 **Ce que rien ne garde, et qui reste à toi** :
+
+- **La véracité d'une phrase.** « Met en cache 5 minutes » sur une fonction qui en cache 10 est
+  indiscernable, pour tous les outils ci-dessus, d'une phrase juste.
+- **Les chemins cités par `docs/guides/` et `docs/reference/`** — `SPECS-PATHS` ne couvre que
+  `docs/specs/`. C'est par ce trou qu'une suite `poi.test.js` inexistante a survécu dans le guide
+  de test.
+- **Les noms de classes et de modules cités en prose** — aucune gate ne les résout. C'est par là
+  que huit modules noyau au lieu de six ont tenu dans quatre documents publics.
+- **Les arbres de fichiers recopiés dans la prose.** `docs:tree:check` garde
+  `ARBORESCENCE_QUALIFIEE.md`, pas les arbres réécrits ailleurs — deux étaient faux.
+
+---
+
+## 6. Les schémas JSON — source de vérité
+
+**`profiles/schemas/` est la source de vérité opérationnelle** (10 schémas ; `ls` les rend).
+La référence lisible en est **dérivée** : `docs/reference/PROFILE_SCHEMA_REFERENCE.md`.
+
+⚠️ **`packages/core/docs/schema/` ne contient qu'un `README.md`** — vérifié le 11/08/2026,
+comme le 27/07/2026 avant lui. La consigne « copier chaque schéma ici » y figurait depuis des
+mois **sans avoir jamais été suivie**, ce qui est le signe qu'elle ne correspond à aucun besoin
+réel : les schémas ne partent plus dans le tarball depuis que `docs/` a quitté `files[]`, et le
+lecteur public a la référence dérivée. **La règle de recopie est retirée.** Si un besoin de
+schéma embarqué réapparaît, il se traitera par une copie **générée et gatée**, pas par une
+consigne manuelle.
+
+---
+
+## 7. Ce que ce document affirmait avant, et qui était faux
+
+Consigné parce que ces trois énoncés ont été crus, et qu'un lecteur qui les retrouve ailleurs
+doit savoir qu'ils sont morts.
+
+1. **« `packages/core/docs/` — le markdown seul (62 `.md`) — embarqué dans le tarball de
+   `@geoleaf/core` »** — faux deux fois au 11/08/2026 : il y en a **60**, et `docs/` **a quitté
+   les `files[]`**. Le chiffre était de surcroît recopié en prose, dans un document qui interdit
+   ailleurs de recopier un chiffre.
+2. **« Le site reste en ligne mais gelé, sur `docs.geoleaf.dev` »** — l'hôte nommé est
+   **NXDOMAIN**, et le producteur est **vivant** (373 lignes, `npm run docs:deploy`). Le site est
+   **périmé**, ce qui appelle un geste (le relancer) et non un constat.
+3. **« Zone 1 — `packages/core/docs/` : source principale publique »** — vrai, mais muet sur
+   `docs/specs/`, `docs/reference/` et `docs/guides/`, qui n'existaient pas encore comme racine
+   publique lors de sa dernière réécriture. Cette omission est ce qui a laissé le doublon
+   s'installer sans que personne n'ait à le décider.

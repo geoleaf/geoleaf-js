@@ -1,47 +1,45 @@
 ---
-title: "GeoLeaf — Documentation des schémas JSON"
+title: "GeoLeaf — JSON Schema Documentation"
 ---
 
-# GeoLeaf — Documentation des schémas JSON
+# GeoLeaf — JSON Schema Documentation
 
-**Version** : 2.2.0
-**Mise à jour** : juin 2026
-**Source de vérité** : `profiles/schemas/`
-
----
-
-## Vue d'ensemble
-
-Ce répertoire ne contient plus les schémas (déplacés dans `profiles/schemas/`). Il sert de point d'entrée documentaire pour tous les schémas JSON Schema draft-07 de GeoLeaf.
-
-Les schémas valident les fichiers de configuration JSON du profil actif. Ils permettent l'autocomplétion et la validation en ligne dans VSCode via la propriété `$schema`.
+**Source of truth**: `profiles/schemas/`
 
 ---
 
-## Schémas disponibles
+## Overview
 
-| Schéma                        | Fichier JSON validé             | Description                                                                                                                                                                   |
-| ----------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `geoleaf-config.schema.json`  | `geoleaf.config.json`           | Configuration racine (debug, branding, data, pwa, security, logging, modules)                                                                                                 |
-| `profile.schema.json`         | `profile.json`                  | Manifest du profil (id, label, version, map, Files, modules)                                                                                                                  |
-| `geoleaf-profile.schema.json` | _(hors-contrat — non appliqué)_ | **Orphelin** : vocabulaire de blocs UI pour `panels.detail.layout[]` (0 profil, 0 réf code). Statut hors-contrat acté par `PROFILE_CONTRACT_SPEC.md` §7 / registre `ANO-002`. |
-| `basemaps.schema.json`        | `basemaps.json`                 | Sources de tuiles raster et vectorielles                                                                                                                                      |
-| `ui.schema.json`              | `ui.json`                       | Contrôles UI, permalink, échelle, filtres                                                                                                                                     |
-| `features.schema.json`        | `config/core/features.json`     | Fonctionnalités core (clustering, géocodage, performance, POI, mapOptions)                                                                                                    |
-| `layers.schema.json`          | `layers.json`                   | Références des couches du profil                                                                                                                                              |
-| `layer-config.schema.json`    | `layers/*/[id]_config.json`     | Configuration par couche (data, styles, popup, sidepanelConfig, clustering)                                                                                                   |
-| `style.schema.json`           | `layers/*/styles/*.json`        | Styles de rendu (format flat, styleRules, expressionPaint)                                                                                                                    |
-| `taxonomy.schema.json`        | `taxonomy.json`                 | Taxonomie POI (catégories, icônes, couleurs)                                                                                                                                  |
-| `themes.schema.json`          | `themes.json`                   | Préréglages de visibilité des couches                                                                                                                                         |
-| `mapping.schema.json`         | `mapping.json`                  | Normalisation des données POI externes                                                                                                                                        |
+The schema files themselves are stored in `profiles/schemas/`, not in this directory. This page is the documentation entry point for every GeoLeaf JSON Schema (draft-07).
+
+The schemas validate the JSON configuration files of the active profile. They enable autocompletion and inline validation in VSCode through the `$schema` property.
 
 ---
 
-## Utilisation
+## Available schemas
 
-### Validation en ligne (VSCode)
+| Schema                        | Validated JSON file               | Description                                                                                                       |
+| ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `geoleaf-config.schema.json`  | `geoleaf.config.json`             | Root configuration (debug, branding, data, pwa, security, logging, modules)                                       |
+| `profile.schema.json`         | `profile.json`                    | Profile manifest (id, label, version, map, Files, modules)                                                        |
+| `geoleaf-profile.schema.json` | _(out of contract — not applied)_ | **Orphan**: UI block vocabulary for `panels.detail.layout[]`. No profile uses it, and the runtime never reads it. |
+| `basemaps.schema.json`        | `basemaps.json`                   | Raster and vector tile sources                                                                                    |
+| `ui.schema.json`              | `ui.json`                         | UI controls, permalink, scale bar, filters                                                                        |
+| `features.schema.json`        | `config/core/features.json`       | Core features (clustering, geocoding, performance, POI, mapOptions)                                               |
+| `layers.schema.json`          | `layers.json`                     | Layer references of the profile                                                                                   |
+| `layer-config.schema.json`    | `layers/*/[id]_config.json`       | Per-layer configuration (data, styles, popup, sidepanelConfig, clustering)                                        |
+| `style.schema.json`           | `layers/*/styles/*.json`          | Rendering styles (flat format, styleRules, expressionPaint)                                                       |
+| `taxonomy.schema.json`        | `taxonomy.json`                   | POI taxonomy (categories, icons, colors)                                                                          |
+| `themes.schema.json`          | `themes.json`                     | Layer visibility presets                                                                                          |
+| `mapping.schema.json`         | `mapping.json`                    | Normalization of external POI data                                                                                |
 
-Ajouter `$schema` au début du fichier JSON :
+---
+
+## Usage
+
+### Inline validation (VSCode)
+
+Add `$schema` at the top of the JSON file:
 
 ```json
 {
@@ -56,17 +54,17 @@ Ajouter `$schema` au début du fichier JSON :
 }
 ```
 
-### Validation en ligne de commande (ajv-cli)
+### Command-line validation (ajv-cli)
 
 ```bash
 npm install -g ajv-cli
 
-# Valider tous les styles du profil tourism
+# Validate every style of the tourism profile
 ajv validate -s profiles/schemas/style.schema.json \
   -d "profiles/tourism/layers/**/styles/*.json" \
   --all-errors
 
-# Valider les configs de couches
+# Validate the layer configurations
 ajv validate -s profiles/schemas/layer-config.schema.json \
   -d "profiles/tourism/layers/**/*_config.json" \
   --all-errors
@@ -74,29 +72,29 @@ ajv validate -s profiles/schemas/layer-config.schema.json \
 
 ---
 
-## Format des styles (flat)
+## Style format (flat)
 
-Les styles GeoLeaf utilisent le **format flat** — toutes les propriétés sont au niveau racine de l'objet `style`. Le format nested `{ fill: { color }, stroke: { color } }` n'est plus supporté depuis v2.0.0.
+GeoLeaf styles use the **flat format** — every property sits at the root of the `style` object. The nested format `{ fill: { color }, stroke: { color } }` is no longer supported since v2.0.0.
 
-### Propriétés disponibles
+### Available properties
 
-| Propriété         | Type                                | Description                                                                |
-| ----------------- | ----------------------------------- | -------------------------------------------------------------------------- |
-| `fillColor`       | `string` (hex)                      | Couleur de remplissage (polygones)                                         |
-| `fillOpacity`     | `number` 0–1                        | Opacité du remplissage                                                     |
-| `color`           | `string` (hex/CSS)                  | Couleur du contour / ligne                                                 |
-| `weight`          | `number` ≥ 0                        | Épaisseur du contour en pixels                                             |
-| `opacity`         | `number` 0–1                        | Opacité du contour                                                         |
-| `dashArray`       | `string`                            | Tirets, ex. `"5 10"`                                                       |
-| `lineCap`         | `"butt"` \| `"round"` \| `"square"` | Terminaison de ligne                                                       |
-| `lineJoin`        | `"bevel"` \| `"miter"` \| `"round"` | Jointure de ligne                                                          |
-| `radius`          | `number` ≥ 0                        | Rayon du cercle (couches point)                                            |
-| `shape`           | `string`                            | Forme du point : `"circle"`, `"square"`, etc.                              |
-| `hatch`           | `object`                            | Hachures canvas (enabled, type, spacingPx, renderMode)                     |
-| `casing`          | `object`                            | Double contour (enabled, color, opacity, widthPx)                          |
-| `expressionPaint` | `object`                            | Propriétés MapLibre GL passées directement (expressions zoom, match, etc.) |
+| Property          | Type                                | Description                                                                 |
+| ----------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| `fillColor`       | `string` (hex)                      | Fill color (polygons)                                                       |
+| `fillOpacity`     | `number` 0–1                        | Fill opacity                                                                |
+| `color`           | `string` (hex/CSS)                  | Stroke / line color                                                         |
+| `weight`          | `number` ≥ 0                        | Stroke width in pixels                                                      |
+| `opacity`         | `number` 0–1                        | Stroke opacity                                                              |
+| `dashArray`       | `string`                            | Dashes, e.g. `"5 10"`                                                       |
+| `lineCap`         | `"butt"` \| `"round"` \| `"square"` | Line cap                                                                    |
+| `lineJoin`        | `"bevel"` \| `"miter"` \| `"round"` | Line join                                                                   |
+| `radius`          | `number` ≥ 0                        | Circle radius (point layers)                                                |
+| `shape`           | `string`                            | Point shape: `"circle"`, `"square"`, etc.                                   |
+| `hatch`           | `object`                            | Canvas hatching (enabled, type, spacingPx, renderMode)                      |
+| `casing`          | `object`                            | Double outline (enabled, color, opacity, widthPx)                           |
+| `expressionPaint` | `object`                            | MapLibre GL properties passed through as-is (zoom, match expressions, etc.) |
 
-### Exemple complet
+### Complete example
 
 ```json
 {
@@ -122,28 +120,28 @@ Les styles GeoLeaf utilisent le **format flat** — toutes les propriétés sont
 
 ---
 
-## Règles de style conditionnelles (styleRules)
+## Conditional style rules (styleRules)
 
-Les `styleRules` permettent un style data-driven. La première règle dont la condition est vraie est appliquée.
+`styleRules` provide data-driven styling. The first rule whose condition is true is applied.
 
-### Opérateurs disponibles (16)
+### Available operators (16)
 
-| Opérateur            | Description                            |
-| -------------------- | -------------------------------------- |
-| `==` / `===` / `eq`  | Égalité                                |
-| `!=` / `!==` / `neq` | Différence                             |
-| `>`                  | Supérieur                              |
-| `>=`                 | Supérieur ou égal                      |
-| `<`                  | Inférieur                              |
-| `<=`                 | Inférieur ou égal                      |
-| `contains`           | Contient la sous-chaîne                |
-| `startsWith`         | Commence par                           |
-| `endsWith`           | Finit par                              |
-| `in`                 | Valeur dans un tableau                 |
-| `notIn`              | Valeur absente du tableau              |
-| `between`            | Valeur dans un intervalle `[min, max]` |
+| Operator             | Description                       |
+| -------------------- | --------------------------------- |
+| `==` / `===` / `eq`  | Equal to                          |
+| `!=` / `!==` / `neq` | Not equal to                      |
+| `>`                  | Greater than                      |
+| `>=`                 | Greater than or equal to          |
+| `<`                  | Less than                         |
+| `<=`                 | Less than or equal to             |
+| `contains`           | Contains the substring            |
+| `startsWith`         | Starts with                       |
+| `endsWith`           | Ends with                         |
+| `in`                 | Value present in an array         |
+| `notIn`              | Value absent from the array       |
+| `between`            | Value within a `[min, max]` range |
 
-### Condition composée (AND)
+### Compound condition (AND)
 
 ```json
 {
@@ -159,9 +157,9 @@ Les `styleRules` permettent un style data-driven. La première règle dont la co
 
 ---
 
-## Étiquettes (label objet)
+## Labels (label object)
 
-La propriété `label` dans un fichier de style peut être une chaîne (nom d'affichage) ou un objet de configuration des étiquettes cartographiques.
+The `label` property in a style file can be either a string (display name) or an object configuring map labels.
 
 ```json
 {
@@ -200,9 +198,9 @@ La propriété `label` dans un fichier de style peut être une chaîne (nom d'af
 
 ---
 
-## expressionPaint (MapLibre natif)
+## expressionPaint (native MapLibre)
 
-Pour les cas complexes (interpolations de zoom, expressions `match`), utilisez `expressionPaint` avec les propriétés MapLibre GL directement :
+For complex cases (zoom interpolations, `match` expressions), use `expressionPaint` with MapLibre GL properties directly:
 
 ```json
 {
@@ -215,12 +213,12 @@ Pour les cas complexes (interpolations de zoom, expressions `match`), utilisez `
 }
 ```
 
-Les clés sont des noms de propriétés MapLibre GL paint (`fill-color`, `line-width`, `circle-radius`, etc.).
+The keys are MapLibre GL paint property names (`fill-color`, `line-width`, `circle-radius`, etc.).
 
 ---
 
-## Liens
+## Links
 
-- [Schémas sources](https://github.com/geoleaf/geoleaf-js/tree/main/profiles/schemas) — source unique de vérité
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — structure des profils
-- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — guide de configuration complet
+- [Schema sources](https://github.com/geoleaf/geoleaf-js/tree/main/profiles/schemas) — single source of truth
+- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — profile structure
+- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — complete configuration guide

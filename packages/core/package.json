@@ -253,9 +253,6 @@
         "!dist/stats.html",
         "!dist/**/*.js.map",
         "README.md",
-        "docs/",
-        "!docs/api/",
-        "!docs/public/",
         "LICENSE"
     ],
     "keywords": [

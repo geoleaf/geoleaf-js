@@ -13,7 +13,7 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-toggle/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — quand une quantité compte, la commande qui
 >    l'imprime est citée à sa place.
@@ -21,6 +21,10 @@ date: 27 juillet 2026
 >    en-tête de module) est déjà dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée
 >    par `docs:tree:check`. Cette fiche **renvoie**, elle ne recopie pas.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 ---
 
@@ -55,7 +59,7 @@ changement.
 | ID    | Fonctionnalité                      | Entrée                                                           | Sortie observable                                                                                                              | Code                                                           |
 | ----- | ----------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | TT-01 | Bouton posé sur la carte            | `ThemeToggleModule.init(adapter)` avec `enabled: true`           | Contrôle `.geoleaf-ctrl-theme-toggle.geoleaf-ctrl-group.geoleaf-ctrl` ajouté via `adapter.addControl` à `position`             | `theme-toggle.ts` → `initThemeToggleControl`                   |
-| TT-02 | Bascule clair ↔ sombre             | Clic, ou `Enter` / `Espace` sur le lien                          | `_UITheme.toggleTheme()` → classes `gl-theme-dark` / `gl-theme-light` sur `body` et le conteneur de carte, et l'événement      | `theme-toggle.ts` → `toggleHandler`, `keydownHandler`          |
+| TT-02 | Bascule clair ↔ sombre              | Clic, ou `Enter` / `Espace` sur le lien                          | `_UITheme.toggleTheme()` → classes `gl-theme-dark` / `gl-theme-light` sur `body` et le conteneur de carte, et l'événement      | `theme-toggle.ts` → `toggleHandler`, `keydownHandler`          |
 | TT-03 | Icône synchronisée avec le thème    | Événement `geoleaf:ui-theme-changed`, **toute source**           | Soleil affiché quand le thème est sombre, lune quand il est clair (bascule par `style.display`)                                | `theme-toggle.ts` → `_syncState`, `themeChangedHandler`        |
 | TT-04 | Étiquettes accessibles et traduites | idem TT-03                                                       | `role="button"`, `aria-pressed` = « le thème est sombre », `aria-label` + `title` issus de `aria.theme.toggle_to_{light,dark}` | `theme-toggle.ts` → `_syncState` + `utils/i18n` → `getLabel`   |
 | TT-05 | Icônes SVG sans `innerHTML`         | —                                                                | Deux `<svg>` (soleil, lune) construits par le helper de sécurité, jamais par affectation de HTML                               | `theme-toggle.ts` → `DOMSecurity.createSVGIcon`                |

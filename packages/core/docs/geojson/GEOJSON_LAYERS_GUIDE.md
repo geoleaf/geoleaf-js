@@ -1,32 +1,30 @@
 ---
-title: "Guide : Systeme de Couches GeoJSON Multi-Sources"
+title: "Guide: Multi-Source GeoJSON Layer System"
 ---
 
-# Guide : Systeme de Couches GeoJSON Multi-Sources
+# Guide: Multi-Source GeoJSON Layer System
 
-Product Version: GeoLeaf Platform V3
-**Date de creation** : Decembre 2025
-**Derniere verification** : 22 mars 2026 — Migration MapLibre GL JS v2.0.0
-
----
-
-## Vue d'ensemble
-
-Le module `GeoLeaf.GeoJSON` a été étendu pour supporter **plusieurs couches GeoJSON indépendantes**, avec :
-
-- ✅ Affichage/masquage par couche
-- ✅ Intégration automatique dans la légende
-- ✅ Popups unifiés compatibles avec le système POI existant
-- ✅ Clustering intelligent pour les points
-- ✅ Configuration par profil métier (tourism, etc.)
+Applies to: @geoleaf/core v3.x
 
 ---
 
-## Configuration dans `profile.json`
+## Overview
 
-### Structure de Base
+The `GeoLeaf.GeoJSON` module supports **several independent GeoJSON layers**, with:
 
-Ajoutez une section `geojsonLayers` dans votre fichier `data/profiles/[profile]/profile.json` :
+- Per-layer show/hide
+- Automatic integration into the legend
+- Unified popups compatible with the existing POI system
+- Smart clustering for points
+- Configuration per business profile (tourism, etc.)
+
+---
+
+## Configuration in `profile.json`
+
+### Basic structure
+
+Add a `geojsonLayers` section to `data/profiles/[profile]/profile.json`:
 
 ```json
 {
@@ -82,32 +80,33 @@ Ajoutez une section `geojsonLayers` dans votre fichier `data/profiles/[profile]/
 }
 ```
 
-### Propriétés des Couches
+### Layer properties
 
-| Propriété         | Type      | Obligatoire          | Description                                         |
-| ----------------- | --------- | -------------------- | --------------------------------------------------- |
-| `id`              | `string`  | ✅                   | Identifiant unique de la couche                     |
-| `label`           | `string`  | ✅                   | Libellé affiché dans la légende                     |
-| `url`             | `string`  | ✅                   | Chemin vers le fichier GeoJSON                      |
-| `visible`         | `boolean` | ❌ (défaut: `true`)  | Visibilité initiale                                 |
-| `fitBoundsOnLoad` | `boolean` | ❌ (défaut: `false`) | Adapter la vue sur la couche au chargement          |
-| `maxZoomOnFit`    | `number`  | ❌ (défaut: 16)      | Zoom maximum lors du fitBounds                      |
-| `clustering`      | `boolean` | ❌ (défaut: auto)    | Activer le clustering (POI uniquement)              |
-| `style`           | `object`  |                      | Style MapLibre paint pour polygones/lignes          |
-| `pointStyle`      | `object`  |                      | Style MapLibre paint pour points (circle layer)     |
-| `popupTemplate`   | `string`  | ❌                   | Template de popup (non implémenté encore)           |
-| `detailProfileId` | `string`  | ❌                   | Profil du panneau de détail (non implémenté encore) |
+| Property          | Type      | Required             | Description                                    |
+| ----------------- | --------- | -------------------- | ---------------------------------------------- |
+| `id`              | `string`  | Yes                  | Unique layer identifier                        |
+| `label`           | `string`  | Yes                  | Label shown in the legend                      |
+| `url`             | `string`  | Yes                  | Path to the GeoJSON file                       |
+| `visible`         | `boolean` | No (default `true`)  | Initial visibility                             |
+| `fitBoundsOnLoad` | `boolean` | No (default `false`) | Fit the view to the layer on load              |
+| `maxZoomOnFit`    | `number`  | No (default 16)      | Maximum zoom applied by fitBounds              |
+| `clustering`      | `boolean` | No (default auto)    | Enable clustering (points only)                |
+| `style`           | `object`  |                      | MapLibre paint style for polygons/lines        |
+| `pointStyle`      | `object`  |                      | MapLibre paint style for points (circle layer) |
+| `popupTemplate`   | `string`  | No                   | Popup template (not implemented yet)           |
+| `detailProfileId` | `string`  | No                   | Detail panel profile (not implemented yet)     |
 
 ---
 
-## Configuration du clustering — par capacité, plus globalement
+## Clustering configuration — per capability, no longer global
 
-⚠️ **`poiConfig` et `applyToAllSources` n'existent plus.** Ils réglaient le clustering pour
-« tous les POI » à la fois, à l'époque où une POI était un sous-système à part. Depuis la
-dissolution POI (v3.0.0), une POI **est** une couche point GeoJSON, et le clustering se configure
-comme toute autre capacité : un défaut au profil, un réglage par couche.
+::: warning
 
-**Défaut du profil** — `config/plugins/cluster.json`, référencé par `Files.modules.cluster` :
+`poiConfig` and `applyToAllSources` no longer exist. They set clustering for "all POIs" at once, back when a POI was a separate subsystem. A POI is now a GeoJSON point layer, and clustering is configured like any other capability: a default in the profile, an override per layer.
+
+:::
+
+**Profile default** — `config/plugins/cluster.json`, referenced by `Files.modules.cluster`:
 
 ```jsonc
 {
@@ -118,91 +117,95 @@ comme toute autre capacité : un défaut au profil, un réglage par couche.
 }
 ```
 
-**Par couche** — dans le `*_config.json` de la couche, la clé `clustering` l'emporte sur le
-défaut :
+**Per layer** — in the layer's `*_config.json`, the `clustering` key takes precedence over the
+default:
 
 ```jsonc
 {
     "id": "commerces",
-    "clustering": false, // cette couche ne cluster pas, quel que soit le défaut
+    "clustering": false, // this layer never clusters, whatever the default is
 }
 ```
 
-> Le rayon de recherche par proximité se configure à part, dans `profile.search`
+> The proximity search radius is configured separately, under `profile.search`
 > (`radiusMin`, `radiusMax`, `radiusStep`, `radiusDefault`).
 
 ---
 
-## Utilisation depuis l’application
+## Use from the application
 
-> ⚠️ `GeoLeaf.GeoJSON` n’est **pas** un namespace public.  
-> Les couches déclarées dans `geojsonLayers` sont chargées **automatiquement** à l’init.  
-> La visibilité se gère via `GeoLeaf.Legend`.
+::: warning
 
-### Chargement automatique
+`GeoLeaf.GeoJSON` is **not** a public namespace.
+Layers declared in `geojsonLayers` are loaded **automatically** at init.
+Visibility is handled through `GeoLeaf.Legend`.
 
-Les couches GeoJSON définies dans `geojsonLayers` sont chargées automatiquement
-lors de l’appel à `GeoLeaf.loadConfig()` — aucun appel supplémentaire n’est nécessaire :
+:::
+
+### Automatic loading
+
+GeoJSON layers defined in `geojsonLayers` are loaded automatically when
+`GeoLeaf.loadConfig()` is called — no extra call is required:
 
 ```javascript
 GeoLeaf.loadConfig({ url: "./geoleaf.config.json", profileId: "tourism" }).then(() => {
-    // Les couches geojsonLayers sont déjà chargées et visibles
-    console.log("Carte prête avec les couches GeoJSON du profil.");
+    // geojsonLayers layers are already loaded and visible
+    console.log("Map ready with the profile GeoJSON layers.");
 });
 ```
 
-### Gestion de la visibilité
+### Visibility management
 
 ```javascript
-// Masquer une couche
+// Hide a layer
 GeoLeaf.Legend.setLayerVisibility("tourism-routes", false);
 
-// Afficher une couche
+// Show a layer
 GeoLeaf.Legend.setLayerVisibility("tourism-routes", true);
 
-// Lister toutes les couches actives
+// List all active layers
 const allLayers = GeoLeaf.Legend.getAllLayers();
 console.log(allLayers);
 ```
 
 ---
 
-## Intégration avec la Légende
+## Legend integration
 
-Le système s'intègre **automatiquement** avec le module `GeoLeaf.Legend` :
+The system integrates **automatically** with the `GeoLeaf.Legend` module:
 
-1. **Section créée automatiquement** : "Couches GeoJSON"
-2. **Items cliquables** : Checkbox/switch par couche
-3. **Synchronisation bidirectionnelle** : Légende ↔ Carte
+1. **Section created automatically**: "GeoJSON layers"
+2. **Clickable items**: one checkbox/switch per layer
+3. **Two-way synchronisation**: legend ↔ map
 
-### Événements
+### Events
 
 ```javascript
-// Écouter les changements de visibilité
+// Listen for visibility changes
 map.on("geoleaf:geojson:visibility-changed", (e) => {
-    console.log(`Couche ${e.layerId} : ${e.visible ? "visible" : "masquée"}`);
+    console.log(`Layer ${e.layerId}: ${e.visible ? "visible" : "hidden"}`);
 });
 
-// Écouter le chargement des couches
+// Listen for layer loading
 map.on("geoleaf:geojson:layers-loaded", (e) => {
-    console.log(`${e.count} couche(s) chargée(s)`, e.layers);
+    console.log(`${e.count} layer(s) loaded`, e.layers);
 });
 ```
 
 ---
 
-## Popups et Panneau de Détail
+## Popups and detail panel
 
-### Popups Automatiques
+### Automatic popups
 
-Chaque feature affiche un popup avec :
+Each feature shows a popup with:
 
-- **Titre** : `properties.name`, `properties.label` ou `properties.title`
-- **Description** : `properties.description` ou `properties.desc`
-- **Bouton "Voir détails"** : rendu par la capacité `feature-info`, configurée sur la couche
+- **Title**: `properties.name`, `properties.label` or `properties.title`
+- **Description**: `properties.description` or `properties.desc`
+- **"View details" button**: rendered by the `feature-info` capability, configured on the layer
   (`layers.<id>.capabilities.feature-info`)
 
-### Format GeoJSON Recommandé
+### Recommended GeoJSON format
 
 ```json
 {
@@ -226,72 +229,72 @@ Chaque feature affiche un popup avec :
 }
 ```
 
-### Panneau de Détail Latéral
+### Side detail panel
 
-Lors du clic sur une feature, le panneau de détail POI existant s'ouvre **automatiquement** avec les données adaptées.
+Clicking a feature opens the existing POI detail panel **automatically**, with the adapted data.
 
 ---
 
-## Clustering POI
+## POI clustering
 
-### Activation Automatique
+### Automatic activation
 
-Le clustering s'active si :
+Clustering is enabled when:
 
-1. La couche contient des géométries de type `Point`
-2. `clustering: true` dans `config/plugins/cluster.json` (défaut du profil)
-3. `clustering !== false` dans le `*_config.json` de la couche (pas de désactivation explicite)
+1. The layer contains `Point` geometries
+2. `clustering: true` in `config/plugins/cluster.json` (profile default)
+3. `clustering !== false` in the layer's `*_config.json` (no explicit opt-out)
 
-### Override par Couche
+### Per-layer override
 
 ```jsonc
 {
     "id": "poi-sans-cluster",
     "label": "POI sans clustering",
     "url": "poi.geojson",
-    "clustering": false, // ← Désactive le clustering pour cette couche uniquement
+    "clustering": false, // ← disables clustering for this layer only
 }
 ```
 
 ---
 
-## Types de Géométries Supportés
+## Supported geometry types
 
-| Type Geometry     | Rendu MapLibre         | Style Config | Clustering |
+| Geometry type     | MapLibre rendering     | Style config | Clustering |
 | ----------------- | ---------------------- | ------------ | ---------- |
-| `Point`           | Circle layer ou Symbol | `pointStyle` | Oui        |
-| `LineString`      | Line layer             | `style`      | Non        |
-| `Polygon`         | Fill + Line layer      | `style`      | Non        |
-| `MultiPoint`      | Circle layer ou Symbol | `pointStyle` | Oui        |
-| `MultiLineString` | Line layer             | `style`      | Non        |
-| `MultiPolygon`    | Fill + Line layer      | `style`      | Non        |
+| `Point`           | Circle layer or Symbol | `pointStyle` | Yes        |
+| `LineString`      | Line layer             | `style`      | No         |
+| `Polygon`         | Fill + Line layer      | `style`      | No         |
+| `MultiPoint`      | Circle layer or Symbol | `pointStyle` | Yes        |
+| `MultiLineString` | Line layer             | `style`      | No         |
+| `MultiPolygon`    | Fill + Line layer      | `style`      | No         |
 
 ---
 
-## Limites et Performances
+## Limits and performance
 
-### Limite de Couches
+### Layer limit
 
-- **Avertissement** si > 10 couches dans `geojsonLayers[]`
-- **Recommandation** : 3-5 couches max pour performances optimales
+- **Warning** above 10 layers in `geojsonLayers[]`
+- **Recommendation**: 3-5 layers maximum for optimal performance
 
-### Limite de Features
+### Feature limit
 
-- Aucune limite technique, mais surveiller les performances si > 5000 features/couche
-- Utiliser le clustering pour les couches POI denses
+- No technical limit, but watch performance above 5000 features per layer
+- Use clustering for dense POI layers
 
-### Optimisations MapLibre
+### MapLibre optimisations
 
-- Chaque couche utilise une source GeoJSON independante (`map.addSource()`)
-- Clustering via supercluster integre dans MapLibre (propriete `cluster: true` sur la source)
-- Ajout/suppression efficace via `map.addLayer()` / `map.removeLayer()`
-- Rendu WebGL pour des performances optimales sur les couches denses
+- Each layer uses an independent GeoJSON source (`map.addSource()`)
+- Clustering through the supercluster implementation built into MapLibre (`cluster: true` on the source)
+- Efficient add/remove through `map.addLayer()` / `map.removeLayer()`
+- WebGL rendering for optimal performance on dense layers
 
 ---
 
-## Exemples Complets
+## Complete examples
 
-### Exemple 1 : 3 Couches (POI, Routes, Zones)
+### Example 1: three layers (POI, routes, zones)
 
 ```jsonc
 "geojsonLayers": [
@@ -336,13 +339,13 @@ Le clustering s'active si :
 ]
 ```
 
-### Exemple 2 : Contrôle programmatique de la visibilité
+### Example 2: programmatic visibility control
 
 ```javascript
-// Les couches sont chargées automatiquement via loadConfig()
-// Gérer la visibilité via GeoLeaf.Legend :
+// Layers are loaded automatically through loadConfig()
+// Handle visibility through GeoLeaf.Legend:
 
-// Masquer toutes les couches sauf une
+// Hide every layer except one
 const allLayers = GeoLeaf.Legend.getAllLayers();
 allLayers.forEach((info, layerId) => {
     if (layerId !== "poi-restaurants") {
@@ -350,17 +353,17 @@ allLayers.forEach((info, layerId) => {
     }
 });
 
-// Compter les couches visibles
+// Count visible layers
 const visibleCount = [...allLayers.entries()].filter(([, info]) => info.visible).length;
-console.log("Couches visibles :", visibleCount);
+console.log("Visible layers:", visibleCount);
 ```
 
 ---
 
-## Configuration des couches dans le profil
+## Declaring layers in the profile
 
-Les couches GeoJSON se déclarent uniquement dans `profile.json`.
-Il n'y a pas d'API publique `GeoLeaf.GeoJSON` — le chargement est entièrement piloté par la configuration.
+GeoJSON layers are declared in `profile.json` and nowhere else.
+There is no public `GeoLeaf.GeoJSON` API — loading is driven entirely by configuration.
 
 ```json
 {
@@ -375,60 +378,60 @@ Il n'y a pas d'API publique `GeoLeaf.GeoJSON` — le chargement est entièrement
 }
 ```
 
-Voir la section [Configuration dans `profile.json`](#configuration-dans-profilejson) pour la référence complète.
+See [Configuration in `profile.json`](#configuration-in-profilejson) for the full reference.
 
 ---
 
 ## Troubleshooting
 
-### Problème : Les couches ne s'affichent pas
+### Problem: layers do not appear
 
-**Vérifier** :
+**Check**:
 
-1. URL des fichiers GeoJSON correcte (relative au profil)
-2. `visible: true` dans la config
-3. Console navigateur pour erreurs de chargement (404, JSON invalide)
-4. `GeoLeaf.loadConfig()` appelé avant d’utiliser la carte
+1. The GeoJSON file URLs are correct (relative to the profile)
+2. `visible: true` in the config
+3. The browser console for loading errors (404, invalid JSON)
+4. `GeoLeaf.loadConfig()` is called before the map is used
 
-### Probleme : Le clustering ne fonctionne pas
+### Problem: clustering does not work
 
-**Verifier** :
+**Check**:
 
-1. `clustering: true` dans `config/plugins/cluster.json`
-2. Que `Files.modules.cluster` pointe bien ce fichier depuis `profile.json`
-3. Geometries de type `Point` (pas `Polygon` ou `LineString`)
-4. Pas de `clustering: false` dans le `*_config.json` de la couche
+1. `clustering: true` in `config/plugins/cluster.json`
+2. `Files.modules.cluster` points to that file from `profile.json`
+3. Geometries are of type `Point` (not `Polygon` or `LineString`)
+4. No `clustering: false` in the layer's `*_config.json`
 
-> Le clustering est integre nativement via supercluster (source clustering MapLibre).
-> Aucune dependance externe n'est necessaire.
+> Clustering is built in natively through supercluster (MapLibre source clustering).
+> No external dependency is required.
 
-### Problème : La légende n'apparaît pas
+### Problem: the legend does not appear
 
-**Vérifier** :
+**Check**:
 
-1. Module `GeoLeaf.LayerManager` initialisé
-2. `modules.legend.enabled` non désactivé (opt-out : la légende est active sauf `modules.legend.enabled: false` dans `config/plugins/legend.json`)
-3. Au moins une couche chargée avec succès
-
----
-
-## Tuiles vectorielles MVT / PBF
-
-Pour les couches a fort volume (> 5 000 lignes ou polygones), GeoLeaf supporte le mode
-**tuiles vectorielles** (MVT/PBF) via les sources vectorielles natives de MapLibre GL JS.
-Les tuiles sont pre-generees localement et chargees a la demande selon le zoom et
-l'emprise visible.
-
-> Voir le guide dédié : [MVT_GUIDE.md](MVT_GUIDE.md)
+1. The `GeoLeaf.LayerManager` module is initialised
+2. `modules.legend.enabled` is not disabled (opt-out: the legend is active unless `modules.legend.enabled: false` is set in `config/plugins/legend.json`)
+3. At least one layer loaded successfully
 
 ---
 
-## Références
+## MVT / PBF vector tiles
 
-- **Module interne** : `packages/core/src/modules/geojson/`
-- **Facade Legend** : `packages/core/src/geoleaf.legend.ts`
-- **Profil tourisme** : `profiles/tourism/profile.json`
-- **Guide MVT** : [geojson/MVT_GUIDE.md](MVT_GUIDE.md)
+For high-volume layers (more than 5,000 lines or polygons), GeoLeaf supports
+**vector tiles** (MVT/PBF) through the native vector sources of MapLibre GL JS.
+Tiles are pre-generated locally and loaded on demand according to zoom level and
+visible extent.
+
+> See the dedicated guide: [MVT_GUIDE.md](MVT_GUIDE.md)
+
+---
+
+## References
+
+- **Internal module**: `packages/core/src/modules/geojson/`
+- **Legend facade**: `packages/core/src/geoleaf.legend.ts`
+- **Tourism profile**: `profiles/tourism/profile.json`
+- **MVT guide**: [geojson/MVT_GUIDE.md](MVT_GUIDE.md)
 
 ---
 
@@ -436,16 +439,16 @@ l'emprise visible.
 
 ### v2.0.0
 
-- Migration moteur de rendu : Leaflet → MapLibre GL JS v5 (WebGL)
-- Sources GeoJSON via `map.addSource()` / `map.addLayer()` natifs MapLibre
-- Clustering GPU natif via `cluster: true` sur les sources
-- Styles data-driven via expressions MapLibre (`match`, `interpolate`, `case`)
-- Coordonnées `[lng, lat]` (standard GeoJSON) — inversion `[lat, lng]` supprimée
+- Rendering engine migration: Leaflet → MapLibre GL JS v5 (WebGL)
+- GeoJSON sources through the native `map.addSource()` / `map.addLayer()` of MapLibre
+- Native GPU clustering through `cluster: true` on sources
+- Data-driven styles through MapLibre expressions (`match`, `interpolate`, `case`)
+- `[lng, lat]` coordinates (GeoJSON standard) — the `[lat, lng]` inversion is gone
 
 ### v1.1.0–v1.2.0
 
-- Architecture multi-couches via `geojsonLayers[]` dans `profile.json`
-- Intégration automatique avec `GeoLeaf.Legend` (visibilité, sections)
-- Popups unifiés compatibles avec le système POI
-- Clustering configuré par capacité : défaut au profil, override par couche
-- Configuration par profil métier
+- Multi-layer architecture through `geojsonLayers[]` in `profile.json`
+- Automatic integration with `GeoLeaf.Legend` (visibility, sections)
+- Unified popups compatible with the POI system
+- Clustering configured per capability: profile default, per-layer override
+- Configuration per business profile

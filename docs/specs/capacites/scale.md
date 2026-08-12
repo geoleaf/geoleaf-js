@@ -13,11 +13,20 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/scale/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
+> faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
+> et les exemples pas à pas sont dans [`packages/core/docs/config/SCALE_CONFIG.md`](../../../packages/core/docs/config/SCALE_CONFIG.md). **Les deux ne se recopient pas** — une
+> divergence entre elles est un défaut, pas une nuance de point de vue.
+
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Ne pas remplacer ce contrôle par celui de MapLibre.** La question a été posée, mesurée, et
 > **tranchée dans l'autre sens** : le recouvrement se réduit à un aide de sept lignes, et ce contrôle
@@ -152,7 +161,7 @@ celle passée à l'abonnement.
 ### Le conteneur qu'elle fournit aux autres
 
 `.gl-scale-main-wrapper` est le point d'amarrage de [`coordinates`](coordinates.md), et
-`scale/css/scale.css` **style le séparateur que `coordinates` crée**. Ce couplage n'est déclaré dans
+`packages/core/src/capabilities/scale/css/scale.css` **style le séparateur que `coordinates` crée**. Ce couplage n'est déclaré dans
 aucun `dependencies` — il est documenté des deux côtés, ici et dans la fiche de `coordinates`.
 
 ---
@@ -253,4 +262,4 @@ avec le code.
 retirer une règle de séparateur d'ici casse l'apparence d'une autre capacité.
 
 La feuille partage aussi le conteneur `.maplibregl-ctrl-bottom-left` avec `branding`, `legend` et
-`coordinates` — voir l'avertissement de `branding/css/branding.css`, qui en possède la mise en page.
+`coordinates` — voir l'avertissement de `packages/core/src/capabilities/branding/css/branding.css`, qui en possède la mise en page.

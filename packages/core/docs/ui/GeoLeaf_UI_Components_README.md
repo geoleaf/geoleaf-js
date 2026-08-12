@@ -1,50 +1,46 @@
 ---
-title: "GeoLeaf UI Components — Documentation Détaillée"
+title: "GeoLeaf UI Components — Detailed documentation"
 ---
 
-# GeoLeaf UI Components — Documentation Détaillée
+# GeoLeaf UI Components — Detailed documentation
 
-Product Version: GeoLeaf Platform V3
+**Modules**: `GeoLeaf._UIComponents`, `GeoLeaf.UI.Notifications`, and the UI components
 
-**Modules** : `GeoLeaf._UIComponents`, `GeoLeaf.UI.Notifications`, et composants UI
+**Version**: 3.0.0
 
-**Version** : 3.0.0
-
-**Fichiers source (monorepo)** : `packages/core/src/modules/built-in/ui/`
-
-**Dernière mise à jour** : mars 2026
+**Source files (monorepo)**: `packages/core/src/modules/built-in/ui/`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le système de **composants UI** GeoLeaf fournit des **briques réutilisables** pour construire l'interface utilisateur de la cartographie. Ces composants standardisent :
+The GeoLeaf **UI component** system provides **reusable building blocks** for the map interface. These components standardise:
 
-- La création d'éléments DOM avec cleanup automatique
-- Les patterns d'accordéons et panneaux
-- Les notifications toast
-- Les symboles de légende (cercles, lignes, polygones)
-- Les contrôles MapLibre (échelle, coordonnées)
-- La gestion d'événements et états UI
+- DOM element creation with automatic cleanup
+- Accordion and panel patterns
+- Toast notifications
+- Legend symbols (circles, lines, polygons)
+- MapLibre controls (scale, coordinates)
+- Event handling and UI state
 
 ---
 
-## Architecture des composants UI
+## UI component architecture
 
 ```
 built-in/ui/
-├── ui-api.ts                        // Orchestrateur principal
-├── theme.ts                         // Gestion thèmes (light/dark)
-├── components.ts                    // Composants DOM réutilisables (accordéon…)
+├── ui-api.ts                        // Main orchestrator
+├── theme.ts                         // Theme management (light/dark)
+├── components.ts                    // Reusable DOM components (accordion…)
 ├── dom-utils.ts                     // resolveField, getActiveProfileConfig
-├── event-delegation.ts              // Délégation d'événements
-├── pill-search.ts                   // Champ de recherche « pill »
-├── desktop/                         // Panneau desktop
+├── event-delegation.ts              // Event delegation
+├── pill-search.ts                   // "Pill" search field
+├── desktop/                         // Desktop panel
 │   ├── desktop-panel.ts
 │   ├── desktop-panel-registry.ts
 │   ├── desktop-panel-theme.ts
 │   └── desktop-tabs-seam.ts
-└── mobile/                          // Barre d'outils mobile
+└── mobile/                          // Mobile toolbar
     ├── mobile-toolbar.ts
     ├── mobile-toolbar-pill.ts
     ├── mobile-toolbar-proximity.ts
@@ -52,46 +48,46 @@ built-in/ui/
     └── mobile-toolbar-state.ts
 ```
 
-> **Sorti de `built-in/ui/` en v3.0.0.** Le panneau de filtres (`filter-panel*`,
-> `filter-state-manager`) appartient à la capacité `filter` ; les notifications à
-> `toast-renderer` ; les contrôles carte (plein écran, géolocalisation, thème, échelle,
-> coordonnées) à leurs capacités respectives ; le rendu de fiche (`content-builder`) à
-> `feature-info`. Ces modules ne vivent plus ici.
+> **Moved out of `built-in/ui/` in v3.0.0.** The filter panel (`filter-panel*`,
+> `filter-state-manager`) belongs to the `filter` capability; notifications to
+> `toast-renderer`; the map controls (fullscreen, geolocation, theme, scale, coordinates) to
+> their respective capabilities; feature-card rendering (`content-builder`) to `feature-info`.
+> These modules no longer live here.
 
 ---
 
-## Module 1 : `GeoLeaf._UIComponents` (composants réutilisables)
+## Module 1: `GeoLeaf._UIComponents` (reusable components)
 
-### Rôle
+### Role
 
-Fournit des **composants réutilisables** pour Legend et LayerManager : accordéons, symboles de légende, éléments de style.
+Provides **reusable components** for Legend and LayerManager: accordions, legend symbols, style elements.
 
-### API Principale
+### Main API
 
 #### `createAccordion(container, config)`
 
-Crée un accordéon avec header cliquable et body collapsible.
+Creates an accordion with a clickable header and a collapsible body.
 
-**Paramètres** :
+**Parameters**:
 
-- `container` (HTMLElement) : Conteneur parent
-- `config` (Object) :
-    - `layerId` : ID de la couche
-    - `label` : Titre de l'accordéon
-    - `collapsed` : État initial (replié ou non)
-    - `visible` : Couche visible (grise si false)
-    - `onToggle` : Callback lors du toggle
+- `container` (HTMLElement): parent container
+- `config` (Object):
+    - `layerId`: layer ID
+    - `label`: accordion title
+    - `collapsed`: initial state (collapsed or not)
+    - `visible`: layer visible (greyed out when false)
+    - `onToggle`: callback fired on toggle
 
-**Retourne** : `{ accordionEl, headerEl, bodyEl, toggleEl }`
+**Returns**: `{ accordionEl, headerEl, bodyEl, toggleEl }`
 
-**Exemple** :
+**Example**:
 
 ```javascript
 const legendContainer = document.querySelector(".gl-legend__body");
 
 const { accordionEl, bodyEl } = GeoLeaf._UIComponents.createAccordion(legendContainer, {
     layerId: "parcs",
-    label: "Parcs et Jardins",
+    label: "Parks and Gardens",
     collapsed: false,
     visible: true,
     onToggle: (layerId, isExpanded) => {
@@ -104,21 +100,21 @@ bodyEl.appendChild(document.createTextNode("Legend content"));
 
 #### `renderCircleSymbol(container, config)`
 
-Rend un symbole circulaire (pour POI/markers) avec icône SVG optionnelle.
+Renders a circular symbol (for POIs/markers) with an optional SVG icon.
 
-**Paramètres** :
+**Parameters**:
 
-- `container` : Conteneur du symbole
-- `config` :
-    - `radius` : Rayon en pixels (défaut: 8)
-    - `fillColor` : Couleur de remplissage
-    - `color` : Couleur de bordure
-    - `weight` : Épaisseur bordure
-    - `fillOpacity` : Opacité
-    - `icon` : ID d'icône SVG sprite (ex: `'#tree'`)
-    - `iconColor` : Couleur de l'icône
+- `container`: symbol container
+- `config`:
+    - `radius`: radius in pixels (default: 8)
+    - `fillColor`: fill colour
+    - `color`: border colour
+    - `weight`: border thickness
+    - `fillOpacity`: opacity
+    - `icon`: SVG sprite icon ID (e.g. `'#tree'`)
+    - `iconColor`: icon colour
 
-**Exemple** :
+**Example**:
 
 ```javascript
 const symbolContainer = document.createElement("div");
@@ -143,7 +139,7 @@ GeoLeaf._UIComponents.renderCircleSymbol(symbolContainer, {
 
 #### `renderLineSymbol(container, config)`
 
-Rend un symbole de ligne (pour routes/LineString).
+Renders a line symbol (for roads/LineString).
 
 ```javascript
 GeoLeaf._UIComponents.renderLineSymbol(symbolContainer, {
@@ -156,7 +152,7 @@ GeoLeaf._UIComponents.renderLineSymbol(symbolContainer, {
 
 #### `renderPolygonSymbol(container, config)`
 
-Rend un symbole de polygone (pour zones/Polygon).
+Renders a polygon symbol (for areas/Polygon).
 
 ```javascript
 GeoLeaf._UIComponents.renderPolygonSymbol(symbolContainer, {
@@ -169,7 +165,7 @@ GeoLeaf._UIComponents.renderPolygonSymbol(symbolContainer, {
 
 #### `attachEventHandler(element, eventType, handler)`
 
-Attache un event listener avec cleanup automatique.
+Attaches an event listener with automatic cleanup.
 
 ```javascript
 const cleanup = GeoLeaf._UIComponents.attachEventHandler(button, "click", () =>
@@ -182,25 +178,25 @@ cleanup();
 
 ---
 
-## Module 2 : `GeoLeaf.UI.Notifications` (notifications.ts)
+## Module 2: `GeoLeaf.UI.Notifications` (notifications.ts)
 
-### Rôle
+### Role
 
-Système de **toast notifications** avec animations et auto-dismiss.
+**Toast notification** system with animations and auto-dismiss.
 
-### API Principale
+### Main API
 
 #### `init(config)`
 
-Initialise le système de notifications.
+Initialises the notification system.
 
-**Config** :
+**Config**:
 
-- `container` : Sélecteur du conteneur (défaut: `'#gl-notifications'`)
-- `maxVisible` : Nombre max de toasts visibles (défaut: 3)
-- `durations` : Durées par type (ms)
-- `position` : Position (`'bottom-center'`, `'top-right'`, etc.)
-- `animations` : Activer animations (défaut: true)
+- `container`: container selector (default: `'#gl-notifications'`)
+- `maxVisible`: maximum number of visible toasts (default: 3)
+- `durations`: durations per type (ms)
+- `position`: position (`'bottom-center'`, `'top-right'`, etc.)
+- `animations`: enable animations (default: true)
 
 ```javascript
 GeoLeaf.UI.Notifications.init({
@@ -217,27 +213,27 @@ GeoLeaf.UI.Notifications.init({
 #### `success(message, duration?)`
 
 ```javascript
-GeoLeaf.UI.Notifications.success("Données chargées avec succès !");
-GeoLeaf.UI.Notifications.success("Sauvegarde réussie", 5000);
+GeoLeaf.UI.Notifications.success("Data loaded successfully");
+GeoLeaf.UI.Notifications.success("Save complete", 5000);
 ```
 
 #### `error(message, duration?)`
 
 ```javascript
-GeoLeaf.UI.Notifications.error("Impossible de charger les données");
-GeoLeaf.UI.Notifications.error("Erreur réseau", 10000);
+GeoLeaf.UI.Notifications.error("Unable to load the data");
+GeoLeaf.UI.Notifications.error("Network error", 10000);
 ```
 
 #### `warning(message, duration?)`
 
 ```javascript
-GeoLeaf.UI.Notifications.warning("Connexion instable");
+GeoLeaf.UI.Notifications.warning("Unstable connection");
 ```
 
 #### `info(message, duration?)`
 
 ```javascript
-GeoLeaf.UI.Notifications.info("Chargement en cours...");
+GeoLeaf.UI.Notifications.info("Loading...");
 ```
 
 #### `clear()`
@@ -246,49 +242,49 @@ GeoLeaf.UI.Notifications.info("Chargement en cours...");
 GeoLeaf.UI.Notifications.clear();
 ```
 
-### Structure HTML générée
+### Generated HTML structure
 
 ```html
 <div id="gl-notifications" class="gl-notifications gl-notifications--bottom-center">
     <div class="gl-toast gl-toast--success" role="alert" aria-live="polite">
         <div class="gl-toast__icon">✓</div>
         <div class="gl-toast__content">
-            <div class="gl-toast__message">Données chargées avec succès !</div>
+            <div class="gl-toast__message">Data loaded successfully</div>
         </div>
-        <button class="gl-toast__close" aria-label="Fermer">×</button>
+        <button class="gl-toast__close" aria-label="Close">×</button>
     </div>
 </div>
 ```
 
 ---
 
-## Module 3 : Contrôles MapLibre
+## Module 3: MapLibre controls
 
-### Rôle
+### Role
 
-Chaque contrôle carte est désormais une **capacité in-core**, activée par configuration et
-installée par son propre `install.ts` (`capabilities/<id>/`). Le fichier agrégateur
-`ui/controls.ts` n'existe plus.
+Every map control is now an **in-core capability**, enabled by configuration and installed by
+its own `install.ts` (`capabilities/<id>/`). The `ui/controls.ts` aggregator file no longer
+exists.
 
-### API via `GeoLeaf.UI`
+### API through `GeoLeaf.UI`
 
 ```javascript
-// Geolocation — implémentée par la capacité `geolocation`
+// Geolocation — implemented by the `geolocation` capability
 GeoLeaf.UI.initGeolocationControl(map, {
     position: "topleft",
     enableHighAccuracy: true,
 });
 
-// Theme toggle — implémenté par la capacité `theme-toggle`
+// Theme toggle — implemented by the `theme-toggle` capability
 GeoLeaf.UI.initThemeToggleControl(map, { position: "topright" });
 ```
 
-> **Retirés de `GeoLeaf.UI` en v3.0.0** _(breaking)_ : `initFullscreenControl()` (capacité
-> `fullscreen`, activée par `modules.fullscreen`) et `initPoiAddControl()` (plugin
-> `@geoleaf-plugins/editor`, piloté par `GeoLeaf.Editor`). Les contrôles d'échelle,
-> coordonnées, branding et légende suivent le même modèle : configuration, pas appel.
+> **Removed from `GeoLeaf.UI` in v3.0.0** _(breaking)_: `initFullscreenControl()` (`fullscreen`
+> capability, enabled through `modules.fullscreen`) and `initPoiAddControl()`
+> (`@geoleaf-plugins/editor` plugin, driven through `GeoLeaf.Editor`). The scale, coordinates,
+> branding and legend controls follow the same model: configuration, not calls.
 
-### Configuration dans profile.json
+### Configuration in profile.json
 
 ```json
 {
@@ -307,47 +303,47 @@ GeoLeaf.UI.initThemeToggleControl(map, { position: "topright" });
 
 ---
 
-## Module 4 : Système de filtrage (filter-panel/)
+## Module 4: Filtering system (filter-panel/)
 
 ### Architecture
 
-Le système de filtrage est divisé en modules spécialisés :
+The filtering system is split into dedicated modules:
 
 ```
 filter-panel/
-├── filter-panel-accordion.ts  // Accordéons du panneau filtres
-├── lazy-loader.ts             // Chargement lazy des composants filtres
-├── proximity-manual-mode.ts   // Saisie manuelle de la position de proximité
-├── proximity-state.ts         // État géolocalisation pour filtre proximité
-├── shared.ts                  // Utilitaires partagés
-└── svg-helpers.ts             // Génération icônes SVG inline
+├── filter-panel-accordion.ts  // Filter panel accordions
+├── lazy-loader.ts             // Lazy loading of the filter components
+├── proximity-manual-mode.ts   // Manual entry of the proximity position
+├── proximity-state.ts         // Geolocation state for the proximity filter
+├── shared.ts                  // Shared utilities
+└── svg-helpers.ts             // Inline SVG icon generation
 ```
 
-### Composants UI générés
+### Generated UI components
 
-**1. Recherche textuelle**
+**1. Text search**
 
 ```html
 <div class="gl-filter-control gl-filter-control--search">
-    <label for="search-input">Recherche</label>
-    <input type="text" id="search-input" placeholder="Rechercher..." />
+    <label for="search-input">Search</label>
+    <input type="text" id="search-input" placeholder="Search..." />
 </div>
 ```
 
-**2. Sélecteur de catégorie**
+**2. Category selector**
 
 ```html
 <div class="gl-filter-control gl-filter-control--select">
-    <label for="category-select">Catégorie</label>
+    <label for="category-select">Category</label>
     <select id="category-select">
-        <option value="">— Tous —</option>
+        <option value="">— All —</option>
         <option value="restaurant">Restaurants</option>
-        <option value="hotel">Hôtels</option>
+        <option value="hotel">Hotels</option>
     </select>
 </div>
 ```
 
-**3. Checkboxes multi-sélection**
+**3. Multi-selection checkboxes**
 
 ```html
 <div class="gl-filter-control gl-filter-control--checkboxes">
@@ -359,17 +355,17 @@ filter-panel/
 </div>
 ```
 
-**4. Filtre de proximité**
+**4. Proximity filter**
 
 ```html
 <div class="gl-filter-control gl-filter-control--proximity">
-    <label>Proximité</label>
+    <label>Proximity</label>
     <input type="range" min="0" max="5000" step="100" value="1000" />
     <span class="proximity-value">1.0 km</span>
 </div>
 ```
 
-**5. Tags actifs**
+**5. Active tags**
 
 ```html
 <div class="gl-filter-active-tags">
@@ -377,11 +373,11 @@ filter-panel/
         Restaurant
         <button class="gl-filter-tag__remove">×</button>
     </span>
-    <button class="gl-filter-clear-all">Tout effacer</button>
+    <button class="gl-filter-clear-all">Clear all</button>
 </div>
 ```
 
-### État des filtres
+### Filter state
 
 ```javascript
 const filterState = {
@@ -399,11 +395,11 @@ const filterState = {
 
 ---
 
-## Thématisation CSS
+## CSS theming
 
-Tous les composants UI utilisent des **classes CSS BEM** pour faciliter la personnalisation.
+Every UI component uses **BEM CSS classes** to make customisation straightforward.
 
-### Variables CSS
+### CSS variables
 
 ```css
 :root {
@@ -413,16 +409,16 @@ Tous les composants UI utilisent des **classes CSS BEM** pour faciliter la perso
     --gl-toast-warning: #f59e0b;
     --gl-toast-info: #3b82f6;
 
-    /* Accordéons */
+    /* Accordions */
     --gl-accordion-header-bg: #f5f5f5;
     --gl-accordion-header-bg-hover: #e0e0e0;
     --gl-accordion-border: #ddd;
 
-    /* Symboles */
+    /* Symbols */
     --gl-symbol-size: 16px;
     --gl-symbol-border: #666;
 
-    /* Filtres */
+    /* Filters */
     --gl-filter-bg: white;
     --gl-filter-border: #ddd;
     --gl-filter-tag-bg: #3b82f6;
@@ -441,22 +437,22 @@ Tous les composants UI utilisent des **classes CSS BEM** pour faciliter la perso
 
 ---
 
-## Intégration inter-modules
+## Cross-module integration
 
-### Exemple 1 : Légende avec accordéons
+### Example 1: Legend with accordions
 
 ```javascript
 // In legend-renderer.ts
 const { accordionEl, bodyEl } = GeoLeaf._UIComponents.createAccordion(container, {
     layerId: "parcs",
-    label: "Parcs et Jardins",
+    label: "Parks and Gardens",
     collapsed: false,
     visible: true,
 });
 
 const items = [
-    { label: "Parc urbain", color: "#228B22" },
-    { label: "Jardin public", color: "#90EE90" },
+    { label: "Urban park", color: "#228B22" },
+    { label: "Public garden", color: "#90EE90" },
 ];
 
 items.forEach((item) => {
@@ -476,16 +472,16 @@ items.forEach((item) => {
 });
 ```
 
-### Exemple 2 : Notifications après chargement
+### Example 2: Notification after loading
 
 ```javascript
 // After loading a GeoJSON layer (internal module)
 fetch(layerUrl)
     .then(() => {
-        GeoLeaf.UI.Notifications.success('Couche "Parcs" chargée avec succès !');
+        GeoLeaf.UI.Notifications.success('Layer "parcs" loaded successfully');
     })
     .catch((error) => {
-        GeoLeaf.UI.Notifications.error(`Erreur de chargement : ${error.message}`);
+        GeoLeaf.UI.Notifications.error(`Loading error: ${error.message}`);
     });
 ```
 
@@ -493,22 +489,16 @@ fetch(layerUrl)
 
 ## Limitations
 
-1. **Notifications** : Maximum 3 toasts simultanés (configurable via `maxVisible`)
-2. **Accordéons** : Pas de support d'imbrication multiple (accordéons dans accordéons)
-3. **Symboles** : Icônes SVG requièrent sprite SVG défini
-4. **Filtres de proximité** : Calcul côté client (peut être lent avec +10k POIs)
+1. **Notifications**: at most 3 simultaneous toasts (configurable through `maxVisible`)
+2. **Accordions**: multi-level nesting (accordions inside accordions) is not supported
+3. **Symbols**: SVG icons require a defined SVG sprite
+4. **Proximity filters**: computed client-side (can be slow beyond 10k POIs)
 
 ---
 
-## Modules liés
+## Related modules
 
-- **[GeoLeaf.Legend](../legend/GeoLeaf_Legend_README.md)** : Utilise accordéons et symboles
-- **[GeoLeaf.LayerManager](../layer-manager/GeoLeaf_LayerManager_README.md)** : Utilise composants UI
-- **[GeoLeaf.Filter](../API_REFERENCE.md#filter--the-filter-panel-singular)** : filtrage attributaire (le pluriel `GeoLeaf.Filters` a été supprimé en v3.1)
-- **[GeoLeaf.Layers](../API_REFERENCE.md#layers--feature-data)** : données des couches (le module POI a été dissous en v3)
-
----
-
-**Version** : 3.0.0
-
-**Dernière mise à jour** : mars 2026
+- **[GeoLeaf.Legend](../legend/GeoLeaf_Legend_README.md)**: uses accordions and symbols
+- **[GeoLeaf.LayerManager](../layer-manager/GeoLeaf_LayerManager_README.md)**: uses UI components
+- **[GeoLeaf.Filter](../API_REFERENCE.md#filter--the-filter-panel-singular)**: attribute filtering (the plural `GeoLeaf.Filters` was removed in v3.1)
+- **[GeoLeaf.Layers](../API_REFERENCE.md#layers--feature-data)**: layer data (the POI module was dissolved in v3)

@@ -4,11 +4,7 @@ title: "Label Button Manager"
 
 # Label Button Manager
 
-Product Version: GeoLeaf Platform V3
-
 **Module:** `packages/core/src/modules/optional/labels/label-button-manager.ts`
-**Version:** 3.0.0
-**Last Updated:** March 2026
 
 ## Table of Contents
 
@@ -103,22 +99,25 @@ const button = GeoLeaf._LabelButtonManager.createButton("poi-restaurants", contr
 
 ---
 
-#### `sync(layerId)` — ⚠️ **n'existe pas**
+#### `sync(layerId)` — does not exist
 
-> ⚠️ **Ce membre n'a jamais existé sur la surface publique.** Mesuré le 30/07/2026 :
-> `_LabelButtonManager` expose `createButton`, `syncImmediate`, `removeButtons` et les privés
-> `_doSync` / `_getState` / `_applyState`. **Aucun `sync`.** Les deux appelants réels du dépôt
-> (`kernel/themes/theme-applier/visibility.ts`) utilisent `syncImmediate`.
->
-> La voie **débouncée** décrite ci-dessous existe bien — c'est `_doSync`, **privée**. Un
-> appelant externe n'a que `syncImmediate`.
->
-> Rien ne pouvait le signaler : le global déclare `_LabelButtonManager?: unknown`, donc aucun
-> appel qui passe par lui n'est typé (**B-13**), et les gates d'exemples ne reconnaissent pas
-> cette forme (**B-78**).
+::: danger
+`sync()` is not part of the public surface. `_LabelButtonManager` exposes `createButton`,
+`syncImmediate` and `removeButtons`, plus the private `_doSync` / `_getState` / `_applyState`.
+There is no `sync`. Inside the core, `kernel/themes/theme-applier/visibility.ts` calls
+`syncImmediate`.
 
-**Comportement de `_doSync` (privé)** : annule le sync en attente pour cette couche, en
-replanifie un après 300 ms, et évite les mises à jour DOM en rafale.
+The debounced path described below does exist, but it is `_doSync`, which is private. An external
+caller only has `syncImmediate`.
+:::
+
+::: warning
+`GeoLeafGlobal` declares `_LabelButtonManager?: unknown`, so calls made through it are not
+type-checked: a wrong method name surfaces at runtime only.
+:::
+
+**Behaviour of `_doSync` (private)**: cancels the pending sync for that layer, schedules a new one
+300 ms later, and avoids bursts of DOM updates.
 
 **Use Cases:**
 
@@ -269,13 +268,14 @@ The module maintains internal state for each button:
 
 **Lifecycle:**
 
-- Timeout created on a `_doSync()` call — **privé**, interne au module
+- Timeout created on a `_doSync()` call — private, internal to the module
 - Timeout cancelled if a new `_doSync()` is called before execution
 - Timeout deleted after execution or cancellation
 
-⚠️ Ces trois lignes ont nommé `sync()` jusqu'au 09/08/2026. **Ce membre n'existe pas** — la
-voie débouncée est `_doSync`, privée. Un appelant externe n'a que `syncImmediate()`, qui
-**annule** le timeout au lieu d'en créer un.
+::: warning
+`sync()` does not exist. The debounced path is `_doSync`, which is private. An external caller
+only has `syncImmediate()`, and that method **cancels** the timeout instead of creating one.
+:::
 
 ---
 
@@ -319,10 +319,10 @@ The button follows these **simple rules**:
 
 | Layer Visible | label.enabled | Button State       |
 | ------------- | ------------- | ------------------ |
-| ✅            | ✅            | Enabled, can click |
-| ✅            | ❌            | Disabled, grayed   |
-| ❌            | ✅            | Disabled, grayed   |
-| ❌            | ❌            | Disabled, grayed   |
+| Yes           | Yes           | Enabled, can click |
+| Yes           | No            | Disabled, grayed   |
+| No            | Yes           | Disabled, grayed   |
+| No            | No            | Disabled, grayed   |
 
 ### Flowchart
 
@@ -410,8 +410,8 @@ async function loadStyle(layerId, styleId) {
     // Apply style to layer
     applyStyle(layerId, styleData);
 
-    // Sync label button — `syncImmediate` est la SEULE voie publique ; la variante
-    // débouncée (`_doSync`) est privée.
+    // Sync label button — `syncImmediate` is the ONLY public path; the debounced
+    // variant (`_doSync`) is private.
     if (GeoLeaf._LabelButtonManager) {
         GeoLeaf._LabelButtonManager.syncImmediate(layerId);
     }
@@ -497,8 +497,8 @@ The test suite covers:
     - Returns null for invalid parameters
 
 2. **State Synchronization**
-    - `_doSync()` (privé) debounces updates (300 ms)
-    - `syncImmediate()` — la seule voie publique — executes without delay
+    - `_doSync()` (private) debounces updates (300 ms)
+    - `syncImmediate()` — the only public path — executes without delay
     - Cancels pending syncs correctly
     - Handles missing buttons gracefully
 
@@ -557,41 +557,36 @@ describe("LabelButtonManager", () => {
 
 ## Best Practices
 
-### Quelle méthode appeler
+### Which method to call
 
-⚠️ **Il n'y a qu'une méthode publique de synchronisation : `syncImmediate()`.** La colonne
-« débouncé » ci-dessous décrit `_doSync`, qui est **privée** — un appelant externe ne l'atteint
-pas. Le tableau distingue donc l'INTENTION, pas deux points d'entrée.
+::: warning
+There is only one public synchronisation method: `syncImmediate()`. The "debounced" row below
+describes `_doSync`, which is private and unreachable from outside. The table therefore separates
+intents, not two entry points.
+:::
 
-| Scénario                        | Voie                    | Motif                                     |
-| ------------------------------- | ----------------------- | ----------------------------------------- |
-| Fichier de style chargé         | `syncImmediate()`       | Non urgent, mais c'est la seule voie      |
-| Thème changé                    | `syncImmediate()`       | Ce que fait `theme-applier/visibility.ts` |
-| Config mise à jour              | `syncImmediate()`       | Idem                                      |
-| Bascule de visibilité de couche | `syncImmediate()`       | Action utilisateur, retour instantané     |
-| Clic sur le bouton              | interne                 | Géré par le gestionnaire de clic          |
-| Couche retirée de la carte      | `syncImmediate()`       | Changement d'état critique                |
-| _(débounce 300 ms)_             | `_doSync()` — **privé** | Interne au module, pas une API            |
+| Scenario                   | Path                  | Reason                                  |
+| -------------------------- | --------------------- | --------------------------------------- |
+| Style file loaded          | `syncImmediate()`     | Not urgent, but it is the only path     |
+| Theme changed              | `syncImmediate()`     | What `theme-applier/visibility.ts` does |
+| Configuration updated      | `syncImmediate()`     | Same                                    |
+| Layer visibility toggled   | `syncImmediate()`     | User action, instant feedback           |
+| Button clicked             | internal              | Handled by the click handler            |
+| Layer removed from the map | `syncImmediate()`     | Critical state change                   |
+| _(300 ms debounce)_        | `_doSync()` — private | Internal to the module, not an API      |
 
 ### Performance Tips
 
-1. **Il n'y a qu'une voie publique : `syncImmediate()`**
+1. **There is a single public path: `syncImmediate()`**
 
-    Le debounce (300 ms) existe, mais il est **interne** : il vit dans `_doSync`, qui est
-    privé. Un intégrateur n'a donc **aucun moyen de débouncer** — grouper ses appels est la
-    seule chose qu'il puisse faire de son côté.
+    The 300 ms debounce exists, but it is internal: it lives in `_doSync`, which is private.
+    An integrator therefore has no way to debounce, and grouping calls is the only measure
+    available on the caller side.
 
     ```javascript
-    // La seule voie publique, pour un lot comme pour un seul.
+    // The only public path, for a batch as much as for a single layer.
     layerIds.forEach((id) => manager.syncImmediate(id));
     ```
-
-    ⚠️ **Ce bloc conseillait `sync()` en « Good » et `syncImmediate()` en « Bad » jusqu'au
-    09/08/2026.** Le conseil était mort deux fois : `sync` n'existe pas, et la capacité qu'il
-    vantait est inatteignable depuis l'extérieur. **Ne pas exposer `_doSync` pour sauver le
-    conseil** — ce serait élargir la surface publique pour rattraper une phrase, alors que
-    c'est documenter une capacité inatteignable qui a produit le défaut. Si le debounce doit
-    devenir public un jour, ce sera une décision d'API, pas une correction de documentation.
 
 2. **Trust the decision logic**
 
@@ -637,8 +632,3 @@ console.log("Layer state:", state);
 
 - **[Layer Manager](../layer-manager/GeoLeaf_LayerManager_README.md)** — Layer Manager integration
 - **[GeoLeaf.Legend](../legend/GeoLeaf_Legend_README.md)** — Legend module
-
----
-
-**Last Updated:** March 2026
-**Module Version:** 3.0.0

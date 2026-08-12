@@ -13,12 +13,16 @@ date: 27 juillet 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/cog` ·
 **Code :** `packages/plugins/cog/` · **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa
 >    place. Les versions se lisent par `npm run versions:check`, jamais en prose.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Première fiche de plugin du dépôt : elle fixe la forme.** Un plugin n'a ni gate de
 > capacité, ni `configSchema`, ni installeur de preset. Ce qui tient sa place, c'est le
@@ -219,10 +223,10 @@ Le plugin est vérifié par `scripts/verify-plugin-contract.cjs`, câblé **en m
 ⚠️ **Deux « 13 » se ressemblent et ne désignent pas la même chose.** Le §2.4 de la roadmap écrit
 « PC-01…PC-13, 13/13 conformes » ; mesuré, ce sont **deux faits distincts** qui coïncident :
 
-| Ce qu'on croit lire | Ce que la gate mesure                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| 13 contrôles        | **Il n'y a pas de PC-06** — les contrôles sont PC-01…PC-05 et PC-07…PC-13, plus PC-04-WIDE |
-| 13 conformes        | **13 plugins** conformes — c'est le nombre de plugins publiés                              |
+| Ce qu'on croit lire | Ce que la gate mesure                                                                                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 13 contrôles        | **Il n'y a pas de PC-06** — les contrôles sont PC-01…PC-05 et PC-07…PC-13, plus PC-04-WIDE                                                                                                                                                  |
+| 13 conformes        | **Autant de plugins que le dépôt en publie** — `node scripts/verify-plugin-contract.cjs` rend le ratio. ⚠️ Cette case disait « **13** plugins » jusqu'au 11/08/2026 : ils sont **12** depuis la fusion d'`addpoi` dans `editor` au Sprint 5 |
 
 Les contrôles qui portent sur cette fiche : PC-01 (`entry.ts` existe), PC-02 et PC-03
 (l'enregistrement et la complétude de son manifeste), PC-11 (le jeton de version), PC-05
@@ -270,7 +274,7 @@ retiré du dossier de tri — trace au §Journal des décisions de
 | « le plugin est **lazy-loadé** »                                                                                               | **Faux** : `entry.ts` appelle `plugins.register`, pas `registerLazy`. L'enregistrement est immédiat |
 | « même modèle que **`plugin-storage`** »                                                                                       | Ce paquet s'appelle **`offline-ui`** depuis la restructuration                                      |
 | « `geotiff.js` ajoute **~30 KB gzip** », « moins de 5 % en ont besoin »                                                        | Chiffres mesurables ou estimés recopiés en prose — non repris, par la règle 1                       |
-| « **Node.js ≥ 18** »                                                                                                           | Le dépôt exige **≥ 22** (`CLAUDE.md`, `.nvmrc`)                                                     |
+| « **Node.js ≥ 18** »                                                                                                           | Le dépôt exige **≥ 22** — `.nvmrc` et le champ `engines.node` de `package.json` en sont la source   |
 | ✅ Les **limites** du §1.14 (pas de streaming, pas de reprojection, image statique, TIFF non géoréférencé, canevas hors écran) | **Toutes exactes**, et reprises au §Périmètre — c'est la partie la plus utile du CDC                |
 | ✅ Le tableau des contraintes techniques du §2.15                                                                              | Exact hormis la version de Node ci-dessus                                                           |
 

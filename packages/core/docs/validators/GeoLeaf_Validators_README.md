@@ -1,44 +1,40 @@
 ---
-title: "GeoLeaf.Validators — Documentation du module Validators"
+title: "GeoLeaf.Validators — Validators module documentation"
 ---
 
-# GeoLeaf.Validators — Documentation du module Validators
+# GeoLeaf.Validators — Validators module documentation
 
-**Product Version** : GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier** : `src/modules/geoleaf.validators.ts` → `src/modules/utils/validators/general-validators.ts`
-
-**Dernière mise à jour** : Mars 2026
+**Source**: `src/modules/geoleaf.validators.ts` → `src/modules/utils/validators/general-validators.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le module **GeoLeaf.Validators** fournit des fonctions de validation centralisées et réutilisables pour tous les modules GeoLeaf. Il utilise les erreurs typées de `GeoLeaf.Errors` pour une gestion cohérente des erreurs.
+The **GeoLeaf.Validators** module provides centralised, reusable validation functions for every GeoLeaf module. It relies on the typed errors of `GeoLeaf.Errors` for consistent error handling.
 
-### Responsabilités principales
+### Main responsibilities
 
-- **Validation de coordonnées** — latitude/longitude
-- **Validation d'URLs** — protocoles, formats
-- **Validation d'emails** — format RFC
-- **Validation de numéros de téléphone** — format international
-- **Validation de niveaux de zoom** — plage configurable
-- **Validation de couleurs** — hex, RGB, RGBA, CSS
-- **Validation GeoJSON** — structure et géométries
-- **Validation de champs requis** — vérification de présence
-- **Validation par lot** — `validateBatch`
+- **Coordinate validation** — latitude/longitude
+- **URL validation** — protocols, formats
+- **Email validation** — RFC format
+- **Phone number validation** — international format
+- **Zoom level validation** — configurable range
+- **Colour validation** — hex, RGB, RGBA, CSS
+- **GeoJSON validation** — structure and geometries
+- **Required field validation** — presence check
+- **Batch validation** — `validateBatch`
 
 ---
 
-## API de validation
+## Validation API
 
 ### `validateCoordinates(lat, lng, options?)`
 
-Valide des coordonnées géographiques.
+Validates geographic coordinates.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateCoordinates(
@@ -48,39 +44,39 @@ GeoLeaf.Validators.validateCoordinates(
 ): { valid: boolean; error: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
-// Coordonnées valides
+// Valid coordinates
 const result = GeoLeaf.Validators.validateCoordinates(45.5017, -73.5673);
 // Returns: { valid: true, error: null }
 
-// Latitude invalide (> 90)
+// Invalid latitude (> 90)
 const result2 = GeoLeaf.Validators.validateCoordinates(95, -73);
 // Returns: { valid: false, error: 'Latitude must be between -90 and 90' }
 
-// Mode strict (lance exception)
+// Strict mode (throws)
 try {
     GeoLeaf.Validators.validateCoordinates(95, -73, { throwOnError: true });
 } catch (error) {
-    console.error("Coordonnées invalides:", error.message);
+    console.error("Invalid coordinates:", error.message);
 }
 ```
 
-**Validations effectuées** :
+**Checks performed**:
 
-- Type `number` (pas string ou autre)
-- Valeurs finies (pas NaN, Infinity)
-- Latitude entre -90 et +90
-- Longitude entre -180 et +180
+- Type `number` (not a string or anything else)
+- Finite values (no NaN, no Infinity)
+- Latitude between -90 and +90
+- Longitude between -180 and +180
 
 ---
 
 ### `validateUrl(url, options?)`
 
-Valide une URL avec options de protocole.
+Validates a URL, with protocol options.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateUrl(
@@ -93,43 +89,43 @@ GeoLeaf.Validators.validateUrl(
 ): { valid: boolean; error: string | null; url: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
-// URL HTTPS valide
+// Valid HTTPS URL
 const result = GeoLeaf.Validators.validateUrl("https://example.com/data.json");
 // Returns: { valid: true, error: null, url: 'https://example.com/data.json' }
 
-// Protocole non autorisé
+// Protocol not allowed
 const result2 = GeoLeaf.Validators.validateUrl("ftp://example.com/file");
 // Returns: { valid: false, error: 'Protocol "ftp:" not allowed', url: null }
 
-// Autoriser seulement HTTPS
+// Allow HTTPS only
 const result3 = GeoLeaf.Validators.validateUrl("http://example.com", {
     allowedProtocols: ["https:"],
 });
 // Returns: { valid: false, error: 'Protocol "http:" not allowed', url: null }
 
-// Data URL (image uniquement)
+// Data URL (images only)
 const result4 = GeoLeaf.Validators.validateUrl("data:image/png;base64,...");
 // Returns: { valid: true, error: null, url: '...' }
 ```
 
-**Options par défaut** :
+**Default options**:
 
-- `allowedProtocols` : `['http:', 'https:', 'data:']`
-- `allowDataImages` : `true`
-- `throwOnError` : `false`
+- `allowedProtocols`: `['http:', 'https:', 'data:']`
+- `allowDataImages`: `true`
+- `throwOnError`: `false`
 
-> Les data URLs non-image (`data:text/html`, `data:application/javascript`) sont rejetées même si `allowDataImages: true`.
+> Non-image data URLs (`data:text/html`, `data:application/javascript`) are rejected even when `allowDataImages: true`.
 
 ---
 
 ### `validateEmail(email, options?)`
 
-Valide un format d'email.
+Validates an email format.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateEmail(
@@ -138,29 +134,29 @@ GeoLeaf.Validators.validateEmail(
 ): { valid: boolean; error: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
-// Email valide
+// Valid email
 GeoLeaf.Validators.validateEmail("user@example.com");
 // Returns: { valid: true, error: null }
 
-// Email invalide
+// Invalid email
 GeoLeaf.Validators.validateEmail("not-an-email");
 // Returns: { valid: false, error: 'Invalid email format' }
 
-// Formats supportés
-GeoLeaf.Validators.validateEmail("user+tag@sub.example.com"); // valide
-GeoLeaf.Validators.validateEmail("user@domain.co.uk"); // valide
+// Supported formats
+GeoLeaf.Validators.validateEmail("user+tag@sub.example.com"); // valid
+GeoLeaf.Validators.validateEmail("user@domain.co.uk"); // valid
 ```
 
 ---
 
 ### `validatePhone(phone, options?)`
 
-Valide un numéro de téléphone.
+Validates a phone number.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validatePhone(
@@ -169,7 +165,7 @@ GeoLeaf.Validators.validatePhone(
 ): { valid: boolean; error: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
 GeoLeaf.Validators.validatePhone("+33 6 12 34 56 78");
@@ -178,23 +174,23 @@ GeoLeaf.Validators.validatePhone("+33 6 12 34 56 78");
 GeoLeaf.Validators.validatePhone("06-12-34-56-78");
 // Returns: { valid: true, error: null }
 
-// Trop peu de chiffres
+// Too few digits
 GeoLeaf.Validators.validatePhone("123");
 // Returns: { valid: false, error: 'Phone number must contain at least 10 digits' }
 ```
 
-**Règles** :
+**Rules**:
 
-- Caractères autorisés : chiffres, espaces, `+`, `-`, `(`, `)`
-- Au moins 10 chiffres après normalisation
+- Allowed characters: digits, spaces, `+`, `-`, `(`, `)`
+- At least 10 digits after normalisation
 
 ---
 
 ### `validateZoom(zoom, options?)`
 
-Valide un niveau de zoom cartographique.
+Validates a map zoom level.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateZoom(
@@ -207,7 +203,7 @@ GeoLeaf.Validators.validateZoom(
 ): { valid: boolean; error: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
 GeoLeaf.Validators.validateZoom(12);
@@ -216,20 +212,20 @@ GeoLeaf.Validators.validateZoom(12);
 GeoLeaf.Validators.validateZoom(25);
 // Returns: { valid: false, error: 'Zoom must be between 0 and 20' }
 
-// Plage personnalisée
+// Custom range
 GeoLeaf.Validators.validateZoom(15, { min: 5, max: 18 });
 // Returns: { valid: true, error: null }
 ```
 
-**Valeurs par défaut** : `min: 0`, `max: 20`
+**Default values**: `min: 0`, `max: 20`
 
 ---
 
 ### `validateRequiredFields(config, requiredFields, options?)`
 
-Vérifie la présence de champs requis dans un objet de configuration.
+Checks that required fields are present in a configuration object.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateRequiredFields(
@@ -239,7 +235,7 @@ GeoLeaf.Validators.validateRequiredFields(
 ): { valid: boolean; error: string | null; missing: string[] }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
 const config = { map: { target: "my-map" } };
@@ -255,9 +251,9 @@ const result2 = GeoLeaf.Validators.validateRequiredFields(config, ["map"]);
 
 ### `validateGeoJSON(geojson, options?)`
 
-Valide la structure d'un objet GeoJSON.
+Validates the structure of a GeoJSON object.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateGeoJSON(
@@ -266,10 +262,10 @@ GeoLeaf.Validators.validateGeoJSON(
 ): { valid: boolean; error: string | null }
 ```
 
-**Exemples** :
+**Examples**:
 
 ```js
-// FeatureCollection valide
+// Valid FeatureCollection
 const geojson = {
     type: "FeatureCollection",
     features: [
@@ -283,12 +279,12 @@ const geojson = {
 GeoLeaf.Validators.validateGeoJSON(geojson);
 // Returns: { valid: true, error: null }
 
-// GeoJSON invalide (features manquant)
+// Invalid GeoJSON (features missing)
 GeoLeaf.Validators.validateGeoJSON({ type: "FeatureCollection" });
 // Returns: { valid: false, error: 'FeatureCollection must have a features array' }
 ```
 
-**Types GeoJSON valides** :
+**Valid GeoJSON types**:
 
 `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`, `MultiPolygon`, `GeometryCollection`, `Feature`, `FeatureCollection`
 
@@ -296,9 +292,9 @@ GeoLeaf.Validators.validateGeoJSON({ type: "FeatureCollection" });
 
 ### `validateColor(color, options?)`
 
-Valide un format de couleur CSS.
+Validates a CSS colour format.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateColor(
@@ -307,32 +303,32 @@ GeoLeaf.Validators.validateColor(
 ): { valid: boolean; error: string | null }
 ```
 
-**Formats supportés** :
+**Supported formats**:
 
-- Hex court : `#fff`, `#000`
-- Hex long : `#ffffff`, `#000000`
-- RGB : `rgb(255, 0, 0)`
-- RGBA : `rgba(255, 0, 0, 0.5)`
-- Toute couleur CSS valide (via `CSS.supports('color', value)`)
+- Short hex: `#fff`, `#000`
+- Long hex: `#ffffff`, `#000000`
+- RGB: `rgb(255, 0, 0)`
+- RGBA: `rgba(255, 0, 0, 0.5)`
+- Any valid CSS colour (through `CSS.supports('color', value)`)
 
-**Exemples** :
+**Examples**:
 
 ```js
-GeoLeaf.Validators.validateColor("#ff0000"); // valide
-GeoLeaf.Validators.validateColor("rgb(255, 0, 0)"); // valide
-GeoLeaf.Validators.validateColor("rgba(0,0,0,0.5)"); // valide
-GeoLeaf.Validators.validateColor("red"); // valide (CSS named)
-GeoLeaf.Validators.validateColor("hsl(120, 100%, 50%)"); // valide (via CSS.supports)
-GeoLeaf.Validators.validateColor("#gggggg"); // invalide
+GeoLeaf.Validators.validateColor("#ff0000"); // valid
+GeoLeaf.Validators.validateColor("rgb(255, 0, 0)"); // valid
+GeoLeaf.Validators.validateColor("rgba(0,0,0,0.5)"); // valid
+GeoLeaf.Validators.validateColor("red"); // valid (CSS named)
+GeoLeaf.Validators.validateColor("hsl(120, 100%, 50%)"); // valid (through CSS.supports)
+GeoLeaf.Validators.validateColor("#gggggg"); // invalid
 ```
 
 ---
 
 ### `validateBatch(validations)`
 
-Exécute plusieurs validations en une seule passe et agrège les erreurs.
+Runs several validations in a single pass and aggregates the errors.
 
-**Signature** :
+**Signature**:
 
 ```typescript
 GeoLeaf.Validators.validateBatch(
@@ -340,7 +336,7 @@ GeoLeaf.Validators.validateBatch(
 ): { valid: boolean; errors: string[] }
 ```
 
-**Type `ValidateBatchItem`** :
+**`ValidateBatchItem` type**:
 
 ```typescript
 {
@@ -351,7 +347,7 @@ GeoLeaf.Validators.validateBatch(
 }
 ```
 
-**Exemple** :
+**Example**:
 
 ```js
 const result = GeoLeaf.Validators.validateBatch([
@@ -372,28 +368,28 @@ const result = GeoLeaf.Validators.validateBatch([
     },
 ]);
 // Returns: { valid: true, errors: [] }
-// Si erreurs : { valid: false, errors: ['latitude: ...', 'url: ...'] }
+// On failure: { valid: false, errors: ['latitude: ...', 'url: ...'] }
 ```
 
 ---
 
-## Intégration dans GeoLeaf
+## Integration inside GeoLeaf
 
-### Où les validateurs sont utilisés
+### Where the validators are used
 
-| Module         | Validations appliquées                      |
+| Module         | Validations applied                         |
 | -------------- | ------------------------------------------- |
-| **Core**       | `validateCoordinates()` pour center/bounds  |
+| **Core**       | `validateCoordinates()` for center/bounds   |
 | **POI**        | `validateCoordinates()`, `validateColor()`  |
 | **GeoJSON**    | `validateGeoJSON()`, `validateUrl()`        |
 | **Route**      | `validateCoordinates()`, `validateUrl()`    |
 | **Config**     | `validateUrl()`, `validateRequiredFields()` |
-| **BaseLayers** | `validateUrl()` pour les URLs de tuiles     |
+| **BaseLayers** | `validateUrl()` for tile URLs               |
 
-### Exemple d'utilisation interne
+### Internal usage example
 
 ```js
-// Dans GeoLeaf.Core.init()
+// Inside GeoLeaf.Core.init()
 function init(options) {
     const validation = GeoLeaf.Validators.validateCoordinates(
         options.center[0],
@@ -401,43 +397,43 @@ function init(options) {
         { throwOnError: true }
     );
 
-    // ValidationError lancée automatiquement si invalide
-    // Continue l'initialisation...
+    // ValidationError is thrown automatically when invalid
+    // Carry on with initialisation...
 }
 ```
 
 ---
 
-## Validateurs de style (via `StyleValidator`)
+## Style validators (through `StyleValidator`)
 
-Le module expose également des validateurs de style GeoLeaf accessibles via `GeoLeaf.Validators` :
+The module also exposes the GeoLeaf style validators, reachable through `GeoLeaf.Validators`:
 
-- `validateStyleRules(rules)` — valide les règles de style conditionnelles
-- `validateWhenCondition(condition)` — valide une condition `when`
-- `validateSimpleCondition(condition)` — valide une condition simple
-- `validateScales(scales)` — valide une configuration de scales
-- `validateLegend(legend)` — valide une configuration de légende
-- `validateStyle(style)` — validation complète d'un objet style
-- `formatValidationErrors(errors)` — formate les erreurs pour affichage
+- `validateStyleRules(rules)` — validates conditional style rules
+- `validateWhenCondition(condition)` — validates a `when` condition
+- `validateSimpleCondition(condition)` — validates a simple condition
+- `validateScales(scales)` — validates a scales configuration
+- `validateLegend(legend)` — validates a legend configuration
+- `validateStyle(style)` — full validation of a style object
+- `formatValidationErrors(errors)` — formats the errors for display
 
 ---
 
 ## Tests
 
 ```bash
-# Lancer les tests Validators
+# Run the Validators tests
 npm test -- validators
 
-# Fichiers de tests
+# Test files
 # packages/core/__tests__/validators/validators.test.js
 ```
 
-**Couverture** : 90 %+ (120+ tests passants)
+**Coverage**: 90%+ (120+ passing tests)
 
 ---
 
-## Voir aussi
+## See also
 
-- `GeoLeaf.Errors` — erreurs typées utilisées par Validators (`ValidationError`, `SecurityError`, `ConfigError`)
-- `GeoLeaf.Security` — validation de sécurité XSS/CSRF
-- `GeoLeaf.Core` — utilisation lors de l'initialisation
+- `GeoLeaf.Errors` — typed errors used by Validators (`ValidationError`, `SecurityError`, `ConfigError`)
+- `GeoLeaf.Security` — XSS/CSRF security validation
+- `GeoLeaf.Core` — used during initialisation

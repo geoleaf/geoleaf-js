@@ -1,76 +1,72 @@
 ---
-title: "GeoLeaf.Labels – Documentation du module Labels"
+title: "GeoLeaf.Labels – Labels module documentation"
 ---
 
-# GeoLeaf.Labels – Documentation du module Labels
+# GeoLeaf.Labels – Labels module documentation
 
-**Version**: 3.0.0
-
-**Fichiers**:
+**Files**:
 
 - `src/modules/optional/labels/` (labels, label-renderer, label-button-manager)
 
-    **Dernière mise à jour :** mars 2026
+---
+
+## Overview
+
+The **GeoLeaf.Labels** module provides a system for managing **floating labels** (permanent tooltips) on map features. It displays text or icons above GeoJSON features permanently, with zoom control and customisable styles.
+
+### Main responsibilities
+
+- **Label display** - Permanent tooltips on features
+
+- **Per-layer management** - Enable/disable per layer
+
+- **Custom styles** - Loading of CSS style files
+
+- **Zoom control** - Conditional display according to the zoom level
+
+- **Dynamic rendering** - Templates for label content
 
 ---
 
-## 📌 Vue d'ensemble
+## Architecture
 
-Le module **GeoLeaf.Labels** fournit un système de gestion des **étiquettes flottantes** (tooltips permanents) sur les entités cartographiques. Il permet d'afficher du texte ou des icônes au-dessus des features GeoJSON de manière permanente, avec contrôle du zoom et des styles personnalisables.
+The Labels module is made of 3 sub-modules:
 
-### Responsabilités principales
+### 1. **labels.js** (365 lines)
 
-- ✅ **Affichage d'étiquettes** - Tooltips permanents sur les features
+Main orchestrating module:
 
-- ✅ **Gestion par couche** - Activation/désactivation par layer
+- System initialisation
 
-- ✅ **Styles personnalisés** - Chargement de fichiers de style CSS
+- Layer state management
 
-- ✅ **Contrôle du zoom** - Affichage conditionnel selon le niveau de zoom
+- Layer event binding
 
-- ✅ **Rendu dynamique** - Templates pour le contenu des labels
-
----
-
-## 🏗️ Architecture
-
-Le module Labels est composé de 3 sous-modules :
-
-### 1. **labels.js** (365 lignes)
-
-Module principal orchestrateur :
-
-- Initialisation du système
-
-- Gestion de l'état des layers
-
-- Attachement des événements de couches
-
-- API publique
+- Public API
 
 ### 2. **label-renderer.js**
 
-Responsable du rendu des tooltips :
+Responsible for rendering the tooltips:
 
-- Création des tooltips MapLibre GL
+- Creation of MapLibre GL tooltips
 
-- Application des templates
+- Template application
 
-- Mise à jour dynamique
+- Dynamic updates
 
-- Gestion du cycle de vie
+- Lifecycle management
 
 ---
 
-## 📚 API Publique
+## Public API
 
 ### `Labels.init(options?)`
 
-Initialise le système de labels.
+Initialises the labels system.
 
 ```js
 GeoLeaf.Labels.init();
-// ou avec options
+// or with options
 GeoLeaf.Labels.init({ defaultEnabled: false });
 ```
 
@@ -78,7 +74,7 @@ GeoLeaf.Labels.init({ defaultEnabled: false });
 
 ### `Labels.initializeLayerLabels(layerId)`
 
-Initialise le système de labels pour une couche spécifique (prépare sans activer).
+Initialises the labels system for a given layer (prepares it without enabling it).
 
 ```js
 GeoLeaf.Labels.initializeLayerLabels("poi_restaurants");
@@ -88,25 +84,25 @@ GeoLeaf.Labels.initializeLayerLabels("poi_restaurants");
 
 ### `Labels.enableLabels(layerId, labelConfig?, showImmediately?)`
 
-Active les labels pour une couche. **Méthode asynchrone.**
+Enables labels for a layer. **Asynchronous method.**
 
-**Paramètres** :
+**Parameters**:
 
-- `layerId` (String) - ID de la couche GeoJSON
-- `labelConfig` (Object, optionnel) - Configuration des labels (voir [Configuration dans profile.json](#configuration-dans-profilejson))
-- `showImmediately` (Boolean, optionnel) - Afficher immédiatement sans attendre le zoom (défaut: `false`)
+- `layerId` (String) - ID of the GeoJSON layer
+- `labelConfig` (Object, optional) - Label configuration (see [Configuration in profile.json](#configuration-in-profilejson))
+- `showImmediately` (Boolean, optional) - Display immediately without waiting for the zoom (default: `false`)
 
 ```js
-// Activation simple
+// Simple activation
 await GeoLeaf.Labels.enableLabels("poi_restaurants");
 
-// Avec config inline
+// With an inline config
 await GeoLeaf.Labels.enableLabels("poi_restaurants", {
     property: "name",
     minZoom: 14,
 });
 
-// Affichage immédiat
+// Immediate display
 await GeoLeaf.Labels.enableLabels("poi_hotels", { property: "name" }, true);
 ```
 
@@ -114,7 +110,7 @@ await GeoLeaf.Labels.enableLabels("poi_hotels", { property: "name" }, true);
 
 ### `Labels.disableLabels(layerId)`
 
-Désactive les labels pour une couche.
+Disables labels for a layer.
 
 ```js
 GeoLeaf.Labels.disableLabels("poi_restaurants");
@@ -124,7 +120,7 @@ GeoLeaf.Labels.disableLabels("poi_restaurants");
 
 ### `Labels.toggleLabels(layerId)` → `boolean`
 
-Bascule l'état des labels (actif ↔ inactif). Retourne le nouvel état.
+Toggles the label state (on ↔ off). Returns the new state.
 
 ```js
 const isNowEnabled = GeoLeaf.Labels.toggleLabels("poi_restaurants");
@@ -134,7 +130,7 @@ const isNowEnabled = GeoLeaf.Labels.toggleLabels("poi_restaurants");
 
 ### `Labels.areLabelsEnabled(layerId)` → `boolean`
 
-Vérifie si les labels sont actifs pour une couche.
+Checks whether labels are active for a layer.
 
 ```js
 if (GeoLeaf.Labels.areLabelsEnabled("poi_restaurants")) {
@@ -146,11 +142,11 @@ if (GeoLeaf.Labels.areLabelsEnabled("poi_restaurants")) {
 
 ### `Labels.hasLabelConfig(layerId)` → `boolean`
 
-Vérifie si une configuration de labels existe pour une couche.
+Checks whether a label configuration exists for a layer.
 
 ```js
 if (GeoLeaf.Labels.hasLabelConfig("poi_restaurants")) {
-    // config présente
+    // config present
 }
 ```
 
@@ -158,7 +154,7 @@ if (GeoLeaf.Labels.hasLabelConfig("poi_restaurants")) {
 
 ### `Labels.refreshLabels(layerId)`
 
-Vide et recrée les labels d'une couche (utile après mise à jour des données).
+Clears and recreates the labels of a layer (useful after a data update).
 
 ```js
 GeoLeaf.Labels.refreshLabels("poi_restaurants");
@@ -166,9 +162,9 @@ GeoLeaf.Labels.refreshLabels("poi_restaurants");
 
 ---
 
-## 🎨 Configuration dans profile.json
+## Configuration in profile.json
 
-Les labels peuvent être configurés directement dans le fichier de profil :
+Labels can be configured directly in the profile file:
 
 ```json
 {
@@ -216,18 +212,18 @@ Les labels peuvent être configurés directement dans le fichier de profil :
 
 ---
 
-## 💡 Exemples d'utilisation
+## Usage examples
 
-### Exemple 1 : Labels simples
+### Example 1: simple labels
 
 ```js
-// Initialiser le module
+// Initialise the module
 
 GeoLeaf.Labels.init();
 
-// Charger une couche GeoJSON
+// Load a GeoJSON layer
 
-/* GeoLeaf.GeoJSON est interne - configurer via geojsonLayers dans geoleaf.config.json */ // Activer les labels sur les villes
+/* GeoLeaf.GeoJSON is internal - configure through geojsonLayers in geoleaf.config.json */ // Enable labels on the cities layer
 
 await GeoLeaf.Labels.enableLabels("cities", {
     property: "name",
@@ -236,7 +232,7 @@ await GeoLeaf.Labels.enableLabels("cities", {
 });
 ```
 
-### Exemple 2 : Labels avec template fonction
+### Example 2: labels with a function template
 
 ```js
 await GeoLeaf.Labels.enableLabels("poi_shops", {
@@ -249,7 +245,7 @@ await GeoLeaf.Labels.enableLabels("poi_shops", {
 });
 ```
 
-### Exemple 3 : Labels avec gestion du zoom
+### Example 3: labels driven by zoom
 
 ```js
 const map = GeoLeaf.Core.getMap();
@@ -267,7 +263,7 @@ map.on("zoomend", () => {
 });
 ```
 
-### Exemple 4 : Labels multilingues
+### Example 4: multilingual labels
 
 ```js
 const currentLang = localStorage.getItem("language") || "fr";
@@ -280,14 +276,14 @@ await GeoLeaf.Labels.enableLabels("poi_museums", {
 
 ---
 
-## 🎨 Styles CSS personnalisés
+## Custom CSS styles
 
-### Structure d'un fichier de style
+### Structure of a style file
 
 ```css
 /* styles/labels/custom.css */
 
-/* Style de base du label (classe GeoLeaf custom) */
+/* Base label style (custom GeoLeaf class) */
 .gl-label.custom-label {
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid #fff;
@@ -305,7 +301,7 @@ await GeoLeaf.Labels.enableLabels("poi_museums", {
 }
 ```
 
-### Application du style
+### Applying the style
 
 ```js
 await GeoLeaf.Labels.enableLabels("my_layer", {
@@ -317,9 +313,9 @@ await GeoLeaf.Labels.enableLabels("my_layer", {
 
 ---
 
-## 🔧 Fonctionnement interne
+## Internal behaviour
 
-### 1. État du module
+### 1. Module state
 
 ```js
 const _state = {
@@ -331,13 +327,13 @@ const _state = {
 
     styleCache: new Map(),
 
-    // Flag écouteur de zoom
+    // Zoom listener flag
 
     zoomListenerAttached: false,
 };
 ```
 
-### 2. Séquence d'activation
+### 2. Activation sequence
 
 ```mermaid
 
@@ -373,9 +369,9 @@ sequenceDiagram
 
 ```
 
-### 3. Gestion du zoom
+### 3. Zoom handling
 
-Le module attache un écouteur sur l'événement `zoomend` de la carte pour mettre à jour l'affichage des labels selon les contraintes `minZoom` et `maxZoom` :
+The module attaches a listener to the map `zoomend` event to update label display according to the `minZoom` and `maxZoom` constraints:
 
 ```js
 map.on("zoomend", () => {
@@ -385,15 +381,15 @@ map.on("zoomend", () => {
         const { config, tooltips } = layerState;
 
         if (config.minZoom && zoom < config.minZoom) {
-            // Cacher les tooltips
+            // Hide the tooltips
 
             tooltips.forEach((t) => t.remove());
         } else if (config.maxZoom && zoom > config.maxZoom) {
-            // Cacher les tooltips
+            // Hide the tooltips
 
             tooltips.forEach((t) => t.remove());
         } else {
-            // Afficher les tooltips
+            // Show the tooltips
 
             tooltips.forEach((t) => t.addTo(map));
         }
@@ -403,70 +399,70 @@ map.on("zoomend", () => {
 
 ---
 
-## ⚠️ Limitations et notes
+## Limitations and notes
 
 ### 1. Performance
 
-- ⚠️ **Grand nombre de features** : Au-delà de 500-1000 labels visibles simultanément, les performances peuvent se dégrader
+- **Large feature counts**: beyond 500-1000 labels visible at the same time, performance can degrade
 
-- ✅ **Solution** : Utiliser `minZoom` pour limiter l'affichage ou activer le clustering
+- **Remedy**: use `minZoom` to limit display, or enable clustering
 
-### 2. Compatibilité
+### 2. Compatibility
 
-- ✅ Compatible avec les couches GeoJSON
+- Compatible with GeoJSON layers
 
-- ⚠️ Non compatible avec les marqueurs POI directs (utiliser le système de popup POI à la place)
+- Not compatible with direct POI markers (use the POI popup system instead)
 
-- ✅ Fonctionne avec tous les types de géométries (Point, LineString, Polygon)
+- Works with every geometry type (Point, LineString, Polygon)
 
 ### 3. Styles
 
-- Les styles CSS doivent être chargés avant l'affichage
+- CSS styles must be loaded before display
 
-- Le cache des styles est conservé pendant toute la session
+- The style cache is kept for the whole session
 
-- Les fichiers CSS doivent être accessibles (CORS)
-
----
-
-## 🔗 Modules liés
-
-- **GeoLeaf.GeoJSON** - Fournit les couches et features pour les labels
-
-- **GeoLeaf.Log** - Journalisation des opérations
-
-- **MapLibre GL JS** - Popup et overlay natifs MapLibre GL JS pour les tooltips
+- CSS files must be reachable (CORS)
 
 ---
 
-## 📈 Améliorations futures
+## Related modules
 
-### Prévues
+- **GeoLeaf.GeoJSON** - Supplies the layers and features the labels are attached to
 
-- [ ] Support des icônes dans les labels
+- **GeoLeaf.Log** - Operation logging
 
-- [ ] Animation d'entrée/sortie des labels
-
-- [ ] Collision detection (éviter la superposition)
-
-- [ ] Clustering intelligent des labels
-
-- [ ] Templates HTML enrichis (pas seulement texte)
-
-### En discussion
-
-- [ ] Édition inline des labels
-
-- [ ] Export des labels en PDF/Image
-
-- [ ] Synchronisation avec le système de filtres
+- **MapLibre GL JS** - Native MapLibre GL JS popup and overlay used for the tooltips
 
 ---
 
-## 📝 Exemple complet
+## Future improvements
+
+### Planned
+
+- [ ] Icon support inside labels
+
+- [ ] Enter/exit animation for labels
+
+- [ ] Collision detection (avoid overlap)
+
+- [ ] Smart label clustering
+
+- [ ] Rich HTML templates (not text only)
+
+### Under discussion
+
+- [ ] Inline label editing
+
+- [ ] Label export to PDF/image
+
+- [ ] Synchronisation with the filter system
+
+---
+
+## Full example
 
 ```js
-// 1. Initialiser GeoLeaf
+// 1. Initialise GeoLeaf
 
 GeoLeaf.init({
     map: {
@@ -478,13 +474,13 @@ GeoLeaf.init({
     },
 });
 
-// 2. Initialiser le module Labels
+// 2. Initialise the Labels module
 
 GeoLeaf.Labels.init();
 
-// 3. Charger des données GeoJSON
+// 3. Load GeoJSON data
 
-/* GeoLeaf.GeoJSON est interne - configurer via geojsonLayers dans geoleaf.config.json */ // 4. Activer les labels avec style personnalisé
+/* GeoLeaf.GeoJSON is internal - configure through geojsonLayers in geoleaf.config.json */ // 4. Enable labels with a custom style
 
 await GeoLeaf.Labels.enableLabels("restaurants", {
     template: (props) => `${props.name} ⭐${props.rating}`,
@@ -495,11 +491,11 @@ await GeoLeaf.Labels.enableLabels("restaurants", {
     className: "restaurant-label",
 });
 
-// 5. Gérer les interactions
+// 5. Handle interactions
 
 document.getElementById("toggle-labels").addEventListener("click", () => {
     const isNowEnabled = GeoLeaf.Labels.toggleLabels("restaurants");
-    // ou avec vérification explicite :
+    // or with an explicit check:
     // if (GeoLeaf.Labels.areLabelsEnabled("restaurants")) {
     //     GeoLeaf.Labels.disableLabels("restaurants");
     // } else {
@@ -510,9 +506,9 @@ document.getElementById("toggle-labels").addEventListener("click", () => {
 
 ---
 
-## 📄 Configuration du label dans les fichiers de style
+## Label configuration in style files
 
-La configuration des étiquettes cartographiques est définie dans les fichiers de style (`styles/*.json`) de chaque couche, via la propriété `label` (objet) :
+Map label configuration is defined in the style files (`styles/*.json`) of each layer, through the `label` property (an object):
 
 ```json
 {
@@ -549,23 +545,23 @@ La configuration des étiquettes cartographiques est définie dans les fichiers 
 }
 ```
 
-| Propriété              | Type    | Description                                           |
-| ---------------------- | ------- | ----------------------------------------------------- |
-| `enabled`              | boolean | Activer les étiquettes pour ce style                  |
-| `visibleByDefault`     | boolean | Afficher les étiquettes dès l'activation de la couche |
-| `field`                | string  | Champ GeoJSON à afficher (ex. `"properties.nom"`)     |
-| `font.family`          | string  | Famille de police                                     |
-| `font.sizePt`          | number  | Taille de police en points                            |
-| `font.weight`          | number  | Graisse (0–900)                                       |
-| `font.bold` / `italic` | boolean | Formatage texte                                       |
-| `color`                | string  | Couleur du texte (hex/CSS)                            |
-| `opacity`              | number  | Opacité du texte (0–1)                                |
-| `buffer.enabled`       | boolean | Activer le halo de contour                            |
-| `buffer.color`         | string  | Couleur du halo                                       |
-| `buffer.sizePx`        | number  | Épaisseur du halo en pixels                           |
-| `background.enabled`   | boolean | Activer le fond de l'étiquette                        |
-| `background.paddingPx` | number  | Marge interne du fond en pixels                       |
-| `offset.distancePx`    | number  | Distance du label par rapport à la feature            |
-| `offset.angleDeg`      | number  | Angle d'offset en degrés (0 = haut)                   |
+| Property               | Type    | Description                                        |
+| ---------------------- | ------- | -------------------------------------------------- |
+| `enabled`              | boolean | Enable labels for this style                       |
+| `visibleByDefault`     | boolean | Show labels as soon as the layer is enabled        |
+| `field`                | string  | GeoJSON field to display (e.g. `"properties.nom"`) |
+| `font.family`          | string  | Font family                                        |
+| `font.sizePt`          | number  | Font size in points                                |
+| `font.weight`          | number  | Weight (0–900)                                     |
+| `font.bold` / `italic` | boolean | Text formatting                                    |
+| `color`                | string  | Text colour (hex/CSS)                              |
+| `opacity`              | number  | Text opacity (0–1)                                 |
+| `buffer.enabled`       | boolean | Enable the outline halo                            |
+| `buffer.color`         | string  | Halo colour                                        |
+| `buffer.sizePx`        | number  | Halo thickness in pixels                           |
+| `background.enabled`   | boolean | Enable the label background                        |
+| `background.paddingPx` | number  | Inner padding of the background, in pixels         |
+| `offset.distancePx`    | number  | Distance between the label and the feature         |
+| `offset.angleDeg`      | number  | Offset angle in degrees (0 = up)                   |
 
-> Voir [schema/README.md](../schema/README.md) pour la spécification complète.
+> See [schema/README.md](../schema/README.md) for the full specification.

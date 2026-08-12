@@ -62,7 +62,8 @@ Sources (packages/core, packages/plugins/*)
 - **Build** : Turborepo build → `packages/core/dist`, `packages/plugins/*/dist`.
 - **Déploiement local / test** : `npm run build:deploy` produit en une fois **deploy/deploy-core/**, **deploy/deploy-storage/**, **deploy/deploy-storage-addpoi/** à partir des fichiers du dossier `demo/` (index.html, demo-header.html, init.js, demo.extensions.js). Tester depuis `deploy/` revient au même que tester la démo (même page, bundles de prod). Servir avec `npx serve deploy -p 8765` ou `node scripts/serve-test.cjs` (ports 3001–3003).
 - **Publication** : les 18 packages sur npmjs public. ⚠️ Plus aucune synchronisation vers les dépôts publics — les 3 miroirs sont supprimés (ARCHI S9.0).
-- **Docs** : les sources Markdown de `packages/core/docs/` partent dans le tarball npm de `@geoleaf/core`. ⚠️ La chaîne vers `docs.geoleaf.dev` est **coupée** : `deploy-docs.yml` s'exécute dans `GeoLeaf-Core`, que plus rien n'alimente (ARCHI S9.0). Le site reste en ligne, figé — voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §5.
+- **Docs** : le site se publie par `npm run docs:deploy`, **manuel**, sur `www.geoleaf.dev/docs/`. Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2.
+    - ⚠️ **Cette ligne était fausse sur ses trois assertions, corrigée le 11/08/2026.** ① Les sources de `packages/core/docs/` **ne partent plus dans le tarball** : `docs/` a quitté les `files[]` ; un paquet n'emporte que `README.md` + `dist/`. ② **`docs.geoleaf.dev` rend NXDOMAIN** — le sous-domaine n'existe pas. ③ La chaîne n'est pas « coupée » : `scripts/deploy-docs.cjs` est **vivant**, il est simplement manuel et n'a pas été relancé — le rendu publié est à `v2.1.5`. Un site périmé appelle un geste, pas un constat.
 
 ---
 

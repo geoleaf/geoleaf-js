@@ -1,44 +1,45 @@
 ---
-title: "GeoLeaf — Utilisation via CDN et NPM"
+title: "GeoLeaf — Usage via CDN and npm"
 ---
 
-# GeoLeaf — Utilisation via CDN et NPM
+# GeoLeaf — Usage via CDN and npm
 
-**Version produit** : GeoLeaf Platform V3
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière mise à jour** : mars 2026
-
-> Convention de versioning : **Platform V3** est le label produit ; le SemVer technique des packages/releases est en **3.0.x**. Voir [VERSIONING_POLICY.md](VERSIONING_POLICY.md).
+**Applies to:** `@geoleaf/core` v3.x
 
 ---
 
-Ce document décrit les méthodes recommandées pour charger GeoLeaf dans une application web :
+This page describes the recommended ways to load GeoLeaf in a web application:
 
-- via **CDN UNPKG** ;
-- via **CDN jsDelivr** ;
-- via **NPM / ESM** dans un bundler moderne ;
-- via un **bundle ESM local** (`dist/geoleaf.esm.js`) ;
-- avec un **exemple HTML complet** ;
-- avec des **avertissements API** autour de `GeoLeaf.Core.init(...)`.
+- via the **UNPKG CDN**;
+- via the **jsDelivr CDN**;
+- via **npm / ESM** in a modern bundler;
+- via a **local ESM bundle** (`dist/geoleaf.esm.js`);
+- with a **complete HTML example**;
+- with **API warnings** around `GeoLeaf.Core.init(...)`.
 
-> **Note v2.0.0 :** GeoLeaf distribue exclusivement en **ESM**. Il n'y a plus de bundle UMD (`geoleaf.min.js`). Utiliser `<script type="module">` ou un bundler moderne (Vite, Webpack, Rollup).
+> **Note (v2.0.0):** GeoLeaf is distributed exclusively as **ESM**. There is no UMD bundle
+> (`geoleaf.min.js`) any more. Use `<script type="module">` or a modern bundler (Vite, Webpack,
+> Rollup).
 
-> **Note** : les URLs CDN ci-dessous supposent que le package `@geoleaf/core` est publié sur NPM.
+> **Peer dependency:** `maplibre-gl ^6.0.0` must be loaded separately — it is **not** included in
+> the GeoLeaf bundle.
 
-> **Peer dependency** : `maplibre-gl ^6.0.0` doit être chargé séparément — il n'est **pas** inclus dans le bundle GeoLeaf.
+::: warning
 
-> 🛑 **Les trois recettes ci-dessous ne chargeaient que la FEUILLE DE STYLE de MapLibre, jamais son JavaScript** — mesuré le 08/08/2026, défaut antérieur à la montée en v6 et sans rapport avec elle. `new maplibregl.Map()` levait donc sur un global absent : aucune des trois ne pouvait fonctionner. Elles portent désormais le shim qui manquait. C'est la même classe que le défaut consigné en 6.7b, où les deux README chargeaient MapLibre sous une forme qui ne publiait pas le global.
+**MapLibre has been ESM-only since v6** and no longer exposes a global: the two shim lines are
+what puts `globalThis.maplibregl` back, which is where GeoLeaf reads the engine. That shim is
+**inline**, so it requires `'unsafe-inline'` (or a nonce/hash) in `script-src` — in production,
+prefer the self-hosted setup described in [`GETTING_STARTED.md`](GETTING_STARTED.md), where the
+shim is a file.
 
-> ⚠️ **MapLibre est ESM-only depuis sa v6** et n'expose plus de global : les deux lignes de shim sont ce qui repose `globalThis.maplibregl`, que GeoLeaf lit. Ce shim est **en ligne**, donc il exige `'unsafe-inline'` (ou un nonce/hash) dans `script-src` — en production, préférer l'auto-hébergement décrit dans [`GETTING_STARTED.md`](GETTING_STARTED.md), dont le shim est un fichier.
-
-> **Périmètre licence** : le package `@geoleaf/core` est sous licence MIT. Les plugins sont distribués séparément — voir §10 (tous les plugins sont MIT sur npmjs).
+:::
 
 ---
 
-## 1. Utilisation via UNPKG (CDN)
+## 1. Usage via UNPKG (CDN)
 
 ```html
-<!-- MapLibre GL JS (peer dependency — doit être chargé avant GeoLeaf) -->
+<!-- MapLibre GL JS (peer dependency — must be loaded before GeoLeaf) -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
 <script type="module">
     import * as maplibregl from "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -57,7 +58,7 @@ Ce document décrit les méthodes recommandées pour charger GeoLeaf dans une ap
 
 ---
 
-## 2. Utilisation via jsDelivr (CDN)
+## 2. Usage via jsDelivr (CDN)
 
 ```html
 <!-- MapLibre GL JS -->
@@ -82,17 +83,17 @@ Ce document décrit les méthodes recommandées pour charger GeoLeaf dans une ap
 
 ---
 
-## 3. Utilisation locale du bundle ESM (dist/)
+## 3. Local use of the ESM bundle (dist/)
 
 ```html
-<!-- MapLibre GL JS (auto-hébergé ici — le shim est un fichier, pas un bloc en ligne) -->
+<!-- MapLibre GL JS (self-hosted here — the shim is a file, not an inline block) -->
 <link rel="stylesheet" href="/vendor/maplibre-gl/maplibre-gl.css" />
 <script type="module" src="/vendor/maplibre-gl/global.mjs"></script>
 
-<!-- GeoLeaf styles locaux -->
+<!-- Local GeoLeaf styles -->
 <link rel="stylesheet" href="/dist/geoleaf-main.min.css" />
 
-<!-- GeoLeaf ESM local -->
+<!-- Local GeoLeaf ESM -->
 <script type="module">
     import { Core } from "/dist/geoleaf.esm.js";
     // ...
@@ -101,7 +102,7 @@ Ce document décrit les méthodes recommandées pour charger GeoLeaf dans une ap
 
 ---
 
-## 4. Import NPM / ESM dans un bundler moderne
+## 4. npm / ESM import in a modern bundler
 
 ```bash
 npm install @geoleaf/core maplibre-gl
@@ -116,7 +117,7 @@ import "@geoleaf/core/style.css";
 
 Core.init({
     mapId: "geoleaf-map",
-    center: [-32.95, -60.65], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+    center: [-32.95, -60.65], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], conversion is internal
     zoom: 12,
     theme: "light",
 });
@@ -124,7 +125,7 @@ Core.init({
 
 ---
 
-## 5. Exemple HTML complet
+## 5. Complete HTML example
 
 ```html
 <!DOCTYPE html>
@@ -132,9 +133,9 @@ Core.init({
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Exemple GeoLeaf — CDN ESM</title>
+        <title>GeoLeaf example — CDN ESM</title>
 
-        <!-- MapLibre GL JS (peer dependency) — feuille de style ET moteur -->
+        <!-- MapLibre GL JS (peer dependency) — stylesheet AND engine -->
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
@@ -172,7 +173,7 @@ Core.init({
             document.addEventListener("DOMContentLoaded", () => {
                 Core.init({
                     mapId: "geoleaf-map",
-                    center: [-32.95, -60.65], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+                    center: [-32.95, -60.65], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], conversion is internal
                     zoom: 12,
                     theme: "light",
                 });
@@ -189,7 +190,7 @@ Core.init({
 ```typescript
 interface GeoLeafCoreInitOptions {
     mapId: string;
-    center: [number, number]; // [lat, lng] — convention GeoLeaf
+    center: [number, number]; // [lat, lng] — GeoLeaf convention
     zoom: number;
     theme?: string;
     basemapId?: string;
@@ -206,97 +207,123 @@ interface GeoLeafCoreContext {
 }
 ```
 
-> **Note :** Le type `map` dans le contexte est `maplibregl.Map`.
-> ⚠️ `center` suit la convention **GeoLeaf** — `[lat, lng]`. Ce sont les `coordinates` d'une
-> feature GeoJSON qui sont en `[lng, lat]` ; la conversion est faite par l'adaptateur.
+> **Note:** the `map` type in the context is `maplibregl.Map`.
+
+::: warning
+
+`center` follows the **GeoLeaf** convention — `[lat, lng]`. It is the `coordinates` of a GeoJSON
+feature that are `[lng, lat]`; the conversion is performed by the adapter.
+
+:::
 
 ---
 
-## 7. Artefacts dist/
+## 7. dist/ artefacts
 
-Forme du répertoire `dist/` après build :
+Shape of the `dist/` directory after a build:
 
 ```
 dist/
- ├─ geoleaf.esm.js          ← Bundle ESM principal (CDN, bundlers)
- ├─ geoleaf-main.min.css    ← Styles minifiés (kernel + toutes les capacités in-core)
- ├─ chunks/                 ← Chunks du code splitting — REQUIS, voir ci-dessous
- ├─ sw-core.js              ← Service Worker — copié TEL QUEL, jamais bundlé
- ├─ geojson-worker.js       ← Web Worker GeoJSON — copié tel quel lui aussi
- ├─ esm/                    ← ESM granulaire, un module par source
- │   └─ bundle-esm-entry.js ← entrée à exports nommés (résolue par exports["."])
- └─ types/                  ← déclarations TypeScript
+ ├─ geoleaf.esm.js          ← Main ESM bundle (CDN, bundlers)
+ ├─ geoleaf-main.min.css    ← Minified styles (kernel + all in-core capabilities)
+ ├─ chunks/                 ← Code-splitting chunks — REQUIRED, see below
+ ├─ sw-core.js              ← Service worker — copied AS IS, never bundled
+ ├─ geojson-worker.js       ← GeoJSON web worker — copied as is too
+ ├─ esm/                    ← Granular ESM, one module per source file
+ │   └─ bundle-esm-entry.js ← named-export entry (resolved by exports["."])
+ └─ types/                  ← TypeScript declarations
 ```
 
-> ⚠️ **`sw-core.js` et `geojson-worker.js` manquaient à cet arbre jusqu'au 08/08/2026.** Ce sont
-> des **workers** : ils ne sont pas bundlés mais copiés tels quels, et chargés par une URL au
-> runtime, jamais par un `import`. Aucune des deux erreurs qu'ils causent en leur absence ne
-> ressemble à « un fichier manque » — le hors-ligne cesse simplement de fonctionner.
+::: warning
 
-> ⚠️ **`dist/chunks/` fait partie du livrable — l'auto-héberger sans lui donne une application morte.** `geoleaf.esm.js` **importe** ces chunks : les copier est obligatoire, pas optionnel. Leurs noms portent un hachage de contenu et changent à chaque build, donc ils ne se listent jamais à la main — on copie le répertoire.
->
-> 🛑 Ce paragraphe a affirmé l'inverse jusqu'au 07/08/2026 : « il n'y a plus de `dist/chunks/` de modules lazy », en renvoyant à un `src/lazy/` qui n'existe pas. L'arbre ci-dessus omettait le répertoire, et qui suivait cette page pour auto-héberger obtenait une application qui ne bootait pas.
+`sw-core.js` and `geojson-worker.js` are **workers**: they are not bundled but copied as is, and
+loaded through a URL at runtime, never through an `import`. Neither of the two errors they cause
+when absent looks like "a file is missing" — offline support simply stops working.
 
-Deux familles de chunks y cohabitent, et la distinction compte pour qui optimise son chargement :
+:::
 
-- **Ceux que l'entrée importe statiquement** — chargés à chaque boot. Ce sont eux, et eux seuls, que `build-deploy.cjs` déclare en `<link rel="modulepreload">` dans la page déployée.
-- **Ceux qu'un `import()` va chercher** — l'`offline-engine`, le générateur de QR code. Les précharger irait chercher d'avance ce que leur `import()` existe pour différer.
+::: danger
 
-Pour embarquer moins, composer son entrée à partir des sous-chemins `exports` (voir `COOKBOOK.md`, _Recipe 8_) — le reste est **tree-shaké**. Les décomptes ne sont pas écrits ici : `npm run size` les mesure.
+**`dist/chunks/` is part of the deliverable — self-hosting without it produces a dead
+application.** `geoleaf.esm.js` **imports** those chunks: copying them is mandatory, not
+optional. Their names carry a content hash and change on every build, so they are never listed by
+hand — copy the directory.
 
-### 7.1 — Le `dist/` du PAQUET et celui de l'APPLICATION sont deux arbres différents
+:::
 
-L'arbre ci-dessus est celui du **paquet npm** (`packages/core/dist/`), le seul qui concerne
-l'auto-hébergement décrit sur cette page. L'application déployable (`npm run build:deploy:all`)
-en produit un **autre**, et confondre les deux est un piège :
+Two families of chunks live side by side there, and the distinction matters when optimising
+loading:
 
-|                                                                | `packages/core/dist/` (paquet) | `deploy/<variante>/dist/` (application)                   |
-| -------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- |
-| `esm/`, `types/`                                               | ✅                             | ❌ **absents** — l'app n'est pas consommée par un bundler |
-| Bundles de plugins `geoleaf-*.plugin.js`                       | ❌                             | ✅ un par plugin embarqué dans la variante                |
-| Chunks paresseux de plugin (`terra-draw`, `jspdf`, `gtfs-rt`…) | ❌                             | ✅                                                        |
-| Variantes pré-compressées `.br` / `.gz`                        | ❌                             | ✅ **servies en priorité** par le serveur                 |
+- **Those the entry point imports statically** — loaded on every boot. They, and only they, are
+  declared as `<link rel="modulepreload">` by `build-deploy.cjs` in the deployed page.
+- **Those an `import()` fetches** — the `offline-engine`, the QR-code generator. Preloading them
+  would fetch in advance exactly what their `import()` exists to defer.
 
-⚠️ **Les pré-compressés ne sont pas décoratifs.** Un serveur configuré en `gzip_static`/
-`brotli_static` sert le `.gz` ou le `.br` **et ignore le `.js`**. Modifier un fichier déployé sans
-régénérer son compressé rend donc l'ancien contenu, silencieusement — c'est exactement ce qui a
-fait diagnostiquer le mauvais coupable pendant une panne entière (**B-168**) : toutes les
-vérifications lisaient le `.js` pendant que le serveur servait le `.gz`.
+To ship less, compose your own entry point from the `exports` subpaths (see `COOKBOOK.md`,
+_Recipe 8_) — the rest is **tree-shaken**. The counts are not written here: `npm run size`
+measures them.
 
-⚠️ **Le serveur doit connaître le type MIME de `.mjs`** (`types { text/javascript mjs; }` en
-nginx). MapLibre 6 est ESM-only et son shim de global est un `.mjs` : servi en
-`application/octet-stream`, le navigateur **refuse de l'exécuter** et rien ne boote.
+### 7.1 — The PACKAGE `dist/` and the APPLICATION `dist/` are two different trees
 
----
+The tree above is the one of the **npm package** (`packages/core/dist/`), the only one relevant to
+the self-hosting described on this page. The deployable application (`npm run build:deploy:all`)
+produces **another one**, and confusing the two is a trap:
 
-## 8. Avertissements API
+|                                                        | `packages/core/dist/` (package) | `deploy/<variant>/dist/` (application)        |
+| ------------------------------------------------------ | ------------------------------- | --------------------------------------------- |
+| `esm/`, `types/`                                       | Yes                             | **No** — the app is not consumed by a bundler |
+| Plugin bundles `geoleaf-*.plugin.js`                   | No                              | Yes — one per plugin embedded in the variant  |
+| Lazy plugin chunks (`terra-draw`, `jspdf`, `gtfs-rt`…) | No                              | Yes                                           |
+| Pre-compressed `.br` / `.gz` variants                  | No                              | Yes — **served first** by the server          |
 
-- Charger **MapLibre GL JS avant GeoLeaf** (peer dependency).
-- Utiliser **`<script type="module">`** — pas de script classique sans `type="module"`.
-- Ne pas mélanger ESM CDN et bundle local.
-- **Coordonnées :** `Core.init({ center })` attend **`[lat, lng]`**. Les `coordinates` GeoJSON restent `[lng, lat]`.
-- Versionner explicitement les URLs CDN (ex : `@3.0.0`, pas `@latest`).
-- Prévoir un fallback local en production.
+::: warning
 
----
+**The pre-compressed files are not decorative.** A server configured with `gzip_static` /
+`brotli_static` serves the `.gz` or the `.br` **and ignores the `.js`**. Modifying a deployed file
+without regenerating its compressed counterpart therefore returns the old content, silently — and
+every check that reads the `.js` while the server serves the `.gz` will point at the wrong
+culprit.
 
-## 9. Check-list intégration
+:::
 
-- [ ] MapLibre GL JS CSS chargé
-- [ ] MapLibre GL JS JS chargé (peer dependency)
-- [ ] GeoLeaf CSS chargé
-- [ ] GeoLeaf ESM importé (`type="module"`)
-- [ ] `window.GeoLeaf` défini
-- [ ] `Core.init()` disponible
-- [ ] Carte visible dans le DOM (hauteur CSS définie)
-- [ ] `center` au format `[lat, lng]` (les `coordinates` GeoJSON, elles, sont `[lng, lat]`)
-- [ ] URLs CDN versionnées explicitement
+::: warning
+
+**The server must know the MIME type of `.mjs`** (`types { text/javascript mjs; }` on nginx).
+MapLibre 6 is ESM-only and its global shim is a `.mjs`: served as `application/octet-stream`, the
+browser **refuses to execute it** and nothing boots.
+
+:::
 
 ---
 
-## 10. Extensions optionnelles
+## 8. API warnings
 
-- **`@geoleaf-plugins/offline-ui`** — UI de sélection hors-ligne. **MIT**, publié sur **npmjs.org**. _(Le moteur hors-ligne lui-même — IndexedDB, cache, sync — est intégré au core depuis la v3, sous le gate `modules.offline`.)_
-- **`@geoleaf-plugins/editor`** — Édition géométrique et capture de POI. Licence **MIT**, publié sur npmjs.org.
+- Load **MapLibre GL JS before GeoLeaf** (peer dependency).
+- Use **`<script type="module">`** — no classic script without `type="module"`.
+- Do not mix a CDN ESM build and a local bundle.
+- **Coordinates:** `Core.init({ center })` expects **`[lat, lng]`**. GeoJSON `coordinates` remain `[lng, lat]`.
+- Version the CDN URLs explicitly (for example `@3.0.0`, not `@latest`).
+- Plan a local fallback in production.
 
-Pour plus d'informations : [geoleaf.dev](https://geoleaf.dev).
+---
+
+## 9. Integration checklist
+
+- [ ] MapLibre GL JS CSS loaded
+- [ ] MapLibre GL JS engine loaded (peer dependency)
+- [ ] GeoLeaf CSS loaded
+- [ ] GeoLeaf ESM imported (`type="module"`)
+- [ ] `window.GeoLeaf` defined
+- [ ] `Core.init()` available
+- [ ] Map visible in the DOM (CSS height set)
+- [ ] `center` in `[lat, lng]` form (GeoJSON `coordinates`, for their part, are `[lng, lat]`)
+- [ ] CDN URLs versioned explicitly
+
+---
+
+## 10. Optional extensions
+
+- **`@geoleaf-plugins/offline-ui`** — offline selection UI. **MIT**, published on **npmjs.org**. _(The offline engine itself — IndexedDB, cache, sync — has been part of the core since v3, behind the `modules.offline` gate.)_
+- **`@geoleaf-plugins/editor`** — geometry editing and POI capture. **MIT** licence, published on npmjs.org.
+
+For more information: [geoleaf.dev](https://geoleaf.dev).

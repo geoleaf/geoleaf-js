@@ -153,10 +153,19 @@ const JS_TS_RULES = [
     // dériver. Implémentée comme un `grep` de fichier entier, cette règle rougirait sur les
     // 6 légitimes et le contributeur suivant la contournerait : c'est la mécanique que
     // l'en-tête de ce script décrit déjà pour son parseur JSON.
+    // 🛑 **CE MESSAGE A PRESCRIT UNE API FANTÔME PENDANT QU'IL EN INTERDISAIT UNE AUTRE**
+    // (corrigé le 11/08/2026). Il renvoyait vers `GeoLeaf.AddPOI.*` / `@geoleaf-plugins/addpoi`,
+    // c'est-à-dire le plugin **fusionné dans `editor` au Sprint 5** : un lecteur qui suivait la
+    // remédiation à la lettre remplaçait une API dissoute par un paquet inexistant. C'est la
+    // classe même que cette règle traque, à l'endroit qui la traque — et aucune gate ne peut la
+    // voir : le corpus scanné, ce sont les `.md` et les `@example`, jamais le texte des règles.
+    // La surface réelle est vérifiée dans `packages/plugins/editor/src/public-api.ts` (façade
+    // montée sur `GeoLeaf.Editor` par `entry.ts`) : `AddForm` et `PlacementMode` sont des
+    // getters de cette façade.
     {
         pattern: /GeoLeaf\s*\.\s*POI\s*\./,
         message:
-            "Phantom API: GeoLeaf.POI was removed from the core at S9 (POI dissolution) — a POI is now a plain GeoJSON point layer. Read/mutate through GeoLeaf.Layers.getFeatures / addFeature / mergeFeatures / setData; style and click-render per layer via layers.<id>.capabilities.{taxonomy,cluster,feature-info}. For interactive POI creation use GeoLeaf.AddPOI.* (@geoleaf-plugins/addpoi).",
+            "Phantom API: GeoLeaf.POI was removed from the core at S9 (POI dissolution) — a POI is now a plain GeoJSON point layer. Read/mutate through GeoLeaf.Layers.getFeatures / getFeatureById / addFeature / mergeFeatures / setData; style and click-render per layer via layers.<id>.capabilities.{taxonomy,cluster,feature-info}. For interactive point creation use GeoLeaf.Editor.AddForm / GeoLeaf.Editor.PlacementMode (@geoleaf-plugins/editor).",
         severity: "error",
     },
     {

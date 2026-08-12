@@ -31,20 +31,32 @@ Ce module est initialisé automatiquement lors du chargement du profil. **Aucun 
 ### Architecture interne (v2.0.0)
 
 ```
-built-in/geojson/
+kernel/geojson/
 ├── core.ts                    // Agrégateur principal, délègue aux sous-modules
-├── shared.ts                  // État partagé, constantes, STYLE_OPERATORS
+├── core-types.ts              // Types de la définition de couche (chemin inline)
+├── shared.ts                  // État partagé et constantes
 ├── style-resolver.ts          // Évaluation styleRules, buildLayerOptions
-├── layer-manager/             // Gestion couches (store, style, visibility, integration)
-├── loader/                    // Chargement (config-helpers, data, profile, single-layer, clustering-setup)
-├── popup-tooltip.ts           // Popups et tooltips unifiés
-├── clustering.ts              // Stratégies de clustering MapLibre natif
-├── vector-tiles.ts            // MVT via MapLibre native sources
+├── style-operators.ts         // STYLE_OPERATORS
+├── layer-config-manager.ts    // Résolution de la config d'une couche
+├── layers-public-api.ts       // La façade GeoLeaf.Layers
+├── layers/                    // Store, style, visibilité, intégration légende
+├── loader/                    // Chargement (profile, single-layer, data, clustering-normalize, ogc-api…)
+├── feature-interaction.ts     // Clic / survol sur une feature
+├── feature-validator.ts       // Validation de features
+├── geojson-filter.ts          // getFeatures et son filtrage
 ├── geojson-worker.ts          // Web Worker pour traitement async
 ├── worker-manager.ts          // Gestion du cycle de vie du worker
 ├── visibility-manager.ts      // État de visibilité par couche
 └── geojson-utils.ts           // Utilitaires (validateFeature, calculateBounds, etc.)
 ```
+
+> ⚠️ **Cet arbre était racine sur `built-in/geojson/`, répertoire qui n'existe pas**, et
+> 3 de ses 10 fichiers étaient introuvables (corrigé le 11/08/2026) : `popup-tooltip.ts` a
+> disparu, `clustering.ts` est devenu `loader/clustering-normalize.ts`, et `vector-tiles.ts`
+> est sorti du kernel pour devenir la **capacité** `capabilities/vector-tiles/`. Le nouvel
+> arbre est relevé sur le disque. Il n'est pas gaté ici : l'arbre **gaté** du dépôt est
+> [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), régénérée par
+> `npm run docs:tree`.
 
 ---
 
@@ -75,7 +87,7 @@ Les couches GeoJSON sont déclarées dans la section `geojsonLayers` du fichier 
             "url": "../data/profiles/tourism/geojson/poi-naturels.geojson",
             "visible": true,
             "clustering": true,
-            "pointStyle": {
+            "style": {
                 "radius": 8,
                 "fillColor": "#10b981",
                 "fillOpacity": 0.9
@@ -85,24 +97,45 @@ Les couches GeoJSON sont déclarées dans la section `geojsonLayers` du fichier 
 }
 ```
 
+> ⚠️ **La seconde couche portait `"pointStyle"` — clé morte** (corrigé le 11/08/2026). Le
+> résolveur de couleur ne lit que `config.style`, pour les points comme pour le reste
+> (`kernel/geojson/layers/integration.ts:119`).
+
 ### Propriétés de chaque couche
 
-| Propriété                 | Type      | Obligatoire          | Description                                              |
-| ------------------------- | --------- | -------------------- | -------------------------------------------------------- |
-| `id`                      | `string`  | ✅                   | Identifiant unique de la couche                          |
-| `label`                   | `string`  | ✅                   | Libellé affiché dans la légende                          |
-| `url`                     | `string`  | ✅ (ou `tileUrl`)    | Chemin vers le fichier GeoJSON                           |
-| `tileUrl`                 | `string`  | ✅ (ou `url`)        | URL MVT pour couches vectorielles tuilées                |
-| `visible`                 | `boolean` | ❌ (défaut: `true`)  | Visibilité initiale                                      |
-| `fitBoundsOnLoad`         | `boolean` | ❌ (défaut: `false`) | Adapter la vue au chargement                             |
-| `maxZoomOnFit`            | `number`  | ❌ (défaut: 16)      | Zoom maximum lors du fitBounds                           |
-| `clustering`              | `boolean` | ❌ (défaut: auto)    | Activer le clustering MapLibre natif (points uniquement) |
-| `clusterRadius`           | `number`  | ❌ (défaut: 80)      | Rayon du cluster en pixels (MapLibre `clusterRadius`)    |
-| `disableClusteringAtZoom` | `number`  | ❌ (défaut: 18)      | Zoom auquel le clustering est désactivé                  |
-| `style`                   | `object`  | ❌                   | Style MapLibre pour polygones/lignes (`color`, `weight`) |
-| `pointStyle`              | `object`  | ❌                   | Style MapLibre pour points (`radius`, `fillColor`)       |
-| `popupTemplate`           | `string`  | ❌                   | Template de popup                                        |
-| `detailProfileId`         | `string`  | ❌                   | Profil du panneau de détail                              |
+🛑 **Il y a DEUX façons de déclarer une couche, et ce guide ne disait pas laquelle il
+décrivait.** C'est le défaut de fond de la section, corrigé le 11/08/2026.
+
+| Chemin                                                   | Ce qui le gouverne                                                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **inline** — le tableau `geojsonLayers` d'un profil (§2) | **aucun schéma JSON** ; la forme est typée par `kernel/geojson/core-types.ts` et `loader/loader-types.ts` |
+| **modulaire** — un `<couche>_config.json` par couche     | `profiles/schemas/layer-config.schema.json`, `additionalProperties: false`                                |
+
+`loader/profile.ts` (`_getLayersDef`) accepte les deux, dans cet ordre : `geojsonLayers`, puis
+`geojson.layers`, puis `layers`, puis le système modulaire. **La forme plate du §2 est donc
+vivante** — ce n'est pas un vestige.
+
+**Pour le chemin modulaire, la liste exhaustive est
+[`PROFILE_SCHEMA_REFERENCE.md`](../../reference/PROFILE_SCHEMA_REFERENCE.md), section
+`layer-config.schema.json`** : dérivée des schémas (`npm run gen:profile-schema`), **gatée** par
+`gen:profile-schema:check`, 476 chemins. Ce guide ne la recopie pas — une seconde rédaction du
+même schéma rediverge.
+
+> ⚠️ **Une table de 14 propriétés a été retirée d'ici, et son défaut n'est pas celui qu'on
+> croit.** Elle n'était pas « fausse » en bloc : elle décrivait le chemin **inline** sans le
+> dire, à un endroit où le lecteur pouvait la prendre pour le contrat du chemin **modulaire**,
+> qui rejette la plupart de ses clés (`additionalProperties: false`). Trois de ses lignes sont
+> néanmoins mortes **dans les deux chemins**, mesuré sur `packages/core/src` :
+>
+> - **`popupTemplate`** et **`detailProfileId`** — **0 occurrence** dans tout le dépôt hors doc.
+> - **`pointStyle`** — 0 occurrence en source. Ses 16 occurrences sont **dans des tests**, dont
+>   deux s'intitulent _« \_resolveLayerColor uses pointStyle »_ alors que la fonction
+>   (`kernel/geojson/layers/integration.ts:119`) ne lit que `config.style` et retombe sur sa
+>   couleur par défaut. Le test passe donc **en n'éprouvant plus ce qu'il nomme**.
+> - Enfin **`tileUrl` n'est une clé de config d'aucun des deux chemins** : la source de tuiles
+>   est `data.vectorTiles.tilesUrl` (`capabilities/vector-tiles/vector-tiles.ts:176`). Le nom
+>   `tileUrl` n'existe qu'en variable interne — c'est ce qui l'a fait passer pour vivant à un
+>   premier relevé, et c'est le piège « l'instrument porte la cécité qu'il mesure ».
 
 ---
 
@@ -127,21 +160,31 @@ Voir la [documentation `GeoLeaf.Legend`](../../../packages/core/docs/legend/GeoL
 
 ## 4. Intégration avec `geoleaf.config.json`
 
-La configuration globale `poiConfig` peut être appliquée à toutes les sources GeoJSON via `applyToAllSources` :
+Les défauts de clustering **globaux** se déclarent dans le bloc `modules.cluster` :
 
 ```json
 {
-    "poiConfig": {
-        "clustering": true,
-        "clusterRadius": 80,
-        "disableClusteringAtZoom": 18,
-        "applyToAllSources": true
+    "modules": {
+        "cluster": {
+            "enabled": true,
+            "clustering": true,
+            "clusterRadius": 80,
+            "disableClusteringAtZoom": 14
+        }
     }
 }
 ```
 
-> `applyToAllSources: true` → les paramètres de clustering s'appliquent à toutes les sources (JSON, GeoJSON, GPX).
-> Override possible par couche avec `"clustering": false`.
+> Ce sont des **défauts** : une couche les surcharge par son propre bloc `clustering`.
+> Table complète et gatée : [`docs/specs/capacites/cluster.md`](../../specs/capacites/cluster.md) §Configuration.
+
+> ⚠️ **Cette section décrivait un bloc `poiConfig` avec `applyToAllSources` — les deux sont
+> morts** (corrigé le 11/08/2026). `applyToAllSources` : **0 occurrence** dans
+> `packages/core/src`. `poiConfig` : plus aucun lecteur, ses seules traces sont des commentaires
+> de `capabilities/cluster/types.ts` qui le nomment **au passé** (_« was `poiConfig.clusterStrategy` »_).
+> Le bloc vivant est `modules.cluster`, gaté par `modules.cluster.enabled` (opt-out), et sa
+> table de configuration est tenue à jour par `doc-capability-config.guard.test.js` — c'est-à-dire
+> par une gate, pas par une relecture.
 
 ---
 
@@ -149,12 +192,16 @@ La configuration globale `poiConfig` peut être appliquée à toutes les sources
 
 | Type Geometry     | Rendu MapLibre         | Style Config | Clustering |
 | ----------------- | ---------------------- | ------------ | ---------- |
-| `Point`           | `circle` layer         | `pointStyle` | ✅ Oui     |
+| `Point`           | `circle` layer         | `style`      | ✅ Oui     |
 | `LineString`      | `line` layer           | `style`      | ❌ Non     |
 | `Polygon`         | `fill` + `line` layers | `style`      | ❌ Non     |
-| `MultiPoint`      | `circle` layer         | `pointStyle` | ✅ Oui     |
+| `MultiPoint`      | `circle` layer         | `style`      | ✅ Oui     |
 | `MultiLineString` | `line` layer           | `style`      | ❌ Non     |
 | `MultiPolygon`    | `fill` + `line` layers | `style`      | ❌ Non     |
+
+> ⚠️ La colonne « Style Config » donnait `pointStyle` pour les deux lignes de points — **clé
+> morte** (corrigé le 11/08/2026). Il n'y a qu'un bloc de style, `style`, quelle que soit la
+> géométrie.
 
 ---
 
@@ -166,8 +213,20 @@ Le module `vector-tiles.ts` ajoute le support des couches MVT via l'API native M
 {
     "id": "admin-boundaries",
     "label": "Limites administratives",
-    "tileUrl": "https://tiles.example.com/admin/{z}/{x}/{y}.pbf",
     "geometryType": "Polygon",
+    "data": {
+        "directory": "data",
+        "file": "admin.geojson",
+        "vectorTiles": {
+            "enabled": true,
+            "tilesUrl": "https://tiles.example.com/admin/{z}/{x}/{y}.pbf",
+            "layerName": "admin",
+            "minZoom": 0,
+            "maxNativeZoom": 12,
+            "maxZoom": 18,
+            "interactive": true
+        }
+    },
     "styles": {
         "directory": "styles",
         "default": "default.json"
@@ -176,6 +235,13 @@ Le module `vector-tiles.ts` ajoute le support des couches MVT via l'API native M
 ```
 
 Aucune dépendance tierce requise — MapLibre GL JS supporte nativement le format MVT.
+
+> ⚠️ **Cet exemple portait `"tileUrl"` au premier niveau de la couche — faux deux fois**
+> (corrigé le 11/08/2026, trouvé par `DOC-CONFIG-EXAMPLES` le jour où `docs/` est entré dans
+> son corpus). La clé s'appelle **`tilesUrl`** et vit sous **`data.vectorTiles`** ; au premier
+> niveau, `additionalProperties: false` la rejette. `data.file` reste renseigné : c'est le
+> **repli GeoJSON** quand `shouldUseVectorTiles()` refuse la source — il exige une URL absolue
+> (`capabilities/vector-tiles/vector-tiles.ts`).
 
 ---
 
@@ -240,4 +306,11 @@ map.on("geoleaf:geojson:layers-loaded", (e) => {
 4. Les couches sont synchronisées avec la légende.
 5. **Aucun appel `GeoLeaf.GeoJSON.*` n'est nécessaire depuis l'application.**
 
-Voir GEOJSON*LAYERS_GUIDE.md — ⚠️ *`GEOJSON_LAYERS_GUIDE.md` n'existe pas ; voir `packages/core/docs/CONFIGURATION_GUIDE.md`\_ pour les exemples de configuration de profil avancés.
+Pour les exemples de configuration de profil avancés, voir
+[`GEOJSON_LAYERS_GUIDE.md`](../../../packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md) et
+[`CONFIGURATION_GUIDE.md`](../../../packages/core/docs/CONFIGURATION_GUIDE.md).
+
+> ⚠️ **Cette ligne annonçait que `GEOJSON_LAYERS_GUIDE.md` « n'existe pas »** — il existe, à
+> `packages/core/docs/geojson/`. L'annotation qui le déclarait absent était fausse, et le
+> soulignement Markdown l'avait de surcroît rendue illisible. Corrigé le 11/08/2026 : c'est le
+> mode 3 du pré-vol, à l'envers — un document déclaré mort qui ne l'était pas.

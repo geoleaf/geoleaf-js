@@ -5,6 +5,12 @@
 **Numéro de contrat :** Profile Contract v1
 **Date :** 13 juin 2026 (Sprint S1 — roadmap `config-contract`)
 
+📌 **Ancrage des chemins.** Ce contrat décrit la forme d'**un profil** : un chemin cité sans racine
+(`profile.json`, `config/core/layers.json`, `layers/<id>/…`) se lit donc depuis
+`profiles/<profil>/`, et **jamais** depuis la racine du dépôt. Les schémas sont dans
+`profiles/schemas/` ; les chemins commençant par `packages/`, `scripts/` ou `docs/` sont relatifs à
+la racine du dépôt.
+
 > ## 🔒 SPEC FIGÉE — Profile Contract v1
 >
 > **Gelée le 13 juin 2026.** Ce document fait **autorité** sur la **structure** d'un dossier profil GeoLeaf
@@ -51,7 +57,7 @@
 **Partie II — RÉFÉRENCE / VIVANT (renvois, édition sans RFC)**
 
 - [Annexe A — Cartographie fichier → schéma](#annexe-a--cartographie-fichier--schéma)
-- [Annexe B — Le validateur (`validate-profiles.cjs`)](#annexe-b--le-validateur-validate-profilescjs)
+- [Annexe B — Le validateur (`scripts/validate-profiles.cjs`)](#annexe-b--le-validateur-validate-profilescjs)
 - [Annexe C — Renvois](#annexe-c--renvois)
 
 ---
@@ -82,7 +88,7 @@ convergence **Plugin Contract v1** (commit `ada99ef2`).
 
 - **Auteurs de profils** (internes ou intégrateurs) — §2 à §8 sont la référence.
 - **Mainteneurs du core** — §9 régit l'évolution du contrat ; §5/§7 le câblage des schémas.
-- **Revue & CI** — §8 (checklist) et Annexe B (gate `validate-profiles.cjs`, **exécutoire aujourd'hui** : `ci:local` + `pre-commit`).
+- **Revue & CI** — §8 (checklist) et Annexe B (gate `scripts/validate-profiles.cjs`, **exécutoire aujourd'hui** : `ci:local` + `pre-commit`).
 
 ### Régime figé vs vivant
 
@@ -113,6 +119,20 @@ RFC 2119 (équivalents français de MUST / MUST NOT / SHOULD / SHOULD NOT / MAY)
 | **Schéma-contrat**    | Schéma JSON Schema draft-07 sous `profiles/schemas/*.schema.json` validant un type de fichier compagnon (Annexe A). 11 schémas-contrat (`geoleaf-profile` exclu, hors-contrat). |
 | **Validateur**        | `scripts/validate-profiles.cjs` (AJV). Applique la cartographie fichier→schéma. **Exécutoire** — `ci:local` + `pre-commit`.                                                     |
 | **Durcissement**      | Passage d'un schéma en strict : `additionalProperties:false` sur tout objet à forme fixe, `_comment*` toléré (§7).                                                              |
+
+> ⚠️ _Annotation du 11/08/2026 (relecture 6.11) — **la ligne « Schéma-contrat » porte un compte
+> faux, et sa parenthèse désigne un fichier disparu.** Mesuré : **10** schémas sur le disque
+> (`ls profiles/schemas/*.schema.json`), dont **9** réellement chargés par le validateur — sa liste
+> `SCHEMA_NAMES` : `profile`, `layers`, `basemaps`, `features`, `ui`, `themes`, `mapping`,
+> `layer-config`, `style`. Le 10ᵉ, `geoleaf-config.schema.json`, est sur le disque **sans être
+> appliqué** — c'est l'écart déjà versé au registre plus bas dans cette annexe. Et
+> `geoleaf-profile.schema.json`, que la parenthèse exclut « hors-contrat », **n'existe plus du
+> tout** : il n'y a plus rien à exclure._
+>
+> _**La cellule n'est PAS réécrite** : §1 est en Partie I, et le régime §10 réserve son édition à
+> une RFC acceptée. C'est un compte qui a dérivé, pas un invariant qui change — la voie est une RFC
+> mineure, ou le retrait du compte au profit de la commande. Le noter ici est le geste que la
+> gouvernance autorise ; le corriger en silence ne l'est pas._ |
 
 ---
 
@@ -146,8 +166,9 @@ Maintenabilité / Évolution).
 > - **Sa dernière phrase couvre deux routes qui n'ont pas le même besoin.** « Le fichier de config
 >   **DOIT** […] être déclaré dans `layers.json` (entrée directe **ou instance de `layerTemplates`**) »
 >   se lit comme si une instance de template devait, elle aussi, porter son `<id>_config.json`. C'est
->   l'inverse : `expandLayerTemplates` (`kernel/config/profile-loader-helpers.ts:230-259`) assemble un
->   `inlineConfig` qui — son TSDoc l'écrit — « **skips the fetch entirely** ». Un `<id>_config.json`
+>   l'inverse : `expandLayerTemplates` (`packages/core/src/kernel/config/profile-loader-helpers.ts`) assemble un
+>   `inlineConfig` qui — le TSDoc de `LayerRef`, dans le même fichier, l'écrit — « **skips the
+>   fetch entirely** ». Un `<id>_config.json`
 >   posé à côté d'une instance **n'est jamais lu**, et `scripts/check-template-layer-configs.cjs`
 >   (**TPL-CFG**, posé à la tâche 7.1b③ le 06/08/2026) fait **échouer le build** s'il en trouve un.
 > - **Lecture à retenir, en attendant la RFC** : l'arborescence `layers/<id>/` (avec `data/` et
@@ -251,6 +272,19 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
 > - **`config/plugins/storage.json` s'appelle `offline.json`**, et la clé `Files.modules` est **`offline`**,
 >   pas `storage` (mesuré sur `profiles/tourism/profile.json`). Le plugin est `@geoleaf-plugins/offline-ui`,
 >   la capacité in-core est `offline`.
+>
+> 🛑 **Troisième entrée périmée, relevée le 11/08/2026 (relecture 6.11) — `addpoi.json`.** L'arbre
+> de §3 et l'exemple de §4 déclarent tous deux `config/plugins/addpoi.json` → `modules.addpoi`.
+> **Le plugin `addpoi` a fusionné dans `editor` au Sprint 5 (05/08/2026)** : `packages/plugins/addpoi/`
+> n'existe plus, et **aucun des trois profils du dépôt ne déclare ce module** — ils déclarent
+> `offline`, `geocoding`, `table`, `theme-selector`, `legend`, `taxonomy`, `feature-info`,
+> `cluster`, `filter`, `route`. Ce sont deux **exemples copiables** qui nomment un plugin
+> supprimé. Annotés et non récrits, pour la même raison que les deux entrées ci-dessus.
+>
+> ⚠️ **Et aucune gate ne pouvait le voir** : `doc-profile-examples.guard.test.js` valide ces blocs
+> contre `profile.schema.json`, où `Files.modules` est un dictionnaire à **clés dynamiques**. Il
+> contrôle la forme, jamais l'existence de ce qui est nommé — c'est précisément la part que le
+> protocole documentaire laisse à la relecture humaine.
 
 - **`Files.*File`** : clés **fermées** (whitelist `additionalProperties:false`) — `themesFile`,
   `layersFile`, `basemapsFile`, `uiFile`, `featuresFile`, `mappingFile`. Tout autre `*File` est **refusé** (PRF-PATHS).
@@ -325,9 +359,7 @@ Tout schéma-contrat **DOIT** être **strict** sur les objets à **forme fixe** 
     "type": "object",
     "additionalProperties": false, //                    refuse toute clé inconnue
     "patternProperties": { "^_comment": {} }, //         tolère _comment, _comment_xxx (documentation inline)
-    "properties": {
-        /* … clés connues … */
-    },
+    "properties": {/* … clés connues … */},
 }
 ```
 
@@ -686,7 +718,7 @@ exécutée**). Ce schéma **NE DOIT PAS** être durci ni appliqué par le valida
 `profiles/schemas/detail-blocks.schema.json` (15 types de blocs) a bien été extrait comme « fragment
 partagé », mais **aucun `$ref` ne le vise** : un grep du nom sur tout le dépôt ne rend que son propre
 `$id` et les deux endroits qui le chargent (`scripts/validate-profiles.cjs`,
-`s13-layers-anomalies-lock.test.js`). Trois commentaires affirmaient le contraire, tous corrigés le
+`packages/core/__tests__/config/s13-layers-anomalies-lock.test.js`). Trois commentaires affirmaient le contraire, tous corrigés le
 02/08/2026. Le fragment est donc **enregistré mais jamais appliqué** ; son retrait appartient à la
 passe de suppression du versant affichage, qui emporte ses deux lecteurs dans le même commit.
 
@@ -698,7 +730,7 @@ passe de suppression du versant affichage, qui emporte ses deux lecteurs dans le
 
 ## §8 — Checklist de conformité profil (pré-merge)
 
-Chaque case est mappée sur un invariant ou un garde-fou. **Le gate exécutoire (`validate-profiles.cjs` en
+Chaque case est mappée sur un invariant ou un garde-fou. **Le gate exécutoire (`scripts/validate-profiles.cjs` en
 pre-commit) est livré** — la checklist ne remplace plus rien, elle double ce que la machine vérifie déjà.
 
 - [ ] `profile.json` présent, `id` = nom du dossier, `label` + `version` (SemVer) — **PRF-ID, PRF-MANIFEST**
@@ -728,7 +760,12 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 
 ### Processus RFC (léger)
 
-1. Créer `_docs_projet/rfc/RFC_{NNN}_{slug}.md` (cycle : Brouillon → En revue → Acceptée / Rejetée → Appliquée).
+1. Créer `docs/specs/rfc/RFC_{NNN}_{slug}.md` (cycle : Brouillon → En revue → Acceptée / Rejetée → Appliquée).
+    > ⚠️ _Corrigé le 11/08/2026 (tâche 6.11) : ce chemin disait `_docs_projet/rfc/`, répertoire
+    > qui n'est pas dans ce dépôt. Les RFC vivent sous `docs/specs/rfc/` depuis la refonte
+    > documentaire V3 du 27/07/2026 — [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) portait déjà la correction
+    > pour son propre processus RFC ; celui-ci était resté en arrière. Le processus est inchangé,
+    > seule son adresse l'était._
 2. La RFC référence l'`PRF-*` ou la section visée, et la raison du changement.
 3. Une RFC **Acceptée** est la **seule** autorisation d'éditer la Partie I.
 4. La RFC appliquée met à jour le **journal des versions** ci-dessous.
@@ -743,10 +780,10 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 
 ### Journal des versions
 
-| Version | Contrat             | Date       | RFC | Changement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ------- | ------------------- | ---------- | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1.0.1   | Profile Contract v1 | 2026-07-27 | —   | **Relecture contre le code** (refonte doc V3, aucun invariant touché → pas de RFC, incrément `Z` per §9). Partie I **annotée, non récrite** : l'arbre §3 gardait `config/core/taxonomy.json` (retiré au Lot 2) et `config/plugins/storage.json` (devenu `offline.json`, clé `Files.modules.offline`). Annexe A (vivante) réécrite contre `validate-profiles.cjs` : colonne « branché en S2 » fausse sur 11 lignes, compteur « 11 schémas » faux (12 sur disque), `detail-blocks.schema.json` absent du tableau. Les 7 clauses « tant que S2 n'est pas livré » corrigées — S2 EST livré (`ci-local.cjs:384` + `pre-commit`, 9 profils / 234 fichiers verts). Deux écarts mesurés versés au backlog, non corrigés : `geoleaf.config.json` a un schéma non appliqué, `detail-blocks.schema.json` n'était cartographié nulle part. |
-| 1.0.0   | Profile Contract v1 | 2026-06-13 | —   | **Gel initial** (Sprint S1, roadmap `config-contract`). 9 invariants `PRF-*`, cartographie fichier→schéma, règle de durcissement, `geoleaf-profile` tranché hors-contrat (ANO-002), création de `features.schema.json` (ANO-001).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Version | Contrat             | Date       | RFC | Changement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------- | ------------------- | ---------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0.1   | Profile Contract v1 | 2026-07-27 | —   | **Relecture contre le code** (refonte doc V3, aucun invariant touché → pas de RFC, incrément `Z` per §9). Partie I **annotée, non récrite** : l'arbre §3 gardait `config/core/taxonomy.json` (retiré au Lot 2) et `config/plugins/storage.json` (devenu `offline.json`, clé `Files.modules.offline`). Annexe A (vivante) réécrite contre `scripts/validate-profiles.cjs` : colonne « branché en S2 » fausse sur 11 lignes, compteur « 11 schémas » faux (12 sur disque), `detail-blocks.schema.json` absent du tableau. Les 7 clauses « tant que S2 n'est pas livré » corrigées — S2 EST livré (étape « Profile contract (validate:profiles) » de `scripts/ci-local.cjs`, plus `pre-commit` ; 9 profils / 234 fichiers verts à la date). Deux écarts mesurés versés au backlog, non corrigés : `geoleaf.config.json` a un schéma non appliqué, `detail-blocks.schema.json` n'était cartographié nulle part. |
+| 1.0.0   | Profile Contract v1 | 2026-06-13 | —   | **Gel initial** (Sprint S1, roadmap `config-contract`). 9 invariants `PRF-*`, cartographie fichier→schéma, règle de durcissement, `geoleaf-profile` tranché hors-contrat (ANO-002), création de `features.schema.json` (ANO-001).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 
@@ -765,7 +802,7 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 > L'ancienne rédaction annonçait « 11 fichiers / 10 schémas-contrat » — il y en a 12 sur le disque
 > aujourd'hui, dont `detail-blocks.schema.json`, créé depuis et absent de ce tableau.
 >
-> ✅ **S2 est livré.** La colonne « ❌ → branché en S2 » était fausse sur 11 lignes : `validate-profiles.cjs`
+> ✅ **S2 est livré.** La colonne « ❌ → branché en S2 » était fausse sur 11 lignes : `scripts/validate-profiles.cjs`
 > est câblé dans `scripts/ci-local.cjs` **et** dans `.husky/pre-commit`, et sort vert. Toutes les clauses
 > conditionnelles « tant que S2 n'est pas livré » de ce document sont donc caduques.
 >
@@ -798,17 +835,19 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 > `geoleaf.config.json` a un schéma-contrat que le validateur n'applique pas, et
 > `detail-blocks.schema.json` n'était cartographié nulle part. Versés au backlog, pas corrigés ici.
 >
-> ⚠️ **La docstring de `scripts/validate-profiles.cjs:8` est périmée** dans le même sens : elle liste
-> `taxonomy` parmi les fichiers `config/core/`, alors que `CORE_SCHEMA_BY_FILE` (`:67-74`) ne le contient
-> pas. Corrigé côté code dans la même passe.
+> ⚠️ **La docstring de `scripts/validate-profiles.cjs` a été périmée dans le même sens** : elle
+> listait `taxonomy` parmi les fichiers `config/core/`, alors que `CORE_SCHEMA_BY_FILE` ne l'a
+> jamais contenu. **Corrigé côté code le 27/07/2026**, et la docstring porte désormais l'écart en
+> toutes lettres — inutile de la relire pour ce défaut-là.
 
 ## Annexe B — Le validateur (`validate-profiles.cjs`)
 
 `scripts/validate-profiles.cjs` (AJV draft-07) est le moteur du gate `PRF-SCHEMA`.
 
-- **État courant (relu le 27/07/2026) :** valide `profile.json`, les fichiers `config/core/` de
-  `CORE_SCHEMA_BY_FILE` (`:67-74`), `layers/<id>/<id>_config.json` et `layers/<id>/styles/*.json`.
-  Les 9 schémas chargés sont énumérés par `SCHEMA_NAMES` (`:49-59`). **Branché** dans `ci:local` et
+- **État courant (relu le 27/07/2026, citations ré-ancrées le 11/08/2026) :** valide
+  `profile.json`, les fichiers `config/core/` de `CORE_SCHEMA_BY_FILE`,
+  `layers/<id>/<id>_config.json` et `layers/<id>/styles/*.json`. Les schémas chargés sont
+  énumérés par `SCHEMA_NAMES` — les compter là, pas ici. **Branché** dans `ci:local` et
   `pre-commit`. ⏭️ `config/plugins/*.json` est **délibérément sauté** (propriété du plugin, scope B7).
   ❌ `geoleaf.config.json` n'est **pas** validé — son schéma existe mais n'est pas dans `SCHEMA_NAMES`.
 - ~~**État cible S2**~~ — atteint, sauf les deux écarts nommés en Annexe A (`geoleaf.config.json`,
@@ -821,10 +860,17 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 - [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) — contrat de **forme** des plugins (`INV-*`),
   dont `INV-CONFIG` (référencé par PRF-MODULES).
 - [`MODULE_CONTRACT.md`](MODULE_CONTRACT.md) — contrats TypeScript du core.
-- `_docs_projet/travail/cdc/CDC_technique.md` §P2-15 (Système de profils) — comportement du chargeur de profils.
-- `_docs_projet/travail/rapports/inventaire_config_parametres.md` — inventaire **par valeur** (phases B/C).
-- `_docs_projet/travail/rapports/registre_anomalies_config.md` — anomalies (`ANO-001` features.schema, `ANO-002` geoleaf-profile…).
-- `_docs_projet/travail/roadmaps/roadmap_config-contract.md` — roadmap pilote (S0→S16).
+- [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) — inventaire **par valeur** (phases B/C).
+
+> ⚠️ **Liste ré-ancrée le 11/08/2026 (tâche 6.11) — elle portait quatre renvois, aucun atteignable.**
+> Les quatre visaient `_docs_projet/`, l'atelier interne, **qui n'est pas dans ce dépôt** : une liste
+> intitulée « Renvois » dont aucune entrée ne se suit est plus trompeuse qu'une liste vide.
+> Mesuré : [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) existe bel et bien, mais sous `docs/reference/` — il est
+> **public**, et c'est le lien ci-dessus. Les trois autres — `CDC_technique.md` §P2-15,
+> `registre_anomalies_config.md`, `roadmap_config-contract.md` — **n'existent plus nulle part** ;
+> ils sont nommés ici sans lien, comme trace de ce que ce contrat a consommé, et non comme
+> destinations. Le comportement du chargeur de profils que décrivait `CDC_technique.md` §P2-15 se
+> lit désormais dans [`CDC_kernel.md`](../CDC_kernel.md) et dans l'Annexe B ci-dessus.
 
 ---
 

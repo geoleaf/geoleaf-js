@@ -30,7 +30,6 @@
     "files": [
         "dist/",
         "src/",
-        "docs/",
         "LICENSE"
     ],
     "scripts": {

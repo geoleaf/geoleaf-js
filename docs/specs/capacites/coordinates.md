@@ -13,11 +13,15 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/coordinates/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 ---
 
@@ -194,7 +198,7 @@ vérifie.
 ⚠️ **Un séparateur n'est pas retiré au démontage.** `destroy()` retire l'élément de relevé et
 détache tout ce qui est en vol, mais **pas** le `div.gl-scale-separator` inséré par l'amarrage. Un
 cycle démontage → remontage en accumule donc un de plus à chaque passage. Écart mesuré en écrivant
-cette fiche, versé au registre — voir `_docs_projet/registres/backlog_technique.md`.
+cette fiche, versé au registre de dette technique du dépôt de travail.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 

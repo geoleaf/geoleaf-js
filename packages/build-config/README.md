@@ -1,69 +1,87 @@
 # @geoleaf/build-config
 
-> Configuration de build partagée du monorepo. Package **privé**, jamais publié sur npm.
+> Shared build configuration for the monorepo. **Private** package, never published to npm.
 
-Créé au sprint **ARCHI S9** pour rendre la configuration de build déclarative et, surtout, **insensible à la profondeur d'arborescence** — condition posée par le sprint S10, qui a déplacé les paquets sous `packages/plugins/` et `packages/libs/`.
+It exists to keep the build configuration declarative and, above all, **insensitive to directory
+depth** — packages live under `packages/plugins/` and `packages/libs/`, and moving one must not
+break anything.
 
-Le compte ne se recopie pas — il se dérive (annoncé « 16 » ici jusqu'au 31/07/2026, mesuré **15**) :
+The number of consumer packages is derived rather than restated:
 
 ```bash
 node -e "const r=require('./scripts/lib/packages.cjs'); console.log(r.all().filter(p=>/^packages\/(plugins|libs)\//.test(p.dir)).length)"
 ```
 
-## Ce qu'il porte
+## What it holds
 
-| Fichier                | Rôle                                | Sprint |
-| ---------------------- | ----------------------------------- | ------ |
-| `tsconfig.base.json`   | Les 15 `compilerOptions` communs    | S9.1   |
-| `rollup.mjs`           | Fabrique de configuration rollup    | S9.2   |
-| `csp-style-inject.mjs` | Injecteur CSS compatible CSP        | S9.2   |
-| `vitest/*.mjs`         | Base vitest + plugins de résolution | S9.3   |
+| File                   | Role                                |
+| ---------------------- | ----------------------------------- |
+| `tsconfig.base.json`   | The shared `compilerOptions`        |
+| `rollup.mjs`           | Rollup configuration factory        |
+| `csp-style-inject.mjs` | CSP-compatible CSS injector         |
+| `vitest/*.mjs`         | Vitest base plus resolution plugins |
 
-## Comment on le consomme
+## How it is consumed
 
-Toujours **par specifier npm**, jamais par chemin relatif :
+Always **through an npm specifier**, never through a relative path:
 
 ```jsonc
-// packages/<un-package>/tsconfig.json
+// packages/<a-package>/tsconfig.json
 { "extends": "@geoleaf/build-config/tsconfig.base.json" }
 ```
 
 ```js
-// packages/<un-package>/rollup.config.mjs
+// packages/<a-package>/rollup.config.mjs
 import { pluginConfig } from "@geoleaf/build-config/rollup.mjs";
 ```
 
-C'est tout l'intérêt : npm résout par **nom**, donc déplacer le package consommateur ne casse rien. Un `../../` aurait dû être réécrit 17 fois au S10.
+That is the whole point: npm resolves by **name**, so moving the consuming package breaks nothing.
+A `../../` would have to be rewritten every time a package moves.
 
-## Deux règles non négociables
+## Two non-negotiable rules
 
-### 1. Ici, tout est `.mjs` — jamais `.ts`
+### 1. Everything here is `.mjs` — never `.ts`
 
-**C'est un choix de robustesse, pas une contrainte technique.** L'affirmation initiale — « Vite externalise tout specifier nu, donc un `.ts` ici lèverait `ERR_UNKNOWN_FILE_EXTENSION` » — a été **testée et démentie** : un module `.ts` de ce package, importé par specifier npm depuis un `vitest.config.ts`, se charge sans problème, y compris avec `NODE_OPTIONS` explicitement vidé. Vitest transpile le graphe de sa configuration avec son propre chargeur esbuild.
+**This is a robustness choice, not a technical constraint.** A `.ts` module from this package,
+imported by npm specifier from a `vitest.config.ts`, loads without trouble — including with
+`NODE_OPTIONS` explicitly emptied — because Vitest transpiles its configuration graph with its own
+esbuild loader. The rule is kept for reasons that do not depend on that behaviour:
 
-La règle est conservée pour des raisons qui ne dépendent pas de ce comportement :
+- `ensure-tsx-node-options.mjs` exists solely to install the loader that would be needed to read it.
+  Depending on a transpiler to load the thing that installs the transpiler is a circularity we
+  refuse on principle, even where it happens to work.
+- Vitest's config-loading behaviour is an implementation detail, not a contract — it **already
+  changed between v3 and v4**, and that change is precisely what made `ensure-tsx-node-options`
+  necessary.
+- An `.mjs` file also loads from a non-Vite context: a bare node script, or a gate, with no
+  toolchain at all.
 
-- `ensure-tsx-node-options.mjs` a pour unique fonction d'installer le chargeur qui serait nécessaire pour le lire. Dépendre d'un transpileur pour charger ce qui installe le transpileur est une circularité qu'on refuse par principe, même là où ça marche aujourd'hui.
-- Le comportement de chargement de config de Vitest est un détail d'implémentation, pas un contrat — il a **déjà changé entre v3 et v4**, et c'est précisément ce changement qui a rendu `ensure-tsx-node-options` nécessaire.
-- Un `.mjs` se charge aussi depuis un contexte non-Vite : un script node nu, un gate, sans aucune chaîne d'outils.
+Typing is therefore done in **JSDoc**. A welcome side effect: this package needs no build step to be
+ordered in Turborepo.
 
-Le typage se fait donc en **JSDoc**. Effet de bord favorable : aucun build à ordonner dans Turborepo pour ce package.
+If the rule ever becomes expensive, it is to be re-discussed as a decision — not treated as an
+inherited prohibition.
 
-Si la règle devient coûteuse un jour, elle se rediscute comme une décision — pas comme un interdit hérité.
+### 2. `${configDir}` is mandatory on every path in `tsconfig.base.json`
 
-### 2. `${configDir}` est obligatoire sur tout chemin du `tsconfig.base.json`
-
-TypeScript résout les chemins relatifs contre le fichier **où ils sont écrits**. Sans `${configDir}`, **tout paquet dont le `tsconfig.json` étend cette base** — 16 sur les 18 du registre, mesuré le 31/07/2026 — émettrait dans `packages/build-config/dist`. Mesuré :
+TypeScript resolves relative paths against the file **where they are written**. Without
+`${configDir}`, every package whose `tsconfig.json` extends this base would emit into
+`packages/build-config/dist`:
 
 ```
-sans ${configDir} → outDir=../dist   rootDir=../src    ❌
-avec ${configDir} → outDir=./dist    rootDir=./src     ✅
+without ${configDir} → outDir=../dist   rootDir=../src    wrong
+with    ${configDir} → outDir=./dist    rootDir=./src     correct
 ```
 
-Le piège n'est pas propre à ce package : un `tsconfig.base.json` posé à la racine du dépôt le déclencherait identiquement.
+The trap is not specific to this package: a `tsconfig.base.json` placed at the repository root would
+trigger it identically.
 
-## Pourquoi il n'a pas de champ `exports`
+## Why it has no `exports` field
 
-Un `exports` est **exhaustif** : tout ce qui n'y figure pas devient irrésolvable. Il faudrait donc y déclarer explicitement le `.json`, sous peine que `extends: "@geoleaf/build-config/tsconfig.base.json"` cesse de résoudre. Sans `exports`, n'importe quel fichier du package est atteignable par son chemin — ce qui est exactement le comportement voulu pour un package de configuration privé.
+An `exports` map is **exhaustive**: anything absent from it becomes unresolvable. It would therefore
+have to declare the `.json` explicitly, or `extends: "@geoleaf/build-config/tsconfig.base.json"`
+would stop resolving. Without `exports`, any file in the package is reachable by its path — which is
+exactly the behaviour wanted from a private configuration package.
 
-Il n'a pas non plus de `files[]` : rien n'est publié, et le gate `check-package-files.cjs` ignore les packages qui n'en déclarent pas.
+It has no `files[]` either: nothing is published, and the `check-package-files.cjs` gate ignores
+packages that declare none.

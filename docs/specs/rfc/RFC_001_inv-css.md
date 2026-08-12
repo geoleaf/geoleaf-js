@@ -3,7 +3,7 @@
 **Statut :** Acceptée → Appliquée
 **Date :** 21 juin 2026
 **Auteur :** Mattieu Pottier
-**Cible :** `PLUGIN_ARCHITECTURE_SPEC.md` §2 (nouvel invariant `INV-CSS`) + §9 (checklist) ; `scripts/verify-plugin-contract.cjs` (nouveau check `PC-13`)
+**Cible :** [`PLUGIN_ARCHITECTURE_SPEC.md`](../contrats/PLUGIN_ARCHITECTURE_SPEC.md) §2 (nouvel invariant `INV-CSS`) + §9 (checklist) ; `scripts/verify-plugin-contract.cjs` (nouveau check `PC-13`)
 **Contrat :** Plugin Contract v1 — changement **non cassant** (invariant ajouté) → spec **1.2.0 → 1.3.0**
 
 ---

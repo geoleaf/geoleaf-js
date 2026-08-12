@@ -13,13 +13,17 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/profile-switcher/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa
 >    place. Cette fiche l'applique de façon particulièrement stricte : le CDC dont elle est issue
 >    annonçait « 8 profils récoltés au build », il en reste deux.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 ---
 
@@ -74,7 +78,7 @@ Un profil est l'unité de configuration métier de GeoLeaf. Le gestionnaire de c
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/profile-switcher/` —
 dont un test qui vérifie que **le kernel émet réellement le seam**, un qui vérifie que
 l'installer est **appendu** après les capacités préexistantes du manifeste, et
-`profile-harvest.guard.test.ts`, qui ne teste pas la capacité mais **ce dont PS-04 dépend** : la
+`packages/core/__tests__/capabilities/profile-switcher/profile-harvest.guard.test.ts`, qui ne teste pas la capacité mais **ce dont PS-04 dépend** : la
 récolte lue sur le disque, dérivée du disque et jamais écrite en dur (voir §Configuration).
 
 ---
@@ -102,7 +106,8 @@ sélecteur se comporte) et `data.availableProfiles` (_quels_ profils existent).
 
 `data.availableProfiles` est **généré**, jamais écrit à la main :
 `scripts/build-deploy.cjs` parcourt `profiles/`, ignore `schemas/` et tout répertoire préfixé `_`,
-et pour chaque profil restant lit `profile.json` pour en récolter :
+et pour chaque profil restant lit son `profile.json` — `profiles/<profil>/profile.json`, un fichier
+**par profil** — pour en récolter :
 
 | Champ          | Origine                                                       |
 | -------------- | ------------------------------------------------------------- |

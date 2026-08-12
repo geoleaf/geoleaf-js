@@ -13,11 +13,15 @@ date: 28 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/toast-renderer/` ·
 **Vérifié contre :** `ed1db5b5` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **La question que cette fiche existe pour répondre : QUAND le renderer se monte.**
 >
@@ -61,32 +65,32 @@ profil chargé, thème appliqué).
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                  | Entrée                                               | Sortie observable                                                                                                              | Code                                                 |
-| ----- | ----------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| TR-01 | Montage du conteneur                            | `ToastRendererModule.init()`                         | `#gl-notifications` créé et appendu à `<body>` s'il n'existe pas ; **emprunté** s'il existe déjà                               | `lifecycle.ts` → `init`                              |
-| TR-02 | Montage **avant** le chargement des couches     | `dependencies = ["config"]`                          | Le renderer est prêt pendant que les couches du thème par défaut chargent — c'est le correctif de B-56                         | `module.ts`                                          |
-| TR-03 | Enregistrement comme renderer de la primitive   | Conteneur trouvé                                     | `notifyPrimitive.registerRenderer(...)`, qui **vide le tampon de la primitive immédiatement**                                  | `lifecycle.ts`, `notify.primitive.ts`                |
-| TR-04 | Gate tardif                                     | `modules.toast-renderer.enabled === false`           | `init()` sort avant tout : ni conteneur, ni renderer enregistré. `notify()` reste sur son repli console                        | `lifecycle.ts` → `init`                              |
-| TR-05 | File prioritaire                                | Émissions concurrentes                               | `error` (3) > `warning` (2) > `success`/`info` (1) ; à priorité égale, **FIFO par horodatage**                                 | `notifications.ts` → `_enqueue`                      |
-| TR-06 | Deux budgets **séparés**                        | Toasts temporaires et persistants mêlés              | `maxVisible` compte les temporaires, `maxPersistent` les persistants — un toast de progression ne famine pas le transitoire    | `notifications.ts` → `_processQueue`                 |
-| TR-07 | Éviction au profit d'une erreur                 | File tenant une erreur, budget temporaire plein      | Un `info`/`success` visible est retiré ; à défaut le plus ancien évictable. **Rien d'autre qu'une erreur n'évince**            | `notifications.ts` → `_makeSpaceForPriority`         |
-| TR-08 | File pleine                                     | 15 entrées en attente                                | L'entrant **surclasse** la plus faible → celle-ci est jetée ; sinon l'entrant est **rejeté** et l'appel rend `null`            | `notifications.ts` → `_enqueue`                      |
-| TR-09 | Fermeture automatique par type                  | Toast temporaire rendu                               | `success` 3 s · `error` 5 s · `warning` 4 s · `info` 3 s, sauf `duration` explicite                                            | `constants.ts` → `DEFAULT_DURATIONS`                 |
-| TR-10 | Toast persistant                                | `{ persistent: true }`                               | `data-persistent` posé, **aucun minuteur** : il reste jusqu'à `dismiss()` / `clearAll()`                                       | `notifications.ts` → `_showImmediate`                |
-| TR-11 | Bouton de fermeture accessible                  | `dismissible` non `false`                            | Bouton `.gl-toast__close`, `aria-label` et `title` traduits, caractère de fermeture traduit                                    | `notifications.ts` → `_appendCloseButton`            |
-| TR-12 | Écouteur du bouton libéré au **détachement**    | Toast retiré du DOM                                  | L'entrée quitte le gestionnaire à ce moment-là, pas au `destroy()` — une session de plusieurs heures n'accumule rien           | `notifications.ts` → `_releaseCloseListener`         |
-| TR-13 | Animations d'entrée et de sortie                | `animations: true`                                   | Entrée en **double `requestAnimationFrame`** ; sortie différée de `TOAST_EXIT_ANIMATION_MS`, `0` quand les animations sont off | `notifications.ts` → `_showImmediate`, `_remove`     |
-| TR-14 | Annonce vocale graduée                          | Toast rendu                                          | `role="alert"` ; `aria-live="assertive"` pour une **erreur**, `"polite"` sinon                                                 | `notifications.ts` → `_showImmediate`                |
-| TR-15 | Message inséré en `textContent`                 | Message d'origine quelconque                         | Aucune interprétation HTML — **jamais** `innerHTML`                                                                            | `notifications.ts` → `_showImmediate`                |
-| TR-16 | Toast de chargement persistant                  | `geoleaf:theme:applying`                             | Toast `info` persistant **non fermable**, refermé sur `geoleaf:theme:applied`                                                  | `lifecycle.ts` → `onThemeApplying`                   |
-| TR-17 | Toast « profil chargé », **réessayé**           | `geoleaf:profile:loaded`                             | Rendu si le renderer est prêt ; sinon **mémorisé** et retenté sur `geoleaf:map:ready`                                          | `lifecycle.ts` → `tryShowProfileToast`, `onMapReady` |
-| TR-18 | Toast « thème appliqué »                        | `geoleaf:theme:applied`                              | Toast `success` portant le nom du thème et le nombre de couches                                                                | `lifecycle.ts` → `onThemeApplied`                    |
-| TR-19 | Mesure de durée de chargement, **opt-in**       | `window.__GEOLEAF_PERF__` vrai                       | Marques `applying`/`applied` + mesure `geoleaf:theme-data-load` journalisée. **Aucun coût quand le drapeau est absent**        | `lifecycle.ts` → `_pm`, `onThemeApplied`             |
-| TR-20 | `init()` est une **ré-initialisation complète** | Second `init()` partiel, y compris après `destroy()` | Chaque option repart de son défaut, et le renderer revient **actif** — l'état ne dépend pas de ce qui a tourné avant           | `notifications.ts` → `init`                          |
-| TR-21 | Suspension et reprise                           | `disable()` puis `enable()`                          | Rien n'est rendu entre les deux ; `enable()` **draine** ce qui s'est empilé                                                    | `notifications.ts` → `disable`, `enable`             |
-| TR-22 | Démontage complet                               | `ToastRendererModule.destroy()`                      | Écouteurs détachés, renderer **désenregistré de la primitive**, minuteurs et écouteurs libérés, conteneur **possédé** retiré   | `lifecycle.ts` → `_reset`                            |
-| TR-23 | Instantané d'état                               | `Notifications.getStatus()`                          | `initialized` (conteneur présent), compteurs visibles/en file, budgets, position                                               | `notifications.ts` → `getStatus`                     |
-| TR-24 | Déclaration introspectable                      | —                                                    | `getAllCapabilities()` la liste, `getCapabilitySchema("toast-renderer")` rend son schéma                                       | `toast-renderer-capability.ts`                       |
+| ID    | Fonctionnalité                                  | Entrée                                               | Sortie observable                                                                                                              | Code                                                                 |
+| ----- | ----------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| TR-01 | Montage du conteneur                            | `ToastRendererModule.init()`                         | `#gl-notifications` créé et appendu à `<body>` s'il n'existe pas ; **emprunté** s'il existe déjà                               | `lifecycle.ts` → `init`                                              |
+| TR-02 | Montage **avant** le chargement des couches     | `dependencies = ["config"]`                          | Le renderer est prêt pendant que les couches du thème par défaut chargent — c'est le correctif de B-56                         | `module.ts`                                                          |
+| TR-03 | Enregistrement comme renderer de la primitive   | Conteneur trouvé                                     | `notifyPrimitive.registerRenderer(...)`, qui **vide le tampon de la primitive immédiatement**                                  | `lifecycle.ts`, `packages/core/src/utils/notify/notify.primitive.ts` |
+| TR-04 | Gate tardif                                     | `modules.toast-renderer.enabled === false`           | `init()` sort avant tout : ni conteneur, ni renderer enregistré. `notify()` reste sur son repli console                        | `lifecycle.ts` → `init`                                              |
+| TR-05 | File prioritaire                                | Émissions concurrentes                               | `error` (3) > `warning` (2) > `success`/`info` (1) ; à priorité égale, **FIFO par horodatage**                                 | `notifications.ts` → `_enqueue`                                      |
+| TR-06 | Deux budgets **séparés**                        | Toasts temporaires et persistants mêlés              | `maxVisible` compte les temporaires, `maxPersistent` les persistants — un toast de progression ne famine pas le transitoire    | `notifications.ts` → `_processQueue`                                 |
+| TR-07 | Éviction au profit d'une erreur                 | File tenant une erreur, budget temporaire plein      | Un `info`/`success` visible est retiré ; à défaut le plus ancien évictable. **Rien d'autre qu'une erreur n'évince**            | `notifications.ts` → `_makeSpaceForPriority`                         |
+| TR-08 | File pleine                                     | 15 entrées en attente                                | L'entrant **surclasse** la plus faible → celle-ci est jetée ; sinon l'entrant est **rejeté** et l'appel rend `null`            | `notifications.ts` → `_enqueue`                                      |
+| TR-09 | Fermeture automatique par type                  | Toast temporaire rendu                               | `success` 3 s · `error` 5 s · `warning` 4 s · `info` 3 s, sauf `duration` explicite                                            | `constants.ts` → `DEFAULT_DURATIONS`                                 |
+| TR-10 | Toast persistant                                | `{ persistent: true }`                               | `data-persistent` posé, **aucun minuteur** : il reste jusqu'à `dismiss()` / `clearAll()`                                       | `notifications.ts` → `_showImmediate`                                |
+| TR-11 | Bouton de fermeture accessible                  | `dismissible` non `false`                            | Bouton `.gl-toast__close`, `aria-label` et `title` traduits, caractère de fermeture traduit                                    | `notifications.ts` → `_appendCloseButton`                            |
+| TR-12 | Écouteur du bouton libéré au **détachement**    | Toast retiré du DOM                                  | L'entrée quitte le gestionnaire à ce moment-là, pas au `destroy()` — une session de plusieurs heures n'accumule rien           | `notifications.ts` → `_releaseCloseListener`                         |
+| TR-13 | Animations d'entrée et de sortie                | `animations: true`                                   | Entrée en **double `requestAnimationFrame`** ; sortie différée de `TOAST_EXIT_ANIMATION_MS`, `0` quand les animations sont off | `notifications.ts` → `_showImmediate`, `_remove`                     |
+| TR-14 | Annonce vocale graduée                          | Toast rendu                                          | `role="alert"` ; `aria-live="assertive"` pour une **erreur**, `"polite"` sinon                                                 | `notifications.ts` → `_showImmediate`                                |
+| TR-15 | Message inséré en `textContent`                 | Message d'origine quelconque                         | Aucune interprétation HTML — **jamais** `innerHTML`                                                                            | `notifications.ts` → `_showImmediate`                                |
+| TR-16 | Toast de chargement persistant                  | `geoleaf:theme:applying`                             | Toast `info` persistant **non fermable**, refermé sur `geoleaf:theme:applied`                                                  | `lifecycle.ts` → `onThemeApplying`                                   |
+| TR-17 | Toast « profil chargé », **réessayé**           | `geoleaf:profile:loaded`                             | Rendu si le renderer est prêt ; sinon **mémorisé** et retenté sur `geoleaf:map:ready`                                          | `lifecycle.ts` → `tryShowProfileToast`, `onMapReady`                 |
+| TR-18 | Toast « thème appliqué »                        | `geoleaf:theme:applied`                              | Toast `success` portant le nom du thème et le nombre de couches                                                                | `lifecycle.ts` → `onThemeApplied`                                    |
+| TR-19 | Mesure de durée de chargement, **opt-in**       | `window.__GEOLEAF_PERF__` vrai                       | Marques `applying`/`applied` + mesure `geoleaf:theme-data-load` journalisée. **Aucun coût quand le drapeau est absent**        | `lifecycle.ts` → `_pm`, `onThemeApplied`                             |
+| TR-20 | `init()` est une **ré-initialisation complète** | Second `init()` partiel, y compris après `destroy()` | Chaque option repart de son défaut, et le renderer revient **actif** — l'état ne dépend pas de ce qui a tourné avant           | `notifications.ts` → `init`                                          |
+| TR-21 | Suspension et reprise                           | `disable()` puis `enable()`                          | Rien n'est rendu entre les deux ; `enable()` **draine** ce qui s'est empilé                                                    | `notifications.ts` → `disable`, `enable`                             |
+| TR-22 | Démontage complet                               | `ToastRendererModule.destroy()`                      | Écouteurs détachés, renderer **désenregistré de la primitive**, minuteurs et écouteurs libérés, conteneur **possédé** retiré   | `lifecycle.ts` → `_reset`                                            |
+| TR-23 | Instantané d'état                               | `Notifications.getStatus()`                          | `initialized` (conteneur présent), compteurs visibles/en file, budgets, position                                               | `notifications.ts` → `getStatus`                                     |
+| TR-24 | Déclaration introspectable                      | —                                                    | `getAllCapabilities()` la liste, `getCapabilitySchema("toast-renderer")` rend son schéma                                       | `toast-renderer-capability.ts`                                       |
 
 ⚠️ **TR-23 porte le piège que B-56 a payé.** `getStatus().maxVisible` rend `3` sur un renderer
 **jamais monté** : c'est une constante lue sur l'instance, pas une preuve de montage. Le seul champ
@@ -145,11 +149,11 @@ avant de l'implémenter est exactement ce qui a produit le `maxPersistent` fant�
 C'est le cœur de cette fiche. Trois chemins mènent au même renderer, avec **trois comportements
 différents** avant son montage :
 
-| Surface               | Montée par                           | Avant le montage du renderer                        | Trace laissée     |
-| --------------------- | ------------------------------------ | --------------------------------------------------- | ----------------- |
-| `GeoLeaf.notify()`    | kernel, à l'import (ancre B2)        | **Mise en tampon** dans la primitive, puis rejouée  | oui — `console.*` |
-| `Notifications.*`     | `install.ts` → `registerGlobals`     | Empilée dans la file du renderer, **jamais rendue** | **aucune** — B-59 |
-| `GeoLeaf.UI.notify.*` | kernel (`globals.ui.ts`), à l'import | Idem, ou no-op muet si la capacité n'est pas montée | **aucune** — B-59 |
+| Surface               | Montée par                                                     | Avant le montage du renderer                        | Trace laissée     |
+| --------------------- | -------------------------------------------------------------- | --------------------------------------------------- | ----------------- |
+| `GeoLeaf.notify()`    | kernel, à l'import (ancre B2)                                  | **Mise en tampon** dans la primitive, puis rejouée  | oui — `console.*` |
+| `Notifications.*`     | `install.ts` → `registerGlobals`                               | Empilée dans la file du renderer, **jamais rendue** | **aucune** — B-59 |
+| `GeoLeaf.UI.notify.*` | kernel (`packages/core/src/globals/globals.ui.ts`), à l'import | Idem, ou no-op muet si la capacité n'est pas montée | **aucune** — B-59 |
 
 ⚠️ **« Bufferisés puis rendus » n'est vrai que de la première ligne.** Le tampon de la primitive est
 vidé par `registerRenderer()`, au montage. Les deux autres surfaces tapent directement le singleton :
@@ -254,15 +258,32 @@ Aucun. Cette capacité n'écrit ni `localStorage`, ni `sessionStorage`, ni param
 `init()` **n'utilise pas la carte** et ne lit aucune donnée : il lui faut le DOM, l'i18n et la
 primitive, rien d'autre.
 
-⚠️ **Sur les 15 capacités qui portent un module de cycle de vie, c'est la seule à ne pas déclarer
-`["geojson"]`**, et c'est délibéré. Les quatorze autres portent cette dépendance comme **astuce
-d'ordonnancement** — forcer le tri topologique sans passer par `ui`. La conséquence mesurée est que
-leur `init()` attend la résolution des couches du thème par défaut ; c'est
-**B-57**. La mesure se rejoue :
+⚠️ **Cette capacité ne déclare pas `["geojson"]` mais `["config"]`, et c'est délibéré.** La
+**large majorité** des capacités qui portent un module de cycle de vie déclarent `["geojson"]`
+comme **astuce d'ordonnancement** — forcer le tri topologique sans passer par `ui`. La conséquence
+mesurée est que leur `init()` attend la résolution des couches du thème par défaut ; c'est **B-57**.
+
+> 🛑 **Relecture du 11/08/2026 — cette phrase disait « Sur les **15** capacités […] c'est **la
+> seule** à ne pas déclarer `["geojson"]` », et elle était fausse deux fois.** Mesuré : **16**
+> capacités portent un module, et **deux** ne déclarent pas `["geojson"]` — celle-ci (`["config"]`)
+> **et `permalink`** (`[]`). Une affirmation d'**unicité** est la forme la plus coûteuse d'une
+> phrase fausse : elle se cite ailleurs comme une propriété du système. Le « quatorze autres »,
+> lui, se trouvait juste — 16 − 2 —, ce qui rendait l'erreur d'autant moins visible. Le compte est
+> retiré ; la commande ci-dessous le rend.
+
+La mesure se rejoue — **récursivement**, jamais sur `*/module.ts` :
 
 ```bash
-grep -rn "readonly dependencies" packages/core/src/capabilities/*/module.ts
+grep -rn "readonly dependencies" packages/core/src/capabilities/
 ```
+
+> 🛑 **La commande citée ici était `packages/core/src/capabilities/*/module.ts`, et son angle mort
+> était EXACTEMENT le contre-exemple à la phrase qu'elle prétendait étayer.** `permalink` déclare
+> son module dans `share/module.ts` : le glob à un seul niveau ne le voyait pas, la commande rendait
+> **15** au lieu de 16, et la seule capacité qu'elle manquait était la seconde à ne pas déclarer
+> `["geojson"]`. **Citer une commande au lieu d'un chiffre ne protège que si la commande voit
+> tout** — sinon elle donne au chiffre faux l'apparence d'un fait vérifiable, ce qui est pire que
+> le chiffre nu.
 
 **La fenêtre où les notifications ne sont pas visibles** s'étend donc du premier code qui s'exécute
 jusqu'à `ToastRendererModule.init()`, c'est-à-dire jusqu'à la fin de l'initialisation du module
@@ -286,7 +307,7 @@ aucun `IMapAdapter` utilisé. **Aucune référence à un plugin** — règle `no
 
 ### Frontière inverse : le kernel lit la capacité, tardivement
 
-`globals.ui.ts` monte `GeoLeaf.UI.notify.*`, qui est **du kernel** et doit donc rester monté même
+`packages/core/src/globals/globals.ui.ts` monte `GeoLeaf.UI.notify.*`, qui est **du kernel** et doit donc rester monté même
 sans la capacité. Il n'importe pas le singleton : il le **relit sur le namespace à chaque appel**.
 Une entrée qui laisse la capacité de côté n'a simplement aucun écrivain, et chaque appel dégrade en
 no-op muet. C'est le même patron de localisateur de service que `vector-tiles`, et c'est ce qui rend
@@ -306,16 +327,16 @@ fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartie
 concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
 décisions de `roadmap_documentation-v3.md`.
 
-| Énoncé du CDC                                                                 | Ce que dit le code                                                                                                                                                      |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »        | Vrai **de la primitive seule**, et sans borne temporelle. Les deux autres surfaces perdent leur message sans trace (B-59). C'est le trou d'où B-56 est sortie           |
-| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre) | **Faux depuis B-56** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive » |
-| `renderer/notifications.ts` · `css/notifications.css`                         | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                       |
-| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `boot.ts`                  |
-| `@import` de la feuille depuis `geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                           |
-| « rendu **byte-identique**, `maxPersistent: 2` »                              | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées              |
-| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API       | **Ils n'existent pas au runtime** — mesuré sur le bundle livré, avec contre-épreuve. Ligne **B-60** ouverte au registre                                                 |
-| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur » | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme  |
+| Énoncé du CDC                                                                                       | Ce que dit le code                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »                              | Vrai **de la primitive seule**, et sans borne temporelle. Les deux autres surfaces perdent leur message sans trace (B-59). C'est le trou d'où B-56 est sortie                |
+| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre)                       | **Faux depuis B-56** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive »      |
+| `renderer/notifications.ts` · `css/notifications.css`                                               | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                            |
+| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `packages/core/src/app/boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `packages/core/src/app/boot.ts` |
+| `@import` de la feuille depuis `packages/core/src/css/geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                                |
+| « rendu **byte-identique**, `maxPersistent: 2` »                                                    | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées                   |
+| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API                             | **Ils n'existent pas au runtime** — mesuré sur le bundle livré, avec contre-épreuve. Ligne **B-60** ouverte au registre                                                      |
+| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur »                       | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme       |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : la frontière primitive/renderer et son
 motif (les plugins appellent `notify()` avant `boot()`), la raison du choix in-core plutôt que

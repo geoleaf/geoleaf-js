@@ -13,20 +13,24 @@ date: 27 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-palette/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Trois voisins portent le mot « theme » et sont ORTHOGONAUX** — cumulables, jamais
 > interchangeables :
 >
-> | Capacité                          | Ce qu'elle change                                  | Où                                 |
-> | --------------------------------- | -------------------------------------------------- | ---------------------------------- |
-> | **`theme-palette`** (cette fiche) | La **couleur d'accent** (variables CSS)            | `data-gl-palette` sur `<html>`     |
-> | [`theme-toggle`](theme-toggle.md) | Le mode **clair / sombre**                         | classe `gl-theme-*` sur `<body>`   |
-> | `theme-selector`                  | Les **thèmes de CARTE** (jeux de couches / styles) | issus de `config/core/themes.json` |
+> | Capacité                          | Ce qu'elle change                                  | Où                                                   |
+> | --------------------------------- | -------------------------------------------------- | ---------------------------------------------------- |
+> | **`theme-palette`** (cette fiche) | La **couleur d'accent** (variables CSS)            | `data-gl-palette` sur `<html>`                       |
+> | [`theme-toggle`](theme-toggle.md) | Le mode **clair / sombre**                         | classe `gl-theme-*` sur `<body>`                     |
+> | `theme-selector`                  | Les **thèmes de CARTE** (jeux de couches / styles) | issus de `profiles/<profil>/config/core/themes.json` |
 >
 > Une palette verte en mode sombre sur un thème de carte donné est un état valide. La relation
 > `<html>` → `<body>` est **descendante**, et c'est précisément ce qui garde les deux premiers axes
@@ -270,12 +274,12 @@ Le CDC `CDC_capacite-theme-palette.md` (v1.0.0, 25/07/2026) a été **consommé*
 fiche, puis retiré du dossier de tri — trace au §Journal des décisions de
 `roadmap_documentation-v3.md`.
 
-| Énoncé du CDC                                                        | Ce que dit le code                                                                                                                       |
-| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| « `theme-selector` agit sur des conteneurs `#gl-theme-*-container` » | `theme-selector` lit `config/core/themes.json` ; le CDC décrivait un mécanisme DOM qui n'est pas celui de la capacité actuelle           |
-| Gate présenté comme un opt-in simple                                 | Le gate ne commande que **le bouton** ; la palette configurée s'applique toujours. Le CDC le disait en prose ailleurs, pas dans la table |
-| « les 2 blocs de palette sont safelistés purgecss »                  | **Faux**, et corrigé dans les trois en-têtes CSS concernés — voir §Frontière côté CSS                                                    |
-| Exemple de configuration listant les 3 palettes en clair             | Utile pédagogiquement, mais `palettes: []` suffit : les intégrées s'appliquent. Le schéma annonce `[]`, pas la liste                     |
+| Énoncé du CDC                                                        | Ce que dit le code                                                                                                                                 |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « `theme-selector` agit sur des conteneurs `#gl-theme-*-container` » | `theme-selector` lit le `config/core/themes.json` de chaque profil ; le CDC décrivait un mécanisme DOM qui n'est pas celui de la capacité actuelle |
+| Gate présenté comme un opt-in simple                                 | Le gate ne commande que **le bouton** ; la palette configurée s'applique toujours. Le CDC le disait en prose ailleurs, pas dans la table           |
+| « les 2 blocs de palette sont safelistés purgecss »                  | **Faux**, et corrigé dans les trois en-têtes CSS concernés — voir §Frontière côté CSS                                                              |
+| Exemple de configuration listant les 3 palettes en clair             | Utile pédagogiquement, mais `palettes: []` suffit : les intégrées s'appliquent. Le schéma annonce `[]`, pas la liste                               |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : les cas d'usage (démonstration
 client « GeoLeaf s'habille à vos couleurs », intégrateur aux couleurs de sa marque — le cas

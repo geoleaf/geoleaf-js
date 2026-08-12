@@ -1,65 +1,64 @@
 ---
-title: "GeoLeaf.LayerManager — Documentation du module"
+title: "GeoLeaf.LayerManager — Module documentation"
 ---
 
-# GeoLeaf.LayerManager — Documentation du module
+# GeoLeaf.LayerManager — Module documentation
 
-**Version** : 3.0.0
-**Fichier source (monorepo)** : `packages/core/src/modules/built-in/layer-manager/layer-manager-api.ts`
-**Facade publique** : `packages/core/src/modules/geoleaf.layer-manager.ts`
-**Dernière mise à jour** : mars 2026
-
----
-
-## Rôle fonctionnel
-
-Le module **GeoLeaf.LayerManager** fournit un **contrôle UI MapLibre GL JS interactif** affiché dans un coin de la carte.
-Il permet d'afficher et de gérer des sections configurables : fonds de carte (basemaps), couches GeoJSON, thèmes, cache offline, etc.
-
-**Ce module est distinct de `GeoLeaf.Legend`** (voir section « Distinction » en bas de page).
+Applies to: @geoleaf/core v3.x
+**Source file (monorepo)**: `packages/core/src/modules/built-in/layer-manager/layer-manager-api.ts`
+**Public facade**: `packages/core/src/modules/geoleaf.layer-manager.ts`
 
 ---
 
-## Architecture modulaire
+## Functional role
+
+The **GeoLeaf.LayerManager** module provides an **interactive MapLibre GL JS UI control** displayed in a corner of the map.
+It shows and manages configurable sections: basemaps, GeoJSON layers, themes, offline cache, and so on.
+
+**This module is distinct from `GeoLeaf.Legend`** (see the "Legend vs LayerManager" section at the bottom of the page).
+
+---
+
+## Module architecture
 
 ```
-packages/core/src/modules/geoleaf.layer-manager.ts  (facade publique)
+packages/core/src/modules/geoleaf.layer-manager.ts  (public facade)
         │
-        └─→ layer-manager/layer-manager-api.ts       (logique principale)
+        └─→ layer-manager/layer-manager-api.ts       (main logic)
                 │
-                ├─→ layer-manager/control.ts          (contrôle MapLibre GL JS)
-                ├─→ layer-manager/renderer.ts         (rendu des sections/items)
-                ├─→ layer-manager/basemap-selector.ts (sélection fonds de carte)
-                ├─→ layer-manager/theme-selector.ts   (sélection thèmes)
-                ├─→ layer-manager/layer-manager-helpers.ts (utilitaires)
-                └─→ layer-manager/shared.ts           (état partagé)
+                ├─→ layer-manager/control.ts          (MapLibre GL JS control)
+                ├─→ layer-manager/renderer.ts         (section/item rendering)
+                ├─→ layer-manager/basemap-selector.ts (basemap selection)
+                ├─→ layer-manager/theme-selector.ts   (theme selection)
+                ├─→ layer-manager/layer-manager-helpers.ts (utilities)
+                └─→ layer-manager/shared.ts           (shared state)
 ```
 
 ---
 
-## API publique
+## Public API
 
 ### `GeoLeaf.LayerManager.init(options?)`
 
-Initialise le gestionnaire de couches et l'ajoute à la carte.
+Initialises the layer manager and adds it to the map.
 
-**Paramètres** :
+**Parameters**:
 
-- `options` (Object, optionnel) :
-    - `map` : Instance MapLibre Map (si absent, tentative via `GeoLeaf.Core.getMap()`)
-    - `position` : `"bottomright"` (défaut), `"bottomleft"`, `"topleft"`, `"topright"`
-    - `title` : Titre du panneau (défaut : `"Gestionnaire de layers"`)
-    - `collapsible` : `true` (défaut)
-    - `collapsed` : `false` (défaut)
-    - `sections` : Array de sections initiales
+- `options` (Object, optional):
+    - `map`: MapLibre Map instance (when absent, resolved through `GeoLeaf.Core.getMap()`)
+    - `position`: `"bottomright"` (default), `"bottomleft"`, `"topleft"`, `"topright"`
+    - `title`: panel title (default: `"Gestionnaire de layers"`)
+    - `collapsible`: `true` (default)
+    - `collapsed`: `false` (default)
+    - `sections`: array of initial sections
 
-**Retourne** : `IControl | null`
+**Returns**: `IControl | null`
 
 ```javascript
-// Initialisation depuis config (recommandé)
+// Initialisation from config (recommended)
 GeoLeaf.LayerManager.init();
 
-// Avec options personnalisées
+// With custom options
 GeoLeaf.LayerManager.init({
     position: "bottomleft",
     collapsible: true,
@@ -68,7 +67,7 @@ GeoLeaf.LayerManager.init({
 });
 ```
 
-> La configuration est aussi lue depuis `layerManagerConfig` dans `geoleaf.config.json` :
+> The configuration is also read from `layerManagerConfig` in `geoleaf.config.json`:
 >
 > ```json
 > {
@@ -84,35 +83,35 @@ GeoLeaf.LayerManager.init({
 
 ### `GeoLeaf.LayerManager.refresh(immediate?)`
 
-Rafraîchit l'affichage du gestionnaire.
-Utile après un changement de thème ou de visibilité de couches.
+Refreshes the manager display.
+Useful after a theme change or a change in layer visibility.
 
-**Paramètres** :
+**Parameters**:
 
-- `immediate` (boolean, optionnel) : `false` (défaut, debouncé) ou `true` (immédiat)
+- `immediate` (boolean, optional): `false` (default, debounced) or `true` (immediate)
 
 ```javascript
-// Rafraîchissement debouncé (groupé par défaut)
+// Debounced refresh (batched by default)
 GeoLeaf.LayerManager.refresh();
 
-// Rafraîchissement immédiat
+// Immediate refresh
 GeoLeaf.LayerManager.refresh(true);
 ```
 
 ---
 
-## Résumé de l'API
+## API summary
 
-| Méthode               | Rôle                                |
-| --------------------- | ----------------------------------- |
-| `init(options?)`      | Initialise le contrôle sur la carte |
-| `refresh(immediate?)` | Rafraîchit l'affichage du panneau   |
+| Method                | Role                               |
+| --------------------- | ---------------------------------- |
+| `init(options?)`      | Initialises the control on the map |
+| `refresh(immediate?)` | Refreshes the panel display        |
 
 ---
 
-## Configuration via profil JSON
+## Configuration through the JSON profile
 
-Le gestionnaire lit sa configuration depuis `geoleaf.config.json` au démarrage :
+The manager reads its configuration from `geoleaf.config.json` at start-up:
 
 ```json
 {
@@ -132,43 +131,43 @@ Le gestionnaire lit sa configuration depuis `geoleaf.config.json` au démarrage 
 
 ---
 
-## CSS — classes BEM
+## CSS — BEM classes
 
 ```css
-.gl-layer-manager                      /* Conteneur principal */
-.gl-layer-manager__wrapper             /* Wrapper interne */
-.gl-layer-manager__header              /* En-tête (titre + toggle) */
-.gl-layer-manager__title               /* Titre du panneau */
-.gl-layer-manager__toggle              /* Bouton collapse/expand */
-.gl-layer-manager__body                /* Corps du panneau */
-.gl-layer-manager__section             /* Section individuelle */
-.gl-layer-manager__section-title       /* Titre de section */
-.gl-layer-manager__section--collapsed  /* Section repliée */
-.gl-layer-manager__item                /* Item dans une section */
-.gl-layer-manager--collapsed           /* Panneau replié */
+.gl-layer-manager                      /* Main container */
+.gl-layer-manager__wrapper             /* Inner wrapper */
+.gl-layer-manager__header              /* Header (title + toggle) */
+.gl-layer-manager__title               /* Panel title */
+.gl-layer-manager__toggle              /* Collapse/expand button */
+.gl-layer-manager__body                /* Panel body */
+.gl-layer-manager__section             /* Individual section */
+.gl-layer-manager__section-title       /* Section title */
+.gl-layer-manager__section--collapsed  /* Collapsed section */
+.gl-layer-manager__item                /* Item inside a section */
+.gl-layer-manager--collapsed           /* Collapsed panel */
 ```
 
 ---
 
-## Distinction Legend vs LayerManager
+## Legend vs LayerManager
 
-GeoLeaf expose **deux modules distincts** dans ce domaine :
+GeoLeaf exposes **two distinct modules** in this area:
 
-| Aspect         | `GeoLeaf.Legend`                                           | `GeoLeaf.LayerManager`                                                  |
-| -------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Facade**     | `packages/core/src/modules/geoleaf.legend.ts`              | `packages/core/src/modules/geoleaf.layer-manager.ts`                    |
-| **Source**     | `src/capabilities/legend/legend-api.ts`                    | `src/modules/built-in/layer-manager/layer-manager-api.ts`               |
-| **Rôle**       | Légende cartographique automatique (générée depuis styles) | Gestionnaire de couches UI (panneau interactif MapLibre GL JS IControl) |
-| **Gestion**    | Couches GeoJSON et leur rendu légendaire                   | Sections configurables (basemaps, couches, thèmes)                      |
-| **Chargement** | Automatique depuis styles des couches                      | Manuel via sections JSON (profil)                                       |
-| **Alias ?**    | Non — module indépendant                                   | Non — module indépendant                                                |
+| Aspect      | `GeoLeaf.Legend`                              | `GeoLeaf.LayerManager`                                       |
+| ----------- | --------------------------------------------- | ------------------------------------------------------------ |
+| **Facade**  | `packages/core/src/modules/geoleaf.legend.ts` | `packages/core/src/modules/geoleaf.layer-manager.ts`         |
+| **Source**  | `src/capabilities/legend/legend-api.ts`       | `src/modules/built-in/layer-manager/layer-manager-api.ts`    |
+| **Role**    | Automatic map legend (generated from styles)  | UI layer manager (interactive MapLibre GL JS IControl panel) |
+| **Handles** | GeoJSON layers and their legend rendering     | Configurable sections (basemaps, layers, themes)             |
+| **Loading** | Automatic, from the layer styles              | Manual, through JSON sections (profile)                      |
+| **Alias?**  | No — independent module                       | No — independent module                                      |
 
-Ces deux modules sont **indépendants et non aliasés**.
+The two modules are **independent and not aliased**.
 
 ---
 
-## Modules liés
+## Related modules
 
-- **[GeoLeaf.Core](../core/GeoLeaf_core_README.md)** : Fournit l'instance de carte
-- **[GeoLeaf.Legend](../legend/GeoLeaf_Legend_README.md)** : Légende cartographique automatique
-- **[GeoLeaf.Baselayers](../baselayers/GeoLeaf_Baselayers_README.md)** : Fonds de carte
+- **[GeoLeaf.Core](../core/GeoLeaf_core_README.md)**: provides the map instance
+- **[GeoLeaf.Legend](../legend/GeoLeaf_Legend_README.md)**: automatic map legend
+- **[GeoLeaf.Baselayers](../baselayers/GeoLeaf_Baselayers_README.md)**: basemaps

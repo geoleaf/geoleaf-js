@@ -4,6 +4,10 @@
 **Source de vérité :** `packages/core/src/contracts/`
 **Vérifié contre :** `16e5a451` (27/07/2026)
 
+📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `packages/core/src/`. Les
+noms nus du squelette de plugin (`entry.ts`, `public-api.ts`…) désignent une **forme**, pas un
+fichier : ils valent pour `packages/plugins/<nom>/src/`, quel que soit le plugin.
+
 > **Annexe de référence du [Plugin Contract v1](PLUGIN_ARCHITECTURE_SPEC.md).** Document
 > **descriptif et vivant** — il suit le code. Les règles **normatives figées** vivent dans
 > [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) ; en cas de divergence, la
@@ -81,10 +85,21 @@ aucune instruction top-level. Gaté par `scripts/check-contracts-pure.cjs`, en p
 comme dans `ci:local`. C'est ce gate qui a arrêté la dérive « membrane » où des contrats
 s'étaient mis à exporter des singletons faisant des lookups `globalThis`.
 
-**Six contrats sont publiés** en sous-chemins `types`-seuls, atteignables par un plugin tiers :
-`core-module`, `capability`, `config`, `map-adapter`, `layer-data`, `event-bus`
-(`@geoleaf/core/contracts/<nom>.contract.js`). On en ajoute quand on veut ; **on n'en retire
-jamais**.
+Les contrats publiés en sous-chemins `types`-seuls sont atteignables par un plugin tiers en
+`@geoleaf/core/contracts/<nom>.contract.js`. **La liste ne se recopie pas ici** — c'est la map
+`exports` du `package.json` du core qui fait foi :
+
+```bash
+node -p "Object.keys(require('./packages/core/package.json').exports).filter(k => k.includes('/contracts/')).join('\n')"
+```
+
+On en ajoute quand on veut ; **on n'en retire jamais**.
+
+> ⚠️ **Cette phrase a annoncé « Six contrats » et les a énumérés jusqu'au 11/08/2026 ; il y en
+> avait huit.** `preset.contract.js` et `sync.contract.js` ont été ajoutés depuis, sans que la
+> liste bouge. 🛑 **Le défaut est instructif : le paragraphe énonçait la règle qui prédisait sa
+> propre dérive** — « on en ajoute quand on veut » — et recopiait quand même le compte. Une liste
+> qui grandit par conception ne se fige pas en prose ; elle se dérive.
 
 ---
 
@@ -98,7 +113,7 @@ jamais**.
 | `capabilities/**` → `adapters/maplibre/*`, `app/`                                | **INTERDIT**                                                                                    | ESLint                                                            |
 | kernel → `capabilities/**`                                                       | **INTERDIT** — le kernel est le substrat                                                        | —                                                                 |
 | plugin → core                                                                    | via le **namespace global** ou les 6 sous-chemins `types`, jamais par un alias vers les sources | `verify-plugin-core-boundary`                                     |
-| plugin → plugin                                                                  | autorisé **via dépendance npm déclarée**, jamais par réécriture de chemins au build             | `PLUGIN_ARCHITECTURE_SPEC.md` §7                                  |
+| plugin → plugin                                                                  | autorisé **via dépendance npm déclarée**, jamais par réécriture de chemins au build             | [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) §7   |
 | core → `@geoleaf/host-runtime`                                                   | **INTERDIT** — la dépendance est à sens unique                                                  | ADR-11                                                            |
 
 ⚠️ **`no-plugin-in-core` est une frontière d'ARCHITECTURE.** Elle garantit que le core reste
@@ -115,7 +130,7 @@ contournement — mais il est explicite et se motive sur place, dans le baril.
 ⚠️ **`ICoreModule` est une UNION**, pas une interface :
 
 ```typescript
-// packages/core/src/contracts/core-module.contract.ts:373
+// packages/core/src/contracts/core-module.contract.ts
 export type ICoreModule = ILifecycleModule | IUISlotModule;
 ```
 
@@ -202,7 +217,7 @@ Pass 2 lit la config **pré-fusion**, les ressources de profil se chargeant apr�
 et conséquence dans `specs/CDC_kernel.md` §Séquence de boot.
 
 L'inventaire exhaustif des paramètres est dans
-`docs/reference/inventaire_config_parametres.md`, gaté dans les deux sens contre
+[`docs/reference/inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md), gaté dans les deux sens contre
 `profiles/schemas/*.json`.
 
 ---
@@ -211,7 +226,7 @@ L'inventaire exhaustif des paramètres est dans
 
 - [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) — le contrat **figé** (invariants `INV-*`, gouvernance RFC)
 - [`PROFILE_CONTRACT_SPEC.md`](PROFILE_CONTRACT_SPEC.md) — le contrat **figé** côté données de profil
-- `docs/specs/CDC_kernel.md` — séquence de boot, 13 sous-systèmes, les 14 ADR
+- [`docs/specs/CDC_kernel.md`](../CDC_kernel.md) — séquence de boot, 13 sous-systèmes, les 14 ADR
 
 ---
 

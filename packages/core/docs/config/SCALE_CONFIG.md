@@ -1,26 +1,20 @@
 ---
-title: "Configuration Scale Control (scaleConfig)"
+title: "Scale control configuration (scaleConfig)"
 ---
 
-# Configuration Scale Control (scaleConfig)
-
-**Version** : 3.0.0
-**Date de création** : Décembre 2025
-**Dernière mise à jour** : mars 2026
-
----
+# Scale control configuration (scaleConfig)
 
 ## Description
 
-Le module `ScaleControl` affiche l'échelle de la carte sous différentes formes : échelle graphique MapLibre GL JS ScaleControl, échelle numérique (ex: 1:250 000), et niveau de zoom. Il peut être positionné dans n'importe quel coin de la carte et offre une option d'édition interactive de l'échelle.
+The `ScaleControl` module displays the map scale in several forms: the graphic scale bar of MapLibre GL JS ScaleControl, a numeric scale (for example 1:250 000), and the zoom level. It can be placed in any corner of the map and offers an interactive scale editing option.
 
-## Localisation dans le code
+## Code location
 
-- **Module** : `packages/core/src/modules/built-in/ui/scale-control.ts`
-- **Initialisation** : `GeoLeaf.UI.ScaleControl.init(map, options)`
-- **Chargement** : `packages/core/src/bundle-esm-entry.ts` (import dans l'ordre Rollup)
+- **Module**: `packages/core/src/modules/built-in/ui/scale-control.ts`
+- **Initialisation**: `GeoLeaf.UI.ScaleControl.init(map, options)`
+- **Loading**: `packages/core/src/bundle-esm-entry.ts` (imported in Rollup order)
 
-## Structure de configuration
+## Configuration structure
 
 ```json
 {
@@ -34,20 +28,20 @@ Le module `ScaleControl` affiche l'échelle de la carte sous différentes formes
 }
 ```
 
-## Paramètres disponibles
+## Available parameters
 
 ### scaleGraphic (boolean)
 
-Active/désactive l'échelle graphique MapLibre GL JS (barre horizontale avec graduations).
+Enables or disables the MapLibre GL JS graphic scale (horizontal bar with graduations).
 
-**Valeur par défaut:** `true`
+**Default value:** `true`
 
-**Comportement:**
+**Behaviour:**
 
-- `true` : Affiche l'échelle graphique MapLibre GL JS native (ScaleControl)
-- `false` : N'affiche pas l'échelle graphique
+- `true`: displays the native MapLibre GL JS graphic scale (ScaleControl)
+- `false`: hides the graphic scale
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -60,18 +54,18 @@ Active/désactive l'échelle graphique MapLibre GL JS (barre horizontale avec gr
 
 ### scaleNumeric (boolean)
 
-Active/désactive l'affichage de l'échelle numérique au format "1:250 000".
+Enables or disables the numeric scale, displayed in the "1:250 000" format.
 
-**Valeur par défaut:** `false`
+**Default value:** `false`
 
-**Comportement:**
+**Behaviour:**
 
-- `true` : Affiche l'échelle numérique dans un bloc personnalisé
-- `false` : N'affiche pas l'échelle numérique
+- `true`: displays the numeric scale in a dedicated block
+- `false`: hides the numeric scale
 
-**Format:** L'échelle est calculée automatiquement en fonction du niveau de zoom et de la latitude du centre de la carte.
+**Format:** the scale is computed automatically from the zoom level and the latitude of the map centre.
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -82,29 +76,29 @@ Active/désactive l'affichage de l'échelle numérique au format "1:250 000".
 }
 ```
 
-**Rendu:** `1:250 000` (avec espaces comme séparateurs de milliers)
+**Rendering:** `1:250 000` (spaces as thousands separators)
 
 ### scaleNumericEditable (boolean)
 
-Rend l'échelle numérique éditable via un champ input. L'utilisateur peut saisir une échelle cible et la carte s'ajustera au niveau de zoom correspondant.
+Turns the numeric scale into an editable input field. A target scale can be typed in, and the map adjusts to the matching zoom level.
 
-**Valeur par défaut:** `false`
+**Default value:** `false`
 
-**Prérequis:** `scaleNumeric` doit être `true`
+**Prerequisite:** `scaleNumeric` must be `true`
 
-**Comportement:**
+**Behaviour:**
 
-- `true` : L'échelle devient un champ input éditable
-- `false` : L'échelle est affichée en lecture seule
+- `true`: the scale becomes an editable input field
+- `false`: the scale is read-only
 
-**Utilisation:**
+**Usage:**
 
-1. L'utilisateur clique sur le champ
-2. Saisit une échelle au format "1:xxx xxx" (ex: "1:100 000")
-3. Valide avec Entrée ou en cliquant ailleurs
-4. La carte effectue un zoom pour atteindre cette échelle
+1. Click the field
+2. Type a scale in the "1:xxx xxx" format (for example "1:100 000")
+3. Confirm with Enter or by clicking elsewhere
+4. The map zooms to reach that scale
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -116,7 +110,7 @@ Rend l'échelle numérique éditable via un champ input. L'utilisateur peut sais
 }
 ```
 
-**Formats acceptés:**
+**Accepted formats:**
 
 - `1:250000`
 - `1:250 000`
@@ -124,16 +118,16 @@ Rend l'échelle numérique éditable via un champ input. L'utilisateur peut sais
 
 ### scaleNivel (boolean)
 
-Active/désactive l'affichage du niveau de zoom MapLibre GL JS (ex: "Zoom: 12").
+Enables or disables the display of the MapLibre GL JS zoom level (for example "Zoom: 12").
 
-**Valeur par défaut:** `false`
+**Default value:** `false`
 
-**Comportement:**
+**Behaviour:**
 
-- `true` : Affiche le niveau de zoom actuel
-- `false` : N'affiche pas le niveau de zoom
+- `true`: displays the current zoom level
+- `false`: hides the zoom level
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -144,22 +138,22 @@ Active/désactive l'affichage du niveau de zoom MapLibre GL JS (ex: "Zoom: 12").
 }
 ```
 
-**Rendu:** `Zoom: 12`
+**Rendering:** `Zoom: 12`
 
 ### position (string)
 
-Définit la position du contrôle d'échelle sur la carte.
+Sets the position of the scale control on the map.
 
-**Valeur par défaut:** `"bottomleft"`
+**Default value:** `"bottomleft"`
 
-**Valeurs possibles:**
+**Possible values:**
 
-- `"topleft"` : Coin supérieur gauche
-- `"topright"` : Coin supérieur droit
-- `"bottomleft"` : Coin inférieur gauche (recommandé, même position que branding/coordinates)
-- `"bottomright"` : Coin inférieur droit
+- `"topleft"`: top-left corner
+- `"topright"`: top-right corner
+- `"bottomleft"`: bottom-left corner (recommended, same position as branding/coordinates)
+- `"bottomright"`: bottom-right corner
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -172,9 +166,9 @@ Définit la position du contrôle d'échelle sur la carte.
 }
 ```
 
-## Exemples d'utilisation
+## Usage examples
 
-### Configuration minimale (échelle graphique uniquement)
+### Minimal configuration (graphic scale only)
 
 ```json
 {
@@ -184,7 +178,7 @@ Définit la position du contrôle d'échelle sur la carte.
 }
 ```
 
-### Configuration complète non-éditable
+### Full non-editable configuration
 
 ```json
 {
@@ -198,7 +192,7 @@ Définit la position du contrôle d'échelle sur la carte.
 }
 ```
 
-### Configuration avec échelle éditable
+### Configuration with an editable scale
 
 ```json
 {
@@ -212,9 +206,9 @@ Définit la position du contrôle d'échelle sur la carte.
 }
 ```
 
-### Désactiver complètement
+### Disable entirely
 
-Supprimer `scaleConfig` du profile.json ou définir tous les paramètres à `false`:
+Remove `scaleConfig` from profile.json, or set every parameter to `false`:
 
 ```json
 {
@@ -226,38 +220,38 @@ Supprimer `scaleConfig` du profile.json ou définir tous les paramètres à `fal
 }
 ```
 
-## Calculs techniques
+## Technical computations
 
-### Calcul de l'échelle
+### Scale computation
 
-L'échelle est calculée avec la formule :
+The scale is computed with the following formula:
 
 ```javascript
 metersPerPixel = ((156543.03392 * cos((lat * π) / 180)) / 2) ^ zoom;
 scale = (metersPerPixel * 96) / 0.0254;
 ```
 
-**Facteurs:**
+**Factors:**
 
-- `156543.03392` : Taille du monde en mètres au niveau de zoom 0
-- Latitude du centre de la carte (cos pour projection Web Mercator)
-- Résolution d'écran : 96 DPI
-- Conversion mètres → pouces : 0.0254 m/inch
+- `156543.03392`: size of the world in metres at zoom level 0
+- Latitude of the map centre (cos, for the Web Mercator projection)
+- Screen resolution: 96 DPI
+- Metres → inches conversion: 0.0254 m/inch
 
-### Calcul du zoom depuis l'échelle
+### Zoom computation from a scale
 
-Pour calculer le niveau de zoom nécessaire pour atteindre une échelle donnée :
+To compute the zoom level required to reach a given scale:
 
 ```javascript
 metersPerPixel = (targetScale * 0.0254) / 96;
 zoom = log2((156543.03392 * cos((lat * π) / 180)) / metersPerPixel);
 ```
 
-Le zoom est arrondi à l'entier le plus proche et limité entre 0 et 22.
+The zoom is rounded to the nearest integer and clamped between 0 and 22.
 
-## Styling CSS
+## CSS styling
 
-Le module utilise les variables CSS GeoLeaf :
+The module uses the GeoLeaf CSS variables:
 
 ```css
 .gl-scale-control {
@@ -271,21 +265,21 @@ Le module utilise les variables CSS GeoLeaf :
 }
 ```
 
-**Personnalisation:** Vous pouvez surcharger ces styles dans votre CSS personnalisé.
+**Customisation:** these styles can be overridden in custom CSS.
 
-## API JavaScript
+## JavaScript API
 
-### Initialisation automatique
+### Automatic initialisation
 
 ```javascript
-// Initialise automatiquement depuis la config du profil actif
+// Initialises automatically from the active profile configuration
 GeoLeaf.UI.ScaleControl.init(map);
 ```
 
-### Initialisation manuelle
+### Manual initialisation
 
 ```javascript
-// Initialisation avec config personnalisée
+// Initialisation with a custom configuration
 GeoLeaf.UI.ScaleControl.init(map, {
     scaleGraphic: true,
     scaleNumeric: true,
@@ -298,56 +292,56 @@ GeoLeaf.UI.ScaleControl.init(map, {
 ### Destruction
 
 ```javascript
-// Nettoyer le contrôle
+// Clean up the control
 GeoLeaf.UI.ScaleControl.destroy();
 ```
 
-## Événements
+## Events
 
-Le contrôle écoute automatiquement les événements MapLibre GL JS suivants :
+The control automatically listens to the following MapLibre GL JS events:
 
-- `zoomend` : Mise à jour lors du changement de zoom
-- `moveend` : Mise à jour lors du déplacement de la carte
+- `zoomend`: update on zoom change
+- `moveend`: update when the map is panned
 
-Ces événements déclenchent une mise à jour de l'échelle et du niveau de zoom affichés.
+These events trigger a refresh of the displayed scale and zoom level.
 
-## Notes techniques
+## Technical notes
 
-### Précision de l'échelle
+### Scale accuracy
 
-L'échelle calculée est approximative car :
+The computed scale is approximate, because:
 
-- Elle dépend de la latitude (projection Web Mercator déforme aux latitudes élevées)
-- La résolution d'écran peut varier (96 DPI est une valeur standard)
-- Les arrondis sont appliqués pour la lisibilité
+- it depends on the latitude (the Web Mercator projection distorts at high latitudes)
+- screen resolution may vary (96 DPI is a standard value)
+- values are rounded for readability
 
 ### Performance
 
-Le module est optimisé :
+The module is optimised:
 
-- Mise à jour uniquement sur `zoomend` et `moveend` (pas en temps réel pendant le déplacement)
-- Calculs mathématiques légers
-- Pas d'impact sur les performances de rendu
+- updates only on `zoomend` and `moveend` (not continuously while panning)
+- lightweight mathematical computations
+- no impact on rendering performance
 
-### Compatibilité
+### Compatibility
 
-- **MapLibre GL JS :** Utilise le ScaleControl natif MapLibre pour l'échelle graphique
-- **Navigateurs :** Compatible tous navigateurs modernes (ES2022+)
-- **Mobile :** Fonctionne sur mobile, input éditable tactile-friendly
+- **MapLibre GL JS:** uses the native MapLibre ScaleControl for the graphic scale
+- **Browsers:** compatible with all modern browsers (ES2022+)
+- **Mobile:** works on mobile, with a touch-friendly editable input
 
-## Fichiers concernés
+## Related files
 
-- `packages/core/src/modules/built-in/ui/scale-control.ts` — Module principal
-- `packages/core/src/bundle-esm-entry.ts` — Chargement du module
-- `packages/core/demo/` — Initialisation dans la démo
-- `profiles/*/profile.json` — Configuration
+- `packages/core/src/modules/built-in/ui/scale-control.ts` — main module
+- `packages/core/src/bundle-esm-entry.ts` — module loading
+- `packages/core/demo/` — initialisation in the demo
+- `profiles/*/profile.json` — configuration
 
-## Historique
+## History
 
-- **2.0.0** : Refactorisation complète sur MapLibre GL JS (mars 2026)
-- **1.0.0** : Création du module ScaleControl
-    - Échelle graphique
-    - Échelle numérique calculée
-    - Échelle éditable avec input
-    - Affichage du niveau de zoom
-    - Positionnement configurable
+- **2.0.0**: complete refactor onto MapLibre GL JS
+- **1.0.0**: creation of the ScaleControl module
+    - graphic scale
+    - computed numeric scale
+    - editable scale with an input field
+    - zoom level display
+    - configurable positioning

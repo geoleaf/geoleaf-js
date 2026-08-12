@@ -1,17 +1,14 @@
-﻿---
+---
 title: "GeoLeaf Configuration Guide"
 ---
 
 # GeoLeaf Configuration Guide
 
-**Product Version:** GeoLeaf Platform V3
-**Version:** 3.0.0
-**Last Updated:** avril 2026
-**Level:** Intermediate to Advanced
+**Applies to:** @geoleaf/core v3.x
 
-> Version courante : **GeoLeaf v3.0.0**. Structure de profil modulaire avec fichiers séparés `basemaps.json` et `ui.json`.
+**Level:** Intermediate to advanced
 
-This comprehensive guide documents all JSON configuration files used by GeoLeaf JS to customize behavior, appearance, and data sources for different business profiles (Tourism, Custom…).
+This guide documents the JSON configuration files GeoLeaf JS reads to customise behaviour, appearance and data sources for a business profile (tourism, custom, and so on). Profiles use a modular layout, in which `basemaps.json` and `ui.json` are separate files.
 
 ---
 
@@ -37,21 +34,21 @@ This comprehensive guide documents all JSON configuration files used by GeoLeaf 
 ### Configuration File Hierarchy
 
 ```
-geoleaf.config.json              (Racine — optionnel, sélection du profil)
+geoleaf.config.json              (Root — optional, selects the profile)
   └── profiles/
-      └── {profile-name}/        (layout v2 — 2026-06)
-          ├── profile.json       (REQUIS — identité + map + manifeste Files)
+      └── {profile-name}/        (v2 layout)
+          ├── profile.json       (REQUIRED — identity + map + Files manifest)
           ├── config/
           │   ├── core/
-          │   │   ├── basemaps.json   (REQUIS — sources de tuiles)
-          │   │   ├── ui.json         (REQUIS — contrôles UI)
-          │   │   ├── layers.json     (REQUIS — liste des couches)
-          │   │   ├── taxonomy.json   (REQUIS — catégories & icônes POI)
-          │   │   ├── themes.json     (REQUIS — préréglages de visibilité)
-          │   │   └── features.json   (Optionnel — clustering, géocodage, performance, POI)
+          │   │   ├── basemaps.json   (REQUIRED — tile sources)
+          │   │   ├── ui.json         (REQUIRED — UI controls)
+          │   │   ├── layers.json     (REQUIRED — layer list)
+          │   │   ├── taxonomy.json   (REQUIRED — POI categories & icons)
+          │   │   ├── themes.json     (REQUIRED — visibility presets)
+          │   │   └── features.json   (Optional — clustering, geocoding, performance, POI)
           │   └── plugins/
-          │       └── {module-id}.json (Optionnel — config par plugin, bloc modules.<id>)
-          └── layers/            (Optionnel — configs & données GeoJSON)
+          │       └── {module-id}.json (Optional — per-plugin config, modules.<id> block)
+          └── layers/            (Optional — GeoJSON configs & data)
               └── {layer-id}/
                   ├── {layer-id}_config.json
                   └── styles/
@@ -59,8 +56,8 @@ geoleaf.config.json              (Racine — optionnel, sélection du profil)
                       └── *.json
 ```
 
-> Les chemins des fichiers de configuration sont déclarés dans le manifeste `Files` de
-> `profile.json` — seuls le nom et l'emplacement de `profile.json` sont imposés.
+> Configuration file paths are declared in the `Files` manifest of `profile.json` — only the name and
+> location of `profile.json` itself are imposed.
 
 ### Load Order
 
@@ -103,7 +100,7 @@ geoleaf.config.json              (Racine — optionnel, sélection du profil)
     },
     "branding": {
         "enabled": false,
-        "text": "Mon Application",
+        "text": "My Application",
         "position": "bottom-left"
     },
     "security": {
@@ -116,13 +113,13 @@ geoleaf.config.json              (Racine — optionnel, sélection du profil)
 
 #### `debug` (boolean, optional)
 
-Active le logging verbeux dans la console. Valeur par défaut : `false`.
+Enables verbose console logging. Defaults to `false`.
 
 ```json
 { "debug": true }
 ```
 
-Pour contrôler le niveau de log, utilisez la section `logging` :
+Use the `logging` section to control the log level:
 
 ```json
 {
@@ -132,23 +129,23 @@ Pour contrôler le niveau de log, utilisez la section `logging` :
 }
 ```
 
-Niveaux disponibles : `"debug"`, `"info"`, `"warn"`, `"error"`, `"production"`.
+Available levels: `"debug"`, `"info"`, `"warn"`, `"error"`, `"production"`.
 
 #### `branding` (object, optional)
 
-Overlay de branding affiché sur la carte.
+Branding overlay displayed on the map.
 
-| Champ      | Type    | Description                                  |
-| ---------- | ------- | -------------------------------------------- |
-| `enabled`  | boolean | Activer l'overlay. Défaut `false`.           |
-| `text`     | string  | Texte affiché.                               |
-| `position` | string  | Position sur la carte (ex. `"bottom-left"`). |
+| Field      | Type    | Description                                 |
+| ---------- | ------- | ------------------------------------------- |
+| `enabled`  | boolean | Enable the overlay. Defaults to `false`.    |
+| `text`     | string  | Text to display.                            |
+| `position` | string  | Position on the map (e.g. `"bottom-left"`). |
 
 #### `security` (object, optional)
 
-| Champ       | Type    | Description                                                     |
-| ----------- | ------- | --------------------------------------------------------------- |
-| `httpsOnly` | boolean | Rejette les URLs `http:` (sauf images `data:`). Défaut `false`. |
+| Field       | Type    | Description                                                        |
+| ----------- | ------- | ------------------------------------------------------------------ |
+| `httpsOnly` | boolean | Rejects `http:` URLs (except `data:` images). Defaults to `false`. |
 
 #### `data` (object, required)
 
@@ -174,11 +171,11 @@ Data loading configuration.
 
 Performance optimization settings.
 
-| Champ                    | Type    | Défaut  | Description                                     |
-| ------------------------ | ------- | ------- | ----------------------------------------------- |
-| `maxConcurrentLayers`    | number  | `10`    | Nombre maximum de couches chargées en parallèle |
-| `layerLoadDelay`         | number  | `200`   | Délai en ms entre chaque chargement de couche   |
-| `fitBoundsOnThemeChange` | boolean | `false` | Recadrer la carte lors du changement de thème   |
+| Field                    | Type    | Default | Description                                 |
+| ------------------------ | ------- | ------- | ------------------------------------------- |
+| `maxConcurrentLayers`    | number  | `10`    | Maximum number of layers loaded in parallel |
+| `layerLoadDelay`         | number  | `200`   | Delay in ms between two layer loads         |
+| `fitBoundsOnThemeChange` | boolean | `false` | Re-frame the map when the theme changes     |
 
 ---
 
@@ -193,8 +190,8 @@ Performance optimization settings.
 ```json
 {
     "id": "my-profile",
-    "label": "Mon Profil",
-    "description": "Description du profil",
+    "label": "My Profile",
+    "description": "Profile description",
     "version": "1.3.0",
     "map": {
         "bounds": [
@@ -257,15 +254,15 @@ Background map definitions.
 
 | Field         | Type            | Required | Description                                              |
 | ------------- | --------------- | -------- | -------------------------------------------------------- |
-| `id`          | string          | ✅       | Unique basemap identifier                                |
-| `name`        | string          | ✅       | Display name in UI                                       |
-| `url`         | string          | ✅       | Tile URL template with `{z}`, `{x}`, `{y}` placeholders  |
-| `attribution` | string          | ✅       | Copyright/attribution HTML                               |
-| `maxZoom`     | number          | ❌       | Maximum zoom level (1-20)                                |
-| `minZoom`     | number          | ❌       | Minimum zoom level (1-20)                                |
-| `default`     | boolean         | ❌       | Whether this is the default basemap                      |
-| `tileSize`    | number          | ❌       | Tile size in pixels (default: 256)                       |
-| `subdomains`  | `array<string>` | ❌       | Subdomains for load balancing (default: `["a","b","c"]`) |
+| `id`          | string          | Yes      | Unique basemap identifier                                |
+| `name`        | string          | Yes      | Display name in UI                                       |
+| `url`         | string          | Yes      | Tile URL template with `{z}`, `{x}`, `{y}` placeholders  |
+| `attribution` | string          | Yes      | Copyright/attribution HTML                               |
+| `maxZoom`     | number          | No       | Maximum zoom level (1-20)                                |
+| `minZoom`     | number          | No       | Minimum zoom level (1-20)                                |
+| `default`     | boolean         | No       | Whether this is the default basemap                      |
+| `tileSize`    | number          | No       | Tile size in pixels (default: 256)                       |
+| `subdomains`  | `array<string>` | No       | Subdomains for load balancing (default: `["a","b","c"]`) |
 
 **Common tile providers:**
 
@@ -300,13 +297,13 @@ Background map definitions.
 
 Paths to configuration and data files (relative to profile directory).
 
-| Champ          | Type   | Requis | Description                                    |
-| -------------- | ------ | ------ | ---------------------------------------------- |
-| `themesFile`   | string | ✅     | Chemin vers `themes.json`                      |
-| `layersFile`   | string | ❌     | Chemin vers `layers.json` (index des couches)  |
-| `basemapsFile` | string | ❌     | Chemin vers `basemaps.json` (fonds de carte)   |
-| `uiFile`       | string | ❌     | Chemin vers `ui.json` (composants UI)          |
-| `mappingFile`  | string | ❌     | Chemin vers `mapping.json` (normalisation POI) |
+| Field          | Type   | Required | Description                                |
+| -------------- | ------ | -------- | ------------------------------------------ |
+| `themesFile`   | string | Yes      | Path to `themes.json`                      |
+| `layersFile`   | string | No       | Path to `layers.json` (layer index)        |
+| `basemapsFile` | string | No       | Path to `basemaps.json` (basemaps)         |
+| `uiFile`       | string | No       | Path to `ui.json` (UI components)          |
+| `mappingFile`  | string | No       | Path to `mapping.json` (POI normalisation) |
 
 #### `Directory` (object, optional)
 
@@ -394,7 +391,7 @@ Initial map state.
         },
         "theme": "light",
         "basemap": "osm",
-        "language": "fr"
+        "language": "en"
     }
 }
 ```
@@ -403,11 +400,11 @@ Initial map state.
 
 ## basemaps.json
 
-**Localisation :** `profiles/{profile-name}/basemaps.json`
-**Requis :** Oui (depuis v2.0.0)
-**Référencé par :** `profile.json → Files.basemapsFile`
+**Location:** `profiles/{profile-name}/basemaps.json`
+**Required:** Yes (since v2.0.0)
+**Referenced by:** `profile.json → Files.basemapsFile`
 
-Définit les sources de tuiles disponibles. Chaque entrée est indexée par son ID.
+Declares the available tile sources. Each entry is keyed by its ID.
 
 ```json
 {
@@ -427,7 +424,7 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
         },
         "maplibre_vector": {
             "id": "maplibre_vector",
-            "label": "Carte vectorielle",
+            "label": "Vector map",
             "type": "maplibre",
             "style": "https://cdn.example.com/styles/vector.json",
             "fallbackUrl": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -437,38 +434,38 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
 }
 ```
 
-| Champ            | Type                                                                          | Description                                                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`             | string                                                                        | Identifiant (miroir de la clé)                                                                                                                          |
-| `label`          | string                                                                        | Libellé dans le sélecteur                                                                                                                               |
-| `type`           | `"tile"` \| `"maplibre"` \| `"image"` \| `"hillshade"` \| `"wmts"` \| `"wms"` | `"tile"` = raster, `"maplibre"` = vectoriel GL, `"image"` = image géoréférencée, `"hillshade"` = ombrage relief, `"wmts"` = OGC WMTS, `"wms"` = OGC WMS |
-| `url`            | string                                                                        | Template URL raster avec `{s}`, `{z}`, `{x}`, `{y}`                                                                                                     |
-| `style`          | string                                                                        | URL du style MapLibre GL (type `"maplibre"` uniquement)                                                                                                 |
-| `fallbackUrl`    | string                                                                        | URL raster de secours si MapLibre GL indisponible                                                                                                       |
-| `tiles`          | string[]                                                                      | Tableau d'URLs explicites (remplace expansion `{s}`)                                                                                                    |
-| `subdomains`     | string \| string[]                                                            | Sous-domaines de rotation                                                                                                                               |
-| `attribution`    | string                                                                        | Attribution HTML                                                                                                                                        |
-| `tileSize`       | number                                                                        | Taille des tuiles en pixels. Défaut `256`.                                                                                                              |
-| `defaultBasemap` | boolean                                                                       | Basemap active au démarrage                                                                                                                             |
-| `offline`        | boolean                                                                       | Support du cache offline                                                                                                                                |
-| `terrain`        | object                                                                        | Configuration terrain 3D (voir [PROFILE_JSON_REFERENCE.md — terrain.\*](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optionnel))                  |
-| `imageSource`    | object                                                                        | Config image géoréférencée — `type: "image"` uniquement (voir ci-dessous)                                                                               |
-| `hillshade`      | object                                                                        | Config ombrage relief — `type: "hillshade"` uniquement (voir ci-dessous)                                                                                |
-| `wmts`           | object                                                                        | Config OGC WMTS — `type: "wmts"` uniquement (voir ci-dessous)                                                                                           |
-| `wms`            | object                                                                        | Config OGC WMS — `type: "wms"` uniquement (voir ci-dessous)                                                                                             |
+| Field            | Type                                                                          | Description                                                                                                                                           |
+| ---------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`             | string                                                                        | Identifier (mirrors the key)                                                                                                                          |
+| `label`          | string                                                                        | Label shown in the basemap selector                                                                                                                   |
+| `type`           | `"tile"` \| `"maplibre"` \| `"image"` \| `"hillshade"` \| `"wmts"` \| `"wms"` | `"tile"` = raster, `"maplibre"` = GL vector, `"image"` = georeferenced image, `"hillshade"` = terrain shading, `"wmts"` = OGC WMTS, `"wms"` = OGC WMS |
+| `url`            | string                                                                        | Raster URL template with `{s}`, `{z}`, `{x}`, `{y}`                                                                                                   |
+| `style`          | string                                                                        | MapLibre GL style URL (type `"maplibre"` only)                                                                                                        |
+| `fallbackUrl`    | string                                                                        | Fallback raster URL used when MapLibre GL is unavailable                                                                                              |
+| `tiles`          | string[]                                                                      | Array of explicit URLs (replaces `{s}` expansion)                                                                                                     |
+| `subdomains`     | string \| string[]                                                            | Rotating subdomains                                                                                                                                   |
+| `attribution`    | string                                                                        | Attribution HTML                                                                                                                                      |
+| `tileSize`       | number                                                                        | Tile size in pixels. Defaults to `256`.                                                                                                               |
+| `defaultBasemap` | boolean                                                                       | Basemap active at startup                                                                                                                             |
+| `offline`        | boolean                                                                       | Offline cache support                                                                                                                                 |
+| `terrain`        | object                                                                        | 3D terrain configuration (see [PROFILE_JSON_REFERENCE.md — terrain.\*](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optional))                  |
+| `imageSource`    | object                                                                        | Georeferenced image config — `type: "image"` only (see below)                                                                                         |
+| `hillshade`      | object                                                                        | Terrain shading config — `type: "hillshade"` only (see below)                                                                                         |
+| `wmts`           | object                                                                        | OGC WMTS config — `type: "wmts"` only (see below)                                                                                                     |
+| `wms`            | object                                                                        | OGC WMS config — `type: "wms"` only (see below)                                                                                                       |
 
-### Nouveaux types de basemaps (Sprint 2)
+### Additional basemap types
 
-#### type: "image" — image géoréférencée
+#### type: "image" — Georeferenced image
 
 ```json
 {
     "basemaps": {
         "plan_cadastral": {
             "id": "plan_cadastral",
-            "label": "Plan cadastral",
+            "label": "Cadastral plan",
             "type": "image",
-            "attribution": "© Service cadastral",
+            "attribution": "© Cadastral service",
             "imageSource": {
                 "url": "https://cdn.example.com/cadastre/zone-nord.png",
                 "coordinates": [
@@ -484,20 +481,20 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
 }
 ```
 
-| Champ sous `imageSource` | Type       | Description                                                             |
-| ------------------------ | ---------- | ----------------------------------------------------------------------- |
-| `url`                    | string     | URL HTTP/HTTPS/data de l'image (obligatoire)                            |
-| `coordinates`            | number[][] | 4 coins `[lng, lat]` dans l'ordre NW, NE, SE, SW. Défaut : monde entier |
-| `opacity`                | number     | Opacité [0, 1]. Défaut `1`                                              |
+| Field under `imageSource` | Type       | Description                                                                     |
+| ------------------------- | ---------- | ------------------------------------------------------------------------------- |
+| `url`                     | string     | HTTP/HTTPS/data URL of the image (required)                                     |
+| `coordinates`             | number[][] | The 4 corners `[lng, lat]` in NW, NE, SE, SW order. Defaults to the whole world |
+| `opacity`                 | number     | Opacity in [0, 1]. Defaults to `1`                                              |
 
-#### type: "hillshade" — ombrage du relief
+#### type: "hillshade" — Terrain shading
 
 ```json
 {
     "basemaps": {
         "relief": {
             "id": "relief",
-            "label": "Ombrage terrain",
+            "label": "Terrain shading",
             "type": "hillshade",
             "attribution": "© Terrain tiles",
             "hillshade": {
@@ -514,17 +511,17 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
 }
 ```
 
-| Champ sous `hillshade`  | Type   | Description                                                                     |
-| ----------------------- | ------ | ------------------------------------------------------------------------------- |
-| `demUrl`                | string | URL template MNT raster-dem (obligatoire)                                       |
-| `demEncoding`           | string | Encodage altitude : `"terrarium"`, `"mapbox"`, `"custom"`. Défaut `"terrarium"` |
-| `demMaxZoom`            | number | Zoom max de la source DEM. Défaut `15`                                          |
-| `shadowColor`           | string | Couleur des ombres. Défaut `"#000000"`                                          |
-| `highlightColor`        | string | Couleur des zones éclairées. Défaut `"#ffffff"`                                 |
-| `accentColor`           | string | Couleur d'accent (bordures). Défaut `"#000000"`                                 |
-| `exaggeration`          | number | Amplitude ombre [0, 1]. Défaut `0.5`                                            |
-| `illuminationDirection` | number | Direction de la lumière en degrés. Défaut `335`                                 |
-| `illuminationAnchor`    | string | Ancrage lumière : `"viewport"` ou `"map"`. Défaut `"viewport"`                  |
+| Field under `hillshade` | Type   | Description                                                                          |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `demUrl`                | string | raster-dem DEM URL template (required)                                               |
+| `demEncoding`           | string | Elevation encoding: `"terrarium"`, `"mapbox"`, `"custom"`. Defaults to `"terrarium"` |
+| `demMaxZoom`            | number | Maximum zoom of the DEM source. Defaults to `15`                                     |
+| `shadowColor`           | string | Shadow colour. Defaults to `"#000000"`                                               |
+| `highlightColor`        | string | Lit-area colour. Defaults to `"#ffffff"`                                             |
+| `accentColor`           | string | Accent colour (edges). Defaults to `"#000000"`                                       |
+| `exaggeration`          | number | Shadow amplitude in [0, 1]. Defaults to `0.5`                                        |
+| `illuminationDirection` | number | Light direction in degrees. Defaults to `335`                                        |
+| `illuminationAnchor`    | string | Light anchor: `"viewport"` or `"map"`. Defaults to `"viewport"`                      |
 
 #### type: "wmts" — OGC WMTS
 
@@ -547,12 +544,12 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
 }
 ```
 
-| Champ sous `wmts`    | Type   | Description                                                          |
-| -------------------- | ------ | -------------------------------------------------------------------- |
-| `getCapabilitiesUrl` | string | URL GetCapabilities OGC WMTS (obligatoire)                           |
-| `layer`              | string | Identifiant de la couche WMTS. Si absent, première couche du service |
-| `tileMatrixSet`      | string | TileMatrixSet à utiliser. Défaut `"GoogleMapsCompatible"`            |
-| `format`             | string | Format image. Défaut `"image/png"`                                   |
+| Field under `wmts`   | Type   | Description                                                                |
+| -------------------- | ------ | -------------------------------------------------------------------------- |
+| `getCapabilitiesUrl` | string | OGC WMTS GetCapabilities URL (required)                                    |
+| `layer`              | string | WMTS layer identifier. When absent, the first layer of the service is used |
+| `tileMatrixSet`      | string | TileMatrixSet to use. Defaults to `"GoogleMapsCompatible"`                 |
+| `format`             | string | Image format. Defaults to `"image/png"`                                    |
 
 #### type: "wms" — OGC WMS
 
@@ -577,34 +574,38 @@ Définit les sources de tuiles disponibles. Chaque entrée est indexée par son 
 }
 ```
 
-| Champ sous `wms` | Type    | Description                                           |
-| ---------------- | ------- | ----------------------------------------------------- |
-| `url`            | string  | URL de base du serveur WMS (obligatoire)              |
-| `layers`         | string  | Nom(s) de couche(s) séparés par virgule (obligatoire) |
-| `version`        | string  | Version WMS. Défaut `"1.3.0"`                         |
-| `crs`            | string  | Système de coordonnées. Défaut `"EPSG:3857"`          |
-| `format`         | string  | Format image. Défaut `"image/png"`                    |
-| `tileSize`       | number  | Taille tuile en pixels. Défaut `256`                  |
-| `transparent`    | boolean | Transparence PNG. Défaut `false`                      |
-| `styles`         | string  | Style WMS optionnel                                   |
+| Field under `wms` | Type    | Description                                            |
+| ----------------- | ------- | ------------------------------------------------------ |
+| `url`             | string  | Base URL of the WMS server (required)                  |
+| `layers`          | string  | Comma-separated layer name(s) (required)               |
+| `version`         | string  | WMS version. Defaults to `"1.3.0"`                     |
+| `crs`             | string  | Coordinate reference system. Defaults to `"EPSG:3857"` |
+| `format`          | string  | Image format. Defaults to `"image/png"`                |
+| `tileSize`        | number  | Tile size in pixels. Defaults to `256`                 |
+| `transparent`     | boolean | PNG transparency. Defaults to `false`                  |
+| `styles`          | string  | Optional WMS style                                     |
 
 ---
 
 ## ui.json
 
-**Localisation :** `profiles/{profile-name}/ui.json`
-**Requis :** Oui (depuis v2.0.0)
-**Référencé par :** `profile.json → Files.uiFile`
+**Location:** `profiles/{profile-name}/ui.json`
+**Required:** Yes (since v2.0.0)
+**Referenced by:** `profile.json → Files.uiFile`
 
-Configure la visibilité et le comportement des composants UI. Ces paramètres étaient dans la section `ui` de `profile.json` avant v2.0.0 (toujours supporté en rétrocompat inline).
+Configures the visibility and behaviour of the UI components. Before v2.0.0 these settings lived in the `ui` section of `profile.json`; that inline form is still accepted for backward compatibility.
 
-> ℹ️ **Migration v3 (breaking).** L'ancien drapeau `ui.showThemeSelector` a été **déplacé** vers **`modules.theme-selector.enabled`** (fichier `config/plugins/theme-selector.json`, déclaré dans `profile.json` → `Files.modules`), sur le modèle de `modules.table` / `modules.filter`. **Opt-out** : la barre de thèmes reste active sauf `modules.theme-selector.enabled: false`.
+::: warning Migration to v3 (breaking)
+
+The former `ui.showThemeSelector` flag has moved to **`modules.theme-selector.enabled`** (file `config/plugins/theme-selector.json`, declared in `profile.json` → `Files.modules`), following the same pattern as `modules.table` / `modules.filter`. It is an **opt-out**: the theme bar stays active unless `modules.theme-selector.enabled` is set to `false`.
+
+:::
 
 ```json
 {
     "ui": {
         "theme": "light",
-        "language": "fr",
+        "language": "en",
         "showBaseLayerControls": false,
         "showLayerManager": true,
         "showFilterPanel": true,
@@ -622,56 +623,56 @@ Configure la visibilité et le comportement des composants UI. Ces paramètres �
 }
 ```
 
-| Champ                   | Type                                 | Défaut   | Description                                                                                                                                                                                                                                                                                            |
-| ----------------------- | ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `theme`                 | `"light"` \| `"dark"` \| `"auto"`    | `"auto"` | Thème UI                                                                                                                                                                                                                                                                                               |
-| `language`              | string                               | `"fr"`   | Code langue                                                                                                                                                                                                                                                                                            |
-| `showBaseLayerControls` | boolean                              | `true`   | Bouton sélecteur de fond de carte                                                                                                                                                                                                                                                                      |
-| `showLayerManager`      | boolean                              | `true`   | Panneau de gestion des couches                                                                                                                                                                                                                                                                         |
-| `showFilterPanel`       | boolean                              | `true`   | Panneau de filtres/recherche                                                                                                                                                                                                                                                                           |
-| `showLegend`            | boolean                              | `true`   | Panneau légende                                                                                                                                                                                                                                                                                        |
-| `showGeolocation`       | boolean                              | `true`   | Bouton géolocalisation GPS                                                                                                                                                                                                                                                                             |
-| `showCoordinates`       | boolean                              | `true`   | Affichage des coordonnées                                                                                                                                                                                                                                                                              |
-| `showScale`             | boolean                              | `true`   | Affichage de la barre d'échelle                                                                                                                                                                                                                                                                        |
-| `showCacheButton`       | boolean                              | `false`  | Bouton cache offline (@geoleaf-plugins/offline-ui requis)                                                                                                                                                                                                                                              |
-| `permalink.enabled`     | boolean                              | `false`  | Synchronisation état dans l'URL                                                                                                                                                                                                                                                                        |
-| `permalink.mode`        | `"hash"` \| `"query"` \| `"compact"` | `"hash"` | Stratégie d'encodage URL                                                                                                                                                                                                                                                                               |
-| `permalink.fields`      | string[]                             | toutes   | Facettes **optionnelles** à sérialiser dans l'URL — `layers`, `shownLayers`, `filter`, `categories`, `tags`, `rating`, `theme` (ex : `["layers","theme"]`). La vue (`lat`/`lng`/`zoom`) est **toujours** sérialisée et n'est pas listable. La liste s'applique aux deux encodages, verbeux et compact. |
+| Field                   | Type                                 | Default  | Description                                                                                                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `theme`                 | `"light"` \| `"dark"` \| `"auto"`    | `"auto"` | UI theme                                                                                                                                                                                                                                                                                      |
+| `language`              | string                               | `"fr"`   | Language code                                                                                                                                                                                                                                                                                 |
+| `showBaseLayerControls` | boolean                              | `true`   | Basemap selector button                                                                                                                                                                                                                                                                       |
+| `showLayerManager`      | boolean                              | `true`   | Layer management panel                                                                                                                                                                                                                                                                        |
+| `showFilterPanel`       | boolean                              | `true`   | Filter/search panel                                                                                                                                                                                                                                                                           |
+| `showLegend`            | boolean                              | `true`   | Legend panel                                                                                                                                                                                                                                                                                  |
+| `showGeolocation`       | boolean                              | `true`   | GPS geolocation button                                                                                                                                                                                                                                                                        |
+| `showCoordinates`       | boolean                              | `true`   | Coordinate readout                                                                                                                                                                                                                                                                            |
+| `showScale`             | boolean                              | `true`   | Scale bar readout                                                                                                                                                                                                                                                                             |
+| `showCacheButton`       | boolean                              | `false`  | Offline cache button (requires @geoleaf-plugins/offline-ui)                                                                                                                                                                                                                                   |
+| `permalink.enabled`     | boolean                              | `false`  | Synchronise state into the URL                                                                                                                                                                                                                                                                |
+| `permalink.mode`        | `"hash"` \| `"query"` \| `"compact"` | `"hash"` | URL encoding strategy                                                                                                                                                                                                                                                                         |
+| `permalink.fields`      | string[]                             | all      | **Optional** facets to serialise into the URL — `layers`, `shownLayers`, `filter`, `categories`, `tags`, `rating`, `theme` (e.g. `["layers","theme"]`). The view (`lat`/`lng`/`zoom`) is **always** serialised and cannot be listed. The list applies to both encodings, verbose and compact. |
 
-> **Note : cache offline** — `showCacheButton: true` pré-suppose l’installation du plugin `@geoleaf-plugins/offline-ui` (MIT, npmjs.org) (IndexedDB). Le core `@geoleaf/core` ne fournit qu’un détecteur de connectivité (`offline-detector`). Sans le plugin, le bouton ne s’affiche pas même si l’option est activée.
+> **Note: offline cache** — `showCacheButton: true` assumes the `@geoleaf-plugins/offline-ui` plugin (MIT, IndexedDB) is installed. The core `@geoleaf/core` only ships a connectivity detector (`offline-detector`). Without the plugin the button does not appear, even when the option is enabled.
 
-### searchConfig (objet, optionnel)
+### searchConfig (object, optional)
 
-Configure le panneau de filtres/recherche (affiché si `ui.showFilterPanel: true`). Dans `ui.json` depuis v2.0.0, cette clé remplace `search` de l'ancien `profile.json` inline.
+Configures the filter/search panel (displayed when `ui.showFilterPanel: true`). Living in `ui.json` since v2.0.0, this key replaces `search` from the former inline `profile.json`.
 
 ```json
 {
     "searchConfig": {
-        "title": "Filtrer",
+        "title": "Filter",
         "radiusMin": 1,
         "radiusMax": 200,
         "radiusStep": 1,
         "radiusDefault": 10,
-        "searchPlaceholder": "Rechercher un POI\u2026",
+        "searchPlaceholder": "Search for a POI\u2026",
         "filters": [
             {
                 "id": "searchText",
                 "type": "search",
-                "label": "Recherche textuelle",
-                "placeholder": "Rechercher...",
+                "label": "Text search",
+                "placeholder": "Search...",
                 "searchFields": ["title", "properties.name", "description"]
             },
             {
                 "id": "proximity",
                 "type": "proximity",
-                "label": "Recherche par proximit\u00e9",
-                "buttonLabel": "Activer",
-                "instructionText": "Cliquez sur la carte pour d\u00e9finir le point central"
+                "label": "Proximity search",
+                "buttonLabel": "Enable",
+                "instructionText": "Click the map to set the centre point"
             },
             {
                 "id": "categories",
                 "type": "tree",
-                "label": "Cat\u00e9gories"
+                "label": "Categories"
             },
             {
                 "id": "tags",
@@ -681,43 +682,47 @@ Configure le panneau de filtres/recherche (affiché si `ui.showFilterPanel: true
             }
         ],
         "actions": {
-            "applyLabel": "Appliquer",
-            "resetLabel": "R\u00e9initialiser"
+            "applyLabel": "Apply",
+            "resetLabel": "Reset"
         }
     }
 }
 ```
 
-| Champ                | Type   | Description                                      |
-| -------------------- | ------ | ------------------------------------------------ |
-| `title`              | string | Titre du panneau de filtres                      |
-| `radiusMin`          | number | Rayon minimum de la recherche par proximité (km) |
-| `radiusMax`          | number | Rayon maximum (km)                               |
-| `radiusStep`         | number | Pas du curseur de rayon (km)                     |
-| `radiusDefault`      | number | Rayon par défaut (km)                            |
-| `searchPlaceholder`  | string | Placeholder du champ de recherche textuelle      |
-| `filters`            | array  | Liste des filtres (voir types ci-dessous)        |
-| `actions.applyLabel` | string | Libellé du bouton "Appliquer"                    |
-| `actions.resetLabel` | string | Libellé du bouton "Réinitialiser"                |
+| Field                | Type   | Description                               |
+| -------------------- | ------ | ----------------------------------------- |
+| `title`              | string | Title of the filter panel                 |
+| `radiusMin`          | number | Minimum radius for proximity search (km)  |
+| `radiusMax`          | number | Maximum radius (km)                       |
+| `radiusStep`         | number | Radius slider step (km)                   |
+| `radiusDefault`      | number | Default radius (km)                       |
+| `searchPlaceholder`  | string | Placeholder of the free-text search field |
+| `filters`            | array  | List of filters (see the types below)     |
+| `actions.applyLabel` | string | Label of the "apply" button               |
+| `actions.resetLabel` | string | Label of the "reset" button               |
 
-**Types de filtre disponibles (`filters[].type`) :**
+**Available filter types (`filters[].type`):**
 
-| Type                 | Description                                     |
-| -------------------- | ----------------------------------------------- |
-| `"search"`           | Champ de recherche textuelle libre              |
-| `"proximity"`        | Filtre géographique par rayon autour d'un point |
-| `"tree"`             | Arbre de sélection hiérarchique (catégories)    |
-| `"multiselect-tags"` | Sélection multiple par tags                     |
-| `"select"`           | Liste déroulante (valeur unique)                |
-| `"range"`            | Curseur de plage numérique                      |
+| Type                 | Description                                |
+| -------------------- | ------------------------------------------ |
+| `"search"`           | Free-text search field                     |
+| `"proximity"`        | Geographic filter by radius around a point |
+| `"tree"`             | Hierarchical selection tree (categories)   |
+| `"multiselect-tags"` | Multiple selection by tag                  |
+| `"select"`           | Drop-down list (single value)              |
+| `"range"`            | Numeric range slider                       |
 
-### tableConfig (objet, optionnel)
+### tableConfig (object, optional)
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. Voir le README du plugin pour l'installation, la configuration (`modules.table.*`) et la migration.
+::: info
 
-### scaleConfig (objet, optionnel)
+The data table is provided by the MIT plugin `@geoleaf-plugins/table`, not by the core. See the plugin README for installation, configuration (`modules.table.*`) and migration.
 
-Configure l'affichage de l'échelle (activé si `ui.showScale: true`).
+:::
+
+### scaleConfig (object, optional)
+
+Configures the scale readout (active when `ui.showScale: true`).
 
 ```json
 {
@@ -731,13 +736,13 @@ Configure l'affichage de l'échelle (activé si `ui.showScale: true`).
 }
 ```
 
-| Champ                  | Type    | Défaut         | Description                                                   |
-| ---------------------- | ------- | -------------- | ------------------------------------------------------------- |
-| `scaleGraphic`         | boolean | `true`         | Affiche la barre d'échelle graphique                          |
-| `scaleNumeric`         | boolean | `true`         | Affiche la valeur numérique de l'échelle                      |
-| `scaleNumericEditable` | boolean | `true`         | Permet la saisie manuelle d'une valeur d'échelle              |
-| `scaleNivel`           | boolean | `true`         | Affiche le niveau de zoom numérique                           |
-| `position`             | string  | `"bottomleft"` | Position : `bottomleft`, `bottomright`, `topleft`, `topright` |
+| Field                  | Type    | Default        | Description                                                  |
+| ---------------------- | ------- | -------------- | ------------------------------------------------------------ |
+| `scaleGraphic`         | boolean | `true`         | Show the graphic scale bar                                   |
+| `scaleNumeric`         | boolean | `true`         | Show the numeric scale value                                 |
+| `scaleNumericEditable` | boolean | `true`         | Allow a scale value to be typed in                           |
+| `scaleNivel`           | boolean | `true`         | Show the numeric zoom level                                  |
+| `position`             | string  | `"bottomleft"` | Position: `bottomleft`, `bottomright`, `topleft`, `topright` |
 
 ---
 
@@ -761,25 +766,25 @@ Configure l'affichage de l'échelle (activé si `ui.showScale: true`).
     },
     "categories": {
         "activites": {
-            "label": "Activités",
+            "label": "Activities",
             "icon": "activity-generic",
             "subcategories": {
                 "randonnee": {
-                    "label": "Randonnée",
+                    "label": "Hiking",
                     "icon": "activity-mountain"
                 },
                 "velo": {
-                    "label": "Vélo",
+                    "label": "Cycling",
                     "icon": "activity-vehicle"
                 }
             }
         },
         "hebergement": {
-            "label": "Hébergements",
+            "label": "Accommodation",
             "icon": "lodging-hotel",
             "subcategories": {
                 "hotel": {
-                    "label": "Hôtel",
+                    "label": "Hotel",
                     "icon": "lodging-hotel"
                 },
                 "camping": {
@@ -793,7 +798,7 @@ Configure l'affichage de l'échelle (activé si `ui.showScale: true`).
             "icon": "culture-building",
             "subcategories": {
                 "musee": {
-                    "label": "Musée",
+                    "label": "Museum",
                     "icon": "culture-building"
                 },
                 "monument": {
@@ -810,40 +815,40 @@ Configure l'affichage de l'échelle (activé si `ui.showScale: true`).
 
 #### `icons` (object, required)
 
-Configuration du sprite SVG pour les icônes POI (format MapLibre GL JS).
+SVG sprite configuration for POI icons (MapLibre GL JS format).
 
-| Field          | Type   | Required | Description                                                            |
-| -------------- | ------ | -------- | ---------------------------------------------------------------------- |
-| `spriteUrl`    | string | ✅       | Chemin vers le fichier sprite SVG (relatif au profil)                  |
-| `symbolPrefix` | string | ✅       | Préfixe des noms de symboles dans le sprite (ex: `"tourism-poi-cat-"`) |
-| `defaultIcon`  | string | ✅       | Identifiant du symbole utilisé en fallback                             |
+| Field          | Type   | Required | Description                                                          |
+| -------------- | ------ | -------- | -------------------------------------------------------------------- |
+| `spriteUrl`    | string | Yes      | Path to the SVG sprite file (relative to the profile)                |
+| `symbolPrefix` | string | Yes      | Prefix of the symbol names in the sprite (e.g. `"tourism-poi-cat-"`) |
+| `defaultIcon`  | string | Yes      | Identifier of the symbol used as fallback                            |
 
 #### `defaults` (object, optional)
 
-| Field  | Type   | Required | Description                                  |
-| ------ | ------ | -------- | -------------------------------------------- |
-| `icon` | string | ❌       | Icône par défaut pour les POI sans catégorie |
+| Field  | Type   | Required | Description                            |
+| ------ | ------ | -------- | -------------------------------------- |
+| `icon` | string | No       | Default icon for POIs with no category |
 
 #### `categories` (object, required)
 
-Définitions des catégories de premier niveau, sous forme d'objet clé→valeur.
-Les clés sont les identifiants de catégorie.
+Top-level category definitions, as a key→value object.
+The keys are the category identifiers.
 
-| Field           | Type   | Required | Description                           |
-| --------------- | ------ | -------- | ------------------------------------- |
-| `label`         | string | ✅       | Nom d'affichage de la catégorie       |
-| `icon`          | string | ✅       | Identifiant du symbole dans le sprite |
-| `subcategories` | object | ❌       | Sous-catégories (objet clé→valeur)    |
+| Field           | Type   | Required | Description                            |
+| --------------- | ------ | -------- | -------------------------------------- |
+| `label`         | string | Yes      | Display name of the category           |
+| `icon`          | string | Yes      | Identifier of the symbol in the sprite |
+| `subcategories` | object | No       | Subcategories (key→value object)       |
 
 #### `subcategories` (object, optional)
 
-Sous-catégories d'une catégorie parente, sous forme d'objet clé→valeur.
-Les clés sont les identifiants de sous-catégorie.
+Subcategories of a parent category, as a key→value object.
+The keys are the subcategory identifiers.
 
-| Field   | Type   | Required | Description                                      |
-| ------- | ------ | -------- | ------------------------------------------------ |
-| `label` | string | ✅       | Nom d'affichage de la sous-catégorie             |
-| `icon`  | string | ✅       | Identifiant du symbole (peut différer du parent) |
+| Field   | Type   | Required | Description                                    |
+| ------- | ------ | -------- | ---------------------------------------------- |
+| `label` | string | Yes      | Display name of the subcategory                |
+| `icon`  | string | Yes      | Symbol identifier (may differ from the parent) |
 
 ---
 
@@ -873,8 +878,8 @@ Les clés sont les identifiants de sous-catégorie.
     "themes": [
         {
             "id": "defaut",
-            "label": "Vue par défaut",
-            "description": "Vue standard avec les couches principales",
+            "label": "Default view",
+            "description": "Standard view with the main layers",
             "type": "primary",
             "icon": "🗺️",
             "layers": [
@@ -886,7 +891,7 @@ Les clés sont les identifiants de sous-catégorie.
         {
             "id": "nature",
             "label": "Nature",
-            "description": "Zones naturelles et protégées",
+            "description": "Natural and protected areas",
             "type": "primary",
             "icon": "🌿",
             "layers": [
@@ -908,38 +913,38 @@ Theme system configuration.
 
 | Field                                   | Type    | Default              | Description                               |
 | --------------------------------------- | ------- | -------------------- | ----------------------------------------- |
-| `defautTheme`                           | string  | first theme ID       | Identifiant du thème actif au démarrage   |
-| `primaryThemes.enabled`                 | boolean | `true`               | Afficher le sélecteur de thèmes primaires |
-| `primaryThemes.position`                | string  | `"top-map"`          | Position du contrôle dans l'UI            |
-| `secondaryThemes.enabled`               | boolean | `false`              | Activer les thèmes secondaires            |
-| `secondaryThemes.showNavigationButtons` | boolean | `false`              | Afficher les boutons de navigation        |
-| `secondaryThemes.position`              | string  | `"top-layermanager"` | Position du contrôle secondaire           |
+| `defautTheme`                           | string  | first theme ID       | Identifier of the theme active at startup |
+| `primaryThemes.enabled`                 | boolean | `true`               | Show the primary theme selector           |
+| `primaryThemes.position`                | string  | `"top-map"`          | Position of the control in the UI         |
+| `secondaryThemes.enabled`               | boolean | `false`              | Enable secondary themes                   |
+| `secondaryThemes.showNavigationButtons` | boolean | `false`              | Show the navigation buttons               |
+| `secondaryThemes.position`              | string  | `"top-layermanager"` | Position of the secondary control         |
 
 #### `themes` (array, required)
 
 Theme definitions.
 
-| Field         | Type   | Required | Description                                                                         |
-| ------------- | ------ | -------- | ----------------------------------------------------------------------------------- |
-| `id`          | string | ✅       | Identifiant unique du thème                                                         |
-| `label`       | string | ✅       | Nom d'affichage du thème                                                            |
-| `description` | string | ❌       | Description affichée dans l'UI                                                      |
-| `type`        | string | ✅       | `"primary"` (visible dans le sélecteur) ou `"secondary"` (programmatique)           |
-| `icon`        | string | ❌       | Icône (emoji ou identifiant) pour le bouton thème                                   |
-| `layers`      | array  | ✅       | Tableau d'entrées `{id, visible, style}` définissant la visibilité de chaque couche |
+| Field         | Type   | Required | Description                                                                   |
+| ------------- | ------ | -------- | ----------------------------------------------------------------------------- |
+| `id`          | string | Yes      | Unique theme identifier                                                       |
+| `label`       | string | Yes      | Display name of the theme                                                     |
+| `description` | string | No       | Description shown in the UI                                                   |
+| `type`        | string | Yes      | `"primary"` (visible in the selector) or `"secondary"` (programmatic)         |
+| `icon`        | string | No       | Icon (emoji or identifier) for the theme button                               |
+| `layers`      | array  | Yes      | Array of `{id, visible, style}` entries defining the visibility of each layer |
 
-**Format d'entrée dans `layers` :**
+**Entry format inside `layers`:**
 
-| Field     | Type    | Required | Description                                                          |
-| --------- | ------- | -------- | -------------------------------------------------------------------- |
-| `id`      | string  | ✅       | Identifiant de la couche (doit correspondre à l'id dans layers.json) |
-| `visible` | boolean | ✅       | Visibilité initiale de la couche pour ce thème                       |
-| `style`   | string  | ❌       | Variante de style à appliquer (défaut : `"defaut"`)                  |
+| Field     | Type    | Required | Description                                         |
+| --------- | ------- | -------- | --------------------------------------------------- |
+| `id`      | string  | Yes      | Layer identifier (must match the id in layers.json) |
+| `visible` | boolean | Yes      | Initial visibility of the layer for this theme      |
+| `style`   | string  | No       | Style variant to apply (default: `"defaut"`)        |
 
 **Theme types:**
 
-- **primary** — Affiché dans le sélecteur de thèmes, accessible par l'utilisateur
-- **secondary** — Masqué dans l'UI, déclenché programmatiquement ou utilisé comme preset
+- **primary** — Shown in the theme selector, reachable by the user
+- **secondary** — Hidden from the UI, triggered programmatically or used as a preset
 
 ### Layer References
 
@@ -947,7 +952,7 @@ The `layers` object keys **must match** layer IDs defined in:
 
 - Layer directories: `layers/{layerId}/`
 - Layer config files: `layers/{layerId}/config.json`
-- GeoJSON layer IDs added via `/* GeoLeaf.GeoJSON est interne - configurer via geojsonLayers dans geoleaf.config.json */`
+- GeoJSON layer IDs added via `/* GeoLeaf.GeoJSON is internal - configure via geojsonLayers in geoleaf.config.json */`
 
 **Example matching:**
 
@@ -989,7 +994,7 @@ await GeoLeaf.Theme.setActive("my-custom");
 
 ### Complete Structure
 
-**`layers.json` (fichier d'index) :**
+**`layers.json` (index file):**
 
 ```json
 {
@@ -1008,12 +1013,12 @@ await GeoLeaf.Theme.setActive("my-custom");
 }
 ```
 
-**Config individuelle (`layers/{layerId}/{layerId}_config.json`) :**
+**Per-layer config (`layers/{layerId}/{layerId}_config.json`):**
 
 ```json
 {
     "id": "cities",
-    "label": "Villes principales",
+    "label": "Major cities",
     "zIndex": 40,
     "geometry": "point",
     "data": {
@@ -1023,7 +1028,7 @@ await GeoLeaf.Theme.setActive("my-custom");
     "styles": {
         "directory": "styles",
         "default": "defaut.json",
-        "available": [{ "id": "defaut", "label": "Défaut", "file": "defaut.json" }]
+        "available": [{ "id": "defaut", "label": "Default", "file": "defaut.json" }]
     },
     "table": { "enabled": false },
     "clustering": { "enabled": false }
@@ -1032,35 +1037,35 @@ await GeoLeaf.Theme.setActive("my-custom");
 
 ### Field Reference
 
-#### `layers.json` — Fichier d'index
+#### `layers.json` — Index file
 
-| Field            | Type   | Required | Description                                             |
-| ---------------- | ------ | -------- | ------------------------------------------------------- |
-| `id`             | string | ✅       | Identifiant unique de la couche                         |
-| `configFile`     | string | ✅       | Chemin relatif vers la config individuelle de la couche |
-| `layerManagerId` | string | ❌       | Identifiant du groupe dans le gestionnaire de couches   |
+| Field            | Type   | Required | Description                                  |
+| ---------------- | ------ | -------- | -------------------------------------------- |
+| `id`             | string | Yes      | Unique layer identifier                      |
+| `configFile`     | string | Yes      | Relative path to the layer's own config file |
+| `layerManagerId` | string | No       | Identifier of the group in the layer manager |
 
-#### Config individuelle `{layerId}_config.json`
+#### Per-layer config `{layerId}_config.json`
 
-| Field              | Type   | Required | Description                                                                         |
-| ------------------ | ------ | -------- | ----------------------------------------------------------------------------------- |
-| `id`               | string | ✅       | Identifiant unique (doit correspondre au nom de répertoire)                         |
-| `label`            | string | ✅       | Nom d'affichage de la couche                                                        |
-| `zIndex`           | number | ❌       | Ordre de rendu (plus élevé = dessiné au-dessus)                                     |
-| `geometry`         | string | ✅       | Type géométrique : `"point"`, `"polyline"`, `"polygon"`, `"fill-extrusion"`         |
-| `data.directory`   | string | ❌       | Sous-répertoire des données (défaut : `"data"`)                                     |
-| `data.file`        | string | ✅       | Fichier GeoJSON (relatif au répertoire de la couche)                                |
-| `data.ogcApi`      | object | ❌       | Source OGC API Features (voir ci-dessous). Remplace `data.file` / `data.directory`. |
-| `styles.directory` | string | ❌       | Sous-répertoire des styles (défaut : `"styles"`)                                    |
+| Field              | Type   | Required | Description                                                                   |
+| ------------------ | ------ | -------- | ----------------------------------------------------------------------------- |
+| `id`               | string | Yes      | Unique identifier (must match the directory name)                             |
+| `label`            | string | Yes      | Display name of the layer                                                     |
+| `zIndex`           | number | No       | Render order (higher = drawn on top)                                          |
+| `geometry`         | string | Yes      | Geometry type: `"point"`, `"polyline"`, `"polygon"`, `"fill-extrusion"`       |
+| `data.directory`   | string | No       | Data subdirectory (default: `"data"`)                                         |
+| `data.file`        | string | Yes      | GeoJSON file (relative to the layer directory)                                |
+| `data.ogcApi`      | object | No       | OGC API Features source (see below). Replaces `data.file` / `data.directory`. |
+| `styles.directory` | string | No       | Styles subdirectory (default: `"styles"`)                                     |
 
-### `data.ogcApi` — Source OGC API Features
+### `data.ogcApi` — OGC API Features source
 
-Lorsque `data.ogcApi` est défini, la couche est chargée depuis un endpoint OGC API Features REST au lieu d'un fichier statique.
+When `data.ogcApi` is set, the layer is loaded from an OGC API Features REST endpoint instead of a static file.
 
 ```json
 {
     "id": "batiments",
-    "label": "Bâtiments IGN",
+    "label": "IGN buildings",
     "geometry": "polygon",
     "data": {
         "ogcApi": {
@@ -1075,22 +1080,22 @@ Lorsque `data.ogcApi` est défini, la couche est chargée depuis un endpoint OGC
 }
 ```
 
-#### Paramètres `data.ogcApi`
+#### `data.ogcApi` parameters
 
-| Paramètre             | Type     | Défaut | Description                                                                                  |
-| --------------------- | -------- | ------ | -------------------------------------------------------------------------------------------- |
-| `url`                 | string   | —      | ✅ URL de l'endpoint (base ou chemin `/items` complet)                                       |
-| `collectionId`        | string   | —      | ❌ Identifiant collection OGC — ajouté à `url` si `url` ne se termine pas par `/items`       |
-| `bbox`                | number[] | —      | ❌ Filtre bbox `[minLon, minLat, maxLon, maxLat]`. Remplacé par le viewport si `autoRefresh` |
-| `maxFeatures`         | number   | 10000  | ❌ Limite totale de features (garde-fou mémoire anti-DoS)                                    |
-| `limit`               | number   | 1000   | ❌ Nombre de features par page (`limit` query param)                                         |
-| `autoRefresh`         | boolean  | false  | ❌ Re-fetch les features sur chaque événement `moveend` avec le bbox du viewport courant     |
-| `autoRefreshDebounce` | number   | 300    | ❌ Debounce des événements `moveend` en ms                                                   |
-| `headers`             | object   | —      | ❌ En-têtes HTTP additionnels (ex. `{ "Authorization": "Bearer …" }`)                        |
-| `styles.default`      | string   | ✅     | Nom du fichier de style par défaut                                                           |
-| `styles.available`    | array    | ❌     | Variantes de style disponibles `{id, label, file}`                                           |
-| `table.enabled`       | boolean  | ❌     | Activer le panneau table de données                                                          |
-| `clustering.enabled`  | boolean  | ❌     | Activer le clustering (couches de type `point`)                                              |
+| Parameter             | Type     | Default | Description                                                                                                           |
+| --------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `url`                 | string   | —       | Required. Endpoint URL (base URL, or full `/items` path)                                                              |
+| `collectionId`        | string   | —       | Optional. OGC collection identifier — appended to `url` when `url` does not end with `/items`                         |
+| `bbox`                | number[] | —       | Optional. Bounding-box filter `[minLon, minLat, maxLon, maxLat]`. Overridden by the viewport when `autoRefresh` is on |
+| `maxFeatures`         | number   | 10000   | Optional. Overall feature limit (memory guard against oversized responses)                                            |
+| `limit`               | number   | 1000    | Optional. Features per page (`limit` query parameter)                                                                 |
+| `autoRefresh`         | boolean  | false   | Optional. Re-fetches features on every `moveend` event, using the current viewport bounding box                       |
+| `autoRefreshDebounce` | number   | 300     | Optional. Debounce applied to `moveend` events, in ms                                                                 |
+| `headers`             | object   | —       | Optional. Additional HTTP headers (e.g. `{ "Authorization": "Bearer …" }`)                                            |
+| `styles.default`      | string   | Yes     | Name of the default style file                                                                                        |
+| `styles.available`    | array    | No      | Available style variants `{id, label, file}`                                                                          |
+| `table.enabled`       | boolean  | No      | Enable the data table panel                                                                                           |
+| `clustering.enabled`  | boolean  | No      | Enable clustering (`point` layers)                                                                                    |
 
 ### Multi-Layer Configuration File
 
@@ -1123,13 +1128,13 @@ To define all layers in one file (`layers.json`):
 
 **Location:** `profiles/{profile-name}/mapping.json`  
 **Required:** No  
-**Purpose:** Mapper les noms de champs externes vers la structure interne de GeoLeaf
+**Purpose:** Map external field names onto GeoLeaf's internal structure
 
 ### Complete Structure
 
 ```json
 {
-    "source": "description ou endpoint source (informatif)",
+    "source": "source description or endpoint (informative)",
     "mapping": {
         "id": "external_id",
         "title": "name",
@@ -1142,22 +1147,22 @@ To define all layers in one file (`layers.json`):
 
 ### Field Reference
 
-| Field     | Type   | Required | Description                                                |
-| --------- | ------ | -------- | ---------------------------------------------------------- |
-| `source`  | string | ❌       | Description ou URL de la source de données (informatif)    |
-| `mapping` | object | ✅       | Table de correspondance : `{champGeoLeaf: "champExterne"}` |
+| Field     | Type   | Required | Description                                              |
+| --------- | ------ | -------- | -------------------------------------------------------- |
+| `source`  | string | No       | Description or URL of the data source (informative only) |
+| `mapping` | object | Yes      | Correspondence table: `{geoLeafField: "externalField"}`  |
 
-**Champs mappables dans `mapping` :**
+**Mappable fields in `mapping`:**
 
-| Clé GeoLeaf  | Description                                      |
-| ------------ | ------------------------------------------------ |
-| `id`         | Identifiant unique du POI                        |
-| `title`      | Nom du POI                                       |
-| `lat`        | Latitude                                         |
-| `lng`        | Longitude                                        |
-| `categoryId` | Identifiant de catégorie (correspond à taxonomy) |
+| GeoLeaf key  | Description                                |
+| ------------ | ------------------------------------------ |
+| `id`         | Unique POI identifier                      |
+| `title`      | POI name                                   |
+| `lat`        | Latitude                                   |
+| `lng`        | Longitude                                  |
+| `categoryId` | Category identifier (matches the taxonomy) |
 
-> Pour le format complet du normaliseur et les options de transformation avancées, voir [data-normalizer.md](config/data-normalizer.md).
+> For the full normaliser format and the advanced transformation options, see [data-normalizer.md](config/data-normalizer.md).
 
 ---
 
@@ -1254,16 +1259,16 @@ To define all layers in one file (`layers.json`):
 
 Label configuration for this style.
 
-| Field              | Type    | Required | Description                                                                                                                  |
-| ------------------ | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`          | boolean | ✅       | Whether labels are supported for this style                                                                                  |
-| `visibleByDefault` | boolean | ✅       | Initial label visibility when layer activated (depuis v2.0.0 — voir [Labels documentation](labels/GeoLeaf_Labels_README.md)) |
-| `field`            | string  | ❌       | GeoJSON property field to use for label text                                                                                 |
-| `format`           | string  | ❌       | Label template with `{fieldName}` placeholders                                                                               |
-| `minZoom`          | number  | ❌       | Minimum zoom for label visibility (overrides `labelScale.minZoom`)                                                           |
-| `maxZoom`          | number  | ❌       | Maximum zoom for label visibility                                                                                            |
+| Field              | Type    | Required | Description                                                                                                                |
+| ------------------ | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`          | boolean | Yes      | Whether labels are supported for this style                                                                                |
+| `visibleByDefault` | boolean | Yes      | Initial label visibility when layer activated (since v2.0.0 — see [Labels documentation](labels/GeoLeaf_Labels_README.md)) |
+| `field`            | string  | No       | GeoJSON property field to use for label text                                                                               |
+| `format`           | string  | No       | Label template with `{fieldName}` placeholders                                                                             |
+| `minZoom`          | number  | No       | Minimum zoom for label visibility (overrides `labelScale.minZoom`)                                                         |
+| `maxZoom`          | number  | No       | Maximum zoom for label visibility                                                                                          |
 
-**Note :** `visibleByDefault` doit se trouver dans le fichier de style, pas dans la config de couche. Voir la [documentation Labels](labels/GeoLeaf_Labels_README.md).
+**Note:** `visibleByDefault` belongs in the style file, not in the layer config. See the [Labels documentation](labels/GeoLeaf_Labels_README.md).
 
 **Label format examples:**
 
@@ -1283,26 +1288,30 @@ Label configuration for this style.
 
 Scale range the layer is visible in.
 
-> **⚠️ The unit is a SCALE DENOMINATOR — the X in `1:X` — not a MapLibre zoom level.** It is the
-> same number the `scale` control displays. Writing a zoom level here (`6`, `18`) hides the layer at
-> **every** zoom: `1:6` would need a zoom of roughly 27, which MapLibre never reaches. Since v3.0.0
-> the validator **rejects** any bound `<= 24`, and rejects the retired `zoomConfig`/`layerScale`
-> blocks outright.
->
-> **Counter-intuitive but consistent:** `minScale` is the **larger** number. "Min" refers to the
-> widest view (the lowest zoom) — and a denominator _grows_ as you zoom out.
->
-> Conversion (latitude-dependent): `1:X = 591 658 734 × cos(latitude) / 2^zoom`. At ~4°N:
-> zoom 5 ≈ 1:18 444 296 · zoom 6 ≈ 1:9 222 148 · zoom 10 ≈ 1:576 384 · zoom 18 ≈ 1:2 252.
+::: warning Scale denominators, not zoom levels
+
+The unit is a **scale denominator** — the X in `1:X` — not a MapLibre zoom level. It is the same
+number the `scale` control displays. Writing a zoom level here (`6`, `18`) hides the layer at
+**every** zoom: `1:6` would need a zoom of roughly 27, which MapLibre never reaches. Since v3.0.0
+the validator **rejects** any bound `<= 24`, and rejects the retired `zoomConfig` / `layerScale`
+blocks outright.
+
+Counter-intuitive but consistent: `minScale` is the **larger** number. "Min" refers to the widest
+view (the lowest zoom) — and a denominator _grows_ as you zoom out.
+
+Conversion (latitude-dependent): `1:X = 591 658 734 × cos(latitude) / 2^zoom`. At ~4°N:
+zoom 5 ≈ 1:18 444 296 · zoom 6 ≈ 1:9 222 148 · zoom 10 ≈ 1:576 384 · zoom 18 ≈ 1:2 252.
+
+:::
 
 | Field      | Type          | Default | Description                                                                       |
 | ---------- | ------------- | ------- | --------------------------------------------------------------------------------- |
 | `minScale` | number / null | null    | Widest view allowed (the **larger** denominator). Hidden when zoomed out past it. |
 | `maxScale` | number / null | null    | Closest view allowed (the smaller denominator). Hidden when zoomed in past it.    |
 
-_Renamed from `zoomConfig` in v3.0.0, itself a cosmetic rename of `layerScale` in v3.0.0: the name
-claimed zoom levels while the engine read denominators, which hid 18 layers for months. The name now
-states the unit. `null` or `0` disables a bound._
+_Renamed from `zoomConfig` in v3.0.0, itself a rename of `layerScale`: the earlier names claimed zoom
+levels while the engine read denominators. The name now states the unit. `null` or `0` disables a
+bound._
 
 #### `labelScale` (object, optional)
 
@@ -1350,18 +1359,18 @@ MapLibre GL JS paint/layout options for styling features.
 | `lineCap`   | string | Line cap style: `"butt"`, `"round"`, `"square"`  |
 | `lineJoin`  | string | Line join style: `"miter"`, `"round"`, `"bevel"` |
 
-**For fill-extrusion polygons (3D volumes) :**
+**For fill-extrusion polygons (3D volumes):**
 
-> Disponible depuis **v2.2.0**. Requiert `geometry: "fill-extrusion"` dans `{layer}_config.json`.
+> Available since **v2.2.0**. Requires `geometry: "fill-extrusion"` in `{layer}_config.json`.
 
 | Field                  | Type           | Required | Description                                                               |
 | ---------------------- | -------------- | -------- | ------------------------------------------------------------------------- |
-| `fillExtrusionColor`   | string         | ✅       | Couleur des volumes extrudés (hex ou CSS)                                 |
-| `fillExtrusionOpacity` | number         | ❌       | Opacité (0–1). Défaut : `1.0`                                             |
-| `fillExtrusionHeight`  | number\|string | ✅       | Hauteur en mètres : valeur fixe ou nom de champ feature (ex. `"hauteur"`) |
-| `fillExtrusionBase`    | number\|string | ❌       | Hauteur de base en mètres (volumes flottants). Défaut : `0`               |
+| `fillExtrusionColor`   | string         | Yes      | Colour of the extruded volumes (hex or CSS)                               |
+| `fillExtrusionOpacity` | number         | No       | Opacity (0–1). Default: `1.0`                                             |
+| `fillExtrusionHeight`  | number\|string | Yes      | Height in metres: fixed value, or a feature field name (e.g. `"hauteur"`) |
+| `fillExtrusionBase`    | number\|string | No       | Base height in metres (floating volumes). Default: `0`                    |
 
-> `fillExtrusionHeight` et `fillExtrusionBase` acceptent un nom de champ feature (string) — GeoLeaf génère l'expression MapLibre `["get", "hauteur"]` automatiquement. La validation est assurée par `style-validator-extrusion.ts`.
+> `fillExtrusionHeight` and `fillExtrusionBase` accept a feature field name (string) — GeoLeaf generates the MapLibre expression `["get", "hauteur"]` automatically. Validation is handled by `style-validator-extrusion.ts`.
 
 **For points (markers):**
 
@@ -1417,10 +1426,10 @@ Legend configuration for this style.
 
 | Field      | Type    | Required | Description               |
 | ---------- | ------- | -------- | ------------------------- |
-| `enabled`  | boolean | ✅       | Whether to display legend |
-| `title`    | string  | ❌       | Legend title              |
-| `title_fr` | string  | ❌       | Localized title           |
-| `items`    | array   | ✅       | Legend item definitions   |
+| `enabled`  | boolean | Yes      | Whether to display legend |
+| `title`    | string  | No       | Legend title              |
+| `title_fr` | string  | No       | Localized title           |
+| `items`    | array   | Yes      | Legend item definitions   |
 
 **Legend item:**
 
@@ -1610,47 +1619,54 @@ Legend configuration for this style.
 
 | Field        | Type   | Required | Description                                                    |
 | ------------ | ------ | -------- | -------------------------------------------------------------- |
-| `id`         | string | ✅       | Unique route identifier                                        |
-| `name`       | string | ✅       | Route name                                                     |
-| `type`       | string | ✅       | Route type: `"walking"`, `"cycling"`, `"driving"`, `"transit"` |
-| `distance`   | number | ❌       | Total distance in meters                                       |
-| `duration`   | number | ❌       | Estimated duration in seconds                                  |
-| `difficulty` | string | ❌       | Difficulty: `"easy"`, `"moderate"`, `"hard"`                   |
-| `waypoints`  | array  | ✅       | Array of waypoint objects                                      |
-| `path`       | array  | ✅       | Array of `[lat, lng]` coordinates defining the route path      |
-| `style`      | object | ❌       | MapLibre GL JS paint options for line/polyline styling         |
-| `properties` | object | ❌       | Custom properties                                              |
+| `id`         | string | Yes      | Unique route identifier                                        |
+| `name`       | string | Yes      | Route name                                                     |
+| `type`       | string | Yes      | Route type: `"walking"`, `"cycling"`, `"driving"`, `"transit"` |
+| `distance`   | number | No       | Total distance in meters                                       |
+| `duration`   | number | No       | Estimated duration in seconds                                  |
+| `difficulty` | string | No       | Difficulty: `"easy"`, `"moderate"`, `"hard"`                   |
+| `waypoints`  | array  | Yes      | Array of waypoint objects                                      |
+| `path`       | array  | Yes      | Array of `[lat, lng]` coordinates defining the route path      |
+| `style`      | object | No       | MapLibre GL JS paint options for line/polyline styling         |
+| `properties` | object | No       | Custom properties                                              |
 
 **Waypoint object:**
 
 | Field          | Type             | Required | Description                                |
 | -------------- | ---------------- | -------- | ------------------------------------------ |
-| `id`           | string           | ✅       | Waypoint identifier (can reference POI ID) |
-| `order`        | number           | ✅       | Stop order (1, 2, 3, ...)                  |
-| `latlng`       | [number, number] | ✅       | Coordinates                                |
-| `title`        | string           | ✅       | Waypoint name                              |
-| `stopDuration` | number           | ❌       | Recommended stop duration in seconds       |
+| `id`           | string           | Yes      | Waypoint identifier (can reference POI ID) |
+| `order`        | number           | Yes      | Stop order (1, 2, 3, ...)                  |
+| `latlng`       | [number, number] | Yes      | Coordinates                                |
+| `title`        | string           | Yes      | Waypoint name                              |
+| `stopDuration` | number           | No       | Recommended stop duration in seconds       |
 
 ---
 
 ## 11. POI Add Feature — `modules.editor.showAddPoi`
 
-> ⚠️ **Réécrite au Sprint 5 (05/08/2026).** Cette section décrivait deux paramètres qui
-> n'existent plus : `ui.showAddPoi` et `poiAddConfig.enabled`. Les deux ont été retirés avec la
-> fusion du plugin `addpoi` dans `editor`. Les recopier ferait **échouer `npm run
-validate:profiles`** — `ui.schema.json` est `additionalProperties: false`.
+::: danger Keys removed in v3
 
-Le bouton d'ajout de POI est gouverné par **un seul paramètre**, côté plugin :
+`ui.showAddPoi` and `poiAddConfig.enabled` no longer exist. Both were removed when the `addpoi`
+plugin merged into `editor`. A profile that still sets either key fails validation — `ui.schema.json`
+declares `additionalProperties: false`.
 
-| Paramètre                   | Emplacement                  | Rôle                                      |
-| --------------------------- | ---------------------------- | ----------------------------------------- |
-| `modules.editor.showAddPoi` | `config/plugins/editor.json` | Affiche ou masque le bouton dans la barre |
+:::
 
-⚠️ **Le défaut a changé de sens** : `ui.showAddPoi` valait `false` (opt-in) ; `modules.editor.showAddPoi`
-vaut **`true`** (opt-out), comme les autres créneaux paresseux du plugin.
+The add-POI button is governed by a single parameter, on the plugin side:
 
-Il n'y a plus de second niveau : le plugin d'édition se charge **paresseusement** quand le bouton
-est actionné, il n'a donc pas à être activé séparément.
+| Parameter                   | Location                     | Role                                     |
+| --------------------------- | ---------------------------- | ---------------------------------------- |
+| `modules.editor.showAddPoi` | `config/plugins/editor.json` | Shows or hides the button in the toolbar |
+
+::: warning The default is inverted
+
+`ui.showAddPoi` used to default to `false` (opt-in); `modules.editor.showAddPoi` defaults to `true`
+(opt-out), like the plugin's other lazy slots.
+
+:::
+
+There is no second level: the editor plugin loads lazily when the button is used, so it does not have
+to be enabled separately.
 
 ```json
 {
@@ -1660,7 +1676,7 @@ est actionné, il n'a donc pas à être activé séparément.
 }
 ```
 
-**Pour masquer le bouton :**
+**To hide the button:**
 
 ```json
 {
@@ -1672,7 +1688,16 @@ est actionné, il n'a donc pas à être activé séparément.
 
 ## 12. geocodingConfig — Address Search
 
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+::: warning Moved to a plugin
+
+Address search (geocoding) is no longer part of `@geoleaf/core`: it is provided by the MIT plugin
+**`@geoleaf-plugins/geocoding`**. The configuration moves from the root key **`geocodingConfig`** to
+**`modules.geocoding.*`** (declared in `config/plugins/geocoding.json` through
+`Files.modules.geocoding`) — a **breaking** migration, with no shim. The `GeoLeaf.Geocoding` API, the
+`geoleaf:geocoding:result` event and the search control all come from the plugin. See the plugin
+README (`packages/plugins/geocoding/README.md`).
+
+:::
 
 ---
 
@@ -1731,11 +1756,15 @@ profiles/
 
 ## Migration Notes
 
-### Structure historique des labels (v2.0.0)
+### Historical label structure (v2.0.0)
 
-**⚠️ BREAKING CHANGE:** Label `visibleByDefault` moved from layer config to style files.
+::: danger Breaking change
 
-**Ancienne structure (label dans la config couche) :**
+Label `visibleByDefault` moved from the layer config to the style files.
+
+:::
+
+**Former structure (label in the layer config):**
 
 ```jsonc
 // layers/cities/config.json
@@ -1748,7 +1777,7 @@ profiles/
 }
 ```
 
-**Structure actuelle (label dans le fichier de style) :**
+**Current structure (label in the style file):**
 
 ```jsonc
 // layers/cities/styles/default.json
@@ -1765,15 +1794,16 @@ See [Labels documentation](labels/GeoLeaf_Labels_README.md) for full migration i
 
 ---
 
-## Identifiant utilisateur pour l'édition POI
+## User identifier for POI editing
 
-`GeoLeaf.Editor` attribue les créations/modifications au champ `modifiedBy`, résolu dans cet ordre de priorité :
+`GeoLeaf.Editor` attributes creations and edits to the `modifiedBy` field, resolved in this order of
+priority:
 
-1. **Champ de config** `user.id` dans le profil JSON actif
-2. **sessionStorage** clé `gl-user-id` (positionné par votre application hôte)
-3. **Fallback anonyme** `anonymous-<timestamp>` (cohérent sur la session)
+1. **Config field** `user.id` in the active JSON profile
+2. **sessionStorage** key `gl-user-id` (set by the host application)
+3. **Anonymous fallback** `anonymous-<timestamp>` (stable for the session)
 
-Exemple d'intégration :
+Integration example:
 
 ```html
 <script>
@@ -1782,7 +1812,7 @@ Exemple d'intégration :
 <script type="module" src="dist/geoleaf.esm.js"></script>
 ```
 
-Ou via le profil JSON :
+Or through the JSON profile:
 
 ```json
 {

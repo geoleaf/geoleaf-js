@@ -1,43 +1,38 @@
 ---
-title: "GeoLeaf.Utils — Documentation du module Utils"
+title: "GeoLeaf.Utils — Utils module documentation"
 ---
 
-# GeoLeaf.Utils — Documentation du module Utils
+# GeoLeaf.Utils — Utils module documentation
 
-**Product Version** : GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier source** : `packages/core/src/utils/general/utils-namespace.ts`
-
-**Dernière mise à jour** : mars 2026
+**Source file**: `packages/core/src/utils/general/utils-namespace.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le namespace `GeoLeaf.Utils` regroupe les fonctions utilitaires communes utilisées à travers tous les modules GeoLeaf. Il est assemblé dans `utils-namespace.ts` et expose :
+The `GeoLeaf.Utils` namespace gathers the shared utility functions used across every GeoLeaf module. It is assembled in `utils-namespace.ts` and exposes:
 
-- des fonctions de manipulation de données (deepMerge, resolveField, compareByOrder)
-- des helpers HTTP (FetchHelper)
-- des utilitaires DOM et sécurité (DOMSecurity)
-- des helpers cartographiques (ensureMap, fireMapEvent, getDistance)
-- des contrôleurs de flux (debounce, throttle)
+- data manipulation functions (deepMerge, resolveField, compareByOrder)
+- HTTP helpers (FetchHelper)
+- DOM and security utilities (DOMSecurity)
+- map helpers (ensureMap, fireMapEvent, getDistance)
+- flow controllers (debounce, throttle)
 
-L'objet est publié sur `window.GeoLeaf.Utils` (ou `globalThis.GeoLeaf.Utils`) après initialisation.
+The object is published on `window.GeoLeaf.Utils` (or `globalThis.GeoLeaf.Utils`) after initialisation.
 
-> **Depuis v3 (KERNEL S14)** — l'export ESM et le global portent la **même forme** :
-> `import { Utils } from "@geoleaf/core"` et `window.GeoLeaf.Utils` exposent les mêmes
-> membres. Ce sont deux objets distincts (le global doit rester ré-appliquable par le
-> cycle de vie des modules), mais leur surface est verrouillée par un test.
+> **Since v3** — the ESM export and the global carry the **same shape**:
+> `import { Utils } from "@geoleaf/core"` and `window.GeoLeaf.Utils` expose the same
+> members. They are two distinct objects (the global must remain re-appliable by the
+> module lifecycle), but their surface is locked by a test.
 >
-> `performanceProfiler` est un accesseur **paresseux et non énumérable** : il est
-> lisible via `GeoLeaf.Utils.performanceProfiler` mais n'apparaît pas dans
-> `Object.keys()`.
+> `performanceProfiler` is a **lazy, non-enumerable** accessor: it can be read through
+> `GeoLeaf.Utils.performanceProfiler` but does not appear in `Object.keys()`.
 
 ---
 
-## Structure des modules
+## Module structure
 
 ```
 packages/core/src/modules/utils/
@@ -50,8 +45,8 @@ packages/core/src/modules/utils/
 │   ├── scale-utils.ts            // Map scale computation
 │   └── fetch-helper.ts           // HTTP client with retry/timeout
 ├── geo/
-│   └── wkt-parser.ts             // wktToGeoJSON — moved out at STRUCT S6
-├── performance/                  // NEW at STRUCT S6
+│   └── wkt-parser.ts             // wktToGeoJSON
+├── performance/
 │   ├── performance-profiler.ts
 │   ├── runtime-metrics.ts
 │   ├── baseline-storage.ts
@@ -64,11 +59,11 @@ packages/core/src/modules/utils/
 
 ---
 
-## API publique
+## Public API
 
 ### `validateUrl(url, allowedProtocols?)`
 
-Valide une URL via `GeoLeaf.Security`. Retourne la chaîne normalisée ou `null`.
+Validates a URL through `GeoLeaf.Security`. Returns the normalised string, or `null`.
 
 ```ts
 const safe = GeoLeaf.Utils.validateUrl("https://example.com/data.json");
@@ -79,7 +74,7 @@ const safe = GeoLeaf.Utils.validateUrl("https://example.com/data.json");
 
 ### `deepMerge(target, source)`
 
-Fusion profonde de deux objets. Protège contre les attaques prototype pollution (`__proto__`, `constructor`, `prototype` ignorés).
+Deep merge of two objects. Guards against prototype pollution (`__proto__`, `constructor` and `prototype` are ignored).
 
 ```ts
 const merged = GeoLeaf.Utils.deepMerge(defaults, overrides);
@@ -89,7 +84,7 @@ const merged = GeoLeaf.Utils.deepMerge(defaults, overrides);
 
 ### `mergeOptions(defaults, override)`
 
-Fusion superficielle (shallow) avec `Object.assign`. Préférer à `deepMerge` pour les options simples.
+Shallow merge through `Object.assign`. Prefer it over `deepMerge` for simple options.
 
 ```ts
 const opts = GeoLeaf.Utils.mergeOptions({ timeout: 5000, retries: 2 }, userOpts);
@@ -99,20 +94,20 @@ const opts = GeoLeaf.Utils.mergeOptions({ timeout: 5000, retries: 2 }, userOpts)
 
 ### `resolveField(obj, ...paths)`
 
-Résout le premier champ non-vide parmi une liste de chemins pointés.
+Resolves the first non-empty field among a list of dotted paths.
 
 ```ts
 const title = GeoLeaf.Utils.resolveField(poi, "title", "label", "name");
-// => parcourt obj.title → obj.label → obj.name → "" si aucun
+// => walks obj.title → obj.label → obj.name → "" when none match
 ```
 
-Supporte la notation imbriquée : `"attributes.commune"`, `"properties.name"`.
+Nested notation is supported: `"attributes.commune"`, `"properties.name"`.
 
 ---
 
 ### `compareByOrder(a, b, fallback?)`
 
-Comparateur de tri pour les sections de layout. Trie par champ `order` (numérique).
+Sort comparator for layout sections. Sorts on the `order` field (numeric).
 
 ```ts
 const sorted = layout.sort(GeoLeaf.Utils.compareByOrder);
@@ -122,7 +117,7 @@ const sorted = layout.sort(GeoLeaf.Utils.compareByOrder);
 
 ### `debounce(func, wait?, immediate?)`
 
-Retarde l'exécution d'une fonction jusqu'à la fin des appels rapides.
+Delays execution of a function until the burst of calls stops.
 
 ```ts
 const onInput = GeoLeaf.Utils.debounce((e) => handleSearch(e), 300);
@@ -132,7 +127,7 @@ const onInput = GeoLeaf.Utils.debounce((e) => handleSearch(e), 300);
 
 ### `throttle(func, limit?)`
 
-Limite la fréquence d'exécution d'une fonction.
+Caps how often a function may run.
 
 ```ts
 const onScroll = GeoLeaf.Utils.throttle(updateUI, 100);
@@ -142,7 +137,7 @@ const onScroll = GeoLeaf.Utils.throttle(updateUI, 100);
 
 ### `getDistance(lat1, lng1, lat2, lng2)`
 
-Calcule la distance haversine entre deux points géographiques. Retourne la distance en kilomètres.
+Computes the haversine distance between two geographic points. Returns the distance in kilometres.
 
 ```ts
 const km = GeoLeaf.Utils.getDistance(48.85, 2.35, 43.29, 5.38);
@@ -152,7 +147,7 @@ const km = GeoLeaf.Utils.getDistance(48.85, 2.35, 43.29, 5.38);
 
 ### `ensureMap(explicitMap?)`
 
-Résout l'instance carte MapLibre GL depuis `GeoLeaf.Core.getMap()` ou depuis un paramètre explicite.
+Resolves the MapLibre GL map instance from `GeoLeaf.Core.getMap()` or from an explicit argument.
 
 ```ts
 const map = GeoLeaf.Utils.ensureMap(options.map);
@@ -161,22 +156,21 @@ if (map) {
 }
 ```
 
-**Retourne `null` si aucune carte n'est disponible** — et, depuis la v3, **également si
-l'argument n'en est pas une**. La valeur est vérifiée par duck-typing sur
-`getCenter` / `getBounds` / `on` / `off`, présents aussi bien sur un adaptateur GeoLeaf
-que sur une `maplibregl.Map` brute. Le test `if (map)` de l'exemple ci-dessus reste donc
-la bonne façon de l'appeler.
+**Returns `null` when no map is available** — and, since v3, **also when the argument is
+not a map**. The value is checked by duck-typing on `getCenter` / `getBounds` / `on` / `off`,
+which exist both on a GeoLeaf adapter and on a raw `maplibregl.Map`. The `if (map)` test in
+the example above therefore remains the right way to call it.
 
-> Avant la v3, la fonction renvoyait **tel quel** tout argument non vide :
-> `ensureMap("foo")` valait `"foo"`. La panne n'apparaissait qu'au premier appel de
-> méthode, loin de la cause. Si vous vous appuyiez sur ce comportement pour faire
-> transiter autre chose qu'une carte, passez-la directement.
+> Before v3, the function returned any non-empty argument **as-is**:
+> `ensureMap("foo")` evaluated to `"foo"`. The failure only surfaced at the first method
+> call, far from its cause. Code that relied on that behaviour to carry something other
+> than a map must now pass it directly.
 
 ---
 
 ### `fireMapEvent(map, eventName, payload?)`
 
-Émet un événement sur l'instance carte MapLibre GL (via `map.fire()`).
+Emits an event on the MapLibre GL map instance (through `map.fire()`).
 
 ```ts
 GeoLeaf.Utils.fireMapEvent(map, "geoleaf:layer:loaded", { layerId: "poi" });
@@ -186,10 +180,10 @@ GeoLeaf.Utils.fireMapEvent(map, "geoleaf:layer:loaded", { layerId: "poi" });
 
 ### `DOMSecurity`
 
-Sous-module de sécurité DOM. Expose notamment :
+DOM security sub-module. It exposes in particular:
 
-- `DOMSecurity.clearElementFast(el)` — vide un élément sans `innerHTML`
-- `DOMSecurity.setSafeHTML(el, html)` — injection HTML sanitisée
+- `DOMSecurity.clearElementFast(el)` — empties an element without `innerHTML`
+- `DOMSecurity.setSafeHTML(el, html)` — sanitised HTML injection
 
 ```ts
 GeoLeaf.Utils.DOMSecurity.clearElementFast(container);
@@ -199,7 +193,7 @@ GeoLeaf.Utils.DOMSecurity.clearElementFast(container);
 
 ### `FetchHelper`
 
-Client HTTP unifié avec retry, timeout et parsing automatique. Voir `fetch-helper.ts`.
+Unified HTTP client with retry, timeout and automatic parsing. See `fetch-helper.ts`.
 
 ```ts
 const data = await GeoLeaf.Utils.FetchHelper.fetch("/api/data.json", {
@@ -210,32 +204,35 @@ const data = await GeoLeaf.Utils.FetchHelper.fetch("/api/data.json", {
 
 ---
 
-### `escapeHtml(str)` — **n'existe pas** (documentation corrigée en v3, KERNEL S14)
+### `escapeHtml(str)` — **does not exist**
 
-> ⚠️ `GeoLeaf.Utils.escapeHtml()` a été documentée ici pendant plusieurs versions alors
-> qu'elle **n'a jamais été posée sur le namespace au runtime** : elle n'existait que sur
-> l'objet assemblé par `utils-api.ts`, dont l'unique point d'entrée avait disparu avec
-> les builds UMD en v2.0.0. Un appel levait donc un `TypeError`.
->
-> **Utiliser `GeoLeaf.Security.escapeHtml()`**, qui est monté, testé et documenté.
+::: warning
+
+`GeoLeaf.Utils.escapeHtml()` is not installed on the runtime namespace. It only ever lived on
+the object assembled by `utils-api.ts`, whose single entry point disappeared along with the
+UMD builds in v2.0.0. Calling it throws a `TypeError`.
+
+**Use `GeoLeaf.Security.escapeHtml()`**, which is mounted, tested and documented.
+
+:::
 
 ---
 
 ### `wktToGeoJSON(wkt)`
 
-Convertit une géométrie WKT en géométrie GeoJSON.
+Converts a WKT geometry into a GeoJSON geometry.
 
 ```ts
 const geom = GeoLeaf.Utils.wktToGeoJSON("POINT(2.35 48.85)");
 // → { type: "Point", coordinates: [2.35, 48.85] }
 ```
 
-> Annoncée au CHANGELOG dès v2 mais absente du runtime pour la même raison
-> qu'`escapeHtml` ci-dessus — **réellement disponible depuis v3 (KERNEL S14)**.
+> Announced in the changelog as of v2 but missing from the runtime for the same reason as
+> `escapeHtml` above — **actually available since v3**.
 
 ---
 
-## Exemple complet
+## Full example
 
 ```ts
 import { Utils } from "@geoleaf/core";
@@ -247,9 +244,7 @@ const name = Utils.resolveField(poi, "title", "label", "name");
 const opts = Utils.mergeOptions({ zoom: 10, padding: 20 }, userOptions);
 
 // Debounce a search handler
-// ⚠️ Cet exemple appelait `GeoLeaf.Search.query(...)` — le moteur full-text (`flexsearch`)
-// a été RETIRÉ du core au S6, et le CHANGELOG de ce paquet l'acte lui-même. Corrigé le
-// 27/07/2026 : le filtrage se fait par la capacité `filter`.
+// The full-text engine is not part of the core: filtering goes through the `filter` capability.
 const onSearch = Utils.debounce((query: string) => {
     GeoLeaf.Filter?.applyFilter({ text: query });
 }, 250);
@@ -260,15 +255,9 @@ const distKm = Utils.getDistance(48.85, 2.35, 45.76, 4.83);
 
 ---
 
-## Modules liés
+## Related modules
 
-- `packages/core/src/modules/utils/constants/index.ts` — constantes globales (`CONSTANTS`)
-- `packages/core/src/modules/utils/renderers/abstract-renderer.ts` — classe de base pour les renderers
-- `packages/core/src/modules/built-in/security/` — sanitisation XSS, validation URL
-- `packages/core/src/modules/built-in/config/` — accès à la configuration active
-
----
-
-**Version** : 3.0.0
-
-**Dernière mise à jour** : mars 2026
+- `packages/core/src/modules/utils/constants/index.ts` — global constants (`CONSTANTS`)
+- `packages/core/src/modules/utils/renderers/abstract-renderer.ts` — base class for renderers
+- `packages/core/src/modules/built-in/security/` — XSS sanitisation, URL validation
+- `packages/core/src/modules/built-in/config/` — access to the active configuration

@@ -79,7 +79,12 @@
  *   node scripts/audit-report-freshness.cjs --source refs --doc <chemin.md>
  *   node scripts/audit-report-freshness.cjs --source files --doc <chemin.md>
  *   node scripts/audit-report-freshness.cjs --source tsdoc [--gate] [--update-baseline]
+ *   node scripts/audit-report-freshness.cjs --source specs [--gate] [--update-baseline]
  *   [--out <chemin.json>] [--quiet]
+ *
+ * ⚠️ **`--source specs` est la seule qui ne dépend PAS de la racine interne** : son corpus est
+ * `docs/specs/`, public. Le saut de tête l'épargne explicitement — sans quoi la gate qui garde
+ * les 45 fiches sortirait 0 dans le dépôt public, le seul endroit où elles comptent.
  *
  * Exit codes — **ils diffèrent selon le mode**, et c'est le seul endroit où c'est vrai :
  *   · mesure (défaut)  : 0 mesuré · 2 impossible de mesurer. Jamais 1.
@@ -106,7 +111,17 @@ const ROOT = registry.ROOT;
 // 🛑 Le saut est BRUYANT et il refuse de se lire comme un vert — patron
 // `CONSUMER-CONTRACT/CC-00`. Une gate qui se tait en sortant 0 est le mode d'échec que ce
 // dépôt traque ; celle-ci dit ce qu'elle n'a pas lu, et pourquoi.
-if (!docsPaths.internalRootExists()) {
+//
+// 🛑 **ET IL EST SOURCE-DÉPENDANT depuis le 11/08/2026 — sans quoi il aurait rendu
+// SPECS-PATHS verte et aveugle exactement dans le dépôt qu'elle protège.** `--source specs`
+// lit `docs/specs/`, qui est PUBLIC : il n'a besoin ni de `_docs_projet/`, ni des rapports
+// d'atelier. Un saut inconditionnel aurait fait sortir 0 la seule gate qui garde les 45 fiches,
+// sur le seul clone où elles comptent. Le saut ne vaut donc que pour les sources qui LISENT
+// réellement l'atelier ; `tsdoc` et `specs` n'en sont pas, mais `tsdoc` le garde parce que son
+// corpus dépend de `REPORTS_DIR` par `buildCorpus`/`probeItem` — c'est mesuré, pas supposé.
+// `arg()` est une déclaration de fonction, donc hissée : l'appeler ici est licite.
+const NEEDS_INTERNAL_ROOT = !["specs", "guides"].includes(arg("source"));
+if (NEEDS_INTERNAL_ROOT && !docsPaths.internalRootExists()) {
     console.log(
         "⏭️  [TSDOC-PATHS] SAUTÉ — la racine INTERNE est absente : " +
             docsPaths.rel(docsPaths.INTERNAL_ROOT)
@@ -115,13 +130,24 @@ if (!docsPaths.internalRootExists()) {
         "    Ce n'est pas un vert : aucun rapport d'atelier n'a été relu, donc aucun chemin\n" +
             "    cité par une prose de TSDoc n'a été confronté. Sur le dépôt public c'est le\n" +
             "    comportement attendu — `_docs_projet/` y est retiré par décision. Ailleurs,\n" +
-            "    c'est un défaut : corriger le chemin, ou poser GEOLEAF_INTERNAL_DOCS_ROOT."
+            "    c'est un défaut : corriger le chemin, ou poser GEOLEAF_INTERNAL_DOCS_ROOT.\n" +
+            "    ⚠️ `--source specs` ne passe PAS par ici : son corpus est `docs/specs/`, public."
     );
     process.exit(0);
 }
 
-// Racine INTERNE : l'atelier ne part pas dans le dépôt public.
-const REPORTS_DIR = docsPaths.internal("travail", "rapports");
+/**
+ * Racine INTERNE des rapports d'atelier — **résolue à l'appel, pas au chargement**.
+ *
+ * `docsPaths.internal()` JETTE quand la racine est absente. En constante de module, elle
+ * rendait le fichier inchargeable sur le dépôt public, ce qui obligeait le saut ci-dessus à
+ * être inconditionnel. Paresseuse, elle laisse `--source specs` se charger et mesurer.
+ *
+ * @returns {string} chemin absolu de `_docs_projet/travail/rapports`.
+ */
+function reportsDir() {
+    return docsPaths.internal("travail", "rapports");
+}
 
 // `.vitepress` est de l'outillage de documentation, pas du code livré : y trouver
 // un `index.ts` n'apprend rien sur la survie d'un baril du core.
@@ -690,7 +716,7 @@ function probeItem(item, corpus) {
 // ─── Sources ──────────────────────────────────────────────────────────────────
 
 function readJson(rel) {
-    const abs = path.join(REPORTS_DIR, rel);
+    const abs = path.join(reportsDir(), rel);
     try {
         return JSON.parse(fs.readFileSync(abs, "utf8"));
     } catch (e) {
@@ -1001,11 +1027,292 @@ function sourceTsdoc() {
     return [...seen.values()];
 }
 
+/** Chemins cités par les 45 fiches de `docs/specs/` (SPECS-PATHS, B-221). */
+function sourceSpecs() {
+    const files = [];
+    collectMd(docsPaths.specs(), files);
+    if (files.length === 0) {
+        die(
+            "corpus `docs/specs/` vide — refus de conclure. Une gate qui ne lit rien sort verte " +
+                "en n'ayant rien gardé ; c'est le mode d'échec que ce script existe pour éviter."
+        );
+    }
+    return collectCitedPaths(files, specsBases);
+}
+
+/**
+ * Chemins cités par `docs/guides/` et `docs/reference/` — la 3ᵉ sous-racine publique (B-222).
+ *
+ * `SPECS-PATHS` gardait `docs/specs/` **et rien d'autre**, alors que les deux autres partent
+ * dans le même dépôt public et sont lues par les mêmes gens. Le coût était mesuré, pas
+ * supposé : `TESTING_GUIDE.md` a énuméré pendant des mois une suite `poi.test.js` disparue
+ * avec la dissolution du module POI, et **aucune gate ne pouvait la voir** —
+ * `check-dead-links` n'extrait que la forme markdown `[texte](cible)`, jamais un nom de
+ * fichier en backticks.
+ *
+ * @returns {object[]} items, mêmes forme et contrat que `sourceSpecs()`.
+ */
+function sourceGuides() {
+    const files = [];
+    collectMd(docsPaths.guides(), files);
+    collectMd(docsPaths.reference(), files);
+    const kept = files.filter((f) => !GUIDES_GENERATED.has(normPath(path.relative(ROOT, f))));
+    if (kept.length === 0) {
+        die(
+            "corpus `docs/guides/` + `docs/reference/` vide — refus de conclure. Une gate qui ne " +
+                "lit rien sort verte en n'ayant rien gardé."
+        );
+    }
+    return collectCitedPaths(kept, guidesBases);
+}
+
+/**
+ * Racines de résolution d'une fiche `docs/specs/`, la plus spécifique d'abord.
+ *
+ * ⚠️ **Cette fonction EST la 4ᵉ base, et sans elle la source ne mesure rien d'utile.** Une
+ * fiche de capacité cite `lifecycle.ts`, `config.ts`, `public-api.ts` — les noms du contrat de
+ * module, portés à l'identique par les 21 capacités et les 12 plugins. Résolus globalement ils
+ * sont ambigus à 20-30 candidats et `suffixIndex` refuse de trancher (à raison) ; résolus
+ * depuis le répertoire SUJET de la fiche, ils sont exacts. Mesuré le 11/08/2026 : la
+ * racine-sujet seule résout **51,4 %** des 1592 chemins non-racinés, les bases communes
+ * portent le cumul à **73,5 %**.
+ *
+ * 🛑 **Ce que ces bases NE font PAS** : elles ne lèvent pas l'ambiguïté pour le LECTEUR. Un
+ * `config.ts` cité dans une fiche dont il n'est pas le sujet reste illisible même si la gate
+ * le résout. Le racinage rédactionnel est un geste distinct (6.11 lot 3), et cette gate ne
+ * prétend pas le porter — elle garde une propriété étroite : aucun chemin mort NEUF.
+ *
+ * @param {string} rel - chemin de la fiche, relatif à la racine du dépôt.
+ * @returns {string[]} préfixes à essayer dans l'ordre, terminés par `/` (sauf la racine, `""`).
+ */
+function specsBases(rel) {
+    const bases = [];
+    let m;
+    if ((m = rel.match(/\/capacites\/(.+)\.md$/))) {
+        bases.push(`packages/core/src/capabilities/${m[1]}/`);
+    } else if ((m = rel.match(/\/plugins\/CDC_(.+)\.md$/))) {
+        bases.push(`packages/plugins/${m[1]}/src/`, `packages/plugins/${m[1]}/`);
+    } else if ((m = rel.match(/\/libs\/(.+)\.md$/))) {
+        bases.push(`packages/libs/${m[1]}/src/`, `packages/libs/${m[1]}/`);
+    }
+    // Bases communes : le core est cité par TOUTES les fiches (kernel, contrats, RFC compris),
+    // puis les racines documentaires — un renvoi `CDC_kernel.md` depuis `capacites/` n'est
+    // résoluble que par `docs/specs/`. La racine du dépôt vient en dernier : elle accepte les
+    // chemins déjà repo-racinés, qui sont la forme cible.
+    bases.push(
+        "packages/core/src/",
+        "packages/core/",
+        normPath(path.dirname(rel)) + "/",
+        "docs/specs/",
+        "docs/reference/",
+        ""
+    );
+    return bases;
+}
+
+/**
+ * Chemins cités par les 45 fiches de `docs/specs/` — le corpus qu'AUCUNE gate ne lisait.
+ *
+ * ⚠️ **Constat qui motive cette source, mesuré le 11/08/2026 par élimination sur les 78 gates
+ * de `ci:local`** : `check-dead-links` n'extrait que `[texte](cible)` (`:321`), TSDOC-PATHS
+ * s'arrête aux `src/` des paquets et n'a pas `md` dans son alternance, les corpus `.md` de
+ * `validate-docs-examples`/`typecheck-docs-examples` sont pris à profondeur 0 de la racine
+ * (`lib/tsdoc-examples.cjs:162`, donc jamais `docs/`), et les 3 guards ne contrôlent que des
+ * tables nommées. **546 paires (fiche→chemin) n'étaient gardées par rien** — d'où la classe B
+ * de la tâche 6.11, qui « se périme sans jamais rougir ». Ce n'était pas une fatalité, c'était
+ * un trou d'outillage.
+ *
+ * Trois écarts assumés avec `sourceTsdoc`, chacun mesuré :
+ *
+ *   1. **`md` entre dans l'alternance.** Les fiches se citent entre elles — `CDC_kernel.md`
+ *      35 fois, `ARBORESCENCE_QUALIFIEE.md` 35 fois. Placé en DERNIER : l'alternance se lit
+ *      dans l'ordre, et une extension courte placée trop tôt coupe les longues.
+ *   2. **Un nom nu est accepté s'il est `.md`, refusé sinon.** `CDC_kernel.md` désigne un
+ *      document réel et se résout par les racines documentaires ; `config.ts` sans répertoire
+ *      est porté par 28 fichiers et ne se tranche pas — c'est le geste rédactionnel du lot 3,
+ *      pas celui d'un résolveur.
+ *   3. **Les URL sont retirées AVANT la regex.** `https://geoleaf.dev/x.json` ferait capturer
+ *      `geoleaf.dev/x.json`, éternellement mort et incorrigible — la 4ᵉ classe de faux
+ *      positifs de `sourceTsdoc` (le specifier de paquet) sous un autre nom.
+ *
+ * @returns {object[]} items `{ id, file, line, citedIn, cited }`, dédoublonnés par paire.
+ */
+/**
+ * Moteur d'extraction PARTAGÉ par `--source specs` et `--source guides`.
+ *
+ * ⚠️ **Extrait de `sourceSpecs()` le 11/08/2026 (B-222), et pas par goût du facteur commun.**
+ * La 3ᵉ source avait besoin de la même boucle à quelques lignes près ; la recopier aurait
+ * créé **deux extracteurs libres de diverger** sur un dépôt qui a déjà payé ce défaut deux
+ * fois (B-80 : une exclusion dupliquée corrigée d'un seul côté, une gate restée aveugle).
+ * Un seul moteur, deux corpus, deux baselines.
+ *
+ * @param {string[]} files - documents à lire, chemins absolus.
+ * @param {(rel: string) => string[]} basesFor - racines de résolution, par document.
+ * @returns {object[]} items `{ id, file, line, citedIn, cited }`, dédoublonnés par paire.
+ */
+function collectCitedPaths(files, basesFor) {
+    const refRe =
+        /([A-Za-z0-9_@./-]+\.(?:tsx|mjs|cjs|json|html|yaml|css|yml|ts|js|md))(?::(\d+))?/g;
+    const seen = new Map();
+
+    for (const abs of files.sort()) {
+        const rel = normPath(path.relative(ROOT, abs));
+        let text;
+        try {
+            text = fs.readFileSync(abs, "utf8");
+        } catch {
+            continue;
+        }
+        const bases = basesFor(rel);
+
+        // Les blocs clôturés portent du CODE d'exemple, pas des renvois : leurs chemins
+        // d'import sont vérifiés par `typecheck-docs-examples` sur son propre corpus, et les
+        // juger ici produirait deux gardes divergentes sur le même défaut — le motif qui a
+        // déjà exclu les `@example` de `sourceTsdoc`.
+        //
+        // 🛑 **C'EST AUSSI L'ANGLE MORT DE CETTE SOURCE, et il a un coût mesuré.** La relecture
+        // du 11/08/2026 a trouvé `"addpoi": "config/plugins/addpoi.json"` dans DEUX exemples
+        // ```json copiables-collables (`CDC_kernel.md` §Le manifeste `Files`,
+        // `PROFILE_CONTRACT_SPEC.md` §3 et §4) — un plugin fusionné dans `editor` au Sprint 5.
+        // Invisible ici parce que clôturé, et invisible aux guards de profil parce qu'ils
+        // valident la FORME contre `profile.schema.json`, où `Files.modules` a des clés
+        // dynamiques. Deux gates vertes, un exemple mort. **Ne pas « corriger » en levant cette
+        // exclusion** : elle éviterait ce cas au prix de juger tous les chemins d'import des
+        // exemples de code, ce que `typecheck-docs-examples` fait déjà et mieux. Le trou est
+        // réel, il est nommé, et il se ferme par la relecture — pas par cette regex.
+        let inFence = false;
+        for (const raw of text.split("\n")) {
+            if (/^\s*(```|~~~)/.test(raw)) {
+                inFence = !inFence;
+                continue;
+            }
+            if (inFence) continue;
+
+            const line = raw.replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, " ");
+            let m;
+            refRe.lastIndex = 0;
+            while ((m = refRe.exec(line)) !== null) {
+                const cited = m[1];
+                if (cited.startsWith("@")) continue;
+                if (cited.startsWith("/")) continue;
+                if (!cited.includes("/") && !cited.endsWith(".md")) continue;
+
+                const forms = [cited];
+                if (/\.js$/.test(cited)) forms.push(cited.replace(/\.js$/, ".ts"));
+                if (/\.mjs$/.test(cited)) forms.push(cited.replace(/\.mjs$/, ".mts"));
+
+                let resolved = null;
+                outer: for (const form of forms) {
+                    for (const b of bases) {
+                        const cand = normPath(path.normalize(path.join(b, form)));
+                        if (cand.startsWith("..")) continue;
+                        if (fs.existsSync(path.join(ROOT, cand))) {
+                            resolved = cand;
+                            break outer;
+                        }
+                    }
+                }
+                if (!resolved) {
+                    for (const form of forms) {
+                        const tail = form.replace(/^(\.\.?\/)+/, "").replace(/^\/+/, "");
+                        if (!tail.includes("/")) continue;
+                        const hits = suffixIndex(tail);
+                        if (hits.length === 1) {
+                            resolved = hits[0];
+                            break;
+                        }
+                    }
+                }
+                const file = resolved ?? normPath(path.normalize(path.join(bases[0], cited)));
+
+                const key = `${rel}→${cited}`;
+                if (!seen.has(key)) {
+                    seen.set(key, {
+                        id: key,
+                        file,
+                        line: m[2] ? Number(m[2]) : null,
+                        citedIn: rel,
+                        cited,
+                    });
+                }
+            }
+        }
+    }
+    return [...seen.values()];
+}
+
+/** Collecte récursive des `.md` — `collectFiles` filtre sur `SOURCE_EXTS`, qui n'a pas `md`. */
+/**
+ * Racines de résolution d'un document de `docs/guides/` ou `docs/reference/`.
+ *
+ * ⚠️ **Volontairement différentes de `specsBases()`, et B-222 le dit** : celles-là sont
+ * taillées pour la structure `capacites/` · `plugins/` · `libs/`, où le nom du fichier
+ * désigne le sujet et donne donc une racine (`capabilities/<id>/`). Un guide n'a pas de
+ * sujet déductible de son nom : il cite du code depuis n'importe où. Ses bases sont donc
+ * génériques, ordonnées du plus spécifique au plus large.
+ *
+ * @param {string} rel - chemin du document, relatif à la racine du dépôt.
+ * @returns {string[]} préfixes à essayer dans l'ordre.
+ */
+function guidesBases(rel) {
+    return [
+        normPath(path.dirname(rel)) + "/",
+        "packages/core/src/",
+        "packages/core/",
+        // La doc du site : ces documents s'y renvoient par leur NOM NU (`ARCHITECTURE_GUIDE.md`,
+        // `GeoLeaf_core_README.md`). Sans cette base, 4 renvois VIVANTS étaient comptés morts —
+        // l'instrument aurait porté la cécité qu'il mesure, et la baseline aurait figé du faux.
+        "packages/core/docs/",
+        // Les chemins `config/core/*.json` et `layers/<id>/…` sont relatifs à un PROFIL, pas au
+        // dépôt. `_reference` est le profil canonique, celui dont la structure fait foi.
+        "profiles/_reference/",
+        "docs/",
+        "docs/reference/",
+        "docs/specs/",
+        "",
+    ];
+}
+
+/**
+ * Les artefacts GÉNÉRÉS de `docs/reference/`, hors corpus — et le motif n'est pas le confort.
+ *
+ * Ils sont **vrais par construction** : `generate-docs-tree.cjs`, `gen-attributes-report.cjs`
+ * et `gen-profile-schema-reference.cjs` les dérivent du disque et des schémas, et chacun
+ * porte déjà sa gate `--check` dans `ci:local`. Les inclure ici ferait entrer les ~1 900
+ * lignes de l'arborescence — c'est-à-dire **un chemin par fichier du dépôt** — dans une
+ * baseline que personne ne pourrait plus lire, pour garder une propriété déjà gardée
+ * ailleurs, et mieux.
+ *
+ * 🛑 Ne pas y ajouter un fichier RÉDIGÉ : ce serait le soustraire à la seule gate qui le
+ * regarde. La liste se justifie fichier par fichier, jamais par un glob.
+ */
+const GUIDES_GENERATED = new Set([
+    "docs/reference/ARBORESCENCE_QUALIFIEE.md",
+    "docs/reference/MODELE_ATTRIBUTAIRE.md",
+    "docs/reference/PROFILE_SCHEMA_REFERENCE.md",
+]);
+
+function collectMd(dir, acc) {
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return acc;
+    }
+    for (const e of entries) {
+        if (EXCLUDED_DIRS.has(e.name)) continue;
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) collectMd(full, acc);
+        else if (e.isFile() && e.name.endsWith(".md")) acc.push(full);
+    }
+    return acc;
+}
+
 // ─── Run ──────────────────────────────────────────────────────────────────────
 
 function main() {
     const source = arg("source");
-    if (!source) die("--source requis (s4-triage | s4-low | refs | files | tsdoc)");
+    if (!source) die("--source requis (s4-triage | s4-low | refs | files | tsdoc | specs | guides)");
 
     const corpus = buildCorpus();
     let items;
@@ -1014,6 +1321,8 @@ function main() {
     if (source === "s4-triage") items = sourceS4Triage();
     else if (source === "s4-low") items = sourceS4Low();
     else if (source === "tsdoc") items = sourceTsdoc();
+    else if (source === "specs") items = sourceSpecs();
+    else if (source === "guides") items = sourceGuides();
     else if (source === "refs" || source === "files") {
         const doc = arg("doc");
         if (!doc) die("--doc requis avec --source refs|files");
@@ -1023,8 +1332,11 @@ function main() {
 
     // Refuser explicitement plutôt que d'ignorer le drapeau : `--gate --source refs` sortirait
     // 0 en silence, c'est-à-dire « vert » — exactement la classe de faux vert que ce script
-    // existe pour éviter.
-    if (GATE && source !== "tsdoc") die("--gate n'est disponible qu'avec --source tsdoc");
+    // existe pour éviter. Les deux sources gatées sont celles qui mesurent le DÉPÔT (la prose
+    // des TSDoc, les renvois des fiches) et non la fraîcheur d'un document d'atelier.
+    if (GATE && !GATES[source]) {
+        die(`--gate n'est disponible qu'avec --source ${Object.keys(GATES).join(" | ")}`);
+    }
 
     const results = items.map((it) => probeItem(it, corpus));
 
@@ -1070,16 +1382,56 @@ function main() {
         if (out) process.stdout.write(`\n   → ${out}\n`);
     }
 
-    if (GATE) process.exit(runGate(results));
+    if (GATE) process.exit(runGate(results, GATES[source]));
     process.exit(0);
 }
 
-// ─── Mode gate — `--source tsdoc --gate` uniquement ───────────────────────────
+// ─── Mode gate — `--source tsdoc|specs --gate` ────────────────────────────────
 
 /**
- * Chemin de la baseline TSDOC-PATHS. Voisine du script, comme les autres cliquets.
+ * Les deux cliquets, un par source gatée. Mêmes mécanique et contrat, corpus différents :
+ * `tsdoc` mesure la prose des TSDoc des `src/` de paquet, `specs` les renvois des 45 fiches
+ * de `docs/specs/`. Séparer les baselines est délibéré — une baseline unique mêlerait deux
+ * gisements dont les gestes de correction n'ont rien de commun, et son décompte cesserait de
+ * vouloir dire quelque chose.
  */
-const TSDOC_BASELINE = path.join(__dirname, "audit-tsdoc-paths.baseline.json");
+const GATES = {
+    tsdoc: {
+        code: "TSDOC-PATHS",
+        baseline: path.join(__dirname, "audit-tsdoc-paths.baseline.json"),
+        what: "dans la prose des blocs TSDoc",
+        cmd: "--source tsdoc --gate",
+        hint:
+            "    Un TSDoc qui renvoie à un fichier absent reste lisible et convaincant\n" +
+            "    longtemps après que le fichier a bougé. Corriger la citation.\n",
+    },
+    specs: {
+        code: "SPECS-PATHS",
+        baseline: path.join(__dirname, "audit-specs-paths.baseline.json"),
+        what: "dans les renvois des fiches `docs/specs/`",
+        cmd: "--source specs --gate",
+        hint:
+            "    Ces 45 fiches partent dans le dépôt public et les tarballs npm sont immuables :\n" +
+            "    un renvoi faux y devient définitif. ⚠️ Avant de « corriger », LIRE LA PHRASE —\n" +
+            "    une fiche nomme souvent un chemin PARCE QU'IL EST MORT (« ce répertoire n'existe\n" +
+            "    plus », « supprimé au Sprint 5 »). Ceux-là entrent en baseline, ils ne se\n" +
+            "    réécrivent pas : mesuré 15 sur 20 à la classe A de la tâche 6.11.\n",
+    },
+    guides: {
+        code: "GUIDES-PATHS",
+        baseline: path.join(__dirname, "audit-guides-paths.baseline.json"),
+        what: "dans les renvois de `docs/guides/` et `docs/reference/`",
+        cmd: "--source guides --gate",
+        hint:
+            "    La 3ᵉ sous-racine publique, restée SANS gate jusqu'au 11/08/2026 (B-222) —\n" +
+            "    `SPECS-PATHS` ne gardait que `docs/specs/`. Ce trou a laissé `TESTING_GUIDE.md`\n" +
+            "    enseigner une suite `poi.test.js` disparue avec le module POI.\n" +
+            "    ⚠️ Même précaution qu'en `specs` : LIRE LA PHRASE avant de corriger — un guide\n" +
+            "    nomme souvent un chemin PARCE QU'IL A DISPARU. Ceux-là entrent en baseline.\n" +
+            "    Les artefacts GÉNÉRÉS de `docs/reference/` sont hors corpus (voir\n" +
+            "    `GUIDES_GENERATED`) : vrais par construction, et déjà gatés par leur `--check`.\n",
+    },
+};
 
 /**
  * Cliquet DÉCROISSANT sur les chemins morts cités dans la prose des TSDoc.
@@ -1101,9 +1453,11 @@ const TSDOC_BASELINE = path.join(__dirname, "audit-tsdoc-paths.baseline.json");
  * chantier qui n'a rien à voir avec le prochain commit.
  *
  * @param {object[]} results - les items mesurés.
+ * @param {object} cfg - l'entrée de `GATES` correspondant à la source (code, baseline, hint…).
  * @returns {number} code de sortie (0 vert, 1 rouge).
  */
-function runGate(results) {
+function runGate(results, cfg) {
+    const { code, baseline: BASELINE, what, cmd, hint } = cfg;
     const dead = results
         .filter((r) => r.observed.file === "absent")
         .map((r) => r.id)
@@ -1111,15 +1465,15 @@ function runGate(results) {
 
     if (UPDATE_BASELINE) {
         fs.writeFileSync(
-            TSDOC_BASELINE,
+            BASELINE,
             JSON.stringify(
                 {
                     _comment:
-                        "Chemins morts CONNUS dans la prose des blocs TSDoc, figés par " +
-                        "`audit-report-freshness.cjs --source tsdoc --gate`. Clé = " +
+                        `Chemins morts CONNUS ${what}, figés par ` +
+                        `\`audit-report-freshness.cjs ${cmd}\`. Clé = ` +
                         "`<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE " +
-                        "d'ici (TSDOC-PATHS-01) ET sur une entrée d'ici qui n'existe plus " +
-                        "(TSDOC-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via " +
+                        `d'ici (${code}-01) ET sur une entrée d'ici qui n'existe plus ` +
+                        `(${code}-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via ` +
                         "`--update-baseline` après avoir corrigé un lot.",
                     generatedCount: dead.length,
                     paths: dead,
@@ -1129,14 +1483,14 @@ function runGate(results) {
             ) + "\n"
         );
         process.stdout.write(
-            `\n✓ TSDOC-PATHS: baseline régénérée (${dead.length} chemin(s) figé(s)).\n`
+            `\n✓ ${code}: baseline régénérée (${dead.length} chemin(s) figé(s)).\n`
         );
         return 0;
     }
 
     let baseline = [];
-    if (fs.existsSync(TSDOC_BASELINE)) {
-        baseline = JSON.parse(fs.readFileSync(TSDOC_BASELINE, "utf8")).paths || [];
+    if (fs.existsSync(BASELINE)) {
+        baseline = JSON.parse(fs.readFileSync(BASELINE, "utf8")).paths || [];
     }
     const known = new Set(baseline);
     const current = new Set(dead);
@@ -1147,7 +1501,7 @@ function runGate(results) {
     // Une gate qui ne scanne rien doit crier, pas passer.
     if (results.length === 0) {
         process.stderr.write(
-            `\n❌  TSDOC-PATHS — 0 item mesuré. Le corpus a bougé ou l'extracteur est cassé ;\n` +
+            `\n❌  ${code} — 0 item mesuré. Le corpus a bougé ou l'extracteur est cassé ;\n` +
                 `    une sortie verte ici signifierait « rien à vérifier », pas « tout est bon ».\n`
         );
         return 1;
@@ -1155,26 +1509,21 @@ function runGate(results) {
 
     if (fresh.length === 0 && stale.length === 0) {
         process.stdout.write(
-            `\n✓ TSDOC-PATHS — aucun chemin mort neuf ; baseline ${baseline.length} ` +
+            `\n✓ ${code} — aucun chemin mort neuf ; baseline ${baseline.length} ` +
                 `(ne peut que rétrécir).\n`
         );
         return 0;
     }
 
     if (fresh.length) {
-        process.stderr.write(
-            `\n❌  TSDOC-PATHS-01 — ${fresh.length} chemin(s) mort(s) NEUF(S) :\n`
-        );
+        process.stderr.write(`\n❌  ${code}-01 — ${fresh.length} chemin(s) mort(s) NEUF(S) :\n`);
         for (const k of fresh.slice(0, 40)) process.stderr.write(`      ${k}\n`);
         if (fresh.length > 40) process.stderr.write(`      … +${fresh.length - 40}\n`);
-        process.stderr.write(
-            `\n    Un TSDoc qui renvoie à un fichier absent reste lisible et convaincant\n` +
-                `    longtemps après que le fichier a bougé. Corriger la citation.\n`
-        );
+        process.stderr.write(`\n${hint}`);
     }
     if (stale.length) {
         process.stderr.write(
-            `\n❌  TSDOC-PATHS-02 — ${stale.length} entrée(s) PÉRIMÉE(S) dans la baseline :\n`
+            `\n❌  ${code}-02 — ${stale.length} entrée(s) PÉRIMÉE(S) dans la baseline :\n`
         );
         for (const k of stale.slice(0, 40)) process.stderr.write(`      ${k}\n`);
         if (stale.length > 40) process.stderr.write(`      … +${stale.length - 40}\n`);

@@ -1,60 +1,60 @@
 ---
-title: "GeoLeaf — Tutoriel : Créer un projet de A à Z"
+title: "GeoLeaf — Tutorial: build a project from start to finish"
 ---
 
-# GeoLeaf — Tutoriel : Créer un projet de A à Z
+# GeoLeaf — Tutorial: build a project from start to finish
 
-**S'applique à :** `@geoleaf/core` v3.x
-**Durée estimée :** 30–45 minutes
-**Résultat :** Un localisateur de commerces locaux avec recherche, filtres et clustering
-
----
-
-## Ce que vous allez construire
-
-Une carte interactive affichant des commerces locaux avec :
-
-- Couche GeoJSON de commerces (restaurants, boutiques)
-- Clustering des marqueurs
-- Recherche textuelle + filtre par catégorie
-- Thème clair/sombre
-- Permalink (état dans l'URL)
+**Applies to:** `@geoleaf/core` v3.x
+**Estimated time:** 30–45 minutes
+**Outcome:** A local business locator with search, filters and clustering
 
 ---
 
-## Structure du projet
+## What you will build
+
+An interactive map showing local businesses with:
+
+- A GeoJSON layer of businesses (restaurants, shops)
+- Marker clustering
+- Text search plus a category filter
+- Light/dark theme
+- Permalink (state carried in the URL)
+
+---
+
+## Project structure
 
 ```
-mon-projet/
+my-project/
 ├── index.html
-├── geoleaf.config.json          ← config globale (profil actif, PWA)
+├── geoleaf.config.json          ← global config (active profile, PWA)
 └── profiles/
     └── commerces/
-        ├── profile.json                    ← carte, modules ; sa clé `Files` pointe le reste
+        ├── profile.json                    ← map, modules; its `Files` key points to the rest
         ├── config/
         │   ├── core/
-        │   │   ├── layers.json             ← liste des couches
-        │   │   ├── basemaps.json           ← fonds de carte
-        │   │   └── ui.json                 ← contrôles UI, filtres, thème
+        │   │   ├── layers.json             ← layer list
+        │   │   ├── basemaps.json           ← basemaps
+        │   │   └── ui.json                 ← UI controls, filters, theme
         │   └── plugins/
-        │       ├── taxonomy.json           ← catégories et icônes
+        │       ├── taxonomy.json           ← categories and icons
         │       └── cluster.json            ← clustering
         └── layers/
             └── commerces/
-                ├── commerces_config.json   ← config détaillée de la couche
+                ├── commerces_config.json   ← detailed layer config
                 └── data/
-                    └── commerces.geojson   ← vos données
+                    └── commerces.geojson   ← your data
 ```
 
 ---
 
-## Étape 1 — Installation
+## Step 1 — Installation
 
 ```bash
 npm install @geoleaf/core maplibre-gl
 ```
 
-Ou en CDN :
+Or from a CDN:
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -72,21 +72,24 @@ Ou en CDN :
 ></script>
 ```
 
-> ℹ️ MapLibre est **ESM-only depuis sa v6** : il n'expose plus de global, d'où le shim de deux
-> lignes ci-dessus. En production, préférez l'auto-hébergement — voir
-> [`GETTING_STARTED.md`](GETTING_STARTED.md).
+::: info
+
+MapLibre is **ESM-only since v6**: it no longer exposes a global, hence the two-line shim above.
+In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTED.md).
+
+:::
 
 ---
 
-## Étape 2 — index.html
+## Step 2 — index.html
 
 ```html
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Commerces locaux</title>
+        <title>Local businesses</title>
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
@@ -117,7 +120,7 @@ Ou en CDN :
             src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
         ></script>
         <script type="module">
-            // Init complète avec profil
+            // Full init with a profile
             GeoLeaf.init({
                 map: { target: "map" },
                 data: {
@@ -131,13 +134,13 @@ Ou en CDN :
 </html>
 ```
 
-> **Note :** `GeoLeaf.init()` est l'API de haut niveau pour une initialisation complète avec profil. Pour une carte simple sans profil, utilisez `Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 })`.
+> **Note:** `GeoLeaf.init()` is the high-level API for a full initialisation with a profile. For a simple map without a profile, use `Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 })`.
 
 ---
 
-## Étape 3 — geoleaf.config.json
+## Step 3 — geoleaf.config.json
 
-Config globale à la racine du projet. Définit le profil actif et les options globales.
+Global config at the project root. Sets the active profile and the global options.
 
 ```json
 {
@@ -146,8 +149,8 @@ Config globale à la racine du projet. Définit le profil actif et les options g
         "profilesBasePath": "./profiles"
     },
     "pwa": {
-        "name": "Commerces Locaux",
-        "short_name": "Commerces",
+        "name": "Local Businesses",
+        "short_name": "Businesses",
         "theme_color": "#2563eb",
         "background_color": "#ffffff",
         "installPrompt": { "enabled": false }
@@ -157,15 +160,15 @@ Config globale à la racine du projet. Définit le profil actif et les options g
 
 ---
 
-## Étape 4 — profile.json
+## Step 4 — profile.json
 
-Config principale du profil : emprise géographique, clustering, modules.
+Main profile config: geographic extent, clustering, modules.
 
 ```json
 {
     "id": "commerces",
-    "label": "Commerces locaux",
-    "description": "Localisateur de commerces de proximité",
+    "label": "Local businesses",
+    "description": "Local business locator",
     "version": "1.0.0",
 
     "map": {
@@ -189,9 +192,9 @@ Config principale du profil : emprise géographique, clustering, modules.
 
 ---
 
-## Étape 5 — config/plugins/taxonomy.json
+## Step 5 — config/plugins/taxonomy.json
 
-Définit les catégories de POI, leurs icônes et sous-catégories.
+Defines the POI categories, their icons and subcategories.
 
 ```json
 {
@@ -206,31 +209,31 @@ Définit les catégories de POI, leurs icônes et sous-catégories.
             "label": "Restaurants",
             "icon": "food-restaurant",
             "subcategories": {
-                "traditionnel": { "label": "Traditionnel", "icon": "food-restaurant" },
-                "rapide": { "label": "Restauration rapide", "icon": "food-fast" },
+                "traditionnel": { "label": "Traditional", "icon": "food-restaurant" },
+                "rapide": { "label": "Fast food", "icon": "food-fast" },
                 "cafe": { "label": "Café / Bar", "icon": "food-cafe" }
             }
         },
         "boutique": {
-            "label": "Boutiques",
+            "label": "Shops",
             "icon": "commerce-shop",
             "subcategories": {
-                "alimentation": { "label": "Alimentation", "icon": "commerce-grocery" },
-                "vetements": { "label": "Vêtements", "icon": "commerce-clothing" },
-                "librairie": { "label": "Librairie", "icon": "commerce-book" }
+                "alimentation": { "label": "Groceries", "icon": "commerce-grocery" },
+                "vetements": { "label": "Clothing", "icon": "commerce-clothing" },
+                "librairie": { "label": "Bookshop", "icon": "commerce-book" }
             }
         }
     }
 }
 ```
 
-> **Icônes :** GeoLeaf utilise un sprite SVG. Remplacez les valeurs `icon` par les identifiants de votre propre sprite, ou utilisez les icônes du profil tourism fourni dans `profiles/tourism/icons/`.
+> **Icons:** GeoLeaf uses an SVG sprite. Replace the `icon` values with the identifiers of your own sprite, or use the icons of the tourism profile supplied in `profiles/tourism/icons/`.
 
 ---
 
-## Étape 6 — config/core/layers.json
+## Step 6 — config/core/layers.json
 
-Liste des couches GeoJSON du profil.
+List of the profile's GeoJSON layers.
 
 ```json
 {
@@ -247,14 +250,14 @@ Liste des couches GeoJSON du profil.
 
 ---
 
-## Étape 7 — layers/commerces/commerces_config.json
+## Step 7 — layers/commerces/commerces_config.json
 
-Configuration détaillée de la couche : données, styles, popup, table.
+Detailed layer configuration: data, styles, popup, table.
 
 ```json
 {
     "id": "commerces",
-    "label": "Commerces",
+    "label": "Businesses",
     "geometry": "point",
     "interactiveShape": true,
     "showIconsOnMap": true,
@@ -267,7 +270,7 @@ Configuration détaillée de la couche : données, styles, popup, table.
     "styles": {
         "directory": "styles",
         "default": "defaut.json",
-        "available": [{ "id": "defaut", "label": "Défaut", "file": "defaut.json" }]
+        "available": [{ "id": "defaut", "label": "Default", "file": "defaut.json" }]
     },
 
     "tooltip": {
@@ -280,7 +283,7 @@ Configuration détaillée de la couche : données, styles, popup, table.
         "fields": [
             { "type": "text", "field": "properties.name", "variant": "title" },
             { "type": "badge", "label": "Type", "field": "properties.categoryId" },
-            { "type": "text", "label": "Adresse", "field": "properties.address" }
+            { "type": "text", "label": "Address", "field": "properties.address" }
         ]
     },
 
@@ -289,33 +292,33 @@ Configuration détaillée de la couche : données, styles, popup, table.
         "detailLayout": [
             {
                 "type": "badge",
-                "label": "Catégorie",
+                "label": "Category",
                 "field": "properties.categoryId",
                 "accordion": false
             },
             {
                 "type": "text",
-                "label": "Nom",
+                "label": "Name",
                 "field": "properties.name",
                 "style": "title",
                 "accordion": false
             },
             {
                 "type": "text",
-                "label": "Adresse",
+                "label": "Address",
                 "field": "properties.address",
                 "accordion": false
             },
             {
                 "type": "text",
-                "label": "Horaires",
+                "label": "Opening hours",
                 "field": "properties.opening_hours",
                 "accordion": true,
                 "defaultOpen": true
             },
             {
                 "type": "link",
-                "label": "Site web",
+                "label": "Website",
                 "field": "properties.website",
                 "accordion": false
             }
@@ -325,14 +328,14 @@ Configuration détaillée de la couche : données, styles, popup, table.
     "table": {
         "enabled": true,
         "columns": [
-            { "field": "properties.name", "label": "Nom", "sortable": true, "width": "40%" },
+            { "field": "properties.name", "label": "Name", "sortable": true, "width": "40%" },
             {
                 "field": "properties.categoryId",
-                "label": "Catégorie",
+                "label": "Category",
                 "sortable": true,
                 "width": "30%"
             },
-            { "field": "properties.address", "label": "Adresse", "sortable": false, "width": "30%" }
+            { "field": "properties.address", "label": "Address", "sortable": false, "width": "30%" }
         ],
         "searchFields": ["properties.name"],
         "defaultSort": { "field": "properties.name", "order": "asc" }
@@ -348,9 +351,9 @@ Configuration détaillée de la couche : données, styles, popup, table.
 
 ---
 
-## Étape 8 — layers/commerces/data/commerces.geojson
+## Step 8 — layers/commerces/data/commerces.geojson
 
-Exemple de données GeoJSON :
+Sample GeoJSON data:
 
 ```json
 {
@@ -361,11 +364,11 @@ Exemple de données GeoJSON :
             "id": "001",
             "geometry": { "type": "Point", "coordinates": [2.3522, 48.8566] },
             "properties": {
-                "name": "Le Petit Bistrot",
+                "name": "The Little Bistro",
                 "categoryId": "restaurant",
                 "subcategoryId": "traditionnel",
                 "address": "10 rue de Rivoli, Paris",
-                "opening_hours": "Lun-Ven 12h-14h30 / 19h-22h",
+                "opening_hours": "Mon-Fri 12pm-2:30pm / 7pm-10pm",
                 "website": "https://example.com"
             }
         },
@@ -374,11 +377,11 @@ Exemple de données GeoJSON :
             "id": "002",
             "geometry": { "type": "Point", "coordinates": [2.3545, 48.858] },
             "properties": {
-                "name": "Boulangerie Dupont",
+                "name": "Dupont Bakery",
                 "categoryId": "boutique",
                 "subcategoryId": "alimentation",
                 "address": "5 rue du Temple, Paris",
-                "opening_hours": "Tous les jours 7h-20h"
+                "opening_hours": "Open daily 7am-8pm"
             }
         }
     ]
@@ -387,15 +390,15 @@ Exemple de données GeoJSON :
 
 ---
 
-## Étape 9 — config/core/ui.json
+## Step 9 — config/core/ui.json
 
-Contrôles UI visibles, filtres de recherche, thème, permalink.
+Visible UI controls, search filters, theme, permalink.
 
 ```json
 {
     "ui": {
         "theme": "auto",
-        "language": "fr",
+        "language": "en",
         "showLayerManager": true,
         "showFilterPanel": true,
         "showLegend": true,
@@ -408,39 +411,45 @@ Contrôles UI visibles, filtres de recherche, thème, permalink.
         }
     },
     "search": {
-        "title": "Filtrer les commerces",
-        "searchPlaceholder": "Rechercher un commerce...",
+        "title": "Filter businesses",
+        "searchPlaceholder": "Search for a business...",
         "filters": [
             {
                 "id": "searchText",
                 "type": "search",
-                "label": "Recherche textuelle",
-                "placeholder": "Nom, adresse...",
+                "label": "Text search",
+                "placeholder": "Name, address...",
                 "searchFields": ["properties.name", "properties.address"]
             },
             {
                 "id": "categories",
                 "type": "tree",
-                "label": "Catégories"
+                "label": "Categories"
             },
             {
                 "id": "proximity",
                 "type": "proximity",
-                "label": "Proximité",
-                "instructionText": "Cliquez sur la carte pour définir un rayon"
+                "label": "Proximity",
+                "instructionText": "Click the map to set a radius"
             }
         ]
     }
 }
 ```
 
-> ℹ️ Le drapeau `ui.showTable` a migré vers `modules.table.showButton` (plugin MIT `@geoleaf-plugins/table`). Voir le README du plugin pour la configuration (`modules.table.*`) et la migration.
+::: info
+
+The `ui.showTable` flag has moved to `modules.table.showButton` (MIT plugin
+`@geoleaf-plugins/table`). See the plugin README for the configuration (`modules.table.*`) and
+for the migration.
+
+:::
 
 ---
 
-## Étape 10 — config/core/basemaps.json
+## Step 10 — config/core/basemaps.json
 
-Fonds de carte disponibles.
+Available basemaps.
 
 ```json
 {
@@ -467,12 +476,12 @@ Fonds de carte disponibles.
 
 ---
 
-## Résultat final
+## Final result
 
-Votre projet doit ressembler à :
+The project should now look like this:
 
 ```
-mon-projet/
+my-project/
 ├── index.html
 ├── geoleaf.config.json
 └── profiles/
@@ -493,26 +502,26 @@ mon-projet/
                     └── commerces.geojson
 ```
 
-Lancez un serveur local :
+Start a local server:
 
 ```bash
 npx serve . -p 3000
 # → http://localhost:3000
 ```
 
-Vous verrez une carte avec vos commerces clusterisés, un panneau de filtres (recherche + catégories + proximité), un tableau de données, et un permalien actif dans l'URL.
+The map shows the businesses clustered, with a filter panel (search + categories + proximity), a data table, and a live permalink in the URL.
 
 ---
 
-## Aller plus loin
+## Going further
 
-| Objectif                                                  | Document                                                               |
-| --------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Ajouter des couches GeoJSON complexes (polygones, lignes) | [GEOJSON_LAYERS_GUIDE.md](geojson/GEOJSON_LAYERS_GUIDE.md)             |
-| Configurer les filtres en détail                          | [API_REFERENCE.md](API_REFERENCE.md#filter--the-filter-panel-singular) |
-| Référence complète des clés de profil                     | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                                 |
-| Référence JSON exhaustive                                 | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)                 |
-| Tuiles vectorielles (MVT)                                 | [MVT_GUIDE.md](geojson/MVT_GUIDE.md)                                   |
-| Activer le cache offline (plugin Storage)                 | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)         |
-| Authentification API backend                              | `docs/CONNECTOR_GUIDE.md` de `@geoleaf-plugins/connector`              |
-| Développer un plugin custom                               | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)             |
+| Goal                                         | Document                                                               |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| Add complex GeoJSON layers (polygons, lines) | [GEOJSON_LAYERS_GUIDE.md](geojson/GEOJSON_LAYERS_GUIDE.md)             |
+| Configure the filters in detail              | [API_REFERENCE.md](API_REFERENCE.md#filter--the-filter-panel-singular) |
+| Complete reference of the profile keys       | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                                 |
+| Exhaustive JSON reference                    | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)                 |
+| Vector tiles (MVT)                           | [MVT_GUIDE.md](geojson/MVT_GUIDE.md)                                   |
+| Enable the offline cache (Storage plugin)    | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)         |
+| Backend API authentication                   | `docs/CONNECTOR_GUIDE.md` in `@geoleaf-plugins/connector`              |
+| Develop a custom plugin                      | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)             |

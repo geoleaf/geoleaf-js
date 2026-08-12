@@ -4,53 +4,65 @@ title: "URL Permalink / Deep Linking"
 
 # URL Permalink / Deep Linking
 
-> **GeoLeaf Core — `@geoleaf/core` v2.0.0+**
-> Feature §1.3 — Stabilisé en v2.0.0
+::: tip
+
+**How-to here, contract elsewhere.** This page explains **how to use the feature**. The contract
+— scope, configuration, exposed API, boundaries — lives in
+[`permalink.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/specs/capacites/permalink.md).
+Where the two pages disagree, the capability sheet wins.
+
+:::
+
+> **Applies to:** `@geoleaf/core` v2.0.0+
 
 ---
 
-## Sommaire
+## Table of contents
 
-1. [Vue d'ensemble](#vue-densemble)
+1. [Overview](#overview)
 2. [Activation](#activation)
-3. [Paramètres URL](#paramètres-url)
-4. [Modes d'encodage](#modes-dencodage)
-5. [API JavaScript](#api-javascript)
-6. [Exemples pratiques](#exemples-pratiques)
-7. [Sécurité](#sécurité)
-8. [Limitations connues](#limitations-connues)
+3. [URL parameters](#url-parameters)
+4. [Encoding modes](#encoding-modes)
+5. [JavaScript API](#javascript-api)
+6. [Practical examples](#practical-examples)
+7. [Security](#security)
+8. [Known limitations](#known-limitations)
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-> **BREAKING (v3.0.0)** — le champ `poi` (`gl_poi`) est retiré : il faisait un
-> aller-retour URL→état→URL sans jamais influencer le comportement de l'app
-> (vestige de l'ère POI, dissoute — roadmap nettoyage Sprint 3, R-3).
+::: warning
 
-Le module **Permalink** sérialise l'état courant de la carte (centre, zoom, visibilité des couches, filtre actif) dans l'URL du navigateur. Cela permet de :
+**BREAKING (v3.0.0)** — the `poi` field (`gl_poi`) is removed: it made a URL→state→URL round
+trip without ever influencing the behaviour of the application (a relic of the POI era, since
+dissolved).
 
-- **Partager un lien** pointant vers une vue précise de la carte
-- **Recharger la page** en retrouvant exactement la même vue
-- **Intégrer une vue spécifique** dans une campagne marketing (GA4 / Matomo)
+:::
 
-La synchronisation utilise `history.replaceState()` — aucune entrée n'est ajoutée dans l'historique du navigateur ; le bouton « Précédent » n'est pas affecté.
+The **Permalink** module serialises the current map state (centre, zoom, layer visibility, active filter) into the browser URL. This makes it possible to:
 
-### Architecture interne (v2.0.0)
+- **Share a link** pointing at a precise map view
+- **Reload the page** and land on exactly the same view
+- **Embed a specific view** in a marketing campaign (GA4 / Matomo)
+
+Synchronisation uses `history.replaceState()` — no entry is added to the browser history, and the "Back" button is unaffected.
+
+### Internal architecture (v2.0.0)
 
 ```
 built-in/permalink/
-├── permalink-api.ts      // Facade interne stateful — liée à GeoLeaf.Permalink
-└── permalink-url.ts      // Logique stateless (readUrl, buildUrl, applyState, startSync)
+├── permalink-api.ts      // Stateful internal facade — bound to GeoLeaf.Permalink
+└── permalink-url.ts      // Stateless logic (readUrl, buildUrl, applyState, startSync)
 ```
 
-Le module expose aussi `Permalink` comme export nommé ESM depuis `@geoleaf/core`.
+The module is also exposed as the `Permalink` named ESM export of `@geoleaf/core`.
 
 ---
 
 ## Activation
 
-### Via le profil JSON (`geoleaf.config.json` ou `profile.json`)
+### Through the JSON profile (`geoleaf.config.json` or `profile.json`)
 
 ```json
 {
@@ -63,19 +75,19 @@ Le module expose aussi `Permalink` comme export nommé ESM depuis `@geoleaf/core
 }
 ```
 
-Le permalink est **désactivé par défaut** (`enabled: false`). Il n'a aucun impact sur les performances lorsqu'il est désactivé.
+The permalink is **disabled by default** (`enabled: false`). It has no performance impact while disabled.
 
-### Options de configuration
+### Configuration options
 
-| Option    | Type                                 | Défaut          | Description                                 |
-| --------- | ------------------------------------ | --------------- | ------------------------------------------- |
-| `enabled` | `boolean`                            | `false`         | Active le permalink.                        |
-| `mode`    | `"hash"` \| `"query"` \| `"compact"` | `"hash"`        | Stratégie d'encodage URL (voir ci-dessous). |
-| `fields`  | `string[]`                           | tous les champs | Champs à inclure dans l'URL sérialisée.     |
+| Option    | Type                                 | Default    | Description                              |
+| --------- | ------------------------------------ | ---------- | ---------------------------------------- |
+| `enabled` | `boolean`                            | `false`    | Enables the permalink.                   |
+| `mode`    | `"hash"` \| `"query"` \| `"compact"` | `"hash"`   | URL encoding strategy (see below).       |
+| `fields`  | `string[]`                           | all fields | Fields to include in the serialised URL. |
 
-**Valeurs valides pour `fields` :** `"lat"`, `"lng"`, `"zoom"`, `"layers"`, `"filter"`
+**Valid values for `fields`:** `"lat"`, `"lng"`, `"zoom"`, `"layers"`, `"filter"`
 
-#### Exemple — position carte uniquement, sans filtres :
+#### Example — map position only, no filters
 
 ```json
 {
@@ -91,65 +103,65 @@ Le permalink est **désactivé par défaut** (`enabled: false`). Il n'a aucun im
 
 ---
 
-## Paramètres URL
+## URL parameters
 
-En mode `hash` ou `query`, les paramètres suivants sont utilisés. Tous sont préfixés `gl_` pour éviter les collisions avec d'autres fragments dans l'URL.
+In `hash` or `query` mode, the following parameters are used. All of them are prefixed with `gl_` to avoid collisions with other fragments in the URL.
 
-| Paramètre   | Exemple         | Description                                                               |
-| ----------- | --------------- | ------------------------------------------------------------------------- |
-| `gl_lat`    | `48.857445`     | Latitude du centre de la carte (6 décimales).                             |
-| `gl_lng`    | `2.347211`      | Longitude du centre (6 décimales).                                        |
-| `gl_zoom`   | `13`            | Niveau de zoom (entier).                                                  |
-| `gl_layers` | `layer1,layer2` | IDs des couches **masquées** par l'utilisateur, séparés par des virgules. |
-| `gl_filter` | `restaurant`    | Valeur du filtre texte actif.                                             |
+| Parameter   | Example         | Description                                                |
+| ----------- | --------------- | ---------------------------------------------------------- |
+| `gl_lat`    | `48.857445`     | Latitude of the map centre (6 decimal places).             |
+| `gl_lng`    | `2.347211`      | Longitude of the centre (6 decimal places).                |
+| `gl_zoom`   | `13`            | Zoom level (integer).                                      |
+| `gl_layers` | `layer1,layer2` | IDs of the layers **hidden** by the user, comma-separated. |
+| `gl_filter` | `restaurant`    | Value of the active text filter.                           |
 
-En mode `compact`, tous ces paramètres sont remplacés par un seul paramètre `gl` encodé en base64 JSON.
+In `compact` mode, all of these parameters are replaced by a single `gl` parameter encoded as base64 JSON.
 
 ---
 
-## Modes d'encodage
+## Encoding modes
 
-### `"hash"` (défaut — recommandé)
+### `"hash"` (default — recommended)
 
-L'état est encodé dans le fragment de l'URL (`#`). Aucune requête HTTP n'est générée lors d'un rechargement de page.
+The state is encoded in the URL fragment (`#`). No HTTP request is generated when the page is reloaded.
 
 ```
 https://mymap.example.com/#gl_lat=48.857445&gl_lng=2.347211&gl_zoom=13
 ```
 
-**Idéal pour :** déploiements statiques (Nginx, GitHub Pages, S3, CDN).
+**Best for:** static deployments (Nginx, GitHub Pages, S3, CDN).
 
 ### `"query"`
 
-L'état est encodé dans la query string (`?`). Nécessite que le serveur renvoie le même HTML quelle que soit la query string.
+The state is encoded in the query string (`?`). The server must return the same HTML whatever the query string is.
 
 ```
 https://mymap.example.com/?gl_lat=48.857445&gl_lng=2.347211&gl_zoom=13
 ```
 
-**Idéal pour :** applications serveur capables de passer la query string au client.
+**Best for:** server applications able to pass the query string through to the client.
 
 ### `"compact"`
 
-L'état est encodé en base64 JSON dans le fragment. Génère des URLs plus courtes, mais non lisibles par un humain.
+The state is encoded as base64 JSON in the fragment. URLs are shorter, but no longer human-readable.
 
 ```
 https://mymap.example.com/#gl=eyJsYXQiOjQ4Ljg1NywibG5nIjoyLjM0Nywiem9vbSI6MTN9
 ```
 
-**Idéal pour :** états complexes (nombreuses couches masquées, filtre long) ou partage via QR code.
+**Best for:** complex states (many hidden layers, long filter) or sharing through a QR code.
 
-### Auto-compact transparent
+### Transparent auto-compact
 
-En mode `"hash"`, si la longueur du fragment dépasse 200 caractères (par exemple, beaucoup de couches masquées), GeoLeaf passe automatiquement au format compact, de façon transparente pour l'utilisateur. Ce basculement est silencieux.
+In `"hash"` mode, when the fragment grows beyond 200 characters (many hidden layers, for instance), GeoLeaf automatically switches to the compact format, transparently for the user. The switch is silent.
 
 ---
 
-## API JavaScript
+## JavaScript API
 
-Le module est accessible via `GeoLeaf.Permalink.*` (CDN/global) ou comme export nommé ESM.
+The module is reachable through `GeoLeaf.Permalink.*` (CDN/global) or as a named ESM export.
 
-### Import ESM
+### ESM import
 
 ```javascript
 import { Permalink } from "@geoleaf/core";
@@ -157,7 +169,7 @@ import { Permalink } from "@geoleaf/core";
 
 ### `GeoLeaf.Permalink.init(config)`
 
-Initialise le module avec la configuration issue du profil actif. Appelé automatiquement au boot — inutile en usage normal.
+Initialises the module with the configuration taken from the active profile. Called automatically at boot — not needed in normal use.
 
 ```javascript
 GeoLeaf.Permalink.init({ enabled: true, mode: "hash" });
@@ -165,31 +177,31 @@ GeoLeaf.Permalink.init({ enabled: true, mode: "hash" });
 
 ### `GeoLeaf.Permalink.readAndStore()`
 
-Lit l'URL courante et met en cache l'état parsé. Appelé automatiquement avant la création de la carte.
+Reads the current URL and caches the parsed state. Called automatically before the map is created.
 
 ### `GeoLeaf.Permalink.applyStoredState(map)`
 
-Applique l'état mis en cache à la carte et à l'UI. Appelé automatiquement après l'initialisation de tous les modules.
+Applies the cached state to the map and the UI. Called automatically once every module is initialised.
 
-**Paramètre :** `map` — instance MapLibre GL (`maplibregl.Map`).
+**Parameter:** `map` — MapLibre GL instance (`maplibregl.Map`).
 
 ### `GeoLeaf.Permalink.startSync(map)`
 
-Démarre la synchronisation continue (écoute l'événement `moveend` de MapLibre). Appelé automatiquement — inutile en usage normal.
+Starts continuous synchronisation (listens to the MapLibre `moveend` event). Called automatically — not needed in normal use.
 
 ### `GeoLeaf.Permalink.getState()`
 
-Retourne l'état permalink actuellement chargé (parsé depuis l'URL au démarrage), ou `null` si aucun permalink n'était présent.
+Returns the permalink state currently loaded (parsed from the URL at start-up), or `null` when no permalink was present.
 
 ```javascript
 const state = GeoLeaf.Permalink.getState();
-// → { lat: 48.857, lng: 2.347, zoom: 13, layers: [], filter: "café" }
+// → { lat: 48.857, lng: 2.347, zoom: 13, layers: [], filter: "coffee" }
 // → null
 ```
 
 ### `GeoLeaf.Permalink.buildUrl(state?)`
 
-Sérialise un état (ou l'état courant) en chaîne URL.
+Serialises a state (or the current state) into a URL string.
 
 ```javascript
 // Current stored state
@@ -203,13 +215,13 @@ const url = GeoLeaf.Permalink.buildUrl({ lat: 44.0, lng: 3.0, zoom: 10 });
 
 ### `GeoLeaf.Permalink._reset()` (test only)
 
-Réinitialise l'état interne. Réservé aux tests.
+Resets the internal state. Reserved for tests.
 
 ---
 
-## Exemples pratiques
+## Practical examples
 
-### Lien partageable — copier l'URL courante
+### Shareable link — copy the current URL
 
 ```javascript
 const permalinkUrl =
@@ -218,10 +230,10 @@ const permalinkUrl =
 navigator.clipboard.writeText(permalinkUrl);
 ```
 
-### Bouton "Partager" dans une application
+### "Share" button in an application
 
 ```html
-<button id="share-btn">Partager la vue</button>
+<button id="share-btn">Share this view</button>
 ```
 
 ```javascript
@@ -229,15 +241,15 @@ document.getElementById("share-btn").addEventListener("click", () => {
     const url = window.location.origin + window.location.pathname + GeoLeaf.Permalink.buildUrl();
 
     if (navigator.share) {
-        navigator.share({ title: "Vue carte", url });
+        navigator.share({ title: "Map view", url });
     } else {
         navigator.clipboard.writeText(url);
-        alert("Lien copié dans le presse-papiers !");
+        alert("Link copied to the clipboard");
     }
 });
 ```
 
-### Analytics — envoyer la vue partagée à GA4
+### Analytics — send the shared view to GA4
 
 ```javascript
 document.addEventListener("geoleaf:map:ready", () => {
@@ -253,7 +265,7 @@ document.addEventListener("geoleaf:map:ready", () => {
 });
 ```
 
-### Mode compact — partage via QR code
+### Compact mode — sharing through a QR code
 
 ```json
 {
@@ -266,7 +278,7 @@ document.addEventListener("geoleaf:map:ready", () => {
 }
 ```
 
-### Activer le permalink sur un profil existant (ajout minimal)
+### Enabling the permalink on an existing profile (minimal addition)
 
 ```json
 {
@@ -276,29 +288,29 @@ document.addEventListener("geoleaf:map:ready", () => {
 }
 ```
 
-GeoLeaf utilise alors les valeurs par défaut : mode `hash`, tous les champs inclus.
+GeoLeaf then uses the default values: `hash` mode, every field included.
 
 ---
 
-## Sécurité
+## Security
 
-Le module Permalink applique les mesures suivantes pour prévenir toute injection ou exploitation via l'URL :
+The Permalink module applies the following measures to prevent injection or exploitation through the URL:
 
-- Les valeurs numériques (`lat`, `lng`, `zoom`) sont validées via `validateCoordinates()` et `validateNumber()` du module `security` (`packages/core/src/modules/built-in/security/index.ts`). Toute valeur hors-limite ou non-numérique est silencieusement ignorée (état permalink = `null`).
-- Les listes de couches sont limitées à **100 entrées maximum**.
-- Les champs texte (`filter`) sont tronqués à **200 caractères**.
-- En mode compact, les données base64 sont parsées avec `JSON.parse()` dans un `try/catch`. Tout payload invalide ou malformé est ignoré.
-- Aucun `innerHTML` n'est utilisé dans ce module.
+- Numeric values (`lat`, `lng`, `zoom`) are validated with `validateCoordinates()` and `validateNumber()` from the `security` module (`packages/core/src/modules/built-in/security/index.ts`). Any out-of-range or non-numeric value is silently ignored (permalink state = `null`).
+- Layer lists are capped at **100 entries**.
+- Text fields (`filter`) are truncated to **200 characters**.
+- In compact mode, the base64 data is parsed with `JSON.parse()` inside a `try/catch`. Any invalid or malformed payload is ignored.
+- No `innerHTML` is used in this module.
 
 ---
 
-## Limitations connues
+## Known limitations
 
-| Limitation             | Détail                                                                                                                           |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Multi-onglets**      | Deux onglets ouverts sur la même carte modifient le même fragment d'URL sans coordination. Comportement attendu.                 |
-| **`file://` protocol** | `history.replaceState()` n'est pas disponible sur le protocole `file://`. La synchronisation URL est silencieusement désactivée. |
-| **SSR / Node.js**      | Le module détecte l'absence de `window` et retourne `null` — aucune erreur n'est levée en contexte serveur.                      |
+| Limitation             | Detail                                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Multiple tabs**      | Two tabs open on the same map change the same URL fragment without coordination. Expected behaviour.           |
+| **`file://` protocol** | `history.replaceState()` is not available on the `file://` protocol. URL synchronisation is silently disabled. |
+| **SSR / Node.js**      | The module detects the absence of `window` and returns `null` — no error is raised in a server context.        |
 
 ---
 

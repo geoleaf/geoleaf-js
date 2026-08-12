@@ -13,11 +13,15 @@ date: 28 juillet 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/realtime-layer` ·
 **Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** `81aa8d29` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Deux lignes ouvertes du registre traversent ce plugin**, et la fiche les nomme à leur place
 > plutôt qu'en préambule : **B-55** — les trois tests
@@ -168,7 +172,7 @@ source le signalait déjà ; c'est toujours vrai.
 
 ⚠️ **Aucune de ces clés n'est gatée par le test-garde de cette fiche**, qui ne couvre que le
 manifeste d'enregistrement. Ce tableau se relit contre `config.ts` à chaque modification — c'est la
-part humaine de la règle ⛔ de `CLAUDE.md`.
+part humaine de la règle documentaire du dépôt.
 
 ⚠️ **La validation est stricte et bruyante, par choix** : elle **jette** avec le nom de la couche et
 la clé fautive, et l'orchestrateur attrape, journalise, puis **saute cette couche seulement**. Une
@@ -310,17 +314,17 @@ de `roadmap_documentation-v3.md`.
 croisées », dix affirmations chacune adossée à un fichier. Neuf tiennent encore. Les écarts sont
 donc concentrés, et tous du **mode d'échec n° 6** — la contrainte qui motivait l'énoncé est tombée.
 
-| Énoncé du CDC                                                                   | Ce que dit le code                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| §8 PC-04 + croisée n° 7 — « `gtfs-realtime-bindings` importé **statiquement** » | Vrai **dans le module décodeur**, faux pour le chemin de boot : `realtime-runtime.ts` charge le décodeur par `import()` **dynamique**, et son commentaire donne le motif — la sonde WebAssembly et la violation CSP qu'elle provoque |
-| §7 « budget bundle : inliné statiquement depuis S10 — ~81 KB gz »               | **Périmé par le point précédent** : ce n'est plus un coût de boot mais un fragment différé. Le chiffre ne se recopie pas — `npm run size:plugins`                                                                                    |
-| §5 « 11 suites Vitest (112 tests) »                                             | **13 fichiers** sur le disque. Chiffre recopié, donc divergé — la fiche cite la commande à sa place                                                                                                                                  |
-| §7 « Fetch immédiat — polling-source.ts:48 »                                    | Le comportement est exact ; **la ligne ne l'est plus**. Même défaut que les citations de ligne des déclarations de capacités (B-63)                                                                                                  |
-| §6 « SSE sans reconnexion gérée »                                               | ✅ **Vérifié exact** — et l'environnement sans `EventSource` est traité en plus, par une erreur explicite                                                                                                                            |
-| Croisée n° 7 — « `mapping.delayField` jamais lu (champ réservé) »               | ✅ **Vérifié exact** — trois déclarations, zéro lecture                                                                                                                                                                              |
-| Croisée n° 4 — repli servi une fois par fenêtre de panne                        | ✅ **Vérifié exact**                                                                                                                                                                                                                 |
-| Croisée n° 6 — les trois défauts (`30000`, `"upsert"`, `"remove"`)              | ✅ **Vérifiés exacts**                                                                                                                                                                                                               |
-| §5 — les tests comme preuve de couverture                                       | ⚠️ **À nuancer, et le CDC ne pouvait pas le savoir** : les trois scénarios GTFS-RT de bout en bout sont désactivés depuis (B-55). La couverture unitaire est intacte, la couverture navigateur du protobuf est **nulle**             |
+| Énoncé du CDC                                                                   | Ce que dit le code                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| §8 PC-04 + croisée n° 7 — « `gtfs-realtime-bindings` importé **statiquement** » | Vrai **dans le module décodeur**, faux pour le chemin de boot : `realtime-runtime.ts` charge le décodeur par `import()` **dynamique**, et son commentaire donne le motif — la sonde WebAssembly et la violation CSP qu'elle provoque                                                                                                                                                                         |
+| §7 « budget bundle : inliné statiquement depuis S10 — ~81 KB gz »               | **Périmé par le point précédent** : ce n'est plus un coût de boot mais un fragment différé. Le chiffre ne se recopie pas — `npm run size:plugins`                                                                                                                                                                                                                                                            |
+| §5 « 11 suites Vitest (112 tests) »                                             | **13 fichiers** sur le disque. Chiffre recopié, donc divergé — la fiche cite la commande à sa place                                                                                                                                                                                                                                                                                                          |
+| §7 « Fetch immédiat — polling-source.ts:48 »                                    | Le comportement est exact ; **la ligne ne l'est plus**. Même défaut que les citations de ligne des déclarations de capacités (B-63)                                                                                                                                                                                                                                                                          |
+| §6 « SSE sans reconnexion gérée »                                               | ✅ **Vérifié exact** — et l'environnement sans `EventSource` est traité en plus, par une erreur explicite                                                                                                                                                                                                                                                                                                    |
+| Croisée n° 7 — « `mapping.delayField` jamais lu (champ réservé) »               | ✅ **Vérifié exact sur le fond, corrigé sur le compte (11/08/2026)** — **zéro lecture**, ce qui est l'énoncé qui compte. La case disait « **trois** déclarations » : il y en a **deux** en source (`config.ts`, `decoders/gtfs-rt-decoder.ts`), les deux autres occurrences étant des **usages de test**. Un compte faux dans une case « Vérifié exact » coûte plus qu'un chiffre nu : il porte une garantie |
+| Croisée n° 4 — repli servi une fois par fenêtre de panne                        | ✅ **Vérifié exact**                                                                                                                                                                                                                                                                                                                                                                                         |
+| Croisée n° 6 — les trois défauts (`30000`, `"upsert"`, `"remove"`)              | ✅ **Vérifiés exacts**                                                                                                                                                                                                                                                                                                                                                                                       |
+| §5 — les tests comme preuve de couverture                                       | ⚠️ **À nuancer, et le CDC ne pouvait pas le savoir** : les trois scénarios GTFS-RT de bout en bout sont désactivés depuis (B-55). La couverture unitaire est intacte, la couverture navigateur du protobuf est **nulle**                                                                                                                                                                                     |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : les quatre scénarios d'usage réels
 (retards ferroviaires en GTFS-RT, navires en WebSocket, capteurs en flux d'événements, vélos en

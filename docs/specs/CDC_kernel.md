@@ -56,8 +56,11 @@ in-core** (`capabilities/<id>/`), qui sont gatées, auto-contenues et tree-shake
 - **Il ne déclare, ne valide et ne défaute pas la configuration d'un plugin** : le contenu
   d'un bloc `modules.<id>` lui est opaque (INV-CONFIG / INV-FRONT).
 - **Il n'est pas l'application.** Le HTML, le `init.js`, le manifeste PWA et les icônes
-  livrées appartiennent à `apps/geoleaf-app/`, qui est la source unique des trois variantes
-  de déploiement et n'est jamais publiée sur npm.
+  livrées appartiennent à `apps/geoleaf-app/`, source unique de **toutes** les variantes de
+  déploiement, et jamais publiée sur npm. ⚠️ Cette ligne disait « des **trois** variantes »
+  jusqu'au 11/08/2026 : `ls deploy/` en rend **quatre**, dont **deux seulement sont livrables**
+  (`deploy-core`, `deploy-full`) — voir [`contrats/APP_SHELL.md`](contrats/APP_SHELL.md), qui
+  porte la table. Le compte ne se recopie pas ici.
 - **Il ne porte plus de build « Lite »** ni de chargement paresseux par répertoire : le
   répertoire `src/lazy/` n'existe pas. Une entrée qui veut moins de capacités écrit son
   propre manifeste (voir `packages/core/examples/minimal/entry.ts`), et ce qu'elle n'importe
@@ -68,7 +71,7 @@ in-core** (`capabilities/<id>/`), qui sont gatées, auto-contenues et tree-shake
 ## Fonctionnalités
 
 Une ligne par sous-système du kernel. Le détail par fichier — chemin, LOC, exports réels,
-en-tête de module — est **généré** : `docs/reference/ARBORESCENCE_QUALIFIEE.md`
+en-tête de module — est **généré** : [`docs/reference/ARBORESCENCE_QUALIFIEE.md`](../reference/ARBORESCENCE_QUALIFIEE.md)
 (`npm run docs:tree`, gaté par `docs:tree:check`).
 
 | ID   | Fonctionnalité                                                               | Entrée                                              | Sortie observable                                                                                                                                                                                                                                                                                     | Code                                                      |
@@ -198,10 +201,21 @@ C'est un piège d'ordonnancement, pas une lenteur : déclarer `dependencies = ["
 seule raison d'être trié **après** quelque chose place la capacité derrière une attente réseau
 non bornée. `toast-renderer` le faisait, et le symptôme était qu'**aucune notification n'était
 rendue pendant tout le chargement initial** — la fenêtre même où surviennent les erreurs de
-chargement (B-56, 28/07/2026 ; `dependencies` ramenée à `["config"]`). **`labels`,
-`feature-info` et `filter` portent encore cette déclaration** (B-57) — ⚠️ leur retirer demande de
+chargement (B-56, 28/07/2026 ; `dependencies` ramenée à `["config"]`). **La très large majorité
+des capacités à module portent encore cette déclaration** (B-57) — ⚠️ la leur retirer demande de
 vérifier d'abord que leur `init()` ne lit réellement aucun état GeoJSON, ce que rien n'atteste
-aujourd'hui.
+aujourd'hui. Le gisement se dérive, il ne se recopie pas :
+
+```bash
+grep -rn 'readonly dependencies' packages/core/src/capabilities/
+```
+
+> 🛑 **Relecture du 11/08/2026 — cette phrase nommait TROIS capacités (`labels`, `feature-info`,
+> `filter`) ; elles sont QUATORZE.** C'est le mode d'échec n° 1 du pré-vol — le gisement
+> sous-estimé —, ici d'un facteur **4,7**, et sur la ligne de registre **B-57** elle-même : qui
+> aurait chiffré ce travail sur cette phrase l'aurait sous-évalué d'autant. Seules
+> `toast-renderer` (`["config"]`) et `permalink` (`[]`) ne la portent pas. ⚠️ Ne pas raccrocher un
+> compte ici : c'est en en écrivant un que la phrase s'est périmée.
 
 ### Le filet qui garde cette séquence — quatre tiers, aucun redondant
 
@@ -260,12 +274,12 @@ find packages/core/src -name '*seam*.ts'
 
 ### Ce qui appartient à cette fiche, et ce qui ne lui appartient pas
 
-| Sujet                                             | Où il fait autorité                                                                                                                   |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Structure d'un dossier profil, invariants `PRF-*` | `docs/specs/contrats/PROFILE_CONTRACT_SPEC.md` (**gelé sous RFC**)                                                                    |
-| Comment valider un profil, erreurs et remèdes     | `docs/reference/GUIDE_VALIDATION_PROFILS.md`                                                                                          |
-| Inventaire exhaustif des paramètres, par famille  | `docs/reference/inventaire_config_parametres.md` (gate bidirectionnelle) et son rendu `reference_parametres_config.html` (**généré**) |
-| Ce qui suit ci-dessous                            | le **mécanisme** de chargement et de fusion, propre au kernel                                                                         |
+| Sujet                                             | Où il fait autorité                                                                                                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Structure d'un dossier profil, invariants `PRF-*` | [`docs/specs/contrats/PROFILE_CONTRACT_SPEC.md`](contrats/PROFILE_CONTRACT_SPEC.md) (**gelé sous RFC**)                                                                               |
+| Comment valider un profil, erreurs et remèdes     | [`docs/reference/GUIDE_VALIDATION_PROFILS.md`](../reference/GUIDE_VALIDATION_PROFILS.md)                                                                                              |
+| Inventaire exhaustif des paramètres, par famille  | [`docs/reference/inventaire_config_parametres.md`](../reference/inventaire_config_parametres.md) (gate bidirectionnelle) et son rendu `reference_parametres_config.html` (**généré**) |
+| Ce qui suit ci-dessous                            | le **mécanisme** de chargement et de fusion, propre au kernel                                                                                                                         |
 
 ### Le manifeste `Files`
 
@@ -284,7 +298,7 @@ clés, pas une de plus — `themesFile`, `layersFile`, `basemapsFile`, `uiFile`,
         "featuresFile": "config/core/features.json",
         "modules": {
             "offline": "config/plugins/offline.json",
-            "addpoi": "config/plugins/addpoi.json",
+            "table": "config/plugins/table.json",
             "taxonomy": "config/plugins/taxonomy.json",
             "legend": "config/plugins/legend.json",
             "filter": "config/plugins/filter.json"
@@ -292,6 +306,15 @@ clés, pas une de plus — `themesFile`, `layersFile`, `basemapsFile`, `uiFile`,
     }
 }
 ```
+
+> 🛑 **Relecture du 11/08/2026 — cet exemple déclarait `"addpoi": "config/plugins/addpoi.json"`,
+> et il est COPIABLE-COLLABLE.** Le plugin a fusionné dans `editor` au Sprint 5 : `addpoi` n'existe
+> plus, et **aucun profil du dépôt ne déclare ce module**. Remplacé par `table`, qui existe et dont
+> les trois profils portent la configuration. ⚠️ **Le garde de cette section est resté VERT tout du
+> long**, et c'est la leçon : `doc-profile-examples.guard.test.js` valide le bloc contre
+> `profile.schema.json`, or `Files.modules` accepte **n'importe quelle clé** — il contrôle la
+> FORME, jamais l'existence de ce qui est nommé. C'est exactement la ligne « la véracité de la
+> phrase : rien, et rien ne le pourra » du protocole documentaire.
 
 ⚠️ **La taxonomie n'a pas d'entrée dédiée** — c'est un **module** : `Files.modules.taxonomy`,
 et les icônes sont son `icons.spriteUrl`. Un profil déclarant l'ancienne clé racine est
@@ -351,12 +374,12 @@ Le dépôt livre **`tourism`** et **`reunion-eclairage`**, deux profils de démo
 **`_reference`**, qui n'est pas une démonstration mais l'échantillon exhaustif contre lequel se
 lisent les formes de configuration — `build-deploy.cjs` l'écarte du déployé comme tout répertoire
 préfixé `_`. Un profil métier ne s'ajoute pas ici : il se fabrique en suivant
-`docs/specs/contrats/PROFILE_CONTRACT_SPEC.md`.
+[`docs/specs/contrats/PROFILE_CONTRACT_SPEC.md`](contrats/PROFILE_CONTRACT_SPEC.md).
 
 📌 **Deux profils livrés est une propriété, pas un hasard**, et deux mécanismes en dépendent :
 le **sélecteur de profil** ne se laisse éprouver qu'à partir de deux (`e2e/24-profile-switcher`),
 et `reunion-eclairage/ign-plan-3d` est le **seul fond vectoriel** du dépôt, donc le seul qui
-puisse être servi hors ligne (`docs/specs/capacites/offline.md` §Cache API). Descendre à un
+puisse être servi hors ligne ([`docs/specs/capacites/offline.md`](capacites/offline.md) §Cache API). Descendre à un
 profil livré éteint les deux, silencieusement pour le premier.
 
 ⚠️ **Aucun compte n'est écrit dans cette section, et c'est délibéré.** Elle a annoncé « deux
@@ -382,11 +405,11 @@ choses se montent, et par quel canal**.
 
 ### Les trois canaux, et leur asymétrie
 
-| Canal                            | Ce qui y vit                                                                 | Monté par                                                                         |
-| -------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **Exports ESM nommés**           | ce que `bundle-esm-entry.ts` ré-exporte, l'essentiel via `kernel-exports.ts` | le bundler, à l'import                                                            |
-| **Namespace global `GeoLeaf.*`** | la surface CDN, typée dans `src/global.d.ts`                                 | phase A pour le kernel, `registerGlobals(gl)` des `install.ts` pour les capacités |
-| **Sous-chemins `types`-seuls**   | 6 contrats d'extension (`@geoleaf/core/contracts/*.contract.js`)             | la map `exports` du `package.json`                                                |
+| Canal                            | Ce qui y vit                                                                                                                                                                        | Monté par                                                                         |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Exports ESM nommés**           | ce que `bundle-esm-entry.ts` ré-exporte, l'essentiel via `kernel-exports.ts`                                                                                                        | le bundler, à l'import                                                            |
+| **Namespace global `GeoLeaf.*`** | la surface CDN, typée dans `src/global.d.ts`                                                                                                                                        | phase A pour le kernel, `registerGlobals(gl)` des `install.ts` pour les capacités |
+| **Sous-chemins `types`-seuls**   | les contrats d'extension (`@geoleaf/core/contracts/*.contract.js`) — le compte se dérive de la map `exports`, il ne se recopie pas : il disait **6** pour **8** jusqu'au 11/08/2026 | la map `exports` du `package.json`                                                |
 
 ⚠️ **Les deux premiers canaux ne se recouvrent pas.** Certains namespaces runtime ne sont pas
 des exports ESM, et certains exports ESM ne sont pas montés sur le global. Un document qui
@@ -596,7 +619,7 @@ classe de défaut.
 MapLibre GL JS ≥6.0 est une **peer dependency externe**, hors bundle. ⚠️ Depuis la v6, le
 moteur est **ESM-only** : il ne publie plus de bundle UMD, n'expose plus le global `maplibregl`
 — reposé par le shim `vendor/maplibre-gl/global.mjs` — et se présente en **graphe de trois
-modules**, dont deux ne sont nommés dans aucun markup (d'où la clôture de `boot-assets.cjs`,
+modules**, dont deux ne sont nommés dans aucun markup (d'où la clôture de `scripts/lib/boot-assets.cjs`,
 qui les fait entrer au pré-cache du service worker).
 
 Le budget du kernel est la **clôture transitive des imports statiques** depuis l'entrée, pas
@@ -634,9 +657,9 @@ npm run size
 
 ## Annexe — Historique des révisions
 
-| Version   | Date            | Auteur        | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --------- | --------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **4.1.0** | 1er août 2026   | Claude Opus 5 | **§Dépendances et frontières reçoit la doctrine de placement** — « Où va une fonctionnalité neuve : kernel, capacité ou plugin ». Les deux axes (lien au noyau · moment de livraison), la table des 3 couches, la grille ordonnée à 5 questions et le principe natif-dessous/déclaratif-dessus, versés depuis `rapport_decisions-architecture.md` (session d'idéation du 04/07/2026) à l'archivage de la zone `travail/`. ⚠️ **Motif du versement** : aucun fichier de `specs/` ne portait ce classement, et `/feature` ne couvre pas le placement — la seule frontière que les trois sections suivantes ne disaient pas était celle qui décide **de quel côté** on atterrit. Les trois autres frontières sont inchangées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Version   | Date            | Auteur        | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------- | --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **4.1.0** | 1er août 2026   | Claude Opus 5 | **§Dépendances et frontières reçoit la doctrine de placement** — « Où va une fonctionnalité neuve : kernel, capacité ou plugin ». Les deux axes (lien au noyau · moment de livraison), la table des 3 couches, la grille ordonnée à 5 questions et le principe natif-dessous/déclaratif-dessus, versés depuis `rapport_decisions-architecture.md` (session d'idéation du 04/07/2026) à l'archivage de la zone `travail/`. ⚠️ **Motif du versement** : aucun fichier de `specs/` ne portait ce classement, et `/feature` ne couvre pas le placement — la seule frontière que les trois sections suivantes ne disaient pas était celle qui décide **de quel côté** on atterrit. Les trois autres frontières sont inchangées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **4.0.0** | 27 juillet 2026 | Claude Opus 5 | **Réécriture complète contre le code, refonte documentaire V3 §2.3 + §2.4.** Le document précédent (`CDC_technique.md`, 2 572 lignes) citait **452 chemins dont 287 ne résolvaient plus**, annonçait « 18 capacités » ×4 (réel **21**), « 11 plugins » / « 9 plugins » (réel **13**), « 369+ fichiers TypeScript » (réel **518**), « 8 profils » (réel **2** + `_reference`), et **deux comptes d'exports ESM contradictoires** à 700 lignes d'écart. Il portait aussi trois versions incompatibles de lui-même — frontmatter `v3.34.0`, bandeau `v3.23.0`, corps « version 2.1.5 » — alors que `packages/core/package.json` vaut **3.0.0**. Réécrit au squelette `specs/` : Périmètre / Fonctionnalités / Séquence de boot / 13 sous-systèmes / Configuration / Contrat exposé / Décisions / Frontières. **Trois sections deviennent des renvois** au lieu d'être recopiées : l'arborescence des sources (→ `reference/ARBORESCENCE_QUALIFIEE.md`, généré et gaté), la liste des signatures d'API (→ TypeDoc) et la structure d'un profil (→ `specs/contrats/PROFILE_CONTRACT_SPEC.md` + `reference/GUIDE_VALIDATION_PROFILS.md`) — c'est la frontière `specs/` ↔ dérivé, et la recréer ici annulerait le travail qui la supprime ailleurs. **Les 14 ADR sont conservés**, condensés en table décision / pourquoi / alternative écartée, avec leurs révisions et leurs corrections de prémisse — un ADR périmé s'annote, il ne s'efface pas. Péremptions balayées : `src/modules/**` et `modules/optional/` (n'existent plus), `plugin-storage` → `offline-ui` (10 sites), `GeoLeaf-Core` décrit comme dépôt public, `src/lazy/` (19 mentions d'un répertoire absent). L'exemple `Files` est repris du profil `reunion-eclairage` réel et validé contre `profile.schema.json`. |
 
 <details>

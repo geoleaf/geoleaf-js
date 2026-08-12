@@ -83,98 +83,11 @@ describe("LayerManager Integration (T10.3.9+10)", () => {
         }
     });
 
-    // ── _resolveLegendType (via registerWithLayerManager) ────────────────────
-
-    describe("_resolveLegendType()", () => {
-        it("returns 'circle' for type 'poi'", async () => {
-            _mockLayers.set(
-                "layer1",
-                makeLayerData({
-                    layer: { _type: "poi" },
-                    config: {},
-                })
-            );
-            LayerManagerIntegration.detectLayerType = vi.fn(() => "poi");
-            LayerManagerIntegration.registerWithLayerManager();
-            // legend type is 'circle' for poi — we verify via the stored item
-            // Actually, the legend type goes into the sectionMap items, not directly to registerGeoJsonLayer
-            // but the function runs without error
-            expect(mockGeoLeafLayerManager._registerGeoJsonLayer).toHaveBeenCalled();
-        });
-
-        it("returns 'line' for type 'route'", () => {
-            _mockLayers.set(
-                "layer_route",
-                makeLayerData({
-                    layer: { _type: "route" },
-                    config: { style: { color: "#ff8800" } },
-                })
-            );
-            LayerManagerIntegration.detectLayerType = vi.fn(() => "route");
-            expect(() => LayerManagerIntegration.registerWithLayerManager()).not.toThrow();
-        });
-
-        it("returns 'fill' for unknown type", () => {
-            _mockLayers.set(
-                "layer_fill",
-                makeLayerData({
-                    layer: { _type: "other" },
-                })
-            );
-            LayerManagerIntegration.detectLayerType = vi.fn(() => "other");
-            expect(() => LayerManagerIntegration.registerWithLayerManager()).not.toThrow();
-        });
-    });
-
-    // ── _resolveLayerColor (via registerWithLayerManager) ────────────────────
-
-    describe("_resolveLayerColor()", () => {
-        it("uses config.style.fillColor when available", () => {
-            _mockLayers.set(
-                "lc1",
-                makeLayerData({
-                    config: { style: { fillColor: "#aabbcc" } },
-                })
-            );
-            LayerManagerIntegration.registerWithLayerManager();
-            // The layer is registered — indicating function ran to completion
-            expect(mockGeoLeafLayerManager._registerGeoJsonLayer).toHaveBeenCalled();
-        });
-
-        it("falls back to config.style.color when fillColor absent", () => {
-            _mockLayers.set(
-                "lc2",
-                makeLayerData({
-                    config: { style: { color: "#001122" } },
-                })
-            );
-            LayerManagerIntegration.registerWithLayerManager();
-            expect(mockGeoLeafLayerManager._registerGeoJsonLayer).toHaveBeenCalled();
-        });
-
-        it("uses config.pointStyle.fillColor when style is absent", () => {
-            _mockLayers.set(
-                "lc3",
-                makeLayerData({
-                    config: { style: null, pointStyle: { fillColor: "#334455" } },
-                })
-            );
-            LayerManagerIntegration.registerWithLayerManager();
-            expect(mockGeoLeafLayerManager._registerGeoJsonLayer).toHaveBeenCalled();
-        });
-
-        it("uses default '#3388ff' when no color found", () => {
-            _mockLayers.set(
-                "lc4",
-                makeLayerData({
-                    config: { style: null, pointStyle: null },
-                })
-            );
-            LayerManagerIntegration.registerWithLayerManager();
-            expect(mockGeoLeafLayerManager._registerGeoJsonLayer).toHaveBeenCalled();
-        });
-    });
-
+    // B-228 — les blocs `_resolveLegendType` / `_resolveLayerColor` ont été retirés le
+    // 11/08/2026 AVEC les fonctions qu'ils nommaient. Elles alimentaient `SectionItem.type`
+    // et `.color`, deux champs que la charge utile d'enregistrement ne déclare pas et que
+    // personne ne relisait. 🛑 Leur suppression n'a fait rougir AUCUN test : ces cas
+    // exerçaient les lignes pour la couverture sans jamais asserter leur résultat.
     // ── _resolveLayerLabels (via registerWithLayerManager) ───────────────────
 
     describe("_resolveLayerLabels()", () => {

@@ -5,6 +5,11 @@
 **Numéro de contrat :** Plugin Contract v1
 **Date :** 8 juin 2026 (clôture S14 : 12 juin 2026)
 
+📌 **Ancrage des chemins.** Les noms nus du squelette (`entry.ts`, `public-api.ts`, `config.ts`…)
+désignent une **forme** valable pour tout `packages/plugins/<nom>/src/`, pas un fichier précis. Les
+autres chemins sans racine se lisent depuis `packages/core/src/` ; ceux qui commencent par
+`packages/`, `scripts/` ou `docs/` sont relatifs à la **racine du dépôt**.
+
 > ## 🔒 SPEC FIGÉE — Plugin Contract v1
 >
 > **Gelée le 8 juin 2026.** Ce document fait **autorité** sur l'architecture des plugins GeoLeaf.
@@ -245,12 +250,8 @@ La configuration propre à un plugin **DOIT** être isolée sous une clé `modul
 // profiles/<profil>/profile.json
 {
     "id": "tourism",
-    "map": {
-        /* … cœur … */
-    },
-    "ui": {
-        /* … cœur … */
-    },
+    "map": {/* … cœur … */},
+    "ui": {/* … cœur … */},
 
     "modules": {
         "storage": { "enableOfflineDetector": false, "cache": { "enableProfileCache": true } },
@@ -273,13 +274,29 @@ const enabled = GeoLeaf.Config.get("modules.addpoi.enabled", true);
 
 ### Pourquoi (rationnel)
 
-1. **Casse le couplage core → plugin.** Aujourd'hui `config-types.ts` déclare `poiAddConfig` _(plugin-addpoi)_, `printConfig`, `measureConfig`, `editorConfig`, `storage` : le core « connaît » la config de ses plugins, en violation de l'esprit d'`INV-FRONT`. `modules.*` rend chaque plugin **propriétaire** de sa config.
+1. **Casse le couplage core → plugin.** Aujourd'hui `packages/core/src/kernel/config/geoleaf-config/config-types.ts` déclare `poiAddConfig` _(plugin-addpoi)_, `printConfig`, `measureConfig`, `editorConfig`, `storage` : le core « connaît » la config de ses plugins, en violation de l'esprit d'`INV-FRONT`. `modules.*` rend chaque plugin **propriétaire** de sa config.
 2. **Profils auto-documentés.** Un coup d'œil au bloc `modules` suffit à voir quels modules sont configurés et comment, au lieu de clés plates dispersées à la racine.
 3. **Validation par plugin possible.** Ouvre la voie à un futur `GeoLeaf.plugins.registerConfigSchema(pluginId, schema, defaults)` : le plugin valide ses propres clés, le core n'a rien à savoir.
 
 ### Migration (cadre) — **terminée en S14**
 
-Pendant la convergence (S0→S13), le core lisait `modules.<id>.*` avec un **repli** sur l'ancienne clé racine (miroir bidirectionnel S0, dépréciation annoncée au CHANGELOG). **En clôture S14, ce repli et les interfaces de clés racine dépréciées de `config-types.ts` (`poiAddConfig`, `printConfig`, `measureConfig`, `editorConfig`, `storage`) ont été retirés** : `modules.<id>.*` est désormais l'**unique** forme supportée, lue via `GeoLeaf.Config.getModuleConfig(id, key, default)`. Le schéma JSON reste permissif (`additionalProperties: true`) à la racine mais **décrit** la structure `modules.*`.
+Pendant la convergence (S0→S13), le core lisait `modules.<id>.*` avec un **repli** sur l'ancienne clé racine (miroir bidirectionnel S0, dépréciation annoncée au CHANGELOG). **En clôture S14, ce repli et les interfaces de clés racine dépréciées de `packages/core/src/kernel/config/geoleaf-config/config-types.ts` (`poiAddConfig`, `printConfig`, `measureConfig`, `editorConfig`, `storage`) ont été retirés** : `modules.<id>.*` est désormais l'**unique** forme supportée, lue via `GeoLeaf.Config.getModuleConfig(id, key, default)`. Le schéma JSON reste permissif (`additionalProperties: true`) à la racine mais **décrit** la structure `modules.*`.
+
+> ⚠️ _Annotation du 11/08/2026 (relecture 6.11) — **deux défauts dans ce §5, dont un où la section
+> se contredit elle-même à six lignes d'écart.** Partie I : annotés, pas récrits (§10)._
+>
+> - 🛑 **Le point 1 du « Pourquoi » parle au PRÉSENT de clés qui n'existent plus.** Il écrit
+>   « **Aujourd'hui** `config-types.ts` déclare `poiAddConfig`, `printConfig`, `measureConfig`,
+>   `editorConfig`, `storage` » — or le paragraphe **Migration ci-dessus**, dans la même section,
+>   acte leur retrait en S14. Mesuré le 11/08/2026 : `grep` rend **0 occurrence** pour les cinq.
+>   Le rationnel reste juste ; c'est son **temps** qui est faux, et il fait lire comme un défaut
+>   ouvert ce que le document déclare soldé deux paragraphes plus bas.
+> - **Les identifiants des exemples sont périmés** : `addpoi` a fusionné dans `editor` au Sprint 5
+>   et n'existe plus ; `storage` s'appelle `offline` depuis son renommage. Ce sont des exemples
+>   **illustratifs** — la forme `modules.<id>` qu'ils démontrent est exacte —, mais un lecteur qui
+>   les copie nomme deux modules absents. Les identifiants réellement déclarés par les profils du
+>   dépôt : `offline`, `geocoding`, `table`, `theme-selector`, `legend`, `taxonomy`,
+>   `feature-info`, `cluster`, `filter`, `route`.
 
 ---
 
@@ -298,7 +315,7 @@ Pendant la convergence (S0→S13), le core lisait `modules.<id>.*` avec un **rep
 
 ### Évolution
 
-- **INV-FRONT** : isolation d'architecture et de config — le core ignore les plugins, ce qui le laisse autonome et tree-shakeable. Vérifiée en CI, en pre-commit et dans `ci:local` (`verify-core-standalone.cjs`).
+- **INV-FRONT** : isolation d'architecture et de config — le core ignore les plugins, ce qui le laisse autonome et tree-shakeable. Vérifiée en CI, en pre-commit et dans `ci:local` (`scripts/verify-core-standalone.cjs`).
 - **Versioning du contrat** (`Plugin Contract vN`) découplé du semver du package plugin.
 - **INV-EVT** : les événements publics typés (`GeoLeafEventMap`) sont le **seul** canal de communication stable.
 - **Politique de dépréciation** : tout champ/événement public déprécié **DOIT** être annoncé au `CHANGELOG` (section Breaking) et au guide de migration **avant** retrait.
@@ -361,14 +378,14 @@ packages/plugins/<nom>/
 
 ### Étapes pas-à-pas
 
-1. **CDC d'abord** (Gate 1) : rédiger `_docs_projet/travail/cdc/CDC_plugin-<nom>.md`.
+1. **CDC d'abord** (Gate 1) : rédiger `docs/specs/plugins/CDC_<nom>.md`.
 2. **Implémenter dans l'ordre** : contrats consommés (`import type`) → logique métier → façade `public-api.ts` → tests.
 3. **`entry.ts`** : enregistrer les dictionnaires i18n, monter la façade sur `GeoLeaf.<Nom>`, appeler `register()` (forme §4). Déclarer les slots UI (`registerLazyForAction` si lazy).
 4. **Dégradation gracieuse** : garder chaque dépendance `optional` (mode dégradé si absente).
 5. **Config** : lire via `GeoLeaf.Config.get("modules.<id>.*")` (INV-CONFIG) — jamais de clé racine ni de défaut dans le core.
-6. **Valider la checklist §9**, mettre à jour CDC + CHANGELOG + DOC_TRACKER.
+6. **Valider la checklist §9**, mettre à jour CDC + CHANGELOG + l'état courant du dépôt de travail.
 
-> ⚠️ _Annotation du 08/08/2026 (S11.4) — **deux adresses de cette liste sont mortes**, et une
+> ⚠️ _Annotation du 08/08/2026 (S11.4) — **deux adresses de cette liste étaient mortes**, et une
 > consigne qui envoie vers un fichier inexistant est pire qu'une consigne absente : elle fait
 > conclure à la relecture suivante que la surface a disparu._
 >
@@ -376,8 +393,15 @@ packages/plugins/<nom>/
 >   supprimé** à la refonte documentaire V3 du 27/07/2026. Adresse réelle :
 >   `docs/specs/plugins/CDC_<nom>.md` (12 fiches sur 12 écrites).
 > - **Étape 6** — **`DOC_TRACKER.md` n'existe plus** : supprimé le 27/07/2026, son contenu fusionné
->   dans `_docs_projet/ETAT.md` (voir `ETAT.md:9` et la ligne **B-34** du registre, soldée le
->   29/07/2026 « pour moitié par disparition »). Lire « CDC + CHANGELOG + `ETAT.md` ».
+>   dans le fichier d'état du dépôt de travail (ligne **B-34** du registre de dette, soldée le
+>   29/07/2026 « pour moitié par disparition »).
+>
+> 🛑 **Corrigé DANS la liste le 11/08/2026 (tâche 6.11).** L'annotation avait rectifié les deux
+> adresses **sans toucher aux consignes**, onze lignes plus haut : un lecteur qui suit la liste
+> sans lire l'encart créait donc encore un fichier dans un répertoire supprimé. Le diagnostic
+> était juste et complet — il n'avait simplement pas été appliqué à son objet. **Une annotation
+> qui corrige un texte qu'elle laisse intact ne corrige rien** ; elle est gardée ici comme trace,
+> la consigne, elle, est réécrite.
 >
 > _Le régime §10 interdit de réécrire la Partie I sans RFC ; **annoter n'est pas modifier un
 > invariant** — même geste que les annotations du 27/07/2026 au §10 et au §7. Le processus décrit
@@ -405,8 +429,9 @@ Chaque case est mappée sur un invariant ou un garde-fou CI.
 - [ ] CDC à jour, CHANGELOG + DOC_TRACKER renseignés
 
 > ⚠️ _Annotation du 08/08/2026 (S11.4) — la dernière case demande de renseigner **`DOC_TRACKER.md`,
-> qui n'existe plus** depuis le 27/07/2026 (fusionné dans `_docs_projet/ETAT.md`). Lire la case
-> comme « CDC à jour, CHANGELOG + `ETAT.md` renseignés ». La case elle-même n'est pas réécrite : le
+> qui n'existe plus** depuis le 27/07/2026 (fusionné dans le fichier d'état du dépôt de travail,
+> hors de ce dépôt-ci). Lire la case comme « CDC à jour, CHANGELOG + état courant renseignés ».
+> La case elle-même n'est pas réécrite : le
 > régime §10 réserve cela à une RFC, et c'est son ADRESSE qui est fausse, pas son exigence._
 >
 > 📌 _Cette checklist porte par ailleurs le seul invariant sans numéro `PC-` exécutoire —
@@ -425,7 +450,7 @@ La **Partie I** (§0–§10), le **numéro de contrat** `Plugin Contract v1` et 
 
 ### Ce qui reste vivant
 
-Les **annexes A–D**, les **CDC par plugin**, les documents de référence (boot, contrats TS, registry), et la **valeur** des seuils de budget (pilotée par `check-bundle-size.cjs`).
+Les **annexes A–D**, les **CDC par plugin**, les documents de référence (boot, contrats TS, registry), et la **valeur** des seuils de budget (pilotée par `scripts/check-bundle-size.cjs`).
 
 ### Processus RFC (léger)
 

@@ -323,15 +323,28 @@ declare global {
         };
         /** Public `GeoLeaf.Filter` facade — generic attribute filter capability (S5/S13). */
         Filter?: {
+            /** Whether the capability is active — mirrors the `modules.filter.enabled` gate. */
             isEnabled(): boolean;
+            /** The resolved filter configuration for the active profile. */
             getConfig(): unknown;
+            /** The filter state currently applied to the map. */
             getActiveFilter(): unknown;
+            /** Applies a filter state (debounced — see {@link applyNow} to flush immediately). */
             applyFilter(state: unknown): void;
+            /** Flushes the pending debounced filter immediately. */
             applyNow(): void;
+            /** Clears every active filter and restores the unfiltered view. */
             reset(): void;
+            /** Whether at least one filter is currently narrowing the view. */
             hasActiveFilters(): boolean;
+            /** Proximity (radius-around-a-point) sub-filter. */
             proximity: {
+                /** Sets the proximity radius, in kilometres. */
                 setRadius(radiusKm: number): void;
+                /**
+                 * Toggles proximity mode. Returns the resulting state: `true` once the map is
+                 * waiting for the user to place the centre point, `false` when switched off.
+                 */
                 toggle(
                     map: unknown,
                     radiusKm?: number,
@@ -367,7 +380,33 @@ declare global {
             [key: string]: unknown;
         };
         Security?: { escapeHtml?: (s: unknown) => string; [key: string]: unknown };
-        Legend?: { toggleAccordion?: (id: string) => void; [key: string]: unknown };
+        /**
+         * Façade de la légende (`GeoLeaf.Legend`).
+         *
+         * ⚠️ Les 8 membres ci-dessous étaient **implémentés et documentés** dans
+         * `capabilities/legend/legend.ts` — `@example` compris — mais **non déclarés ici**,
+         * donc absents de la page `GeoLeafGlobal` que TypeDoc rend et que lit un intégrateur
+         * (B-229). La traîne `[key: string]: unknown` subsiste (gisement B-13).
+         */
+        Legend?: {
+            /** Monte la légende sur une carte. Rend `false` si le montage échoue. */
+            init(mapInstance: unknown, options?: Record<string, unknown>): boolean;
+            /** Charge et rend l'entrée de légende d'une couche, pour un style donné. */
+            loadLayerLegend(layerId: string, styleId: string, layerConfig: unknown): void;
+            /** Affiche ou masque une couche depuis la légende. */
+            setLayerVisibility(layerId: string, visible: boolean): void;
+            /** Toutes les couches connues de la légende, indexées par identifiant. */
+            getAllLayers(): Map<string, unknown>;
+            /** Masque le panneau sans le démonter — l'état des couches est conservé. */
+            hideLegend(): void;
+            /** Démonte le panneau et libère ses écouteurs. */
+            removeLegend(): void;
+            /** Si le panneau est actuellement visible. */
+            isLegendVisible(): boolean;
+            /** Plie ou déplie la section d'une couche. */
+            toggleAccordion: (id: string) => void;
+            [key: string]: unknown;
+        };
         /** Taxonomy capability facade (in-core, gated by `modules.taxonomy`). */
         Taxonomy?: {
             isEnabled(): boolean;
@@ -378,6 +417,51 @@ declare global {
             getFieldMappings(
                 ref: string
             ): import("./capabilities/taxonomy/types.js").TaxonomyFieldMappings;
+            /**
+             * La table `valeur → symbole` d'une couche donnée (vide si la couche ne déclare
+             * aucune taxonomie). B-229 : implémenté et documenté dans
+             * `capabilities/taxonomy/public-api.ts`, mais non déclaré ici jusqu'au 11/08/2026.
+             */
+            getLayerCategories(
+                layerId: string
+            ): Record<string, import("./capabilities/taxonomy/types.js").TaxonomyCategory>;
+            /** Résout l'icône de sprite d'un point, tenant compte de sa catégorie et de sa teinte. */
+            resolvePoiIcon(
+                poi: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike
+            ): import("./capabilities/taxonomy/types.js").ResolvedIcon;
+            /**
+             * Chaque paire (icône × teinte) référencée par la config, pour que l'adaptateur
+             * MapLibre les rastérise et les enregistre. Vide si rien n'est teinté.
+             */
+            getIconVariants(): import("./capabilities/taxonomy/types.js").TaxonomyIconVariant[];
+            /** Peinture MapLibre d'une couche de marqueurs, ou `null` si la taxonomie ne s'applique pas. */
+            resolveMarkerPaint(
+                layerId: string,
+                existingPaint: Record<string, unknown>
+            ): Record<string, unknown> | null;
+            /**
+             * Le `symbolId` de l'icône à afficher à côté du TITRE d'une entité sur une surface
+             * feature-info, en honorant les drapeaux `render` par surface
+             * (priorité sous-catégorie → catégorie → défaut).
+             */
+            resolveTitleIcon(
+                layerId: string,
+                feature: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike,
+                surface: import("./capabilities/taxonomy/types.js").TaxonomySurface
+            ): string | null;
+            /** Le style de badge d'un champ, ou `null` si aucun ne s'applique. */
+            resolveBadgeStyle(
+                layerId: string,
+                feature: import("./capabilities/taxonomy/types.js").TaxonomyFeatureLike,
+                surface: import("./capabilities/taxonomy/types.js").TaxonomySurface,
+                field: string
+            ): import("./capabilities/taxonomy/types.js").ResolvedBadgeStyle | null;
+            /**
+             * Garantit que le sprite SVG du profil actif (ses `<symbol>`) est présent dans le
+             * DOM, pour qu'un `<use href="#…">` puisse le référencer. Sans attente et
+             * idempotent — le chargeur dédoublonne.
+             */
+            ensureSprite(): void;
             [key: string]: unknown;
         };
         _LegendControl?: { create: (opts: unknown) => unknown; [key: string]: unknown };
@@ -666,8 +750,51 @@ declare global {
         // `GeoLeafGlobal` » devient vrai, et `verify-host-contract-sync.cjs` (HOST-03) le
         // tient. Additif : ces 8 tombaient dans la traîne, aucun consommateur ne casse.
 
-        /** Core map façade (`GeoLeaf.Core`). */
-        Core?: { getMap?(): unknown; [key: string]: unknown };
+        /**
+         * Core map façade (`GeoLeaf.Core`) — low-level map lifecycle.
+         *
+         * Depuis la **v3.0.0**, `Core` tient un **registre indexé** d'adaptateurs
+         * (`Map<mapId, IMapAdapter>`) : N cartes coexistent sur une page, chacune avec son
+         * cycle de vie. Le singleton de module des versions ≤ 2.1.x n'existe plus.
+         *
+         * ⚠️ **La traîne `[key: string]: unknown` subsiste** (gisement B-13) : les 8 membres
+         * ci-dessous sont désormais déclarés et documentés, le reste du namespace ne l'est pas
+         * encore. Ne jamais l'élargir vers `any`.
+         */
+        Core?: {
+            /**
+             * Initialise une carte. **Exige `options.mapId`** — sans lui, rend `null` et
+             * journalise. Ré-initialiser un `mapId` existant rend l'instance déjà en place
+             * plutôt que d'en créer une seconde.
+             */
+            init(options?: Record<string, unknown>): unknown;
+            /**
+             * L'instance ciblée par `mapId` ; **sans argument, la première instance active** —
+             * forme rétro-compatible pour les applications mono-carte.
+             */
+            getMap(mapId?: string): unknown;
+            /** Alias de {@link getMap}. */
+            getAdapter(mapId?: string): unknown;
+            /**
+             * Détruit l'instance (`map.remove()` puis libère l'emplacement du registre).
+             * Rend `true` si elle existait. À appeler au démontage côté consommateur.
+             */
+            destroy(mapId: string): boolean;
+            /** Si une instance est enregistrée sous ce `mapId`. */
+            hasMap(mapId: string): boolean;
+            /** Les identifiants de toutes les instances actives. */
+            listMaps(): string[];
+            /**
+             * Applique un thème au conteneur de la carte.
+             *
+             * ⚠️ Le thème reste **global** en v3.0.0 et s'applique à la **première** instance :
+             * l'isolation par carte est hors périmètre de cette version.
+             */
+            setTheme(theme: string): void;
+            /** Le nom du thème courant. */
+            getTheme(): string;
+            [key: string]: unknown;
+        };
         /**
          * Plugin registry / lifecycle façade (`GeoLeaf.plugins`).
          *
@@ -761,7 +888,7 @@ declare global {
          */
         GeoJSON?: {
             getLayerById?(id: string): unknown;
-            getAllLayers?(): unknown;
+            getAllLayers(): unknown;
             getLayerData?(id: string): unknown;
             // ⚠️ `addData` a été DÉCLARÉE ICI et n'a JAMAIS existé sur cette façade
             // (retirée le 09/08/2026, roadmap npm S2 tâche 2.16). `kernel/geojson/core.ts`

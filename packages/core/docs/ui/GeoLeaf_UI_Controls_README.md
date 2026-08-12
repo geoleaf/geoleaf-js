@@ -4,26 +4,25 @@ title: "GeoLeaf.UI.Controls — Documentation"
 
 # GeoLeaf.UI.Controls — Documentation
 
-**Version** : 3.0.0
-**Fichier source** : `packages/core/src/modules/built-in/ui/controls.ts`
-**Dernière mise à jour** : mars 2026
+**Version**: 3.0.0
+**Source file**: `packages/core/src/modules/built-in/ui/controls.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le module Controls gère les contrôles personnalisés MapLibre GL JS ajoutés à la carte.
-Chaque contrôle est défini dans son propre module et initialisé lors du boot GeoLeaf.
+The Controls module handles the custom MapLibre GL JS controls added to the map.
+Each control is defined in its own module and initialised during the GeoLeaf boot sequence.
 
 ---
 
-## Contrôles disponibles
+## Available controls
 
 ### Fullscreen Control
 
-Active/désactive le mode plein écran de la carte.
+Enables and disables the map fullscreen mode.
 
-**Configuration** :
+**Configuration**:
 
 ```json
 {
@@ -36,17 +35,17 @@ Active/désactive le mode plein écran de la carte.
 }
 ```
 
-**API navigateur utilisée** : `element.requestFullscreen()` / `document.exitFullscreen()`
+**Browser API used**: `element.requestFullscreen()` / `document.exitFullscreen()`
 
-**Source** : `packages/core/src/modules/built-in/ui/control-fullscreen.ts`
+**Source**: `packages/core/src/modules/built-in/ui/control-fullscreen.ts`
 
 ---
 
 ### Geolocation Control
 
-Géolocalise l'utilisateur et centre la carte sur sa position.
+Locates the user and centres the map on their position.
 
-**Configuration** :
+**Configuration**:
 
 ```json
 {
@@ -59,15 +58,15 @@ Géolocalise l'utilisateur et centre la carte sur sa position.
 }
 ```
 
-**Source** : `packages/core/src/modules/built-in/ui/control-geolocation.ts`
+**Source**: `packages/core/src/modules/built-in/ui/control-geolocation.ts`
 
 ---
 
 ### Theme Toggle Control
 
-Bascule entre le thème clair et sombre.
+Switches between the light and dark themes.
 
-**Configuration** :
+**Configuration**:
 
 ```json
 {
@@ -80,35 +79,30 @@ Bascule entre le thème clair et sombre.
 }
 ```
 
-**Source** : `packages/core/src/modules/built-in/ui/control-theme-toggle.ts`
+**Source**: `packages/core/src/modules/built-in/ui/control-theme-toggle.ts`
 
 ---
 
 ### POI Add Control
 
-Affiche le bouton d'ajout de POI (nécessite le plugin `@geoleaf-plugins/editor`, et se règle par `modules.editor.showAddPoi`).
+Displays the POI creation button (requires the `@geoleaf-plugins/editor` plugin, and is configured through `modules.editor.showAddPoi`).
 
-**Source** : `packages/core/src/modules/built-in/ui/control-poi-add.ts`
+**Source**: `packages/core/src/modules/built-in/ui/control-poi-add.ts`
 
 ---
 
-## Intégration
+## Integration
 
-Les contrôles sont automatiquement ajoutés lors de `GeoLeaf.Core.init()` si activés dans la configuration.
+The controls are added automatically during `GeoLeaf.Core.init()` when enabled in the configuration.
 
 ```ts
 import { UI } from "@geoleaf/core";
-// ou : GeoLeaf.UI (CDN/global)
+// or: GeoLeaf.UI (CDN/global)
 ```
 
 ---
 
-## Références
+## References
 
-- **Code source** : `packages/core/src/modules/built-in/ui/controls.ts`
-- **Façade publique** : `packages/core/src/modules/geoleaf.ui.ts`
-
----
-
-**Dernière mise à jour** : mars 2026
-**Version GeoLeaf** : 3.0.0
+- **Source code**: `packages/core/src/modules/built-in/ui/controls.ts`
+- **Public facade**: `packages/core/src/modules/geoleaf.ui.ts`

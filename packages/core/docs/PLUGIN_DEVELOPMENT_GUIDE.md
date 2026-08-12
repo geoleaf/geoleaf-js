@@ -1,46 +1,44 @@
 ---
-title: "GeoLeaf — Guide de développement de plugin"
+title: "GeoLeaf — Plugin development guide"
 ---
 
-# GeoLeaf — Guide de développement de plugin
+# GeoLeaf — Plugin development guide
 
-**Package :** `@geoleaf/core`
-**Version :** 3.0.0
-**Dernière mise à jour :** mars 2026
-
----
-
-## Vue d'ensemble
-
-Un plugin GeoLeaf est un package npm ESM qui :
-
-1. S'importe **après** le core GeoLeaf
-2. Étend le namespace `GeoLeaf.*` via le bridge `globalThis`
-3. S'enregistre dans `GeoLeaf.plugins` via `GeoLeaf.plugins.register()`
-
-Le système est simple, sans classe de base ni framework — un fichier d'entrée suffit.
-
-**Référence :** les trois plugins existants (`@geoleaf-plugins/connector`, `@geoleaf-plugins/editor`, `@geoleaf-plugins/offline-ui`) suivent tous le même pattern.
+**Package:** `@geoleaf/core`
 
 ---
 
-## Prérequis
+## Overview
+
+A GeoLeaf plugin is an ESM npm package that:
+
+1. Is imported **after** the GeoLeaf core
+2. Extends the `GeoLeaf.*` namespace through the `globalThis` bridge
+3. Registers itself in `GeoLeaf.plugins` through `GeoLeaf.plugins.register()`
+
+The system is deliberately simple: no base class, no framework — a single entry file is enough.
+
+**Reference:** the reference plugins (`@geoleaf-plugins/connector`, `@geoleaf-plugins/editor`, `@geoleaf-plugins/offline-ui`) all follow the same pattern.
+
+---
+
+## Prerequisites
 
 - Node.js ≥ 18
-- `@geoleaf/core` en `peerDependencies`
-- ESM pur obligatoire : `"type": "module"` dans `package.json`
-- Aucun `require()`, aucun `module.exports`
+- `@geoleaf/core` in `peerDependencies`
+- Pure ESM is mandatory: `"type": "module"` in `package.json`
+- No `require()`, no `module.exports`
 
 ---
 
-## Structure minimale
+## Minimal structure
 
 ```
 my-plugin/
 ├── package.json
-├── rollup.config.js        ← build ESM
+├── rollup.config.js        ← ESM build
 └── src/
-    └── entry.ts            ← point d'entrée unique
+    └── entry.ts            ← single entry point
 ```
 
 ### package.json
@@ -85,22 +83,22 @@ export default defineConfig({
 
 ---
 
-## Pattern d'entrée
+## Entry pattern
 
-Le fichier `src/entry.ts` suit un pattern en 3 étapes.
+The `src/entry.ts` file follows a three-step pattern.
 
-### Étape 1 — Imports internes
+### Step 1 — Internal imports
 
 ```typescript
-// Importez vos modules internes (ils s'exécutent à l'import)
+// Import your internal modules (they run at import time)
 import "./my-feature.js";
 import { MyService } from "./my-service.js";
 ```
 
-### Étape 2 — Bridge vers le namespace GeoLeaf
+### Step 2 — Bridge to the GeoLeaf namespace
 
 ```typescript
-// Accéder au namespace global GeoLeaf (sans importer le core — évite les dépendances circulaires)
+// Reach the global GeoLeaf namespace (without importing the core — avoids circular dependencies)
 const _g = globalThis as {
     GeoLeaf?: {
         _version?: string;
@@ -116,12 +114,12 @@ const _g = globalThis as {
                 }
             ): void;
         };
-        // Déclarez ici ce que vous allez ajouter
+        // Declare here whatever you are about to add
         MyPlugin?: { myMethod(): void };
     };
 };
 
-// Ajouter votre API sur GeoLeaf.*
+// Add your API onto GeoLeaf.*
 if (_g.GeoLeaf) {
     _g.GeoLeaf.MyPlugin = {
         myMethod: MyService.myMethod.bind(MyService),
@@ -129,14 +127,14 @@ if (_g.GeoLeaf) {
 }
 ```
 
-### Étape 3 — Enregistrement dans PluginRegistry
+### Step 3 — Registration in PluginRegistry
 
 ```typescript
 if (_g.GeoLeaf?.plugins?.register) {
     _g.GeoLeaf.plugins.register("my-plugin", {
-        version: _g.GeoLeaf._version, // version du core (pour compatibilité)
-        requires: [], // plugins requis (ex. ["storage"])
-        optional: [], // plugins optionnels
+        version: _g.GeoLeaf._version, // core version (for compatibility)
+        requires: [], // required plugins (e.g. ["storage"])
+        optional: [], // optional plugins
         label: "My Plugin (description)",
         healthCheck: () => !!_g.GeoLeaf?.MyPlugin?.myMethod,
     });
@@ -145,7 +143,7 @@ if (_g.GeoLeaf?.plugins?.register) {
 
 ---
 
-## Exemple complet : plugin "Hello World"
+## Full example: a "Hello World" plugin
 
 ```typescript
 // src/entry.ts
@@ -172,7 +170,7 @@ interface GeoLeafGlobal {
 
 const _g = globalThis as { GeoLeaf?: GeoLeafGlobal };
 
-// --- Implémentation ---
+// --- Implementation ---
 const HelloService = {
     greet(name: string): string {
         return `Hello, ${name}! From GeoLeaf Hello plugin.`;
@@ -185,50 +183,50 @@ if (_g.GeoLeaf) {
     _g.GeoLeaf.Hello = HelloService;
 }
 
-// --- Enregistrement ---
+// --- Registration ---
 if (_g.GeoLeaf?.plugins?.register) {
     const coreVersion = _g.GeoLeaf._version;
     _g.GeoLeaf.plugins.register("hello", {
-        // `version` est optionnel des deux côtés : sous `exactOptionalPropertyTypes`, une
-        // clé ABSENTE et une clé présente valant `undefined` ne sont plus interchangeables.
-        // On insère conditionnellement plutôt que de propager l'`undefined`.
+        // `version` is optional on both sides: under `exactOptionalPropertyTypes`, an ABSENT
+        // key and a key present but holding `undefined` are no longer interchangeable.
+        // Insert it conditionally rather than propagating the `undefined`.
         ...(coreVersion !== undefined && { version: coreVersion }),
-        label: "Hello Plugin (exemple)",
+        label: "Hello Plugin (example)",
         healthCheck: () => typeof _g.GeoLeaf?.Hello?.greet === "function",
     });
 }
 ```
 
-**Utilisation côté app :**
+**Use from the application:**
 
 ```js
 import "@geoleaf/core";
 import "@my-scope/hello-plugin";
 
-// Vérifier le chargement
+// Check that it is loaded
 GeoLeaf.plugins.isLoaded("hello"); // → true
 
-// Utiliser l'API
+// Use the API
 GeoLeaf.Hello.greet("World"); // → "Hello, World! From GeoLeaf Hello plugin."
 ```
 
 ---
 
-## Ordre de chargement
+## Load order
 
-Le plugin **doit être importé après** le core GeoLeaf :
+The plugin **must be imported after** the GeoLeaf core:
 
 ```js
-// ✅ Ordre correct
+// Correct order
 import GeoLeaf from "@geoleaf/core";
-import "@my-scope/my-plugin"; // GeoLeaf.* existe déjà
+import "@my-scope/my-plugin"; // GeoLeaf.* already exists
 
-// ❌ Ordre incorrect — GeoLeaf.plugins n'existe pas encore
+// Incorrect order — GeoLeaf.plugins does not exist yet
 import "@my-scope/my-plugin";
 import GeoLeaf from "@geoleaf/core";
 ```
 
-En CDN (ESM) :
+Over a CDN (ESM):
 
 ```html
 <script type="module" src="geoleaf.esm.js"></script>
@@ -237,23 +235,23 @@ En CDN (ESM) :
 
 ---
 
-## API PluginRegistry
+## PluginRegistry API
 
-Accessible via `GeoLeaf.plugins` (export nommé du core) :
+Reachable through `GeoLeaf.plugins` (a named export of the core):
 
-| Méthode                 | Description                                            | Retourne         |
-| ----------------------- | ------------------------------------------------------ | ---------------- |
-| `register(name, opts)`  | Enregistre un plugin comme chargé                      | `void`           |
-| `isLoaded(name)`        | Le plugin est-il chargé ?                              | `boolean`        |
-| `canActivate(name)`     | Toutes les dépendances `requires` sont chargées ?      | `boolean`        |
-| `getLoadedPlugins()`    | Liste des noms chargés                                 | `string[]`       |
-| `getAvailableModules()` | Liste de tous les modules (chargés + lazy disponibles) | `string[]`       |
-| `getInfo(name)`         | Métadonnées d'un plugin                                | `object \| null` |
-| `load(name)`            | Charge un module lazy par son nom                      | `Promise<void>`  |
-| `reportPlugins()`       | Affiche en console les plugins chargés                 | `void`           |
+| Method                  | Description                                    | Returns          |
+| ----------------------- | ---------------------------------------------- | ---------------- |
+| `register(name, opts)`  | Registers a plugin as loaded                   | `void`           |
+| `isLoaded(name)`        | Is the plugin loaded?                          | `boolean`        |
+| `canActivate(name)`     | Are all `requires` dependencies loaded?        | `boolean`        |
+| `getLoadedPlugins()`    | List of loaded names                           | `string[]`       |
+| `getAvailableModules()` | List of every module (loaded + lazy available) | `string[]`       |
+| `getInfo(name)`         | Metadata for a plugin                          | `object \| null` |
+| `load(name)`            | Loads a lazy module by name                    | `Promise<void>`  |
+| `reportPlugins()`       | Prints the loaded plugins to the console       | `void`           |
 
 ```js
-// Exemple
+// Example
 GeoLeaf.plugins.getLoadedPlugins();
 // → ["core", "poi", "connector", "hello"]
 
@@ -263,15 +261,15 @@ GeoLeaf.plugins.getInfo("hello");
 
 ---
 
-## Événements DOM
+## DOM events
 
-Le système émet des événements sur `document` :
+The system emits events on `document`:
 
-| Événement                    | Déclenché quand                                |
-| ---------------------------- | ---------------------------------------------- |
-| `geoleaf:plugin:loaded`      | Plugin enregistré via `plugins.register()`     |
-| `geoleaf:plugin:lazy-loaded` | Module lazy chargé via `PluginRegistry.load()` |
-| `geoleaf:plugin:failed`      | Échec du chargement lazy                       |
+| Event                        | Fired when                                          |
+| ---------------------------- | --------------------------------------------------- |
+| `geoleaf:plugin:loaded`      | A plugin registers through `plugins.register()`     |
+| `geoleaf:plugin:lazy-loaded` | A lazy module is loaded via `PluginRegistry.load()` |
+| `geoleaf:plugin:failed`      | Lazy loading failed                                 |
 
 ```js
 document.addEventListener("geoleaf:plugin:loaded", (e) => {
@@ -281,9 +279,9 @@ document.addEventListener("geoleaf:plugin:loaded", (e) => {
 
 ---
 
-## Ce qu'un plugin peut importer depuis `@geoleaf/core`
+## What a plugin may import from `@geoleaf/core`
 
-Les exports nommés publics sont disponibles pour les plugins :
+The public named exports are available to plugins:
 
 ```typescript
 import {
@@ -293,59 +291,61 @@ import {
     Errors,
     CONSTANTS,
     Core,
-    // ... voir API_REFERENCE.md pour la liste complète
+    // ... see API_REFERENCE.md for the complete list
 } from "@geoleaf/core";
 ```
 
-> **Règle :** importer uniquement les exports listés dans [API_REFERENCE.md](API_REFERENCE.md). Ne pas importer depuis les sous-chemins internes (`@geoleaf/core/src/modules/...`).
+::: warning
+**Rule:** import only the exports listed in [API_REFERENCE.md](API_REFERENCE.md). Do not import from internal subpaths (`@geoleaf/core/src/modules/...`).
+:::
 
 ---
 
-## Règles de namespace
+## Namespace rules
 
-- **Préfixer votre namespace** pour éviter les collisions : `GeoLeaf.MyOrg_MyPlugin` ou `GeoLeaf.MyPlugin`
-- **Ne pas écraser** les namespaces existants : `GeoLeaf.POI`, `GeoLeaf.Core`, `GeoLeaf.UI`, etc.
-- **Le healthCheck doit rester léger** : il est appelé au boot pour le rapport de démarrage
+- **Prefix your namespace** to avoid collisions: `GeoLeaf.MyOrg_MyPlugin` or `GeoLeaf.MyPlugin`
+- **Do not overwrite** existing namespaces: `GeoLeaf.POI`, `GeoLeaf.Core`, `GeoLeaf.UI`, and so on
+- **Keep the healthCheck light**: it is called at boot for the start-up report
 
 ---
 
-## Plugins avec dépendances
+## Plugins with dependencies
 
-Si votre plugin requiert un autre plugin :
+If your plugin requires another plugin:
 
 ```typescript
 _g.GeoLeaf.plugins.register("my-plugin", {
-    requires: ["storage"], // sera vérifié par canActivate()
-    optional: ["addpoi"], // documenté mais non bloquant
+    requires: ["storage"], // will be checked by canActivate()
+    optional: ["addpoi"], // documented but not blocking
     healthCheck: () => GeoLeaf.plugins.isLoaded("storage") && !!_g.GeoLeaf?.MyPlugin,
 });
 ```
 
-Vérifier avant d'utiliser une dépendance optionnelle :
+Check before using an optional dependency:
 
 ```typescript
 if (GeoLeaf.plugins.isLoaded("storage")) {
-    // Utiliser l'API Storage
+    // Use the Storage API
 }
 ```
 
 ---
 
-## Règles à respecter
+## Rules to follow
 
-| Règle                                               | Raison                                   |
-| --------------------------------------------------- | ---------------------------------------- |
-| ESM pur — aucun `require()`                         | GeoLeaf est ESM-only depuis v2.0.0       |
-| Ne pas importer `@geoleaf-plugins/*` depuis le core | Règle `no-plugin-in-core`                |
-| Pas d'accès aux internals `src/modules/`            | Seule l'API publique est stable          |
-| healthCheck léger et sans side effects              | Appelé au boot de façon synchrone        |
-| Déclarer `@geoleaf/core` en `peerDependencies`      | Évite d'embarquer deux instances du core |
+| Rule                                             | Reason                                    |
+| ------------------------------------------------ | ----------------------------------------- |
+| Pure ESM — no `require()`                        | GeoLeaf has been ESM-only since v2.0.0    |
+| Do not import `@geoleaf-plugins/*` from the core | The `no-plugin-in-core` rule              |
+| No access to the `src/modules/` internals        | Only the public API is stable             |
+| Light healthCheck, free of side effects          | Called synchronously at boot              |
+| Declare `@geoleaf/core` in `peerDependencies`    | Avoids bundling two instances of the core |
 
 ---
 
-## Voir aussi
+## See also
 
-- PLUGIN_REGISTRY_BOOT.md — architecture interne du registre
-- [API_REFERENCE.md](API_REFERENCE.md) — liste complète des exports nommés publics
-- [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — séquence de boot et modules lazy
-- `packages/plugins/connector/src/entry.ts` — implémentation de référence la plus simple
+- PLUGIN_REGISTRY_BOOT.md — internal architecture of the registry
+- [API_REFERENCE.md](API_REFERENCE.md) — complete list of the public named exports
+- [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — boot sequence and lazy modules
+- `packages/plugins/connector/src/entry.ts` — the simplest reference implementation

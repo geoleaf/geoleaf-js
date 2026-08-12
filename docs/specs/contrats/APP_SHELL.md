@@ -4,6 +4,10 @@
 **Gardé par :** `scripts/verify-app-template.cjs` (APP-01…APP-11), `scripts/build-deploy.cjs`
 **Écrit le :** 09/08/2026
 
+📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `apps/geoleaf-app/` — la
+source de vérité ci-dessus. Un chemin qui commence par `packages/`, `scripts/`, `profiles/`,
+`docs/` ou `deploy/` est relatif à la **racine du dépôt**.
+
 > `apps/geoleaf-app/` est l'**application déployable** et la source unique des variantes de
 > `deploy/`. Elle n'avait aucune fiche : son raisonnement de conception vivait dans les
 > commentaires de ses deux fichiers, qui partent verbatim chez le client. Cette fiche est le
@@ -22,7 +26,7 @@ Quatre variantes, dont **deux seulement sont livrables** :
 | `deploy-local`    | ✗        | selon flags  | …     | …        | ✓                  |
 | `deploy-coverage` | ✗        | —            | —     | —        | ✗                  |
 
-`deploy-coverage` est produite par `build-deploy-coverage.cjs`, qui la déclare non livrable.
+`deploy-coverage` est produite par `scripts/build-deploy-coverage.cjs`, qui la déclare non livrable.
 ⚠️ Ne jamais renommer `deploy/deploy-coverage/` — le nom est verrouillé par des littéraux du
 dépôt **et** par un vhost nginx hors dépôt, donc invisible à toute gate.
 
@@ -34,7 +38,7 @@ dépôt **et** par un vhost nginx hors dépôt, donc invisible à toute gate.
 | `nginx.conf.example` | Bloc `server` prêt à coller                                                                                            | `SC-01`, `SC-02` |
 | `.htaccess`          | Équivalent Apache, **actif tout seul** si `AllowOverride` le permet                                                    | `SC-01`, `SC-02` |
 
-Émis à l'étape **9b** de `build-deploy.cjs` depuis `scripts/lib/server-contract.cjs` (un seul
+Émis à l'étape **9b** de `scripts/build-deploy.cjs` depuis `scripts/lib/server-contract.cjs` (un seul
 corpus), gardés par `scripts/verify-deploy-server-contract.cjs`, câblé des **deux** côtés de la CI.
 
 🛑 **Le motif, parce qu'il se reproduira ailleurs.** Le 09/08/2026, un `deploy-full` copié tel quel
@@ -56,7 +60,7 @@ c'est voulu : ils sont lus une fois, par un humain, avant que quoi que ce soit n
 Le **backend de preuve** — l'hôte déclaré dans `DEV_BACKEND_HOSTS` (`scripts/lib/dev-backend.cjs`),
 monté par `docker-compose.dev.yml` et résolu par le seul fichier `hosts` du poste. ⚠️ **Le nom de
 cet hôte n'est pas écrit ici, et c'est délibéré** : cette fiche part dans le dépôt public, et
-`dev-backend.cjs` est la source unique — l'y recopier créerait une seconde liste qui divergerait,
+`scripts/lib/dev-backend.cjs` est la source unique — l'y recopier créerait une seconde liste qui divergerait,
 et ferait de surcroît nommer une infrastructure de développement dans un document publié. Ses
 liaisons — `offline.source`, `write.endpoint`,
 `options.uploadEndpoint` de la couche `sites_rosario` — sont retirées à l'étape **9a**, par
@@ -81,7 +85,7 @@ liaisons — `offline.source`, `write.endpoint`,
 
 ## Les marqueurs fonctionnels — six paires, à garder au caractère près
 
-`build-deploy.cjs` patche ces deux fichiers par regex `/gm` **sans** `/s` côté HTML, et par
+`scripts/build-deploy.cjs` patche ces deux fichiers par regex `/gm` **sans** `/s` côté HTML, et par
 `indexOf` côté JS. Un marqueur supprimé ou reformaté **ne casse pas le build : il cesse
 silencieusement de matcher**. C'est la classe de faux vert que tout ce dispositif existe pour
 empêcher.
@@ -133,7 +137,7 @@ même leçon.
 
 ## MapLibre : auto-hébergement et ordre d'exécution
 
-`build-deploy.cjs` copie le moteur depuis `node_modules` via `require.resolve`, donc **la
+`scripts/build-deploy.cjs` copie le moteur depuis `node_modules` via `require.resolve`, donc **la
 version servie est celle qui est installée** — aucun numéro écrit à la main ne peut diverger du
 peerDep.
 
@@ -210,12 +214,13 @@ indiscernables « aucun bootstrap » et « un bootstrap qu'on n'a pas su lire »
 
 ⚠️ Une garde sur `location.hostname` ne remplace pas ce retrait : elle borne l'**exécution**, or
 **un secret se lit**. `curl https://<hôte>/connector.local.js` le rendait en clair. Gardé par
-`verify-deploy-no-secrets.cjs` (DNS-01…04) et APP-11.
+`scripts/verify-deploy-no-secrets.cjs` (DNS-01…04) et APP-11.
 
 ---
 
 ## Ce qui ne se documente pas ici
 
 L'**historique** des décisions ci-dessus — quand elles ont changé, quel sprint, quelle ligne de
-registre les a soldées. Il vit dans `_docs_projet/JOURNAL.md`, les registres et les commits.
+registre les a soldées. Il vit dans le journal et les registres du dépôt de travail, et dans les
+messages de commit — pas dans ce dépôt-ci.
 Le recopier ici recréerait le doublon que cette fiche existe pour retirer.

@@ -1,32 +1,28 @@
 ---
-title: "GeoLeaf.Log — Documentation du module Logging"
+title: "GeoLeaf.Log — Logging module documentation"
 ---
 
-# GeoLeaf.Log — Documentation du module Logging
+# GeoLeaf.Log — Logging module documentation
 
-**Product Version** : GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier** : `src/modules/utils/log/` (logger.ts, log-config.ts, index.ts)
-
-**Dernière mise à jour** : Mars 2026
+**Source**: `src/modules/utils/log/` (logger.ts, log-config.ts, index.ts)
 
 ---
 
-Le module **GeoLeaf.Log** fournit le système de journalisation centralisé utilisé par tous les modules GeoLeaf.
-Il assure une gestion cohérente, filtrée et configurable des messages de log.
+The **GeoLeaf.Log** module provides the central logging system used by every GeoLeaf module.
+It gives log messages consistent, filtered and configurable handling.
 
-Il permet également de contrôler la verbosité via la configuration JSON externe (`logging.level`).
+It also allows verbosity to be driven from the external JSON configuration (`logging.level`).
 
 ---
 
-## 1. Rôle fonctionnel de GeoLeaf.Log
+## 1. Functional role of GeoLeaf.Log
 
-1. Centraliser tous les logs de la bibliothèque GeoLeaf.
-2. Normaliser l'affichage des messages avec un préfixe de type : `[GeoLeaf.DEBUG]`, `[GeoLeaf.INFO]`, etc.
-3. Permettre le filtrage des logs selon un **niveau de verbosité** : `"debug"`, `"info"`, `"warn"`, `"error"`.
-4. Offrir un point d'entrée unique pour tracer le fonctionnement interne de :
+1. Centralise every log emitted by the GeoLeaf library.
+2. Normalise message display with a type prefix: `[GeoLeaf.DEBUG]`, `[GeoLeaf.INFO]`, and so on.
+3. Allow logs to be filtered by **verbosity level**: `"debug"`, `"info"`, `"warn"`, `"error"`.
+4. Offer a single entry point to trace the internals of:
     - Core
     - Baselayers
     - UI
@@ -36,14 +32,14 @@ Il permet également de contrôler la verbosité via la configuration JSON exter
     - Config
     - API
     - Legend
-5. S'intégrer avec la configuration JSON externe pour activer/désactiver automatiquement les niveaux de logs.
-6. Réduire le bruit en mode silencieux (`quietMode`) : groupement et filtrage des messages répétitifs.
+5. Integrate with the external JSON configuration to enable or disable log levels automatically.
+6. Reduce noise in quiet mode (`quietMode`): repetitive messages are grouped and filtered.
 
 ---
 
-## 2. API publique du module Logging
+## 2. Public API of the Logging module
 
-Le module expose quatre niveaux de log, des méthodes de contrôle et un mode silencieux :
+The module exposes four log levels, control methods and a quiet mode:
 
 - `GeoLeaf.Log.debug(...args)`
 - `GeoLeaf.Log.info(...args)`
@@ -59,41 +55,41 @@ Le module expose quatre niveaux de log, des méthodes de contrôle et un mode si
 
 ## 3. `GeoLeaf.Log.debug(...args)`
 
-Affiche un message détaillé pour le développement.
+Prints a detailed message for development.
 
 ```js
-GeoLeaf.Log.debug("[GeoLeaf.POI] Chargement des POIs…");
+GeoLeaf.Log.debug("[GeoLeaf.POI] Loading POIs…");
 ```
 
 ### Usage
 
-- Suivi des valeurs intermédiaires
-- Contrôle des flux internes
-- Debug poussé
+- Tracking intermediate values
+- Following internal flows
+- In-depth debugging
 
-### Filtrage
+### Filtering
 
-Affiché uniquement si `logging.level = "debug"`.
+Printed only when `logging.level = "debug"`.
 
 ---
 
 ## 4. `GeoLeaf.Log.info(...args)`
 
-Message d'information standard.
+Standard information message.
 
 ```js
-GeoLeaf.Log.info("[GeoLeaf.Core] Carte initialisée.");
+GeoLeaf.Log.info("[GeoLeaf.Core] Map initialized.");
 ```
 
 ### Usage
 
-- Initialisation réussie
-- Chargement d'une configuration
-- Changements non critiques
+- Successful initialisation
+- Configuration loading
+- Non-critical changes
 
-### Filtrage
+### Filtering
 
-Affiché si :
+Printed when the level is:
 
 - `"debug"`
 - `"info"`
@@ -102,21 +98,21 @@ Affiché si :
 
 ## 5. `GeoLeaf.Log.warn(...args)`
 
-Message d'avertissement non bloquant.
+Non-blocking warning message.
 
 ```js
-GeoLeaf.Log.warn("[GeoLeaf.Config] Clé 'basemap.id' manquante, fallback sur 'street'.");
+GeoLeaf.Log.warn("[GeoLeaf.Config] Missing 'basemap.id' key, falling back to 'street'.");
 ```
 
 ### Usage
 
-- Configuration partielle
-- Données manquantes mais non critiques
-- Fallback automatique
+- Partial configuration
+- Missing but non-critical data
+- Automatic fallback
 
-### Filtrage
+### Filtering
 
-Affiché si :
+Printed when the level is:
 
 - `"debug"`
 - `"info"`
@@ -126,43 +122,43 @@ Affiché si :
 
 ## 6. `GeoLeaf.Log.error(...args)`
 
-Message d'erreur critique.
+Critical error message.
 
 ```js
-GeoLeaf.Log.error("[GeoLeaf.Config] Échec du chargement de la configuration.");
+GeoLeaf.Log.error("[GeoLeaf.Config] Failed to load the configuration.");
 ```
 
 ### Usage
 
-- Erreurs bloquantes
-- Modules non initialisés
-- Problèmes graves
+- Blocking errors
+- Modules left uninitialised
+- Serious problems
 
-### Filtrage
+### Filtering
 
-Toujours affiché, même si `logging.level = "error"`.
+Always printed, including when `logging.level = "error"`.
 
 ---
 
 ## 7. `GeoLeaf.Log.setLevel(level)`
 
-Modifie dynamiquement le niveau global de logs.
+Changes the global log level at runtime.
 
 ```js
 GeoLeaf.Log.setLevel("debug");
 ```
 
-### Valeurs possibles
+### Accepted values
 
-| Valeur         | Comportement                                         |
-| -------------- | ---------------------------------------------------- |
-| `"debug"`      | Tous les messages affichés                           |
-| `"info"`       | info, warn, error                                    |
-| `"warn"`       | warn, error uniquement                               |
-| `"error"`      | error uniquement                                     |
-| `"production"` | warn + error + activation automatique du `quietMode` |
+| Value          | Behaviour                                           |
+| -------------- | --------------------------------------------------- |
+| `"debug"`      | Every message is printed                            |
+| `"info"`       | info, warn, error                                   |
+| `"warn"`       | warn and error only                                 |
+| `"error"`      | error only                                          |
+| `"production"` | warn + error, and `quietMode` enabled automatically |
 
-Cette fonction est appelée automatiquement par `GeoLeaf.Config` si le fichier JSON contient :
+This function is called automatically by `GeoLeaf.Config` when the JSON file contains:
 
 ```json
 {
@@ -174,7 +170,7 @@ Cette fonction est appelée automatiquement par `GeoLeaf.Config` si le fichier J
 
 ## 8. `GeoLeaf.Log.getLevel()`
 
-Retourne le niveau numériques actuellement actif.
+Returns the numeric level currently active.
 
 ```js
 const level = GeoLeaf.Log.getLevel();
@@ -185,7 +181,7 @@ const level = GeoLeaf.Log.getLevel();
 
 ## 9. `GeoLeaf.Log.getLevelName()`
 
-Retourne le nom du niveau actif.
+Returns the name of the active level.
 
 ```js
 const name = GeoLeaf.Log.getLevelName();
@@ -196,24 +192,24 @@ const name = GeoLeaf.Log.getLevelName();
 
 ## 10. `GeoLeaf.Log.setQuietMode(enabled)`
 
-Active ou désactive le mode silencieux. En mode silencieux :
+Enables or disables quiet mode. In quiet mode:
 
-- Les messages répétitifs sont groupés (affichés seulement 2 fois, puis masqués)
-- Un message de summary est affiché pour indiquer que des messages ont été filtrés
-- Les messages critiques (contenant `Error`, `Failed`, `WARN`, etc.) sont toujours affichés
+- Repetitive messages are grouped (printed twice, then hidden)
+- A summary message states that messages have been filtered out
+- Critical messages (containing `Error`, `Failed`, `WARN`, and so on) are always printed
 
 ```js
 GeoLeaf.Log.setQuietMode(true);
 // [GeoLeaf.INFO] Silent mode activated - repetitive logs reduced
 ```
 
-> Le mode `"production"` active automatiquement `quietMode`.
+> The `"production"` level enables `quietMode` automatically.
 
 ---
 
 ## 11. `GeoLeaf.Log.showSummary()`
 
-Affiche un récapitulatif des messages groupés (utile en fin de session de debug).
+Prints a recap of the grouped messages (useful at the end of a debugging session).
 
 ```js
 GeoLeaf.Log.showSummary();
@@ -224,11 +220,11 @@ GeoLeaf.Log.showSummary();
 
 ---
 
-## 12. Constantes exposées
+## 12. Exposed constants
 
 ### `LEVELS`
 
-Niveaux numériques disponibles :
+Available numeric levels:
 
 ```js
 import { LEVELS } from "@geoleaf/core";
@@ -237,9 +233,9 @@ import { LEVELS } from "@geoleaf/core";
 
 ---
 
-## 13. Intégration avec la configuration JSON
+## 13. Integration with JSON configuration
 
-### Exemple :
+### Example
 
 ```json
 {
@@ -254,29 +250,29 @@ import { LEVELS } from "@geoleaf/core";
 }
 ```
 
-### Fonctionnement
+### How it works
 
-1. `GeoLeaf.Config.load()` charge le JSON.
-2. Le module détecte la clé `logging.level`.
-3. `GeoLeaf.Log.setLevel("warn")` est appelé automatiquement.
-4. Tous les logs en dessous du niveau sont filtrés.
+1. `GeoLeaf.Config.load()` loads the JSON.
+2. The module detects the `logging.level` key.
+3. `GeoLeaf.Log.setLevel("warn")` is called automatically.
+4. Every log below that level is filtered out.
 
 ---
 
-## 14. Séquence typique d'utilisation
+## 14. Typical usage sequence
 
-### A. Directement depuis le code
+### A. Directly from code
 
 ```js
 GeoLeaf.Log.setLevel("debug");
 
-GeoLeaf.Log.debug("Détails internes…");
-GeoLeaf.Log.info("Initialisation OK.");
-GeoLeaf.Log.warn("Donnée manquante, fallback.");
-GeoLeaf.Log.error("Erreur critique.");
+GeoLeaf.Log.debug("Internal details…");
+GeoLeaf.Log.info("Initialization OK.");
+GeoLeaf.Log.warn("Missing data, falling back.");
+GeoLeaf.Log.error("Critical error.");
 ```
 
-### B. Via configuration JSON
+### B. Through JSON configuration
 
 ```js
 GeoLeaf.loadConfig("./data/config.json", {
@@ -284,52 +280,52 @@ GeoLeaf.loadConfig("./data/config.json", {
 });
 ```
 
-Dans ce cas, aucun `GeoLeaf.Log.setLevel()` n'a besoin d'être écrit dans le code extérieur.
+In that case, no `GeoLeaf.Log.setLevel()` call needs to be written in external code.
 
-### C. Mode production
+### C. Production mode
 
 ```js
 GeoLeaf.Log.setLevel("production");
-// Équivalent à : setLevel('warn') + setQuietMode(true)
+// Equivalent to: setLevel('warn') + setQuietMode(true)
 ```
 
 ---
 
-## 15. Résumé rapide de l'API Logging
+## 15. Quick summary of the Logging API
 
-| Méthode              | Rôle                                          |
-| -------------------- | --------------------------------------------- |
-| `debug()`            | Messages détaillés (dev uniquement)           |
-| `info()`             | Messages standards                            |
-| `warn()`             | Avertissements                                |
-| `error()`            | Erreurs critiques                             |
-| `setLevel(level)`    | Change le niveau actif                        |
-| `getLevel()`         | Retourne le niveau actif (numérique)          |
-| `getLevelName()`     | Retourne le niveau actif (string)             |
-| `setQuietMode(bool)` | Active le mode silencieux (filtre répétitifs) |
-| `showSummary()`      | Affiche le récapitulatif des messages groupés |
+| Method               | Role                                             |
+| -------------------- | ------------------------------------------------ |
+| `debug()`            | Detailed messages (development only)             |
+| `info()`             | Standard messages                                |
+| `warn()`             | Warnings                                         |
+| `error()`            | Critical errors                                  |
+| `setLevel(level)`    | Changes the active level                         |
+| `getLevel()`         | Returns the active level (numeric)               |
+| `getLevelName()`     | Returns the active level (string)                |
+| `setQuietMode(bool)` | Enables quiet mode (filters repetitive messages) |
+| `showSummary()`      | Prints the recap of grouped messages             |
 
 ---
 
-## 16. Bonnes pratiques
+## 16. Best practices
 
-### En développement
+### In development
 
-- Toujours utiliser `"debug"` pour tout voir.
-- Ajouter des logs détaillés dans les zones en cours de débogage.
+- Always use `"debug"` to see everything.
+- Add detailed logs in the areas being debugged.
 
-### En staging
+### In staging
 
-- Passer à `"info"` ou `"warn"`.
+- Switch to `"info"` or `"warn"`.
 
-### En production
+### In production
 
-- Utiliser `"warn"`, `"error"` ou `"production"` uniquement.
-- Le niveau `"production"` active `quietMode` et réduit le bruit automatiquement.
+- Use `"warn"`, `"error"` or `"production"` only.
+- The `"production"` level enables `quietMode` and reduces noise automatically.
 
-### Style de logs recommandé
+### Recommended log style
 
-Toujours préfixer les logs avec le module appelant :
+Always prefix logs with the calling module:
 
 ```
 [GeoLeaf.Core]
@@ -339,20 +335,21 @@ Toujours préfixer les logs avec le module appelant :
 …
 ```
 
-Cela rend le debug immédiat et structuré dans la console du navigateur.
+This keeps debugging immediate and structured in the browser console.
 
 ---
 
-## 17. Architecture interne
+## 17. Internal architecture
 
 ```
 utils/log/
-├── index.ts      ← Barrel export : Log, LEVELS, configureLogging
-├── logger.ts     ← Implémentation : Log (Proxy), _LogImpl, LEVELS, quietMode, grouping
-└── log-config.ts ← configureLogging() (intégration avec JSON config)
+├── index.ts      ← Barrel export: Log, LEVELS, configureLogging
+├── logger.ts     ← Implementation: Log (Proxy), _LogImpl, LEVELS, quietMode, grouping
+└── log-config.ts ← configureLogging() (integration with the JSON config)
 ```
 
-Le `Log` exporté est un **Proxy** vers `_LogImpl`. Ce mécanisme permet aux tests Jest d'overrider `global.GeoLeaf.Log` avec un mock sans modifier les imports des modules sources.
+The exported `Log` is a **Proxy** over `_LogImpl`. That indirection lets tests override
+`global.GeoLeaf.Log` with a mock without touching the imports of the source modules.
 
 ---
 
@@ -361,13 +358,13 @@ Le `Log` exporté est un **Proxy** vers `_LogImpl`. Ce mécanisme permet aux tes
 ```bash
 npm test -- log
 
-# Fichiers de tests
+# Test files
 # packages/core/__tests__/log/
 ```
 
 ---
 
-## Voir aussi
+## See also
 
-- `GeoLeaf.Errors` — erreurs typées loguées via `GeoLeaf.Log.error()`
-- `GeoLeaf.Config` — appelle `GeoLeaf.Log.setLevel()` lors du chargement du profil
+- `GeoLeaf.Errors` — typed errors logged through `GeoLeaf.Log.error()`
+- `GeoLeaf.Config` — calls `GeoLeaf.Log.setLevel()` while loading the profile

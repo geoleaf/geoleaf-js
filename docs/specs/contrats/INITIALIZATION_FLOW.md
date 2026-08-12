@@ -36,6 +36,10 @@
 
 **Version produit :** GeoLeaf Platform V2
 
+📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `packages/core/src/`. Un
+chemin qui commence par `packages/`, `scripts/`, `profiles/`, `apps/` ou `docs/` est relatif à la
+**racine du dépôt**.
+
 > **Annexe de référence du [Plugin Contract v1](PLUGIN_ARCHITECTURE_SPEC.md).** Document **descriptif et vivant** (il suit le code de boot). Les règles **normatives figées** vivent dans [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) — en cas de divergence, la spec prévaut.
 
 ---
@@ -72,10 +76,10 @@ sequenceDiagram
     App->>Entry: Charge geoleaf.esm.js
     activate Entry
     Entry->>Globals: imports séquentiels (Rollup)
-    Note over Globals: B1+B2: Log, Errors, CONSTANTS, Security, Utils<br/>B3+B4: Config (loader, profil)<br/>B5: GeoJSON interne<br/>B6+B7+B9: Labels, Legend, LayerManager, Themes, UI<br/>B8: Storage (namespace plugin)<br/>B10: POI<br/>B11: API + PluginRegistry (DOIT ÊTRE EN DERNIER)
+    Note over Globals: B1+B2: Log, Errors, CONSTANTS, Security, Utils<br/>B3+B4: Config (loader, profil)<br/>B5: GeoJSON, Route<br/>B6+B7+B9: Labels, Legend, LayerManager, Themes, UI<br/>B8: Storage (namespace plugin)<br/>B11: API + PluginRegistry (DOIT ÊTRE EN DERNIER)
     Entry->>Boot: import app/boot.ts (side-effect)
     Boot->>Registry: new ModuleRegistry()
-    Note over Registry: register(SecurityModule, CoreMapModule,<br/>ConfigModule, SharedModule, GeoJSONModule,<br/>UIModule, POIModule, APIModule)
+    Note over Registry: register(CoreMapModule, ConfigModule,<br/>SharedModule, GeoJSONModule, UIModule,<br/>ThemeEngineModule)
     Boot->>Entry: GeoLeaf.boot() exposé sur window
     Entry-->>App: Bundle core chargé
     deactivate Entry
@@ -107,11 +111,8 @@ sequenceDiagram
 
     %% Phase 4: ModuleRegistry.init()
     Note over Boot,Registry: PHASE 4 — ModuleRegistry.init()
-    Boot->>Registry: register(RouteModule) si route.enabled !== false
-    Boot->>Registry: register(LabelsModule) si labels.enabled !== false
-    Boot->>Registry: register(LegendModule) si ui.showLegend !== false
-    Boot->>Registry: register(TableModule) si ui.showTable !== false
-    Boot->>Registry: register(SearchModule) si ui.showSearch !== false
+    Boot->>Registry: applyPreset — register(gatedModule(...)) pour chaque capacité du manifeste
+    Note over Registry: le gate est LU DANS init(), pas au register :<br/>un module gaté OFF est enregistré et reste inerte
     Boot->>Registry: init(null, cfgAdapter)
     Note over Registry: Tri topologique (Kahn BFS)<br/>Détection dépendances circulaires<br/>init() de chaque module dans l'ordre résolu
 
@@ -193,20 +194,20 @@ sequenceDiagram
 
 ## Tableau des étapes critiques
 
-| #         | Étape                         | Fichier source                           | Point de synchronisation                           | Erreurs courantes                      |
-| --------- | ----------------------------- | ---------------------------------------- | -------------------------------------------------- | -------------------------------------- |
-| **1**     | Chargement bundle core        | `bundle-esm-entry.ts` → `geoleaf.esm.js` | Imports Rollup (B1→B11)                            | Script 404, ordre incorrect            |
-| **1.5**   | Plugins + enregistrement      | `geoleaf-*.plugin.js`                    | `PluginRegistry.register()`                        | Plugin 404, namespace conflit          |
-| **2**     | `GeoLeaf.boot()`              | `app/boot.ts`                            | `startApp()`                                       | GeoLeaf non défini                     |
-| **3**     | Config globale                | `kernel/config/geoleaf-config/`          | `GeoLeaf.loadConfig()` Promise                     | JSON invalide, CORS                    |
-| **4**     | ModuleRegistry.init()         | `app/module-registry.ts`                 | Tri topologique + init ordre                       | Dépendance circulaire, module manquant |
-| **5**     | Profil actif                  | `kernel/config/profile.ts`               | `loadActiveProfileResources()`                     | profile.json 404, mapping manquant     |
-| **6.2**   | Carte MapLibre                | `geoleaf.core.ts` + `MaplibreAdapter`    | `GeoLeaf.init()` synchrone                         | mapId invalide, MapLibre non chargé    |
-| ~~**7**~~ | ~~Modules secondaires~~       | —                                        | **PHASE SUPPRIMÉE (S5)** — voir le bandeau en tête | —                                      |
-| **7.5**   | Storage + SW                  | `geoleaf-storage.plugin.js`              | `Storage.init()` Promise                           | IndexedDB indisponible, SW 404         |
-| **8**     | UI                            | `geoleaf.ui.ts`                          | `UI.init()` synchrone                              | Conteneurs DOM absents                 |
-| **9**     | Couches (POI, GeoJSON, Route) | `geoleaf.poi.ts`, `geoleaf.geojson.ts`   | `init()` + Promises parallèles                     | GeoJSON malformé, coords invalides     |
-| **11**    | Reveal + events               | `app/init.ts`                            | `geoleaf:theme:applied`                            | Bounds vides, timeout 5s de secours    |
+| #         | Étape                         | Fichier source                                              | Point de synchronisation                           | Erreurs courantes                      |
+| --------- | ----------------------------- | ----------------------------------------------------------- | -------------------------------------------------- | -------------------------------------- |
+| **1**     | Chargement bundle core        | `bundle-esm-entry.ts` → `geoleaf.esm.js`                    | Imports Rollup (B1→B11)                            | Script 404, ordre incorrect            |
+| **1.5**   | Plugins + enregistrement      | `geoleaf-*.plugin.js`                                       | `PluginRegistry.register()`                        | Plugin 404, namespace conflit          |
+| **2**     | `GeoLeaf.boot()`              | `app/boot.ts`                                               | `startApp()`                                       | GeoLeaf non défini                     |
+| **3**     | Config globale                | `kernel/config/geoleaf-config/`                             | `GeoLeaf.loadConfig()` Promise                     | JSON invalide, CORS                    |
+| **4**     | ModuleRegistry.init()         | `app/module-registry.ts`                                    | Tri topologique + init ordre                       | Dépendance circulaire, module manquant |
+| **5**     | Profil actif                  | `kernel/config/profile.ts`                                  | `loadActiveProfileResources()`                     | profile.json 404, mapping manquant     |
+| **6.2**   | Carte MapLibre                | `packages/core/src/api/geoleaf.core.ts` + `MaplibreAdapter` | `GeoLeaf.init()` synchrone                         | mapId invalide, MapLibre non chargé    |
+| ~~**7**~~ | ~~Modules secondaires~~       | —                                                           | **PHASE SUPPRIMÉE (S5)** — voir le bandeau en tête | —                                      |
+| **7.5**   | Storage + SW                  | `geoleaf-storage.plugin.js`                                 | `Storage.init()` Promise                           | IndexedDB indisponible, SW 404         |
+| **8**     | UI                            | `packages/core/src/api/geoleaf.ui.ts`                       | `UI.init()` synchrone                              | Conteneurs DOM absents                 |
+| **9**     | Couches (POI, GeoJSON, Route) | `geoleaf.poi.ts`, `geoleaf.geojson.ts`                      | `init()` + Promises parallèles                     | GeoJSON malformé, coords invalides     |
+| **11**    | Reveal + events               | `app/init.ts`                                               | `geoleaf:theme:applied`                            | Bounds vides, timeout 5s de secours    |
 
 ---
 
@@ -252,33 +253,41 @@ GeoLeaf.boot();
 Le `ModuleRegistry` (défini dans `app/module-registry.ts`) orchestre l'initialisation en respectant les dépendances déclarées :
 
 ```typescript
-// Enregistrement (dans boot.ts, avant init())
+// Enregistrement (dans app/boot-install.ts, avant startApp())
 const _registry = new ModuleRegistry();
-_registry.register(new SecurityModule()); // id: 'security',  dependencies: []
-_registry.register(new CoreMapModule()); // id: 'core-map',  dependencies: ['security']
-_registry.register(new ConfigModule()); // id: 'config',    dependencies: []
-_registry.register(new SharedModule()); // id: 'shared',    dependencies: ['config']
-_registry.register(new GeoJSONModule()); // id: 'geojson',   dependencies: ['shared']
-_registry.register(new UIModule()); // id: 'ui',        dependencies: ['core-map']
-_registry.register(new POIModule()); // id: 'poi',       dependencies: ['shared']
-_registry.register(new APIModule()); // id: 'api',       dependencies: [...]
+_registry.register(new CoreMapModule()); // id: 'core-map',     dependencies: ['config']
+_registry.register(new ConfigModule()); // id: 'config',       dependencies: []
+_registry.register(new SharedModule(preset.capabilities)); // id: 'shared',   dependencies: ['config']
+_registry.register(new GeoJSONModule()); // id: 'geojson',      dependencies: ['config', 'core-map']
+_registry.register(new UIModule()); // id: 'ui',           dependencies: ['config', 'core-map', 'shared', 'geojson']
+_registry.register(new ThemeEngineModule()); // id: 'theme-engine', dependencies: ['geojson', 'ui']
 
-// Après loadConfig() — modules optionnels selon profil
-_registry.register(new RouteModule()); // si route.enabled !== false
-_registry.register(new LabelsModule()); // si labels.enabled !== false
-_registry.register(new LegendModule()); // si ui.showLegend !== false
-_registry.register(new TableModule()); // si ui.showTable !== false
-_registry.register(new SearchModule()); // si ui.showSearch !== false
+// Modules de CAPACITÉ — enregistrés par le preset, gatés par la config
+// (`presets/apply-preset.ts`, `moduleRegistry.register(gatedModule(...))`)
 
 // Initialisation — tri topologique (Kahn BFS)
 await _registry.init(null, cfgAdapter);
 
 // Accès après init
-const poi = _registry.get<POIModule>("poi");
-_registry.has("search"); // → true
+const geojson = _registry.get<GeoJSONModule>("geojson");
+_registry.has("ui"); // → true
 _registry.getUISlots(); // → IModuleUISlot[] pour toolbar mobile + filtres desktop
 _registry.destroy(); // teardown en ordre inverse
 ```
+
+> ⚠️ **Ce bloc décrivait l'état d'AVANT le S6, et il le décrivait au présent — corrigé le
+> 11/08/2026.** Il annonçait **huit** modules noyau ; il y en a **six**, et `boot-install.ts:110`
+> le dit sur place : _« S6 Lot 6: 6 kernel modules, not 8. `SecurityModule` and `APIModule` were
+> wrappers whose init()/destroy() had become empty »_. Aux deux retirés s'ajoutaient trois
+> classes qui **n'existent pas** (`POIModule`, dissous au S9 ; `TableModule` ; `SearchModule`)
+> et une qui existe mais **manquait** (`ThemeEngineModule`). Les six identifiants et leurs
+> `dependencies` ci-dessus sont relevés dans `app/boot-modules/*.module.ts`, un fichier à la fois.
+>
+> 🛑 **Aucune gate ne pouvait le voir**, et c'est le point : `SPECS-PATHS` garde les CHEMINS
+> cités, pas les noms de classes ; les trois guards gardent des TABLES nommées ;
+> `validate-docs-examples` ne connaît que sa deny-list, où ces noms ne figurent pas. Un nom de
+> classe cité dans une fiche n'a **aucun vérificateur** — c'est la classe de défaut que la
+> relecture du 11/08 a mesurée sur les nombres, et qui vaut aussi pour les symboles.
 
 ### Enregistrement public (modules tiers)
 
@@ -435,11 +444,24 @@ GeoLeaf.boot({
 
 ### Breakpoints recommandés
 
-1. `app/boot.ts:79` → Application starting
-2. `app/boot.ts:192` → After `_registry.init()`
-3. `app/init.ts:109` → Map created via `GeoLeaf.init()`
-4. `app/init.ts:612` → `revealApp()` called
-5. `kernel/api/plugin-registry.ts` → `register()` — Plugin registered
+> ⚠️ **Re-situés le 11/08/2026 (tâche 6.11).** Les cinq points portaient des numéros de ligne
+> dans `app/boot.ts` et `app/init.ts` : `packages/core/src/app/boot.ts` **fait 35 lignes** depuis que la séquence en
+> est sortie (c'est « une liaison, pas un boot », dit son propre en-tête), et `app/init.ts`
+> **n'existe plus** — ce que l'encart de tête de ce document annonçait déjà, en demandant de
+> les re-situer. Ils sont désormais ancrés sur des **fonctions**, pas sur des lignes : un
+> débogueur s'y arrête aussi bien, et une fonction renommée se voit, là où une ligne décalée
+> ne se voit pas.
+
+1. `app/boot-install.ts` → `installBoot(preset)` — enregistrements des modules kernel, ancrages
+   `GeoLeaf._registry`, pose de la façade `GeoLeaf.boot()`
+2. `app/boot-core.ts` → `bootWithPreset(preset, ctx)` — **entrée réelle de la séquence**, liée à
+   `_app.startApp`
+3. `app/boot-core.ts` → juste après `_registry.init()` — l'orchestrateur unique depuis S1.2 ;
+   c'est lui qui appelle les `init()` de modules dans l'ordre topologique
+4. `app/boot-modules/core-map-lifecycle.ts` → `CoreMapLifecycle.init()` — **création de la
+   carte** (le module `CoreMapModule.init()` n'y délègue qu'en une ligne)
+5. `app/init-reveal.ts` → `revealApp(reason)` — masquage du loader, fin de boot perçue
+6. `kernel/api/plugin-registry.ts` → `register()` — plugin enregistré
 
 ---
 

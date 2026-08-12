@@ -4,16 +4,15 @@ title: "GeoLeaf Core — Security Guide"
 
 # GeoLeaf Core — Security Guide
 
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière vérification :** 29 juillet 2026
+**Applies to:** `@geoleaf/core` v3.x
 
-> Guide destiné aux consommateurs de `@geoleaf/core`. Il couvre les directives CSP requises, l'architecture de sécurité et le processus de divulgation responsable.
+> Guide for consumers of `@geoleaf/core`. It covers the required CSP directives, the security architecture and the responsible disclosure process.
 
 ---
 
-## 1. Content Security Policy (CSP) recommandée
+## 1. Recommended Content Security Policy (CSP)
 
-GeoLeaf dépend de MapLibre GL JS (WebGL, workers) et de ressources cartographiques externes. La CSP minimale recommandée est :
+GeoLeaf depends on MapLibre GL JS (WebGL, workers) and on external map resources. The recommended minimal CSP is:
 
 ```http
 Content-Security-Policy:
@@ -26,68 +25,53 @@ Content-Security-Policy:
   font-src    'self';
 ```
 
-> 🛑 **`font-src` a dit `'self' https:` ici jusqu'au 08/08/2026, et c'était un reliquat.** Cette
-> valeur datait de l'époque où l'application chargeait Google Fonts ; le Sprint 5 (tâche 5.5) a
-> supprimé cette origine, et la police réelle est une pile système. `https:` autorisait donc
-> toute origine HTTPS de fonte au lendemain du sprint qui a mis les origines tierces à zéro. La
-> valeur qui fait foi est celle de [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md)
-> §4 — `'self'`, motif « aucune fonte externe chargée par le core » —, et les deux tableaux
-> décrivent bien le **même** objet.
+::: info
 
-> ⚠️ **Ce tableau est le minimum requis par le CORE, pas la politique de l'application
-> déployée.** Les deux ne coïncident pas et n'ont pas à coïncider : `apps/geoleaf-app` sert
-> `font-src 'self' data:` (le `data:` couvre ses fontes d'icônes embarquées) et
-> `script-src 'self' blob:`. Cette politique-là est déclarée dans son `index.html`, gardée par
-> **APP-09** (`scripts/verify-app-template.cjs`), et son écart de `script-src` est suivi en
-> **B-165**. Un intégrateur qui compose son propre document part de ce tableau-ci ; il n'a pas
-> à hériter des besoins de l'application de démonstration.
+`font-src` is `'self'` because the core loads no external font — the typeface is a system stack. The authoritative value is the one in [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md) §4; both tables describe the same object.
 
-> **`style-src` strict (sans `'unsafe-inline'`)** : depuis la v2.2.1 (roadmap sécurité B.5), GeoLeaf n'exige plus `'unsafe-inline'`. Les styles dynamiques sont posés via le CSSOM propriété-par-propriété (`element.style.setProperty`, helpers publics `GeoLeaf.Helpers.applyCssText` / `applyDeferredStyles`) ou via des classes CSS — formes qui ne sont **pas** soumises à `style-src`, contrairement à `element.style.cssText`, `setAttribute('style', …)` et aux attributs `style` (désormais éliminés du rendu : marqueurs, panneaux, sprite). Pour l'inventaire et la matrice CSP complète, voir [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md) §4.
+:::
 
-> **`worker-src blob:`** est requis pour les Web Workers MapLibre (décodage tiles, parsing GeoJSON).
+::: warning
+
+This table is the minimum required by the **core**, not the policy of the deployed demonstration application. The two do not coincide, and do not have to: the demonstration application serves `font-src 'self' data:` (the `data:` covers its embedded icon fonts) and `script-src 'self' blob:`, declared in its own `index.html`. An integrator composing their own document starts from the table above; there is no need to inherit the demonstration application's requirements.
+
+:::
+
+> **Strict `style-src` (no `'unsafe-inline'`)**: since v2.2.1, GeoLeaf no longer requires `'unsafe-inline'`. Dynamic styles are applied through the CSSOM property by property (`element.style.setProperty`, public helpers `GeoLeaf.Helpers.applyCssText` / `applyDeferredStyles`) or through CSS classes — forms that are **not** subject to `style-src`, unlike `element.style.cssText`, `setAttribute('style', …)` and `style` attributes (now eliminated from rendering: markers, panels, sprite). For the full inventory and CSP matrix, see [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md) §4.
+
+> **`worker-src blob:`** is required by the MapLibre Web Workers (tile decoding, GeoJSON parsing).
 
 ---
 
-## 2. Architecture sécurité de GeoLeaf Core
+## 2. GeoLeaf Core security architecture
 
-GeoLeaf implémente plusieurs couches de protection indépendantes :
+GeoLeaf implements several independent layers of protection:
 
-| Couche               | Module                               | Fonctions clés                                                                                                                                    |
-| -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Protection XSS       | `kernel/security/`                   | `escapeHtml()`, `escapeAttribute()`, `sanitizeHTML()`, `sanitizeSvgContent()`                                                                     |
-| Protection CSRF      | `kernel/security/csrf-token.ts`      | Génération token (32 bytes crypto-random), rotation auto, cookie `Secure; SameSite=Strict`                                                        |
-| Sécurité DOM         | `kernel/security/dom-security.ts`    | `DOMSecurity.setTextContent()`, `DOMSecurity.setSafeHTML()` — aucun `innerHTML` direct                                                            |
-| Validation entrées   | `kernel/security/validators.ts`      | Whitelist protocoles URL (`https:`, `http:`, `data:image/*`), bounds coordonnées, structure GeoJSON                                               |
-| Sécurité fetch       | `utils/general/fetch-helper.ts`      | Validation URL + rate limiting (50 req/10s/domaine)                                                                                               |
-| Sanitisation erreurs | `utils/errors/errors.ts`             | `sanitizeErrorMessage()` — échappe HTML dans les messages d'erreur                                                                                |
-| Protection prototype | `utils/general/object-path-guard.ts` | `isUnsafeKey()` / `hasUnsafeSegment()` — blocklist **canonique unique** (`__proto__`, `constructor`, `prototype`), appliquée par 7 fichiers-sinks |
+| Layer              | Module                               | Key functions                                                                                                                              |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| XSS protection     | `kernel/security/`                   | `escapeHtml()`, `escapeAttribute()`, `sanitizeHTML()`, `sanitizeSvgContent()`                                                              |
+| CSRF protection    | `kernel/security/csrf-token.ts`      | Token generation (32 crypto-random bytes), automatic rotation, `Secure; SameSite=Strict` cookie                                            |
+| DOM security       | `kernel/security/dom-security.ts`    | `DOMSecurity.setTextContent()`, `DOMSecurity.setSafeHTML()` — no direct `innerHTML`                                                        |
+| Input validation   | `kernel/security/validators.ts`      | URL protocol allowlist (`https:`, `http:`, `data:image/*`), coordinate bounds, GeoJSON structure                                           |
+| Fetch security     | `utils/general/fetch-helper.ts`      | URL validation + rate limiting (50 requests / 10 s / domain)                                                                               |
+| Error sanitisation | `utils/errors/errors.ts`             | `sanitizeErrorMessage()` — escapes HTML in error messages                                                                                  |
+| Prototype guard    | `utils/general/object-path-guard.ts` | `isUnsafeKey()` / `hasUnsafeSegment()` — **single canonical** blocklist (`__proto__`, `constructor`, `prototype`), applied by 7 sink files |
 
-⚠️ **Les chemins de cette table ont été re-vérifiés contre le code le 31/07/2026, et cinq sur sept
-étaient morts** — ils nommaient les racines `security/`, `validators/`, `errors/` et
-`utils/fetch-helper.ts`, dissoutes au R.9. La ligne « Sécurité DOM » portait déjà le bon chemin :
-elle avait été corrigée seule, ce qui rendait l'incohérence invisible à la lecture.
+### Covered vectors (summary)
 
-⚠️ **Aucune gate ne pouvait le voir, et c'est mesuré** : `check-dead-links` ne lit que les liens
-markdown, `audit-report-freshness --source refs` n'est gaté que sur la source `tsdoc`, et un chemin
-en **code inline** dans un `.md` n'appartient à aucun des deux périmètres. C'est le trou nommé au
-§Ce que les gates ne couvrent pas de `roadmap_documentation-v3`, avec sa précision mesurée à 2/10 —
-il se lit, il ne se gate pas.
+- **DOM injection**: 12 identified vectors (POI popup, tooltip, labels, search results, etc.) — all sanitised through `escapeHtml()` or `DOMSecurity.*`
+- **URL injection**: 7 vectors (`url`, `website`, `image` fields, permalink lat/lng/zoom) — validated through `validateUrl()` + `validateCoordinates()`
+- **Prototype pollution**: 5 vectors (JSON profile config, **a profile's `modules` bag**, POI properties, GeoJSON styles, compact permalink) — blocked by a **single canonical** blocklist, `isUnsafeKey()` / `hasUnsafeSegment()` (`utils/general/object-path-guard.ts`), applied by the 7 sink files; the permalink additionally goes through a type revalidation
 
-### Vecteurs couverts (résumé)
-
-- **Injection DOM** : 12 vecteurs identifiés (popup POI, tooltip, labels, résultats search, etc.) — tous sanitisés via `escapeHtml()` ou `DOMSecurity.*`
-- **Injection URL** : 7 vecteurs (champs `url`, `website`, `image`, permalink lat/lng/zoom) — validés via `validateUrl()` + `validateCoordinates()`
-- **Prototype pollution** : 5 vecteurs (profil JSON config, **sac `modules` d'un profil**, propriétés POI, styles GeoJSON, permalink compact) — bloqués par une blocklist **canonique unique**, `isUnsafeKey()` / `hasUnsafeSegment()` (`utils/general/object-path-guard.ts`), appliquée par les 7 fichiers-sinks ; le permalink passe par une revalidation de type. Jusqu'au S13.2 chaque chemin d'écriture portait sa **propre copie** de la liste — quatre au total, dont trois silencieuses et une réallouée à chaque appel récursif ; la divergence est précisément ce qui avait laissé passer le trou du S5. Un gate (`npm run check:dynamic-key-writes`) refuse désormais toute nouvelle écriture à clé dynamique non gardée
-
-Pour l'inventaire complet avec fichiers source et tests, voir [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md).
+For the full inventory with source files and tests, see [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md).
 
 ---
 
-## 3. CSRF — note breaking change v2.0.0
+## 3. CSRF — v2.0.0 breaking change note
 
-La méthode `CSRFToken.setSecureCookie()` a `secure: true` par défaut depuis v2.0.0.
+`CSRFToken.setSecureCookie()` defaults to `secure: true` since v2.0.0.
 
-Sur un déploiement HTTP uniquement (développement local, intranets), cela génère un avertissement console mais n'empêche pas le fonctionnement. Pour supprimer l'avertissement :
+On an HTTP-only deployment (local development, intranets) this produces a console warning but does not prevent operation. To silence the warning:
 
 ```typescript
 CSRFToken.setSecureCookie("my-cookie", value, { secure: false });
@@ -95,61 +79,61 @@ CSRFToken.setSecureCookie("my-cookie", value, { secure: false });
 
 ---
 
-## 4. Limitations connues
+## 4. Known limitations
 
-| Limitation                                       | Raison                                   | Mitigation                                                           |
-| ------------------------------------------------ | ---------------------------------------- | -------------------------------------------------------------------- |
-| `data:` URLs autorisées pour les images          | Profils POI supportent les icônes base64 | Filtrage MIME strict (`image/*` uniquement via `_validateDataUrl()`) |
-| `http:` autorisé par défaut dans `validateUrl()` | Contextes non-HTTPS (dev, intranet)      | Passer `{ httpsOnly: true }` pour forcer HTTPS                       |
-| Service Worker non authentifié                   | Hors périmètre de la bibliothèque        | Implémenter l'auth SW côté applicatif                                |
+| Limitation                                    | Reason                                     | Mitigation                                                       |
+| --------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| `data:` URLs allowed for images               | POI profiles support base64 icons          | Strict MIME filtering (`image/*` only, via `_validateDataUrl()`) |
+| `http:` allowed by default in `validateUrl()` | Non-HTTPS contexts (development, intranet) | Pass `{ httpsOnly: true }` to force HTTPS                        |
+| Unauthenticated service worker                | Outside the scope of the library           | Implement service worker authentication in the application       |
 
 ---
 
-## 5. Divulgation responsable
+## 5. Responsible disclosure
 
-**Ne pas reporter les vulnérabilités via les issues publiques GitHub.**
+**Do not report vulnerabilities through public GitHub issues.**
 
 ### Contact
 
-|                            |                                |
-| -------------------------- | ------------------------------ |
-| Email                      | **contact@geoleaf.dev**        |
-| Accusé de réception        | Sous 48h                       |
-| Triage initial             | Sous 5 jours                   |
-| Correctif ou contournement | Sous 30 jours                  |
-| Divulgation publique       | Après publication du correctif |
+|                   |                           |
+| ----------------- | ------------------------- |
+| Email             | **contact@geoleaf.dev**   |
+| Acknowledgement   | Within 48 h               |
+| Initial triage    | Within 5 days             |
+| Fix or workaround | Within 30 days            |
+| Public disclosure | After the fix is released |
 
-Nous suivons un modèle de **divulgation coordonnée**. Merci de nous laisser le temps d'adresser la vulnérabilité avant toute publication.
+GeoLeaf follows a **coordinated disclosure** model. Please allow time for the vulnerability to be addressed before any publication.
 
-### Périmètre couvert
+### Scope
 
-**In scope :** XSS dans le module sécurité, contournement CSRF, prototype pollution, injection HTML unsafe via le DOM, contournement de validation URL, vulnérabilités de dépendances avec chemin d'exploitation direct.
+**In scope:** XSS in the security module, CSRF bypass, prototype pollution, unsafe HTML injection through the DOM, URL validation bypass, dependency vulnerabilities with a direct exploitation path.
 
-**Out of scope :** vulnérabilités dans MapLibre GL JS ou autres dépendances (à reporter à ces projets directement), accès physique, ingénierie sociale, versions non supportées (toute majeure antérieure à la courante), DoS.
-
----
-
-## 6. Références
-
-| Document                                                                                   | Description                                                     |
-| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| [security/GeoLeaf_Security_README.md](security/GeoLeaf_Security_README.md)                 | API complète du module sécurité (signatures, exemples)          |
-| [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md)                             | Inventaire exhaustif des vecteurs d'injection et tests associés |
-| [.github/SECURITY.md](https://github.com/geoleaf/geoleaf-js/blob/main/.github/SECURITY.md) | Security policy officielle (responsible disclosure)             |
+**Out of scope:** vulnerabilities in MapLibre GL JS or other dependencies (report them to those projects directly), physical access, social engineering, unsupported versions (any major release earlier than the current one), denial of service.
 
 ---
 
-## 7. Authentification HTTP — guide d'intégration JWT
+## 6. References
 
-> Cette section couvre l'intégration du plugin `@geoleaf-plugins/connector` avec des providers d'authentification externes. Pour l'installation et les scénarios de base, voir le `docs/CONNECTOR_GUIDE.md` livré par `@geoleaf-plugins/connector` — le guide appartient au paquet du plugin, pas à celui du core.
+| Document                                                                                   | Description                                               |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| [security/GeoLeaf_Security_README.md](security/GeoLeaf_Security_README.md)                 | Full API of the security module (signatures, examples)    |
+| [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md)                             | Exhaustive inventory of injection vectors and their tests |
+| [.github/SECURITY.md](https://github.com/geoleaf/geoleaf-js/blob/main/.github/SECURITY.md) | Official security policy (responsible disclosure)         |
 
 ---
 
-### 7.1 Protocole HTTP attendu par `@geoleaf-plugins/connector`
+## 7. HTTP authentication — JWT integration guide
 
-Le plugin impose un contrat HTTP strict côté backend, défini dans `auth-client.ts`.
+> This section covers integrating the `@geoleaf-plugins/connector` plugin with external authentication providers. For installation and basic scenarios, see the `docs/CONNECTOR_GUIDE.md` shipped by `@geoleaf-plugins/connector` — that guide belongs to the plugin package, not to the core.
 
-**Endpoint de login (POST)**
+---
+
+### 7.1 HTTP protocol expected by `@geoleaf-plugins/connector`
+
+The plugin imposes a strict HTTP contract on the backend, defined in `auth-client.ts`.
+
+**Login endpoint (POST)**
 
 ```
 POST {endpoint}
@@ -158,36 +142,30 @@ Content-Type: application/json
 { "login": "user@example.com", "password": "secret" }
 ```
 
-Réponse attendue :
+Expected response:
 
 ```json
 { "token": "<jwt>", "expiresIn": 3600 }
 ```
 
-⚠️ **Le jeton est un `<placeholder>` et doit le rester.** La valeur d'illustration précédente
-commençait par un vrai en-tête JWT encodé (`{"alg":"RS256"}` en base64) : elle n'était pas un
-secret, mais elle **matchait** la règle `generic-api-key` du scan, qui a raison de ne pas savoir
-distinguer un exemple d'un vrai. Un document publié n'a pas besoin de montrer à quoi ressemble un
-JWT pour dire qu'il en attend un.
+| Field       | Type     | Description                                                   |
+| ----------- | -------- | ------------------------------------------------------------- |
+| `token`     | `string` | JWT or opaque token — passed as-is in `Authorization: Bearer` |
+| `expiresIn` | `number` | Validity period **in seconds**                                |
 
-| Champ       | Type     | Description                                                          |
-| ----------- | -------- | -------------------------------------------------------------------- |
-| `token`     | `string` | JWT ou token opaque — transmis tel quel dans `Authorization: Bearer` |
-| `expiresIn` | `number` | Durée de validité **en secondes**                                    |
+Both fields are required — an `AuthError` is thrown if either is missing or of the wrong type.
 
-Les deux champs sont obligatoires — une `AuthError` est levée si l'un est absent ou du mauvais type.
+HTTP status codes interpreted by the plugin:
 
-Codes HTTP interprétés par le plugin :
+| Status | Behaviour                                       |
+| ------ | ----------------------------------------------- |
+| `200`  | Token extracted and persisted                   |
+| `401`  | `AuthError("Invalid credentials")`              |
+| `404`  | `AuthError("Endpoint not found (404)")`         |
+| `5xx`  | `AuthError("Server error ({status})")`          |
+| Other  | `AuthError("Authentication failed ({status})")` |
 
-| Code  | Comportement                                    |
-| ----- | ----------------------------------------------- |
-| `200` | Token extrait et persisté                       |
-| `401` | `AuthError("Invalid credentials")`              |
-| `404` | `AuthError("Endpoint not found (404)")`         |
-| `5xx` | `AuthError("Server error ({status})")`          |
-| Autre | `AuthError("Authentication failed ({status})")` |
-
-**Endpoint de refresh (POST, optionnel)**
+**Refresh endpoint (POST, optional)**
 
 ```
 POST {endpoint}/refresh
@@ -195,57 +173,57 @@ Authorization: Bearer {current_token}
 Content-Type: application/json
 ```
 
-Réponse : même format `{ token, expiresIn }`. Le plugin dégrade silencieusement sur `404` (refresh non supporté) — aucune erreur levée, le token existant reste utilisé jusqu'à expiration.
+Response: the same `{ token, expiresIn }` format. The plugin degrades silently on `404` (refresh not supported) — no error is thrown, and the existing token stays in use until it expires.
 
 ---
 
-### 7.2 Cycle de vie du token JWT
+### 7.2 JWT token lifecycle
 
-Le plugin gère le token selon un cycle à trois niveaux de cache :
+The plugin manages the token through a three-level cache cycle:
 
-| Phase            | Comportement                                                                         |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| `configure()`    | Warm du cache IndexedDB → RAM (accès non bloquant)                                   |
-| Accès synchrone  | RAM uniquement — utilisé par le bridge MapLibre (`setTransformRequest`)              |
-| Accès asynchrone | RAM → IDB → refresh si expiry < 5 min                                                |
-| Refresh proactif | Déclenché en arrière-plan si expiry < 5 min, sans bloquer la requête en cours        |
-| Expiration       | Refresh forcé ; événement `connector:auth-error` si le refresh échoue                |
-| Retry `401`      | 1 seul retry maximum après tentative de refresh ; réponse `401` synthétique si échec |
+| Phase               | Behaviour                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `configure()`       | Warms the IndexedDB cache → RAM (non-blocking access)                               |
+| Synchronous access  | RAM only — used by the MapLibre bridge (`setTransformRequest`)                      |
+| Asynchronous access | RAM → IDB → refresh if expiry < 5 min                                               |
+| Proactive refresh   | Triggered in the background if expiry < 5 min, without blocking the current request |
+| Expiry              | Forced refresh; `connector:auth-error` event if the refresh fails                   |
+| `401` retry         | One retry at most after a refresh attempt; synthetic `401` response on failure      |
 
-**Persistance :** IndexedDB, base `geoleaf-connector`, store `auth-tokens`, clé `baseUrl`.  
-Le token survit aux rechargements de page mais **pas** aux navigations vers d'autres origines.
+**Persistence:** IndexedDB, database `geoleaf-connector`, store `auth-tokens`, key `baseUrl`.  
+The token survives page reloads but **not** navigation to another origin.
 
-**Contraintes de sécurité imposées par le code :**
+**Security constraints enforced by the code:**
 
-| Contrainte                      | Comportement                                                                                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| HTTPS obligatoire en production | `ConfigError` levée si `baseUrl` utilise HTTP hors `localhost`/`127.0.0.1`                                                |
-| Token uniquement en header      | `Authorization: Bearer {token}` — jamais en query string                                                                  |
-| Mot de passe effacé après usage | String overwritten in memory post-login (OWASP A02)                                                                       |
-| Token non-JWT                   | `console.warn` si le token ne contient pas `.` — **uniquement en mode `getToken` callback** (pas en mode `auth.endpoint`) |
-| XSS modal                       | `textContent` uniquement dans la modal de login — aucun `innerHTML` avec données utilisateur                              |
-
----
-
-### 7.3 Choix du mode d'authentification
-
-`getToken` et `auth` sont **mutuellement exclusifs** — une `ConfigError` est levée si les deux sont fournis.
-
-| Mode                    | Configuration                   | Cas d'usage                                                                                                                                         |
-| ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Autonome + modal**    | `auth: { endpoint, ui: true }`  | Backend propre retournant `{ token, expiresIn }`, modal gérée par le plugin                                                                         |
-| **Autonome silencieux** | `auth: { endpoint, ui: false }` | Token pré-chargé en IDB lors d'une session précédente — aucune modal. Si aucun token valide n'est trouvé au démarrage, une `ConfigError` est levée. |
-| **Callback async**      | `getToken: async () => token`   | SSO externe (Keycloak-js, Auth0 SPA SDK) — le plugin délègue la résolution                                                                          |
+| Constraint                   | Behaviour                                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| HTTPS required in production | `ConfigError` thrown if `baseUrl` uses HTTP outside `localhost`/`127.0.0.1`                                      |
+| Token in the header only     | `Authorization: Bearer {token}` — never in a query string                                                        |
+| Password wiped after use     | String overwritten in memory post-login (OWASP A02)                                                              |
+| Non-JWT token                | `console.warn` if the token contains no `.` — **only in `getToken` callback mode** (not in `auth.endpoint` mode) |
+| Modal XSS                    | `textContent` only in the login modal — no `innerHTML` with user data                                            |
 
 ---
 
-### 7.4 Intégration Keycloak
+### 7.3 Choosing the authentication mode
 
-L'endpoint natif Keycloak (`/protocol/openid-connect/token`) attend `grant_type=password` en `application/x-www-form-urlencoded` — format incompatible avec le connector. Deux approches sont possibles.
+`getToken` and `auth` are **mutually exclusive** — a `ConfigError` is thrown if both are provided.
 
-**Approche A — `getToken()` avec `keycloak-js`** (recommandée pour les déploiements SSO)
+| Mode                   | Configuration                   | Use case                                                                                                                         |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Standalone + modal** | `auth: { endpoint, ui: true }`  | Own backend returning `{ token, expiresIn }`; the modal is handled by the plugin                                                 |
+| **Silent standalone**  | `auth: { endpoint, ui: false }` | Token preloaded into IDB during an earlier session — no modal. If no valid token is found at startup, a `ConfigError` is thrown. |
+| **Async callback**     | `getToken: async () => token`   | External SSO (keycloak-js, Auth0 SPA SDK) — the plugin delegates resolution                                                      |
 
-Keycloak-js gère le cycle de session et le refresh ; le connector récupère simplement le token courant.
+---
+
+### 7.4 Keycloak integration
+
+The native Keycloak endpoint (`/protocol/openid-connect/token`) expects `grant_type=password` as `application/x-www-form-urlencoded` — a format incompatible with the connector. Two approaches are possible.
+
+**Approach A — `getToken()` with `keycloak-js`** (recommended for SSO deployments)
+
+keycloak-js handles the session cycle and the refresh; the connector simply reads the current token.
 
 ```js
 import Keycloak from "keycloak-js";
@@ -261,19 +239,19 @@ await keycloak.init({ onLoad: "login-required" });
 await GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
     getToken: async () => {
-        // Demande un refresh si le token expire dans moins de 30 s
+        // Request a refresh if the token expires in less than 30 s
         await keycloak.updateToken(30);
         return keycloak.token ?? null;
     },
 });
 ```
 
-**Approche B — Adapter backend**
+**Approach B — Backend adapter**
 
-Un endpoint intermédiaire traduit le format du connector vers le protocole Keycloak ROPC :
+An intermediate endpoint translates the connector format into the Keycloak ROPC protocol:
 
 ```
-POST /api/auth/login        ← reçoit { login, password }
+POST /api/auth/login        ← receives { login, password }
     → POST keycloak /token  ← grant_type=password + form-encoded
     ← { token: access_token, expiresIn: expires_in }
 ```
@@ -290,11 +268,11 @@ await GeoLeaf.Connector.configure({
 
 ---
 
-### 7.5 Intégration Auth0
+### 7.5 Auth0 integration
 
-Auth0 déprécie le Resource Owner Password flow. L'approche recommandée est le callback avec le SDK Auth0 SPA.
+Auth0 deprecates the Resource Owner Password flow. The recommended approach is the callback with the Auth0 SPA SDK.
 
-**Via `getToken()` avec Auth0 SPA SDK**
+**Via `getToken()` with the Auth0 SPA SDK**
 
 ```js
 import { createAuth0Client } from "@auth0/auth0-spa-js";
@@ -311,19 +289,19 @@ await GeoLeaf.Connector.configure({
         try {
             return await auth0.getTokenSilently();
         } catch {
-            return null; // Déclenche connector:auth-error si la requête échoue (401)
+            return null; // Triggers connector:auth-error if the request fails (401)
         }
     },
 });
 ```
 
-Le token retourné par `getTokenSilently()` est un JWT signé RS256 valide — le connector le transmet directement dans `Authorization: Bearer`.
+The token returned by `getTokenSilently()` is a valid RS256-signed JWT — the connector passes it straight into `Authorization: Bearer`.
 
 ---
 
-### 7.6 Intégration Symfony
+### 7.6 Symfony integration
 
-Symfony avec `json_login` est nativement compatible avec le protocole du connector (requête JSON `{ login, password }`).
+Symfony with `json_login` is natively compatible with the connector protocol (JSON request `{ login, password }`).
 
 **`config/packages/security.yaml`**
 
@@ -334,13 +312,13 @@ firewalls:
         stateless: true
         json_login:
             check_path: /api/auth/login
-            username_path: login # mappe le champ "login" → username interne
+            username_path: login # maps the "login" field → internal username
             password_path: password
             success_handler: lexik_jwt_authentication.handler.authentication_success
             failure_handler: lexik_jwt_authentication.handler.authentication_failure
 ```
 
-La réponse de `lexik/jwt-authentication-bundle` par défaut ne contient pas `expiresIn`. Ajouter un event listener pour l'inclure :
+The default response of `lexik/jwt-authentication-bundle` does not contain `expiresIn`. Add an event listener to include it:
 
 ```php
 // src/EventListener/JwtSuccessListener.php
@@ -353,13 +331,13 @@ class JwtSuccessListener
     public function onAuthenticationSuccess(AuthenticationSuccessEvent $event): void
     {
         $data = $event->getData();
-        $data['expiresIn'] = (int) $this->jwtTtl; // paramètre lexik_jwt.token_ttl
+        $data['expiresIn'] = (int) $this->jwtTtl; // lexik_jwt.token_ttl parameter
         $event->setData($data);
     }
 }
 ```
 
-**Refresh** : `gesdinet/jwt-refresh-token-bundle` expose `/api/token/refresh` — le connector l'atteint automatiquement via `POST {endpoint}/refresh` si `endpoint` = `/api/auth/login`.
+**Refresh**: `gesdinet/jwt-refresh-token-bundle` exposes `/api/token/refresh` — the connector reaches it automatically through `POST {endpoint}/refresh` when `endpoint` = `/api/auth/login`.
 
 ```js
 await GeoLeaf.Connector.configure({
@@ -373,16 +351,16 @@ await GeoLeaf.Connector.configure({
 
 ---
 
-### 7.7 Intégration Laravel
+### 7.7 Laravel integration
 
-Avec `laravel/sanctum` (tokens API) ou un controller JWT custom.
+With `laravel/sanctum` (API tokens) or a custom JWT controller.
 
-**Controller `AuthController`**
+**`AuthController` controller**
 
 ```php
 // routes/api.php
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/login/refresh', [AuthController::class, 'refresh']); // optionnel
+Route::post('/auth/login/refresh', [AuthController::class, 'refresh']); // optional
 
 // app/Http/Controllers/AuthController.php
 use Illuminate\Http\JsonResponse;
@@ -394,7 +372,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'login'    => 'required|string',   // champ "login" du connector
+            'login'    => 'required|string',   // the connector's "login" field
             'password' => 'required|string',
         ]);
 
@@ -406,7 +384,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token'     => $token,
-            'expiresIn' => 86400, // 24 h en secondes
+            'expiresIn' => 86400, // 24 h in seconds
         ]);
     }
 }
@@ -422,4 +400,4 @@ await GeoLeaf.Connector.configure({
 });
 ```
 
-> **Note :** Les tokens Sanctum sont des tokens opaques (pas des JWT). Pour utiliser GeoLeaf Connector avec Sanctum via le mode `getToken` callback, le plugin émettrait un `console.warn` car ils ne contiennent pas `.`. Avec le mode `auth.endpoint` tel qu'utilisé ici, ce check ne s'applique pas — aucun warning n'est émis.
+> **Note:** Sanctum tokens are opaque tokens, not JWTs. Using GeoLeaf Connector with Sanctum through the `getToken` callback mode would make the plugin emit a `console.warn`, because they contain no `.`. With the `auth.endpoint` mode used here, that check does not apply — no warning is emitted.

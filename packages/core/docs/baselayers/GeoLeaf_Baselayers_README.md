@@ -1,93 +1,92 @@
 ---
-title: "GeoLeaf.Baselayers — Documentation du module Baselayers"
+title: "GeoLeaf.Baselayers — Baselayers module documentation"
 ---
 
-# GeoLeaf.Baselayers — Documentation du module Baselayers
+# GeoLeaf.Baselayers — Baselayers module documentation
 
-**Version :** 3.0.0
-**Fichier (monorepo)** : `src/modules/built-in/basemaps/`
-**Dernière mise à jour :** mars 2026
-
----
-
-Le module **GeoLeaf.Baselayers** gère l'ensemble des **fonds de carte (basemaps)** dans GeoLeaf.
-Il fournit :
-
-- un **registre interne** des basemaps disponibles ;
-- l'initialisation du fond par défaut ;
-- le changement dynamique de basemap ;
-- la création et la gestion de la couche MapLibre GL correspondante ;
-- les liens avec l'UI (attributs `data-gl-baselayer="street|topo|satellite"`).
-
-GeoLeaf.Baselayers ne gère **ni les POI**, **ni le thème UI**, **ni la légende**.
-Il se concentre exclusivement sur la logique cartographique des tuiles.
+Applies to: @geoleaf/core v3.x
+**File (monorepo)**: `src/modules/built-in/basemaps/`
 
 ---
 
-## 1. Rôle fonctionnel de GeoLeaf.Baselayers
+The **GeoLeaf.Baselayers** module handles every **basemap** in GeoLeaf.
+It provides:
 
-1. **Définir les basemaps disponibles** depuis `basemaps.json`
-2. **Créer et attacher** la couche de tuiles MapLibre GL correspondant à la basemap active.
-3. **Permettre de changer dynamiquement** la basemap active :
-    - depuis le code
-    - depuis l'UI (éléments HTML possédant `data-gl-baselayer="..."`)
-4. Normaliser les options internes :
+- an **internal registry** of the available basemaps;
+- initialisation of the default basemap;
+- dynamic basemap switching;
+- creation and management of the matching MapLibre GL layer;
+- the links with the UI (`data-gl-baselayer="street|topo|satellite"` attributes).
+
+GeoLeaf.Baselayers handles **neither POIs**, **nor the UI theme**, **nor the legend**.
+It deals exclusively with the tile logic of the map.
+
+---
+
+## 1. Functional role of GeoLeaf.Baselayers
+
+1. **Define the available basemaps** from `basemaps.json`
+2. **Create and attach** the MapLibre GL tile layer matching the active basemap.
+3. **Allow dynamic switching** of the active basemap:
+    - from code
+    - from the UI (HTML elements carrying `data-gl-baselayer="..."`)
+4. Normalise the internal options:
     - attribution,
     - maxZoom,
-    - gestion d'erreurs,
-    - logs explicites.
+    - error handling,
+    - explicit logs.
 
 ---
 
-## 2. API publique de GeoLeaf.Baselayers
+## 2. Public API of GeoLeaf.Baselayers
 
-Le module expose :
+The module exposes:
 
 - `GeoLeaf.Baselayers.init(options)`
-- `GeoLeaf.Baselayers.registerBaseLayer(key, definition)` — ajoute un basemap au registre
-- `GeoLeaf.Baselayers.registerBaseLayers(layers)` — ajoute plusieurs basemaps en une fois
-- `GeoLeaf.Baselayers.setBaseLayer(key)` — active un basemap par clé
-- `GeoLeaf.Baselayers.setActive(key)` — alias de `setBaseLayer()`
-- `GeoLeaf.Baselayers.getActiveKey()` — retourne la clé du basemap actif
-- `GeoLeaf.Baselayers.getActiveId()` — alias de `getActiveKey()`
-- `GeoLeaf.Baselayers.getActiveLayer()` — retourne l'objet de configuration du basemap actif
-- `GeoLeaf.Baselayers.getBaseLayers()` — retourne le registre complet
-- `GeoLeaf.Baselayers.destroy()` — supprime l'UI et libère les ressources
+- `GeoLeaf.Baselayers.registerBaseLayer(key, definition)` — adds one basemap to the registry
+- `GeoLeaf.Baselayers.registerBaseLayers(layers)` — adds several basemaps at once
+- `GeoLeaf.Baselayers.setBaseLayer(key)` — activates a basemap by key
+- `GeoLeaf.Baselayers.setActive(key)` — alias of `setBaseLayer()`
+- `GeoLeaf.Baselayers.getActiveKey()` — returns the key of the active basemap
+- `GeoLeaf.Baselayers.getActiveId()` — alias of `getActiveKey()`
+- `GeoLeaf.Baselayers.getActiveLayer()` — returns the configuration object of the active basemap
+- `GeoLeaf.Baselayers.getBaseLayers()` — returns the whole registry
+- `GeoLeaf.Baselayers.destroy()` — removes the UI and releases the resources
 
 ---
 
 ## 3. `GeoLeaf.Baselayers.init(options)`
 
-Initialise le module et active un fond de carte.
+Initialises the module and activates a basemap.
 
 ```js
 GeoLeaf.Baselayers.init({
-    map: map, // instance MapLibre GL
+    map: map, // MapLibre GL instance
     defaultKey: "street-vector",
 });
 ```
 
-### 3.1 Paramètres
+### 3.1 Parameters
 
-| Paramètre    | Type     | Obligatoire | Description                      |
-| ------------ | -------- | ----------- | -------------------------------- |
-| `map`        | `Map`    | oui         | Instance MapLibre GL existante   |
-| `defaultKey` | `string` | non         | Identifiant du baselayer initial |
+| Parameter    | Type     | Required | Description                         |
+| ------------ | -------- | -------- | ----------------------------------- |
+| `map`        | `Map`    | Yes      | Existing MapLibre GL instance       |
+| `defaultKey` | `string` | No       | Identifier of the initial baselayer |
 
-### 3.2 Comportement
+### 3.2 Behaviour
 
-- Vérifie que `map` est une instance valide.
-- Charge le registre des basemaps depuis `basemaps.json`.
-- Détermine le baselayer initial :
-    - celui fourni via `defaultKey`, ou
-    - la basemap marquée `defaultBasemap: true`.
-- Monte la couche de tuiles sur la carte.
+- Checks that `map` is a valid instance.
+- Loads the basemap registry from `basemaps.json`.
+- Determines the initial baselayer:
+    - the one given through `defaultKey`, or
+    - the basemap marked `defaultBasemap: true`.
+- Mounts the tile layer on the map.
 
 ---
 
-## 4. Configuration des basemaps (`basemaps.json`)
+## 4. Basemap configuration (`basemaps.json`)
 
-Les basemaps sont définies dans le fichier `profiles/{id}/basemaps.json` :
+Basemaps are defined in `profiles/{id}/basemaps.json`:
 
 ```json
 {
@@ -125,33 +124,33 @@ Les basemaps sont définies dans le fichier `profiles/{id}/basemaps.json` :
 }
 ```
 
-### 4.1 Propriétés d'une basemap
+### 4.1 Basemap properties
 
-| Propriété        | Type    | Obligatoire | Description                                          |
-| ---------------- | ------- | ----------- | ---------------------------------------------------- |
-| `id`             | string  | oui         | Identifiant unique                                   |
-| `label`          | string  | oui         | Nom affiché dans l'UI                                |
-| `type`           | string  | non         | `"raster"` (défaut) ou `"maplibre"` (vecteur)        |
-| `url`            | string  | non         | URL template tuiles raster `{z}/{x}/{y}`             |
-| `style`          | string  | non         | URL style JSON MapLibre GL (type maplibre)           |
-| `fallbackUrl`    | string  | non         | URL raster de fallback pour type maplibre            |
-| `tiles`          | array   | non         | Liste d'URLs de tuiles alternatives                  |
-| `attribution`    | string  | non         | Texte d'attribution                                  |
-| `minZoom`        | number  | non         | Zoom minimum                                         |
-| `maxZoom`        | number  | non         | Zoom maximum                                         |
-| `defaultBasemap` | boolean | non         | Fond de carte par défaut                             |
-| `offline`        | boolean | non         | Mettre en cache pour usage hors-ligne                |
-| `offlineBounds`  | object  | non         | Zone géographique à cacher (`north/south/east/west`) |
-| `cacheMinZoom`   | number  | non         | Zoom minimum du cache offline                        |
-| `cacheMaxZoom`   | number  | non         | Zoom maximum du cache offline                        |
+| Property         | Type    | Required | Description                                        |
+| ---------------- | ------- | -------- | -------------------------------------------------- |
+| `id`             | string  | Yes      | Unique identifier                                  |
+| `label`          | string  | Yes      | Name shown in the UI                               |
+| `type`           | string  | No       | `"raster"` (default) or `"maplibre"` (vector)      |
+| `url`            | string  | No       | Raster tile URL template `{z}/{x}/{y}`             |
+| `style`          | string  | No       | MapLibre GL JSON style URL (maplibre type)         |
+| `fallbackUrl`    | string  | No       | Raster fallback URL for the maplibre type          |
+| `tiles`          | array   | No       | List of alternative tile URLs                      |
+| `attribution`    | string  | No       | Attribution text                                   |
+| `minZoom`        | number  | No       | Minimum zoom                                       |
+| `maxZoom`        | number  | No       | Maximum zoom                                       |
+| `defaultBasemap` | boolean | No       | Default basemap                                    |
+| `offline`        | boolean | No       | Cache for offline use                              |
+| `offlineBounds`  | object  | No       | Geographic area to cache (`north/south/east/west`) |
+| `cacheMinZoom`   | number  | No       | Minimum zoom of the offline cache                  |
+| `cacheMaxZoom`   | number  | No       | Maximum zoom of the offline cache                  |
 
-> **Type maplibre** : Quand `type: "maplibre"`, la propriété `style` pointe vers un fichier de style MapLibre GL JSON. La propriété `url` (ou `fallbackUrl`) est utilisée comme fallback raster si le style MapLibre ne peut pas être chargé.
+> **maplibre type**: when `type: "maplibre"`, the `style` property points to a MapLibre GL JSON style file. The `url` property (or `fallbackUrl`) is used as a raster fallback when the MapLibre style cannot be loaded.
 
 ---
 
 ## 5. `GeoLeaf.Baselayers.registerBaseLayer(key, definition)`
 
-Ajoute un fond de carte personnalisé au registre.
+Adds a custom basemap to the registry.
 
 ```js
 GeoLeaf.Baselayers.registerBaseLayer("mytiles", {
@@ -163,48 +162,47 @@ GeoLeaf.Baselayers.registerBaseLayer("mytiles", {
 });
 ```
 
-### 5.1 Paramètres
+### 5.1 Parameters
 
-| Paramètre    | Type   | Obligatoire | Description              |
-| ------------ | ------ | ----------- | ------------------------ |
-| `key`        | string | oui         | Identifiant unique       |
-| `definition` | object | oui         | Définition de la basemap |
+| Parameter    | Type   | Required | Description        |
+| ------------ | ------ | -------- | ------------------ |
+| `key`        | string | Yes      | Unique identifier  |
+| `definition` | object | Yes      | Basemap definition |
 
-### 5.2 Règles
+### 5.2 Rules
 
-- Si la clé existe déjà, elle est écrasée.
-- La définition doit contenir au minimum `url` ou `style`.
+- When the key already exists, it is overwritten.
+- The definition must contain at least `url` or `style`.
 
 ---
 
 ## 6. `GeoLeaf.Baselayers.setBaseLayer(key)`
 
-Permet de changer dynamiquement le fond de carte.
+Switches the basemap dynamically.
 
 ```js
 GeoLeaf.Baselayers.setBaseLayer("street");
 ```
 
-### 6.1 Comportement
+### 6.1 Behaviour
 
-- Vérifie que la clé existe dans le registre.
-- Démonte le fond actif (si existant).
-- Crée une nouvelle instance MapLibre à partir de la définition.
-- Attache la nouvelle couche à la carte.
-- Met à jour `_activeKey`.
+- Checks that the key exists in the registry.
+- Unmounts the active basemap, when there is one.
+- Creates a new MapLibre instance from the definition.
+- Attaches the new layer to the map.
+- Updates `_activeKey`.
 
-### 6.2 Gestion des erreurs
+### 6.2 Error handling
 
-- Si la clé n'existe pas :
-    - log `[GeoLeaf.Baselayers] baselayer introuvable : {key}`
-    - aucun changement n'est appliqué.
+- When the key does not exist:
+    - logs `[GeoLeaf.Baselayers] baselayer introuvable : {key}`
+    - no change is applied.
 
 ---
 
-## 7. Intégration avec l'UI (HTML)
+## 7. UI integration (HTML)
 
-Les basemaps peuvent être changés via le DOM
-en utilisant des éléments comportant :
+Basemaps can be switched from the DOM using elements carrying:
 
 ```html
 <button data-gl-baselayer="street">Street</button>
@@ -213,8 +211,8 @@ en utilisant des éléments comportant :
 
 ---
 
-## 8. Liens
+## 8. Links
 
-- `profiles/schemas/basemaps.schema.json` — Schéma JSON des basemaps
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — Structure des profils
-- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — Fichier basemaps.json
+- `profiles/schemas/basemaps.schema.json` — JSON schema of the basemaps
+- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — profile structure
+- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — basemaps.json file

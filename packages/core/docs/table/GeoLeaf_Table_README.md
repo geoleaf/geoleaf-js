@@ -1,81 +1,71 @@
 ---
-title: "GeoLeaf.Table — Documentation du module Table"
+title: "GeoLeaf.Table — Table Module Documentation"
 ---
 
-# GeoLeaf.Table — Documentation du module Table
+# GeoLeaf.Table — Table Module Documentation
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. Voir le README du plugin pour l'installation, la configuration (`modules.table.*`) et la migration.
->
-> _Le contenu ci-dessous est conservé à titre de référence historique._
+::: warning
+The data table is no longer part of `@geoleaf/core`: it is provided by the MIT plugin
+`@geoleaf-plugins/table`. Install it with `npm install @geoleaf-plugins/table`, then load its
+script **after** `geoleaf.esm.js` and **before** `GeoLeaf.boot()`.
+:::
 
-**Product Version**: GeoLeaf Platform V3 — **Version doc**: 3.0.0
+The **GeoLeaf.Table** module provides a tabular view of map data, complementing the display on the MapLibre GL JS map.
 
-**Fichier source** : `packages/core/src/modules/geoleaf.table.ts`
-**Implémentation** : `packages/core/src/modules/optional/table/table-api.ts`
-**Dernière mise à jour** : mars 2026
+It can:
 
----
-
-> **⚠️ Module extrait du core (v3.0.0)** — Le tableau de données n'est plus intégré à `@geoleaf/core` : il est fourni par le plugin MIT **`@geoleaf-plugins/table`** (npmjs.org). `npm install @geoleaf-plugins/table`, puis charger son script **après** `geoleaf.esm.js` et **avant** `GeoLeaf.boot()`.
-
----
-
-Le module **GeoLeaf.Table** fournit une vue tabulaire des données cartographiques, complémentaire à l'affichage sur la carte MapLibre GL JS.
-
-Il permet de :
-
-- **Afficher** les attributs des entités GeoJSON dans un tableau
-- **Trier** les données par colonne (cycle ascendant → descendant → aucun)
-- **Sélectionner** des entités et synchroniser avec la carte
-- **Zoomer** sur les entités sélectionnées
-- **Surbriller** la sélection sur la carte
-- **Exporter** la sélection (via événement)
+- **Display** the attributes of GeoJSON features in a table
+- **Sort** data by column (ascending → descending → none cycle)
+- **Select** features and synchronize with the map
+- **Zoom** to the selected features
+- **Highlight** the selection on the map
+- **Export** the selection (through an event)
 
 ---
 
-## 1. Rôle fonctionnel du Table
+## 1. Functional role of the Table
 
-GeoLeaf.Table a cinq responsabilités principales :
+GeoLeaf.Table has five main responsibilities:
 
-1. **Afficher les données** des couches GeoJSON sous forme tabulaire
-2. **Synchroniser** la sélection entre table et carte
-3. **Permettre le tri** multi-colonnes avec cycles (asc → desc → null)
-4. **Gérer la sélection multiple** avec export et zoom
-5. **S'intégrer** avec les modules GeoJSON, Filters et Core
+1. **Display the data** of GeoJSON layers in tabular form
+2. **Synchronize** the selection between table and map
+3. **Allow multi-column sorting** with cycles (asc → desc → null)
+4. **Handle multiple selection** with export and zoom
+5. **Integrate** with the GeoJSON, Filters and Core modules
 
-> Important : Le module Table nécessite que **GeoLeaf.GeoJSON** soit chargé et configuré.
+> Important: the Table module requires **GeoLeaf.GeoJSON** to be loaded and configured.
 
 ---
 
-## 2. API publique de GeoLeaf.Table
+## 2. Public API of GeoLeaf.Table
 
 ### 2.1 `GeoLeaf.Table.init(options)`
 
-Initialise le module Table avec une instance de carte et des options.
+Initializes the Table module with a map instance and options.
 
 ```js
 GeoLeaf.Table.init(options);
 ```
 
-**Paramètres :**
+**Parameters:**
 
-- `options` : objet de configuration **requis**
-    - `options.map` : instance de carte MapLibre GL JS **(requis)**
-    - `options.config` : `Object` — configuration personnalisée (optionnel)
-        - `enabled` : `boolean` — activer le module (défaut : `true`)
-        - `defaultVisible` : `boolean` — visible au démarrage (défaut : `false`)
-        - `pageSize` : `number` — lignes par page (défaut : `50`)
-        - `maxRowsPerLayer` : `number` — limite de lignes (défaut : `1000`)
-        - `enableExportButton` : `boolean` — bouton export (défaut : `true`)
-        - `virtualScrolling` : `boolean` — scroll virtuel (défaut : `true`)
-        - `defaultHeight` : `string` — hauteur par défaut (défaut : `'40%'`)
-        - `minHeight` : `string` — hauteur minimale (défaut : `'20%'`)
-        - `maxHeight` : `string` — hauteur maximale (défaut : `'60%'`)
-        - `resizable` : `boolean` — redimensionnable (défaut : `true`)
+- `options`: configuration object, **required**
+    - `options.map`: MapLibre GL JS map instance **(required)**
+    - `options.config`: `Object` — custom configuration (optional)
+        - `enabled`: `boolean` — enable the module (default: `true`)
+        - `defaultVisible`: `boolean` — visible on startup (default: `false`)
+        - `pageSize`: `number` — rows per page (default: `50`)
+        - `maxRowsPerLayer`: `number` — row limit (default: `1000`)
+        - `enableExportButton`: `boolean` — export button (default: `true`)
+        - `virtualScrolling`: `boolean` — virtual scrolling (default: `true`)
+        - `defaultHeight`: `string` — default height (default: `'40%'`)
+        - `minHeight`: `string` — minimum height (default: `'20%'`)
+        - `maxHeight`: `string` — maximum height (default: `'60%'`)
+        - `resizable`: `boolean` — resizable (default: `true`)
 
-**Retour :** `void`
+**Returns:** `void`
 
-#### Exemple minimal
+#### Minimal example
 
 ```js
 const map = GeoLeaf.Core.getMap();
@@ -83,7 +73,7 @@ const map = GeoLeaf.Core.getMap();
 GeoLeaf.Table.init({ map });
 ```
 
-#### Exemple avec configuration
+#### Example with configuration
 
 ```js
 GeoLeaf.Table.init({
@@ -102,15 +92,15 @@ GeoLeaf.Table.init({
 
 ### 2.2 `GeoLeaf.Table.show()`
 
-Affiche le tableau.
+Shows the table.
 
 ```js
 GeoLeaf.Table.show();
 ```
 
-**Événements émis :** `geoleaf:table:opened`
+**Events emitted:** `geoleaf:table:opened`
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("show-table-btn").addEventListener("click", () => {
@@ -122,15 +112,15 @@ document.getElementById("show-table-btn").addEventListener("click", () => {
 
 ### 2.3 `GeoLeaf.Table.hide()`
 
-Masque le tableau. Désactive également la surbrillance active.
+Hides the table. Also turns off the active highlight.
 
 ```js
 GeoLeaf.Table.hide();
 ```
 
-**Événements émis :** `geoleaf:table:closed`
+**Events emitted:** `geoleaf:table:closed`
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("hide-table-btn").addEventListener("click", () => {
@@ -142,13 +132,13 @@ document.getElementById("hide-table-btn").addEventListener("click", () => {
 
 ### 2.4 `GeoLeaf.Table.toggle()`
 
-Bascule la visibilité du tableau (affiche si caché, cache si affiché).
+Toggles table visibility (shows it if hidden, hides it if shown).
 
 ```js
 GeoLeaf.Table.toggle();
 ```
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("toggle-table-btn").addEventListener("click", () => {
@@ -160,21 +150,21 @@ document.getElementById("toggle-table-btn").addEventListener("click", () => {
 
 ### 2.5 `GeoLeaf.Table.setLayer(layerId)`
 
-Définit la couche GeoJSON à afficher dans le tableau.
+Sets the GeoJSON layer to display in the table.
 
 ```js
 GeoLeaf.Table.setLayer(layerId);
 ```
 
-**Paramètres :**
+**Parameters:**
 
-- `layerId` : `string` — ID de la couche GeoJSON (ou `null` pour vider)
+- `layerId`: `string` — ID of the GeoJSON layer (or `null` to clear)
 
-**Événements émis :** `geoleaf:table:layerChanged` avec `{ layerId }`
+**Events emitted:** `geoleaf:table:layerChanged` with `{ layerId }`
 
-> Note : Seules les couches déclarées dans la configuration GeoJSON peuvent être affichées. `setLayer` réinitialise la sélection et le tri.
+> Note: only layers declared in the GeoJSON configuration can be displayed. `setLayer` resets the selection and the sort.
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("layer-select").addEventListener("change", (e) => {
@@ -182,9 +172,9 @@ document.getElementById("layer-select").addEventListener("change", (e) => {
 });
 ```
 
-#### Configuration de couche pour Table
+#### Layer configuration for Table
 
-Dans `geoleaf.config.json` :
+In `geoleaf.config.json`:
 
 ```json
 {
@@ -230,18 +220,18 @@ Dans `geoleaf.config.json` :
 
 ### 2.6 `GeoLeaf.Table.refresh()`
 
-Rafraîchit les données affichées dans le tableau.
+Refreshes the data displayed in the table.
 
 ```js
 GeoLeaf.Table.refresh();
 ```
 
-Récupère les features de la couche courante via `GeoLeaf.GeoJSON.getLayerData()`, réapplique le tri et re-rend le tableau.
+Retrieves the features of the current layer through `GeoLeaf.GeoJSON.getLayerData()`, reapplies the sort and re-renders the table.
 
-#### Exemple
+#### Example
 
 ```js
-// Rafraîchir après un changement de filtre
+// Refresh after a filter change
 map.on("geoleaf:filters:changed", () => {
     GeoLeaf.Table.refresh();
 });
@@ -251,25 +241,25 @@ map.on("geoleaf:filters:changed", () => {
 
 ### 2.7 `GeoLeaf.Table.sortByField(field)`
 
-Change le tri sur une colonne spécifique.
+Changes the sort on a given column.
 
 ```js
 GeoLeaf.Table.sortByField(field);
 ```
 
-**Paramètres :**
+**Parameters:**
 
-- `field` : `string` — chemin du champ (notation point : `properties.name`)
+- `field`: `string` — field path (dot notation: `properties.name`)
 
-**Comportement** : cycle de tri sur la même colonne :
+**Behavior**: sort cycle on the same column:
 
-1. Premier appel : tri ascendant
-2. Deuxième appel : tri descendant
-3. Troisième appel : pas de tri (ordre original)
+1. First call: ascending sort
+2. Second call: descending sort
+3. Third call: no sort (original order)
 
-**Événements émis :** `geoleaf:table:sortChanged` avec `{ field, direction }`
+**Events emitted:** `geoleaf:table:sortChanged` with `{ field, direction }`
 
-#### Exemple
+#### Example
 
 ```js
 document.querySelectorAll(".table-header").forEach((header) => {
@@ -283,26 +273,26 @@ document.querySelectorAll(".table-header").forEach((header) => {
 
 ### 2.8 `GeoLeaf.Table.setSelection(ids, add)`
 
-Sélectionne ou désélectionne des entités.
+Selects or deselects features.
 
 ```js
 GeoLeaf.Table.setSelection(ids, add);
 ```
 
-**Paramètres :**
+**Parameters:**
 
-- `ids` : `Array<string>` — IDs des entités à sélectionner
-- `add` : `boolean` — ajouter à la sélection existante (`true`) ou remplacer (`false`, défaut)
+- `ids`: `Array<string>` — IDs of the features to select
+- `add`: `boolean` — add to the existing selection (`true`) or replace it (`false`, default)
 
-**Événements émis :** `geoleaf:table:selectionChanged` avec `{ layerId, selectedIds }`
+**Events emitted:** `geoleaf:table:selectionChanged` with `{ layerId, selectedIds }`
 
-#### Exemple
+#### Example
 
 ```js
-// Sélectionner des entités spécifiques
+// Select specific features
 GeoLeaf.Table.setSelection(["poi-1", "poi-5", "poi-12"]);
 
-// Ajouter à la sélection existante
+// Add to the existing selection
 GeoLeaf.Table.setSelection(["poi-20"], true);
 ```
 
@@ -310,34 +300,34 @@ GeoLeaf.Table.setSelection(["poi-20"], true);
 
 ### 2.9 `GeoLeaf.Table.getSelectedIds()`
 
-Retourne les IDs des entités sélectionnées.
+Returns the IDs of the selected features.
 
 ```js
 const selectedIds = GeoLeaf.Table.getSelectedIds();
 ```
 
-**Retour :** `Array<string>` — liste des IDs sélectionnés
+**Returns:** `Array<string>` — list of selected IDs
 
-#### Exemple
+#### Example
 
 ```js
 const selected = GeoLeaf.Table.getSelectedIds();
-console.log(`${selected.length} entités sélectionnées :`, selected);
+console.log(`${selected.length} selected features:`, selected);
 ```
 
 ---
 
 ### 2.10 `GeoLeaf.Table.clearSelection()`
 
-Efface toute la sélection.
+Clears the whole selection.
 
 ```js
 GeoLeaf.Table.clearSelection();
 ```
 
-**Événements émis :** `geoleaf:table:selectionChanged` avec `{ selectedIds: [] }`
+**Events emitted:** `geoleaf:table:selectionChanged` with `{ selectedIds: [] }`
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("clear-selection-btn").addEventListener("click", () => {
@@ -349,17 +339,17 @@ document.getElementById("clear-selection-btn").addEventListener("click", () => {
 
 ### 2.11 `GeoLeaf.Table.zoomToSelection()`
 
-Zoom sur les entités sélectionnées dans la carte.
+Zooms to the selected features on the map.
 
 ```js
 GeoLeaf.Table.zoomToSelection();
 ```
 
-**Événements émis :** `geoleaf:table:zoomToSelection` avec `{ layerId, selectedIds }`
+**Events emitted:** `geoleaf:table:zoomToSelection` with `{ layerId, selectedIds }`
 
-**Comportement :** Calcule les bounds des entités sélectionnées et ajuste la vue de la carte MapLibre GL JS.
+**Behavior:** computes the bounds of the selected features and adjusts the MapLibre GL JS map view.
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("zoom-selection-btn").addEventListener("click", () => {
@@ -373,19 +363,19 @@ document.getElementById("zoom-selection-btn").addEventListener("click", () => {
 
 ### 2.12 `GeoLeaf.Table.highlightSelection(active)`
 
-Active/désactive la surbrillance des entités sélectionnées sur la carte.
+Enables or disables the highlighting of the selected features on the map.
 
 ```js
 GeoLeaf.Table.highlightSelection(active);
 ```
 
-**Paramètres :**
+**Parameters:**
 
-- `active` : `boolean` — activer (`true`) ou désactiver (`false`)
+- `active`: `boolean` — enable (`true`) or disable (`false`)
 
-**Événements émis :** `geoleaf:table:highlightSelection` avec `{ layerId, selectedIds, active }`
+**Events emitted:** `geoleaf:table:highlightSelection` with `{ layerId, selectedIds, active }`
 
-#### Exemple
+#### Example
 
 ```js
 let highlighted = false;
@@ -400,24 +390,24 @@ document.getElementById("highlight-btn").addEventListener("click", () => {
 
 ### 2.13 `GeoLeaf.Table.exportSelection()`
 
-Émet un événement pour exporter la sélection.
+Emits an event to export the selection.
 
 ```js
 GeoLeaf.Table.exportSelection();
 ```
 
-**Événements émis :** `geoleaf:table:exportSelection` avec `{ layerId, selectedIds, rows }`
+**Events emitted:** `geoleaf:table:exportSelection` with `{ layerId, selectedIds, rows }`
 
-> Note : Le module Table émet uniquement l'événement. L'implémentation de l'export (CSV, JSON, GeoJSON, etc.) doit être gérée par l'application.
+> Note: the Table module only emits the event. Implementing the export itself (CSV, JSON, GeoJSON, and so on) is up to the application.
 
-#### Exemple
+#### Example
 
 ```js
 document.getElementById("export-btn").addEventListener("click", () => {
     GeoLeaf.Table.exportSelection();
 });
 
-// Écouter l'événement pour implémenter l'export
+// Listen to the event to implement the export
 map.on("geoleaf:table:exportSelection", (e) => {
     const { rows } = e;
     const csv = convertToCSV(rows);
@@ -447,9 +437,9 @@ function downloadFile(content, filename, mimeType) {
 
 ---
 
-## 3. Configuration dans geoleaf.config.json
+## 3. Configuration in geoleaf.config.json
 
-### 3.1 Configuration globale du module
+### 3.1 Global module configuration
 
 ```json
 {
@@ -468,7 +458,7 @@ function downloadFile(content, filename, mimeType) {
 }
 ```
 
-### 3.2 Configuration par couche
+### 3.2 Per-layer configuration
 
 ```json
 {
@@ -519,81 +509,81 @@ function downloadFile(content, filename, mimeType) {
 
 ---
 
-## 4. Événements
+## 4. Events
 
-Le module Table émet les événements suivants sur la carte MapLibre GL JS :
+The Table module emits the following events on the MapLibre GL JS map:
 
-| Événement                          | Détail                             | Description                     |
-| ---------------------------------- | ---------------------------------- | ------------------------------- |
-| `geoleaf:table:opened`             | —                                  | Tableau affiché                 |
-| `geoleaf:table:closed`             | —                                  | Tableau masqué                  |
-| `geoleaf:table:layerChanged`       | `{ layerId }`                      | Couche affichée modifiée        |
-| `geoleaf:table:sortChanged`        | `{ field, direction }`             | Tri modifié                     |
-| `geoleaf:table:selectionChanged`   | `{ layerId, selectedIds }`         | Sélection modifiée              |
-| `geoleaf:table:zoomToSelection`    | `{ layerId, selectedIds }`         | Zoom sur sélection déclenché    |
-| `geoleaf:table:highlightSelection` | `{ layerId, selectedIds, active }` | Surbrillance activée/désactivée |
-| `geoleaf:table:exportSelection`    | `{ layerId, selectedIds, rows }`   | Export demandé                  |
+| Event                              | Detail                             | Description                 |
+| ---------------------------------- | ---------------------------------- | --------------------------- |
+| `geoleaf:table:opened`             | —                                  | Table shown                 |
+| `geoleaf:table:closed`             | —                                  | Table hidden                |
+| `geoleaf:table:layerChanged`       | `{ layerId }`                      | Displayed layer changed     |
+| `geoleaf:table:sortChanged`        | `{ field, direction }`             | Sort changed                |
+| `geoleaf:table:selectionChanged`   | `{ layerId, selectedIds }`         | Selection changed           |
+| `geoleaf:table:zoomToSelection`    | `{ layerId, selectedIds }`         | Zoom to selection triggered |
+| `geoleaf:table:highlightSelection` | `{ layerId, selectedIds, active }` | Highlight enabled/disabled  |
+| `geoleaf:table:exportSelection`    | `{ layerId, selectedIds, rows }`   | Export requested            |
 
-### Exemple d'écoute
+### Listening example
 
 ```js
 const map = GeoLeaf.Core.getMap();
 
-// Écouter les changements de sélection
+// Listen to selection changes
 map.on("geoleaf:table:selectionChanged", (e) => {
-    console.log(`${e.selectedIds.length} entités sélectionnées`);
+    console.log(`${e.selectedIds.length} selected features`);
     highlightFeaturesOnMap(e.selectedIds);
 });
 
-// Écouter les changements de couche
+// Listen to layer changes
 map.on("geoleaf:table:layerChanged", (e) => {
-    console.log(`Couche affichée : ${e.layerId}`);
+    console.log(`Displayed layer: ${e.layerId}`);
     updateUIControls(e.layerId);
 });
 ```
 
 ---
 
-## 5. Intégration avec d'autres modules
+## 5. Integration with other modules
 
-### 5.1 Intégration avec GeoJSON
+### 5.1 Integration with GeoJSON
 
-Le module Table affiche les données des couches GeoJSON chargées par le core :
+The Table module displays the data of the GeoJSON layers loaded by the core:
 
 ```js
-// Les couches GeoJSON sont configurées dans geoleaf.config.json
-// et chargées automatiquement par GeoLeaf.GeoJSON au démarrage.
-// Afficher une couche dans le tableau :
+// GeoJSON layers are configured in geoleaf.config.json
+// and loaded automatically by GeoLeaf.GeoJSON at startup.
+// Display a layer in the table:
 GeoLeaf.Table.setLayer("restaurants");
 GeoLeaf.Table.show();
 ```
 
-### 5.2 Intégration avec Filters
+### 5.2 Integration with Filters
 
-Le tableau se synchronise automatiquement avec les filtres via l'écoute des événements :
+The table synchronizes with filters automatically by listening to events:
 
 ```js
-// Appliquer un filtre
+// Apply a filter
 GeoLeaf.Filter.applyFilter({ category: "restaurant" });
 
-// Le tableau se met à jour automatiquement
-// (écoute l'événement geoleaf:filters:changed en interne)
+// The table updates itself automatically
+// (it listens to the geoleaf:filters:changed event internally)
 ```
 
-### 5.3 Synchronisation bidirectionnelle carte ↔ table
+### 5.3 Two-way map ↔ table synchronization
 
-Dans MapLibre GL JS, la synchronisation s'appuie sur les événements GeoLeaf :
+In MapLibre GL JS, synchronization relies on GeoLeaf events:
 
 ```js
-// Sélection dans le tableau → surbrillance sur carte
+// Selection in the table → highlight on the map
 map.on("geoleaf:table:selectionChanged", (e) => {
     const { selectedIds } = e;
-    // Mettre à jour le style MapLibre via setFeatureState ou paint expression
-    // (la mise en surbrillance intégrée utilise highlightSelection())
+    // Update the MapLibre style through setFeatureState or a paint expression
+    // (the built-in highlighting uses highlightSelection())
     GeoLeaf.Table.highlightSelection(selectedIds.length > 0);
 });
 
-// Clic sur carte → sélection dans table
+// Click on the map → selection in the table
 map.on("click", (e) => {
     const features = map.queryRenderedFeatures(e.point);
     if (features.length > 0) {
@@ -605,25 +595,25 @@ map.on("click", (e) => {
 
 ---
 
-## 6. Cas d'usage pratiques
+## 6. Practical use cases
 
-### 6.1 Tableau avec tri
+### 6.1 Table with sorting
 
 ```js
 GeoLeaf.Table.init({ map });
 GeoLeaf.Table.setLayer("restaurants");
 GeoLeaf.Table.show();
 
-// Déclencher un tri programmatique
+// Trigger a sort programmatically
 GeoLeaf.Table.sortByField("properties.rating");
 ```
 
-### 6.2 Export multi-formats
+### 6.2 Multi-format export
 
 ```js
 map.on("geoleaf:table:exportSelection", (e) => {
     const { rows, layerId } = e;
-    const format = prompt("Format d'export (csv/json/geojson):", "csv");
+    const format = prompt("Export format (csv/json/geojson):", "csv");
 
     switch (format) {
         case "csv":
@@ -639,7 +629,7 @@ map.on("geoleaf:table:exportSelection", (e) => {
 });
 ```
 
-### 6.3 Configuration pour grandes tables
+### 6.3 Configuration for large tables
 
 ```js
 GeoLeaf.Table.init({
@@ -651,7 +641,7 @@ GeoLeaf.Table.init({
     },
 });
 
-// Debounce sur les refresh fréquents
+// Debounce frequent refreshes
 let refreshTimeout;
 map.on("geoleaf:filters:changed", () => {
     clearTimeout(refreshTimeout);
@@ -661,87 +651,87 @@ map.on("geoleaf:filters:changed", () => {
 
 ---
 
-## 7. Architecture interne
+## 7. Internal architecture
 
-### 7.1 Modules composants
+### 7.1 Component modules
 
 ```
-GeoLeaf.Table (API publique — table-api.ts)
-    ├── table-state.ts      (état partagé : _map, _config, _currentLayerId, _selectedIds, etc.)
-    ├── table-layer.ts      (récupération features, gestion couches, attachMapEvents)
-    ├── table-highlight.ts  (surbrillance MapLibre, calcul bounds)
+GeoLeaf.Table (public API — table-api.ts)
+    ├── table-state.ts      (shared state: _map, _config, _currentLayerId, _selectedIds, etc.)
+    ├── table-layer.ts      (feature retrieval, layer handling, attachMapEvents)
+    ├── table-highlight.ts  (MapLibre highlighting, bounds computation)
     ├── table-selection.ts  (setSelection, clearSelection, zoomToSelection, exportSelection)
-    ├── sort.ts             (sortInPlace, nextSortState — cycle tri)
+    ├── sort.ts             (sortInPlace, nextSortState — sort cycle)
     ├── export.ts           (resolveFeatureId)
-    ├── panel.ts            (TablePanel — création conteneur DOM)
-    └── renderer.ts         (TableRenderer — rendu tableau HTML)
+    ├── panel.ts            (TablePanel — DOM container creation)
+    └── renderer.ts         (TableRenderer — HTML table rendering)
 ```
 
-### 7.2 Flux de données
+### 7.2 Data flow
 
 ```
-1. Initialisation
+1. Initialization
    GeoLeaf.Table.init({ map, config })
-   └── Fusionne config depuis GeoLeaf.Config.get('tableConfig') + options
-   └── Crée conteneur DOM via TablePanel.create()
-   └── Attache listeners événements carte
+   └── Merges config from GeoLeaf.Config.get('tableConfig') + options
+   └── Creates the DOM container through TablePanel.create()
+   └── Attaches map event listeners
 
-2. Changement de couche
+2. Layer change
    GeoLeaf.Table.setLayer('restaurants')
-   └── Réinitialise sélection, highlight et tri
-   └── Applique defaultSort depuis config de couche
-   └── Appelle refresh()
+   └── Resets selection, highlight and sort
+   └── Applies defaultSort from the layer config
+   └── Calls refresh()
 
-3. Rafraîchissement
+3. Refresh
    GeoLeaf.Table.refresh()
-   └── Récupère features via GeoLeaf.GeoJSON.getLayerData()
-   └── Construit _featureIdMap
-   └── Applique tri si défini (sortInPlace)
-   └── Appelle TableRenderer.render()
+   └── Retrieves features through GeoLeaf.GeoJSON.getLayerData()
+   └── Builds _featureIdMap
+   └── Applies the sort if defined (sortInPlace)
+   └── Calls TableRenderer.render()
 
-4. Tri
+4. Sorting
    GeoLeaf.Table.sortByField('properties.name')
    └── nextSortState() → cycle asc → desc → null
-   └── Appelle refresh()
-   └── Émet: geoleaf:table:sortChanged
+   └── Calls refresh()
+   └── Emits: geoleaf:table:sortChanged
 
-5. Sélection
+5. Selection
    GeoLeaf.Table.setSelection(['id1', 'id2'])
-   └── Met à jour _selectedIds (Set)
-   └── Appelle TableRenderer.updateSelection()
-   └── Émet: geoleaf:table:selectionChanged
+   └── Updates _selectedIds (Set)
+   └── Calls TableRenderer.updateSelection()
+   └── Emits: geoleaf:table:selectionChanged
 ```
 
 ---
 
-## 8. Bonnes pratiques
+## 8. Best practices
 
-### À faire
+### Do
 
-- Limiter le nombre de lignes via `maxRowsPerLayer` (défaut : 1000)
-- Activer le scroll virtuel pour les grandes tables : `virtualScrolling: true`
-- Définir uniquement les colonnes pertinentes dans `columns`
-- Utiliser `defaultSort` pour une meilleure UX initiale
-- Utiliser un debounce sur les appels fréquents à `refresh()`
+- Limit the number of rows through `maxRowsPerLayer` (default: 1000)
+- Enable virtual scrolling for large tables: `virtualScrolling: true`
+- Declare only the relevant columns in `columns`
+- Use `defaultSort` for a better initial experience
+- Debounce frequent calls to `refresh()`
 
-### À éviter
+### Avoid
 
-- Afficher toutes les propriétés sans filtrer les colonnes
-- Charger plus de 5000 lignes sans pagination ni scroll virtuel
-- Appeler `refresh()` trop fréquemment sans debounce
+- Displaying every property without narrowing the columns
+- Loading more than 5000 rows without pagination or virtual scrolling
+- Calling `refresh()` too often without a debounce
 
 ---
 
 ## 9. Performance
 
-### Optimisations intégrées
+### Built-in optimizations
 
-- **Limitation automatique** : `maxRowsPerLayer` empêche les surcharges
-- **Scroll virtuel** : affiche uniquement les lignes visibles
-- **Cache des données** : `_cachedData` évite les requêtes répétées
-- **Tri optimisé** : utilise `localeCompare` pour les strings
+- **Automatic capping**: `maxRowsPerLayer` prevents overload
+- **Virtual scrolling**: only the visible rows are rendered
+- **Data caching**: `_cachedData` avoids repeated queries
+- **Optimized sorting**: uses `localeCompare` for strings
 
-### Recommandations pour très grandes tables (10k+ lignes)
+### Recommendations for very large tables (10k+ rows)
 
 ```js
 GeoLeaf.Table.init({
@@ -756,23 +746,23 @@ GeoLeaf.Table.init({
 
 ---
 
-## 10. Dépannage
+## 10. Troubleshooting
 
-### Problème : "Container not initialized"
+### Issue: "Container not initialized"
 
-**Cause** : `TablePanel` non chargé ou module non initialisé.
-**Solution** : Vérifier que `GeoLeaf.Table.init()` est appelé avant `show()`.
+**Cause**: `TablePanel` not loaded, or the module was not initialized.
+**Solution**: check that `GeoLeaf.Table.init()` is called before `show()`.
 
-### Problème : Colonnes vides
+### Issue: empty columns
 
-**Cause** : `field` ne correspond pas à la structure GeoJSON.
-**Solution** : Vérifier les chemins de propriétés (notation point).
+**Cause**: `field` does not match the GeoJSON structure.
+**Solution**: check the property paths (dot notation).
 
 ```js
-// Structure GeoJSON
+// GeoJSON structure
 { "properties": { "name": "Restaurant X", "info": { "category": "Italian" } } }
 
-// Configuration colonnes correcte
+// Correct column configuration
 { "columns": [
     { "field": "properties.name", "label": "Nom" },           // OK
     { "field": "properties.info.category", "label": "Cat" },  // OK
@@ -780,10 +770,10 @@ GeoLeaf.Table.init({
 ] }
 ```
 
-### Problème : Tri ne fonctionne pas
+### Issue: sorting does not work
 
-**Cause** : Colonne non marquée `sortable: true`.
-**Solution** :
+**Cause**: the column is not marked `sortable: true`.
+**Solution**:
 
 ```json
 { "columns": [{ "field": "properties.name", "label": "Nom", "sortable": true }] }
@@ -791,8 +781,8 @@ GeoLeaf.Table.init({
 
 ---
 
-## 11. Voir aussi
+## 11. See also
 
-- **GeoJSON** : [docs/geojson/GEOJSON_LAYERS_GUIDE.md](../geojson/GEOJSON_LAYERS_GUIDE.md)
-- **Filter** : [docs/API_REFERENCE.md](../API_REFERENCE.md#filter--the-filter-panel-singular)
-- **UI** : [docs/ui/GeoLeaf_UI_README.md](../ui/GeoLeaf_UI_README.md)
+- **GeoJSON**: [docs/geojson/GEOJSON_LAYERS_GUIDE.md](../geojson/GEOJSON_LAYERS_GUIDE.md)
+- **Filter**: [docs/API_REFERENCE.md](../API_REFERENCE.md#filter--the-filter-panel-singular)
+- **UI**: [docs/ui/GeoLeaf_UI_README.md](../ui/GeoLeaf_UI_README.md)

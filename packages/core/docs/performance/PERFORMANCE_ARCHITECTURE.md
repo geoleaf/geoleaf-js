@@ -1,87 +1,84 @@
 ---
-title: "Architecture performance — GeoLeaf"
+title: "Performance architecture — GeoLeaf"
 ---
 
-# Architecture performance — GeoLeaf
+# Performance architecture — GeoLeaf
 
-**Product Version** : GeoLeaf Platform V3
-
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière mise à jour** : mars 2026
+**Applies to:** `@geoleaf/core` v3.x
 
 ---
 
-Court document sur les choix techniques liés à la **performance** dans GeoLeaf (Worker GeoJSON, lazy loading, requestIdleCallback, rendu MapLibre GL JS, bonnes pratiques).
+A short document on the technical choices behind **performance** in GeoLeaf (GeoJSON Worker, lazy loading, requestIdleCallback, MapLibre GL JS rendering, best practices).
 
 ---
 
-## 1. Worker GeoJSON
+## 1. GeoJSON Worker
 
-Le chargement des couches GeoJSON peut faire du **fetch + parse** dans un **Web Worker** pour ne pas bloquer le thread principal. Si le Worker est indisponible ou si les données viennent du cache, le parse peut s'effectuer sur le main thread (gros fichiers = risque de freeze).
+GeoJSON layer loading can run **fetch + parse** inside a **Web Worker** so that the main thread stays free. If the Worker is unavailable, or if the data comes from the cache, the parse may run on the main thread (large files then risk freezing the UI).
 
-- **Fichiers concernés** : `packages/core/src/kernel/geojson/` — `loader/`, `geojson-worker.ts`,
+- **Files involved**: `packages/core/src/kernel/geojson/` — `loader/`, `geojson-worker.ts`,
   `worker-manager.ts`.
-- **Bonnes pratiques** : pour les très gros GeoJSON, privilégier la découpe en plusieurs couches, le lazy loading par vue, ou les vector tiles si le profil le permet.
+- **Best practice**: for very large GeoJSON files, prefer splitting into several layers, per-view lazy loading, or vector tiles when the profile allows it.
 
 ---
 
 ## 2. Lazy loading (code splitting)
 
-- ⚠️ **La machinerie `src/lazy/` a été SUPPRIMÉE (S5, BREAKING).** POI, Route, Themes, Table, Search n'existent plus (dissous/purgés) ; Legend, LayerManager, Labels sont **eager** (dans la clôture de boot). Les chunks `src/lazy/*` étaient des coquilles de ré-export sur du code déjà eager, que Rollup émettait **vides** — le boot déclenchait un `import()` d'un fichier vide à chaque page. Ce qui reste réellement lazy, ce sont les **`import()` dynamiques** ponctuels (ex. le moteur offline, chargé à la demande), pas un système de chunks secondaires.
-- **Préchargement** : supprimé en S5. `_loadAllSecondaryModules()` chargeait ces mêmes chunks vides — le boot ne fait plus d'aller-retour réseau pour rien.
-- **Lazy UI** : `lazyLoadImage` (IntersectionObserver), `lazyExecute` (report d'exécution via `requestIdleCallback` ou `setTimeout`) dans les helpers DOM.
+- **There is no lazy chunk system.** POI, Route, Themes, Table and Search no longer exist as separate modules; Legend, LayerManager and Labels are **eager** — part of the boot closure. What is genuinely lazy are the individual **dynamic `import()` calls** (for example the offline engine, loaded on demand), not a secondary chunk system.
+- **Preloading**: none. Boot performs no network round-trip for secondary chunks.
+- **Lazy UI**: `lazyLoadImage` (IntersectionObserver) and `lazyExecute` (deferred execution through `requestIdleCallback` or `setTimeout`) in the DOM helpers.
 
 ---
 
 ## 3. requestIdleCallback
 
-Utilisé pour **répartir le travail** et garder l'UI réactive :
+Used to **spread work out** and keep the UI responsive:
 
-- **GeoJSON** : après parse (Worker ou main), l'ajout des features à la couche MapLibre GL est fait par **chunks** (ex. 200 features par batch) via `requestIdleCallback` (fallback `setTimeout`) pour ne pas bloquer le main thread. Voir `geojson/loader/single-layer.ts` (`_addFeaturesChunked`).
-- **Profil / couches** : planification de tâches lourdes (ex. chargement de couches) avec `requestIdleCallback` (timeout 3000 ms) ou `setTimeout` en fallback. Voir `geojson/loader/profile.ts`.
-- **Helpers** : `lazyExecute(callback, timeout)` utilise `requestIdleCallback` si disponible.
-
----
-
-## 4. Rendu MapLibre GL JS
-
-GeoLeaf utilise **MapLibre GL JS ^6.0.0** comme moteur cartographique. Caractéristiques clés :
-
-- **Rendu WebGL** : toutes les couches vectorielles et raster sont rendues sur le GPU via WebGL.
-- **Style expression** : les filtres, couleurs et visibilité sont exprimés comme des expressions MapLibre GL Style Spec — évalués par le moteur de rendu, pas en JavaScript.
-- **Source GeoJSON** : les données GeoJSON sont injectées via `map.getSource(id).setData(geojson)` pour les mises à jour incrémentales sans recréer la couche.
-- **Clustering natif** : le clustering POI utilise le clustering intégré MapLibre GL (côté source, pas de recalcul JS).
+- **GeoJSON**: after parsing (in the Worker or on the main thread), features are added to the MapLibre GL layer in **chunks** (for example 200 features per batch) through `requestIdleCallback` (falling back to `setTimeout`) so the main thread is not blocked. See `geojson/loader/single-layer.ts` (`_addFeaturesChunked`).
+- **Profile / layers**: heavy tasks such as layer loading are scheduled with `requestIdleCallback` (3000 ms timeout), falling back to `setTimeout`. See `geojson/loader/profile.ts`.
+- **Helpers**: `lazyExecute(callback, timeout)` uses `requestIdleCallback` when available.
 
 ---
 
-## 5. Bonnes pratiques
+## 4. MapLibre GL JS rendering
 
-| Sujet                    | Recommandation                                                                                                                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Taille GeoJSON**       | Éviter un seul fichier énorme ; découper en couches ou par zone/vue si possible. En cas de gros fichier, le Worker + chunked addData limitent le freeze.                                         |
-| **Nombre de couches**    | Limiter le nombre de couches actives simultanées si les données sont lourdes ; utiliser la visibilité par thème et le lazy loading des couches.                                                  |
-| **Charge au boot**       | Gatée par `npm run size` (clôture des imports statiques depuis l'entrée) ; inspecter la répartition avec `dist/stats.html`. Pour livrer moins : composer son entrée (`COOKBOOK.md`, _Recipe 8_). |
-| **Métriques runtime**    | Utiliser `GeoLeaf.getPerformanceMetrics()` ou `GeoLeaf.boot({ onPerformanceMetrics })` pour suivre le temps jusqu'à première couche et interactivité.                                            |
-| **Expressions de style** | Préférer les expressions MapLibre GL Style Spec aux fonctions JS pour le filtrage et le style (exécutées sur le thread de rendu).                                                                |
-| **resize()**             | Appeler `map.resize()` après tout changement de dimensions du conteneur (fullscreen, panneau latéral). Utiliser `CONSTANTS.FULLSCREEN_TRANSITION_MS` comme délai.                                |
+GeoLeaf uses **MapLibre GL JS ^6.0.0** as its map engine. Key characteristics:
+
+- **WebGL rendering**: all vector and raster layers are rendered on the GPU through WebGL.
+- **Style expressions**: filters, colours and visibility are expressed as MapLibre GL Style Spec expressions — evaluated by the rendering engine, not in JavaScript.
+- **GeoJSON source**: GeoJSON data is pushed through `map.getSource(id).setData(geojson)` for incremental updates without recreating the layer.
+- **Native clustering**: POI clustering uses MapLibre GL built-in clustering (source side, no JavaScript recomputation).
 
 ---
 
-## 6. Budget bundle
+## 5. Best practices
 
-La métrique qui compte au chargement est le **boot payload** : l'entrée `geoleaf.esm.js` **+ la clôture transitive des chunks qu'elle importe statiquement**. Depuis `kernel-exports`, l'entrée elle-même n'est qu'un **shim de ~0,5 KB gz** — la budgéter seule ne piège aucune régression (c'est la méprise « `src/lazy` réduit le boot », que ce projet a déjà payée). `check-bundle-size.cjs` mesure donc la clôture. Les `import()` **dynamiques** ne sont pas suivis (vrais lazy). MapLibre GL est une dépendance peer externe, hors bundle.
-
-| Artefact                                 | Cible / statut                                         | Commande de vérification |
-| ---------------------------------------- | ------------------------------------------------------ | ------------------------ |
-| **Boot payload** (entrée + chunks stat.) | alerte > 270 KB gz, **échec build > 300 KB** (~178 KB) | `npm run size`           |
-| `geoleaf.esm.js` seul (gz)               | ~0,5 KB — shim, **informatif, PAS un budget**          | `npm run size`           |
-| Sourcemaps (`.map`, publiées sur npm)    | soft > 900 KB gz (n'échoue jamais le build)            | `npm run size`           |
+| Topic                 | Recommendation                                                                                                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GeoJSON size**      | Avoid a single huge file; split into layers, or by area or view where possible. For a large file, the Worker plus chunked feature insertion limits freezes.                                  |
+| **Number of layers**  | Limit the number of simultaneously active layers when the data is heavy; use per-theme visibility and lazy layer loading.                                                                    |
+| **Boot payload**      | Enforced by `npm run size` (closure of static imports from the entry point); inspect the breakdown with `dist/stats.html`. To ship less, compose your own entry (`COOKBOOK.md`, _Recipe 8_). |
+| **Runtime metrics**   | Use `GeoLeaf.getPerformanceMetrics()` or `GeoLeaf.boot({ onPerformanceMetrics })` to track time to first layer and time to interactivity.                                                    |
+| **Style expressions** | Prefer MapLibre GL Style Spec expressions over JavaScript functions for filtering and styling (they run on the rendering thread).                                                            |
+| **resize()**          | Call `map.resize()` after any change to the container dimensions (fullscreen, side panel). Use `CONSTANTS.FULLSCREEN_TRANSITION_MS` as the delay.                                            |
 
 ---
 
-## Voir aussi
+## 6. Bundle budget
 
-- `packages/core/docs/performance/CSS_ANIMATION_OPTIMIZATION.md` — optimisation des animations CSS
-- `packages/core/docs/ARCHITECTURE_GUIDE.md` — architecture modulaire et séquence boot
-- `packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md` — couches GeoJSON
-- `packages/core/docs/PERFORMANCE_METRICS.md` — métriques runtime et budget de charge au boot
+The figure that matters at load time is the **boot payload**: the `geoleaf.esm.js` entry **plus the transitive closure of the chunks it imports statically**. Since `kernel-exports`, the entry itself is only a **shim of about 0.5 KB gzip** — budgeting it alone catches no regression. `check-bundle-size.cjs` therefore measures the closure. **Dynamic** `import()` calls are not tracked (they are genuinely lazy). MapLibre GL is an external peer dependency, outside the bundle.
+
+| Artefact                                 | Target / status                                           | Verification command |
+| ---------------------------------------- | --------------------------------------------------------- | -------------------- |
+| **Boot payload** (entry + static chunks) | warning > 270 KB gz, **build failure > 300 KB** (~178 KB) | `npm run size`       |
+| `geoleaf.esm.js` alone (gz)              | ~0.5 KB — shim, **informational, NOT a budget**           | `npm run size`       |
+| Sourcemaps (`.map`, published to npm)    | soft limit > 900 KB gz (never fails the build)            | `npm run size`       |
+
+---
+
+## See also
+
+- `packages/core/docs/performance/CSS_ANIMATION_OPTIMIZATION.md` — CSS animation optimisation
+- `packages/core/docs/ARCHITECTURE_GUIDE.md` — modular architecture and boot sequence
+- `packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md` — GeoJSON layers
+- `packages/core/docs/PERFORMANCE_METRICS.md` — runtime metrics and boot payload budget

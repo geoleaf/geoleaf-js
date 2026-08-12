@@ -3,7 +3,7 @@
 **Statut :** Acceptée → Appliquée
 **Date :** 8 août 2026
 **Auteur :** Mattieu Pottier
-**Cible :** `PLUGIN_ARCHITECTURE_SPEC.md` §0 (Portée — sous-section neuve), §3 (tableau des invariants, ligne `INV-REG`)
+**Cible :** [`PLUGIN_ARCHITECTURE_SPEC.md`](../contrats/PLUGIN_ARCHITECTURE_SPEC.md) §0 (Portée — sous-section neuve), §3 (tableau des invariants, ligne `INV-REG`)
 **Contrat :** Plugin Contract v1 — changement **non cassant** (une exigence morte retirée, un périmètre explicité) → spec **1.4.1 → 1.5.0**
 
 ---
@@ -59,7 +59,7 @@ trouve, et la question se ré-instruit de zéro à chaque fois qu'elle revient.
    (`<script integrity>`), pas sur un `import()` dynamique — le mécanisme par lequel les plugins
    paresseux se chargent. Il n'existe donc aucun moyen de figer l'empreinte d'un bundle tiers.
 3. **Le registre n'a aucune notion d'origine.** `registerLazy(name, resolver)` prend un
-   `LazyResolver`, et ce type vaut `() => Promise<void>` (`api-types.ts:56`) : une **closure**,
+   `LazyResolver`, et ce type vaut `() => Promise<void>` (`packages/core/src/kernel/api/api-types.ts`) : une **closure**,
    jamais une URL. Il n'existe aucun point du registre où une origine pourrait être déclarée,
    vérifiée ou refusée. Ce n'est pas une lacune d'implémentation, c'est la forme du contrat.
 4. **Le coût est net et mesurable.** Un descripteur récupéré au runtime ajoute **une requête
@@ -101,11 +101,21 @@ La tâche 10.5 annonçait **trois** gestes de ménage. La mesure en laisse **un*
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | « retirer `type` de la ligne INV-REG (`:117`) »                          | ✅ **Vrai, mal localisé** — `INV-REG` est en **`:126`**. La ligne 117 est vide.                                                                                                                                                                                                                                       |
 | « corriger 2 chemins morts (`:151`, `:403` citent `modules/built-in/`) » | 🛑 **SANS OBJET — déjà corrigés le 27/07/2026**, et la correction est tracée dans le journal des versions de la spec elle-même (v1.4.1). `:151` parle de dépendances npm, `:403` est un en-tête. **Mode d'échec n° 4** : le travail avait été fait entre-temps, et il se voyait en relisant le document, pas le code. |
-| « consigner le hors-contrat du chargement tiers »                        | ✅ **Vrai** — aucune trace dans `specs/`, la seule occurrence de « marketplace » dans tout `_docs_projet/` est une ligne d'un CDC **archivé**.                                                                                                                                                                        |
+| « consigner le hors-contrat du chargement tiers »                        | ✅ **Vrai** — aucune trace dans `specs/`, et la seule occurrence de « marketplace » dans tout l'atelier interne du dépôt de travail est une ligne d'un CDC **archivé**.                                                                                                                                               |
 
-⚠️ **Deux citations de code de l'énoncé étaient également décalées** : `registerLazy` est en
-`plugin-registry.ts:87` (et non `:80`), et le type qui porte l'argument — le fait qui compte —
-est en `api-types.ts:56`.
+⚠️ **Deux citations de code de l'énoncé étaient également décalées** : `registerLazy` ne vit pas
+là où `:80` le plaçait — c'est `register()` qui s'y trouve —, et le fait qui compte est ailleurs
+encore, dans le **type** qui porte l'argument : `LazyResolver`, déclaré par `packages/core/src/kernel/api/api-types.ts`.
+
+> 🛑 **Annotation du 11/08/2026 (tâche 6.11) — cette correction s'était périmée à son tour, et
+> c'est la démonstration la plus courte de la classe qu'elle instruit.** Elle écrivait
+> « `registerLazy` est en `plugin-registry.ts:87` » ; au 11/08 la déclaration est en **`:88`**,
+> `:87` étant le `*/` fermant du bloc TSDoc au-dessus. **Une ligne ajoutée dans un commentaire
+> a suffi** — et rien, dans aucune des 78 gates d'alors, ne pouvait le dire. Les deux citations
+> sont donc réécrites **par membre**, sans numéro : ce que l'énoncé de 10.5 ratait n'était pas
+> un numéro, c'était l'endroit. C'est ce constat qui a fait poser la gate **SPECS-PATHS**
+> (`audit-report-freshness.cjs --source specs`), laquelle garde le **fichier** ; le numéro de
+> ligne, lui, n'est gardable par rien, et la seule réponse est de ne pas l'écrire.
 
 ---
 

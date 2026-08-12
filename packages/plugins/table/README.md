@@ -11,6 +11,18 @@ GeoLeaf plugin that adds a **data table panel** to an interactive map. The user 
 
 ---
 
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/table version  # what the registry serves
+> npm run versions:check                   # what this repository declares
+> ```
+>
+> Until those agree, build from source.
+
 ## Installation
 
 ```bash
@@ -82,10 +94,10 @@ You can also drive the table programmatically:
 | `enabled`            | `boolean` | `true`  | Mounts the module on `geoleaf:map:ready` when `true`.            |
 | `showButton`         | `boolean` | `true`  | Shows the desktop tab + mobile icon (read by the core registry). |
 | `defaultVisible`     | `boolean` | `false` | Opens the panel at boot.                                         |
-| `pageSize`           | `number`  | `50`    | Page size (⚠️ currently inert at runtime).                       |
+| `pageSize`           | `number`  | `50`    | Page size. Currently inert at runtime.                           |
 | `maxRowsPerLayer`    | `number`  | `1000`  | Caps the number of rendered rows.                                |
 | `enableExportButton` | `boolean` | `true`  | Shows the export buttons.                                        |
-| `virtualScrolling`   | `boolean` | `true`  | Renders only visible rows (⚠️ does not paginate by `pageSize`).  |
+| `virtualScrolling`   | `boolean` | `true`  | Renders only visible rows. Does not paginate by `pageSize`.      |
 | `defaultHeight`      | `string`  | `"40%"` | Initial bottom-sheet height.                                     |
 | `minHeight`          | `string`  | `"20%"` | Minimum height (resize).                                         |
 | `maxHeight`          | `string`  | `"60%"` | Maximum height (resize).                                         |

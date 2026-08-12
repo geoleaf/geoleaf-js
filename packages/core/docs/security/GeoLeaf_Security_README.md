@@ -1,48 +1,46 @@
 ---
-title: "GeoLeaf.Security — Documentation du module Security"
+title: "GeoLeaf.Security — Security module documentation"
 ---
 
-# GeoLeaf.Security — Documentation du module Security
+# GeoLeaf.Security — Security module documentation
 
-Product Version: GeoLeaf Platform V3
-**Version**: 3.0.0
-**Fichier source (monorepo)** : `packages/core/src/modules/built-in/security/index.ts`
-**Module CSRF** : `packages/core/src/modules/built-in/security/csrf-token.ts`
-**Date**: mars 2026
-
----
-
-## Vue d'ensemble
-
-Le module **GeoLeaf.Security** fournit des fonctions de sécurité centralisées pour protéger l'application contre les vulnérabilités XSS (Cross-Site Scripting), les injections malveillantes et les attaques CSRF.
-
-### Responsabilités principales
-
-- **Échappement HTML** — neutralise les caractères HTML dangereux
-- **Validation d'URLs** — whitelist de protocoles autorisés (`http:`, `https:`, `data:image/`)
-- **Sanitization de données** — nettoie les propriétés des POI/GeoJSON
-- **Protection XSS** — prévention des attaques par injection de code
-- **Sanitization HTML** — parse HTML avec tag allowlist, injection DOM sécurisée
-- **Sanitization SVG** — supprime scripts et handlers d'événements des SVG externes
-- **Validation de nombres** — rejette NaN, Infinity et valeurs hors-range
-- **Tokens CSRF** — génération, validation et rotation de tokens anti-CSRF
+**Applies to:** `@geoleaf/core` v3.x
+**Source file (monorepo)**: `packages/core/src/kernel/security/index.ts`
+**CSRF module**: `packages/core/src/kernel/security/csrf-token.ts`
 
 ---
 
-## Fonctions de sécurité
+## Overview
+
+The **GeoLeaf.Security** module provides centralised security functions that protect the application against XSS (Cross-Site Scripting) vulnerabilities, malicious injections and CSRF attacks.
+
+### Main responsibilities
+
+- **HTML escaping** — neutralises dangerous HTML characters
+- **URL validation** — allowlist of permitted protocols (`http:`, `https:`, `data:image/`)
+- **Data sanitisation** — cleans POI/GeoJSON properties
+- **XSS protection** — prevents code injection attacks
+- **HTML sanitisation** — parses HTML against a tag allowlist, injects into the DOM safely
+- **SVG sanitisation** — strips scripts and event handlers from external SVGs
+- **Number validation** — rejects NaN, Infinity and out-of-range values
+- **CSRF tokens** — generation, validation and rotation of anti-CSRF tokens
+
+---
+
+## Security functions
 
 ### `escapeHtml(str)`
 
-Échappe les caractères HTML dangereux pour prévenir les attaques XSS.
-Utilise `div.textContent` + `div.innerHTML` — méthode native, sans regex.
+Escapes dangerous HTML characters to prevent XSS attacks.
+Uses `div.textContent` + `div.innerHTML` — a native method, no regex.
 
-**Signature** :
+**Signature**:
 
 ```ts
 escapeHtml(str: string | null | undefined): string
 ```
 
-**Exemple** :
+**Example**:
 
 ```js
 const userInput = '<script>alert("XSS")</script>';
@@ -52,23 +50,23 @@ const safe = GeoLeaf.Security.escapeHtml(userInput);
 element.innerHTML = GeoLeaf.Security.escapeHtml(userInput);
 ```
 
-**Caractères échappés** : `<` `>` `&` `"` `'`
+**Escaped characters**: `<` `>` `&` `"` `'`
 
-**Remarque** : `null` et `undefined` retournent `""`.
+**Note**: `null` and `undefined` return `""`.
 
 ---
 
 ### `escapeAttribute(str)`
 
-Échappe les caractères pour une utilisation sûre dans les attributs HTML.
+Escapes characters for safe use inside HTML attributes.
 
-**Signature** :
+**Signature**:
 
 ```ts
 escapeAttribute(str: string | null | undefined): string
 ```
 
-**Exemple** :
+**Example**:
 
 ```js
 const userValue = 'value" onclick="alert(1)';
@@ -82,27 +80,27 @@ const html = `<input value="${safe}">`;
 
 ### `validateUrl(url, baseUrl?, options?)`
 
-Valide une URL avec une whitelist stricte de protocoles autorisés.
+Validates a URL against a strict allowlist of protocols.
 
-**Signature** :
+**Signature**:
 
 ```ts
 validateUrl(url: string, baseUrl?: string, options?: ValidateUrlOptions): string
 ```
 
-**Paramètres** :
+**Parameters**:
 
-- `url` : URL à valider (obligatoire)
-- `baseUrl` : URL de base pour résolution relative (défaut: `location.origin`)
-- `options.httpsOnly` : `true` = rejette `http:`, autorise seulement `https:` et `data:image/`
+- `url`: URL to validate (required)
+- `baseUrl`: base URL for relative resolution (default: `location.origin`)
+- `options.httpsOnly`: `true` = rejects `http:`, allows only `https:` and `data:image/`
 
-**Protocoles autorisés** (mode normal) :
+**Allowed protocols** (normal mode):
 
 - `http:`
 - `https:`
-- `data:` — uniquement pour les types image autorisés (`image/png`, `image/jpeg`, `image/gif`, `image/svg+xml`, `image/webp`)
+- `data:` — only for allowed image types (`image/png`, `image/jpeg`, `image/gif`, `image/svg+xml`, `image/webp`)
 
-**Exemples** :
+**Examples**:
 
 ```js
 // Valid URL
@@ -117,33 +115,33 @@ GeoLeaf.Security.validateUrl("../data/poi.json", window.location.href);
 try {
     GeoLeaf.Security.validateUrl("javascript:alert(1)");
 } catch (error) {
-    console.error("URL non autorisée:", error.message);
+    console.error("Disallowed URL:", error.message);
 }
 
 // HTTPS-only mode
 GeoLeaf.Security.validateUrl("https://example.com/data", undefined, { httpsOnly: true });
 ```
 
-**Erreurs lancées** :
+**Errors thrown**:
 
-- `TypeError` : URL vide ou non-string
-- `Error` : Protocole non autorisé
+- `TypeError`: empty or non-string URL
+- `Error`: disallowed protocol
 
 ---
 
 ### `validateCoordinates(lat, lng)`
 
-Valide des coordonnées géographiques (latitude et longitude).
+Validates geographic coordinates (latitude and longitude).
 
-**Signature** :
+**Signature**:
 
 ```ts
 validateCoordinates(lat: number, lng: number): [number, number]
 ```
 
-**Rejette** : NaN, Infinity, valeurs hors des plages `[-90, 90]` (lat) et `[-180, 180]` (lng).
+**Rejects**: NaN, Infinity, values outside the ranges `[-90, 90]` (lat) and `[-180, 180]` (lng).
 
-**Exemple** :
+**Example**:
 
 ```js
 const [lat, lng] = GeoLeaf.Security.validateCoordinates(48.857, 2.347);
@@ -160,17 +158,17 @@ try {
 
 ### `containsDangerousHtml(str)`
 
-Détecte les patterns HTML potentiellement dangereux (XSS vectors).
+Detects potentially dangerous HTML patterns (XSS vectors).
 
-**Signature** :
+**Signature**:
 
 ```ts
 containsDangerousHtml(str: unknown): boolean
 ```
 
-Détecte : `<script`, `javascript:`, handlers `on*=`, `<iframe`, `<object`, `<embed`, `<meta`, `data:text/html`, `<form`, etc.
+Detects: `<script`, `javascript:`, `on*=` handlers, `<iframe`, `<object`, `<embed`, `<meta`, `data:text/html`, `<form`, and similar.
 
-**Exemple** :
+**Example**:
 
 ```js
 GeoLeaf.Security.containsDangerousHtml("<script>alert(1)</script>"); // true
@@ -181,9 +179,9 @@ GeoLeaf.Security.containsDangerousHtml("Normal text"); // false
 
 ### `stripHtml(html)`
 
-Supprime tout le HTML d'une chaîne, ne conservant que le texte.
+Removes all HTML from a string, keeping only the text.
 
-**Signature** :
+**Signature**:
 
 ```ts
 stripHtml(html: string): string
@@ -198,15 +196,15 @@ const text = GeoLeaf.Security.stripHtml("<h1>Hello <b>World</b></h1>");
 
 ### `createSafeElement(tagName, options)`
 
-Crée un élément DOM de manière sécurisée avec échappement automatique du contenu.
+Creates a DOM element safely, escaping its content automatically.
 
-**Signature** :
+**Signature**:
 
 ```ts
 createSafeElement(tagName: string, options?: SafeElementOptions): Element
 ```
 
-**Options** : `className`, `id`, `textContent`, `attributes` (valeurs échappées via `escapeAttribute`), `children`
+**Options**: `className`, `id`, `textContent`, `attributes` (values escaped through `escapeAttribute`), `children`
 
 ```js
 const el = GeoLeaf.Security.createSafeElement("div", {
@@ -220,9 +218,9 @@ const el = GeoLeaf.Security.createSafeElement("div", {
 
 ### `sanitizeSvgContent(svgContent)`
 
-Parse et sanitize un contenu SVG externe : supprime les scripts, `foreignObject`, handlers `on*` et `href` javascript.
+Parses and sanitises external SVG content: removes scripts, `foreignObject`, `on*` handlers and javascript `href` values.
 
-**Signature** :
+**Signature**:
 
 ```ts
 sanitizeSvgContent(svgContent: string | null | undefined): SVGElement | null
@@ -239,9 +237,9 @@ if (svgEl) {
 
 ### `validateNumber(value, min?, max?)`
 
-Valide qu'une valeur est un nombre fini dans un intervalle donné.
+Validates that a value is a finite number within a given interval.
 
-**Signature** :
+**Signature**:
 
 ```ts
 validateNumber(value: unknown, min?: number, max?: number): number | null
@@ -258,19 +256,19 @@ if (zoom === null) {
 
 ### `parseHtmlSafely(html, allowedTags?)`
 
-Parse du HTML avec un allowlist de tags. Convertit les éléments non autorisés en nœuds texte. Valide les `href` des liens via `validateUrl`.
+Parses HTML against a tag allowlist. Converts disallowed elements into text nodes. Validates link `href` values through `validateUrl`.
 
-**Signature** :
+**Signature**:
 
 ```ts
 parseHtmlSafely(html: string, allowedTags?: string[]): DocumentFragment
 ```
 
-Tags autorisés par défaut : `p`, `br`, `strong`, `em`, `span`, `a`, `ul`, `ol`, `li`, `b`, `i`
+Tags allowed by default: `p`, `br`, `strong`, `em`, `span`, `a`, `ul`, `ol`, `li`, `b`, `i`
 
 ```js
 const fragment = GeoLeaf.Security.parseHtmlSafely(
-    "<p>Texte <b>gras</b> <script>alert(1)</script></p>"
+    "<p>Text <b>bold</b> <script>alert(1)</script></p>"
 );
 // Returns a DocumentFragment with <script> converted to text node
 container.appendChild(fragment);
@@ -280,18 +278,18 @@ container.appendChild(fragment);
 
 ### `sanitizeHTML(element, html, options?)`
 
-Sanitize du HTML et l'injecte dans un élément DOM de façon sécurisée. Point d'entrée principal pour l'injection HTML dans le DOM.
+Sanitises HTML and injects it into a DOM element safely. Main entry point for injecting HTML into the DOM.
 
-**Signature** :
+**Signature**:
 
 ```ts
 sanitizeHTML(element: Element, html: string | null | undefined, options?: SanitizeHtmlOptions): Element | null
 ```
 
-**Options** :
+**Options**:
 
-- `stripAll: true` — supprime tous les tags (texte seulement)
-- `allowedTags: string[]` — tags autorisés personnalisés
+- `stripAll: true` — removes every tag (text only)
+- `allowedTags: string[]` — custom list of allowed tags
 
 ```js
 // Inject sanitized HTML
@@ -308,30 +306,30 @@ GeoLeaf.Security.sanitizeHTML(container, htmlContent, {
 
 ---
 
-## Module CSRF (`csrf-token.ts`)
+## CSRF module (`csrf-token.ts`)
 
 ### `GeoLeaf.Security.CSRF` / `CSRFToken`
 
-Gestionnaire de tokens anti-CSRF basé sur `crypto.getRandomValues`.
+Anti-CSRF token manager built on `crypto.getRandomValues`.
 
-**API** :
+**API**:
 
-| Méthode                                        | Description                                             |
-| ---------------------------------------------- | ------------------------------------------------------- |
-| `CSRFToken.init()`                             | Génère le token initial et démarre l'auto-refresh       |
-| `CSRFToken.getToken()`                         | Retourne le token courant (régénère si expiré)          |
-| `CSRFToken.validateToken(token)`               | Valide un token reçu                                    |
-| `CSRFToken.addTokenToData(data)`               | Ajoute le token à un objet ou FormData                  |
-| `CSRFToken.addTokenToHeaders(options)`         | Ajoute `X-CSRF-Token` aux headers fetch                 |
-| `CSRFToken.createTokenInput()`                 | Crée un `<input type="hidden" name="csrf_token">`       |
-| `CSRFToken.addTokenToForm(form)`               | Ajoute le token à un formulaire HTML                    |
-| `CSRFToken.validateFormToken(data)`            | Valide le token depuis un FormData/objet                |
-| `CSRFToken.setSecureCookie(name, value, opts)` | Définit un cookie avec `Secure`, `SameSite`, `HttpOnly` |
-| `CSRFToken.rotateToken()`                      | Rotation manuelle du token                              |
-| `CSRFToken.getTokenInfo()`                     | Retourne `{ hasToken, expiresIn, isValid }`             |
-| `CSRFToken.destroy()`                          | Détruit le token et arrête l'auto-refresh               |
+| Method                                         | Description                                          |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| `CSRFToken.init()`                             | Generates the initial token and starts auto-refresh  |
+| `CSRFToken.getToken()`                         | Returns the current token (regenerated if expired)   |
+| `CSRFToken.validateToken(token)`               | Validates a received token                           |
+| `CSRFToken.addTokenToData(data)`               | Adds the token to an object or FormData              |
+| `CSRFToken.addTokenToHeaders(options)`         | Adds `X-CSRF-Token` to the fetch headers             |
+| `CSRFToken.createTokenInput()`                 | Creates an `<input type="hidden" name="csrf_token">` |
+| `CSRFToken.addTokenToForm(form)`               | Adds the token to an HTML form                       |
+| `CSRFToken.validateFormToken(data)`            | Validates the token from a FormData/object           |
+| `CSRFToken.setSecureCookie(name, value, opts)` | Sets a cookie with `Secure`, `SameSite`, `HttpOnly`  |
+| `CSRFToken.rotateToken()`                      | Manual token rotation                                |
+| `CSRFToken.getTokenInfo()`                     | Returns `{ hasToken, expiresIn, isValid }`           |
+| `CSRFToken.destroy()`                          | Destroys the token and stops auto-refresh            |
 
-**Exemple** :
+**Example**:
 
 ```js
 // Add CSRF token to a fetch request
@@ -350,18 +348,18 @@ form.addEventListener("submit", (e) => {
 
 ---
 
-## Convention de vidage du DOM
+## DOM clearing convention
 
-**Règle** : pour vider le contenu d'un élément (supprimer ses enfants), ne pas utiliser `element.innerHTML = ''`.
+**Rule**: to empty an element (remove its children), do not use `element.innerHTML = ''`.
 
-Utiliser à la place :
+Use instead:
 
-| Méthode                                    | Usage                                                                 |
-| ------------------------------------------ | --------------------------------------------------------------------- |
-| `GeoLeaf.DOMSecurity.clearElement(el)`     | Vide via `removeChild` — préférable si listeners attachés aux enfants |
-| `GeoLeaf.DOMSecurity.clearElementFast(el)` | Vide via `el.textContent = ''` — plus rapide, contenu sans listeners  |
+| Method                                     | Usage                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------- |
+| `GeoLeaf.DOMSecurity.clearElement(el)`     | Empties through `removeChild` — preferable when children hold listeners   |
+| `GeoLeaf.DOMSecurity.clearElementFast(el)` | Empties through `el.textContent = ''` — faster, for listener-free content |
 
-**Exemple** :
+**Example**:
 
 ```js
 // Correct
@@ -371,29 +369,29 @@ GeoLeaf.DOMSecurity.clearElementFast(container);
 container.innerHTML = "";
 ```
 
-Cette convention garantit un point unique de vidage du DOM. Voir `src/kernel/security/dom-security.ts` (déplacé au STRUCT S6 depuis `utils/general/`).
+This convention guarantees a single DOM-clearing entry point. See `src/kernel/security/dom-security.ts`.
 
 ---
 
-## Protection XSS dans GeoLeaf
+## XSS protection in GeoLeaf
 
-### Où la sécurité est appliquée
+### Where security is applied
 
-| Module              | Protection appliquée                                                                                       |
-| ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **POI**             | `escapeHtml()` au rendu (popup `setSafeHTML`, sidepanel `normalizePoi`) + `validateUrl()` sur `href`/`src` |
-| **GeoJSON**         | `escapeHtml()` sur les propriétés dans popups                                                              |
-| **Route**           | `validateUrl()` sur les URLs de chargement GPX/GeoJSON                                                     |
-| **Config**          | `validateUrl()` sur les URLs de dataSources                                                                |
-| **UI**              | `escapeHtml()` sur tous les textes utilisateur                                                             |
-| **Permalink**       | `validateCoordinates()` et `validateNumber()` sur les paramètres URL                                       |
-| **Content Builder** | `escapeHtml()` et `validateUrl()` importés depuis `built-in/security`                                      |
+| Module              | Protection applied                                                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **POI**             | `escapeHtml()` at render time (popup `setSafeHTML`, side panel `normalizePoi`) + `validateUrl()` on `href`/`src` |
+| **GeoJSON**         | `escapeHtml()` on properties inside popups                                                                       |
+| **Route**           | `validateUrl()` on GPX/GeoJSON loading URLs                                                                      |
+| **Config**          | `validateUrl()` on dataSources URLs                                                                              |
+| **UI**              | `escapeHtml()` on every user-supplied text                                                                       |
+| **Permalink**       | `validateCoordinates()` and `validateNumber()` on URL parameters                                                 |
+| **Content Builder** | `escapeHtml()` and `validateUrl()` imported from `kernel/security`                                               |
 
-### Exemple d'intégration
+### Integration example
 
 ```js
 // Layer writes go through Security automatically
-GeoLeaf.Layers.addFeature("mes-points", {
+GeoLeaf.Layers.addFeature("my-points", {
     type: "Feature",
     geometry: { type: "Point", coordinates: [-73.6, 45.5] },
     properties: {
@@ -409,9 +407,9 @@ GeoLeaf.Layers.addFeature("mes-points", {
 
 ---
 
-## Bonnes pratiques
+## Best practices
 
-### A FAIRE
+### Do
 
 ```js
 // Always escape user data
@@ -426,7 +424,7 @@ fetch(safeUrl).then(/* ... */);
 GeoLeaf.Security.sanitizeHTML(container, richTextFromServer);
 ```
 
-### A EVITER
+### Avoid
 
 ```js
 // NEVER insert raw user HTML directly
@@ -446,7 +444,7 @@ element.innerHTML = ""; // use DOMSecurity.clearElement instead
 
 ## Tests
 
-Le module Security est couvert par des tests Jest complets :
+The Security module is covered by an extensive test suite:
 
 ```bash
 # Run security tests
@@ -457,20 +455,20 @@ packages/core/__tests__/security/security.test.js
 packages/core/__tests__/security/security-extended.test.js
 ```
 
-**Couverture** : 95%+ (187+ tests passants)
+**Coverage**: 95%+ (187+ passing tests)
 
 ---
 
-## Références
+## References
 
-- **OWASP XSS Prevention Cheat Sheet** : https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
-- **MDN - Content Security Policy** : https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-- **Module Errors** : `docs/errors/GeoLeaf_Errors_README.md`
+- **OWASP XSS Prevention Cheat Sheet**: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+- **MDN — Content Security Policy**: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+- **Errors module**: `docs/errors/GeoLeaf_Errors_README.md`
 
 ---
 
-## Voir aussi
+## See also
 
-- `GeoLeaf.Validators` — Validation de données structurées
-- `GeoLeaf.Errors` — Gestion d'erreurs typées
-- `GeoLeaf.POI` — Utilisation de Security dans POI
+- `GeoLeaf.Validators` — structured data validation
+- `GeoLeaf.Errors` — typed error handling
+- `GeoLeaf.POI` — how POI uses Security

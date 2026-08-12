@@ -13,11 +13,15 @@ date: 28 juillet 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
 **Code :** `packages/plugins/connector/` · **Vérifié contre :** `81aa8d29` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **C'est le seul plugin du dépôt qui REMPLACE une fonction globale du navigateur.** Il
 > substitue `window.fetch` pour injecter un en-tête d'autorisation sur les URL qui l'intéressent.
@@ -102,35 +106,35 @@ imbriqué ne résoudrait rien. Les entrées françaises reproduisent exactement 
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                      | Entrée                                                | Sortie observable                                                                                                          | Code                                                          |
-| ----- | --------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| CN-01 | Configuration explicite                             | `GeoLeaf.Connector.configure(config)`                 | Valide, désinstalle l'instance précédente, pose les trois chemins d'injection, résout un jeton                             | `connector-api.ts` → `configure`                              |
-| CN-02 | Deux modes d'obtention du jeton, **exclusifs**      | `getToken` **ou** `auth`                              | Rappel fourni par l'intégrateur, ou gestion autonome par le plugin. Déclarer les deux fait échouer la validation           | `config.ts` → `validateConfig`                                |
-| CN-03 | HTTPS imposé hors développement local               | `baseUrl` en `http://`                                | Refusé, sauf sur `localhost` / `127.0.0.1` où un avertissement console suffit                                              | `config.ts`                                                   |
-| CN-04 | Les URL externes sont validées aussi                | `signupUrl`, `forgotPasswordUrl`                      | Mêmes règles que `baseUrl` — un lien de la fenêtre de connexion est une sortie vers un tiers                               | `config.ts` → `_validateExternalUrl`                          |
-| CN-05 | Variante d'icône corrigée en silence                | `iconVariant` inconnue                                | Ramenée à la valeur par défaut — **sans erreur ni avertissement** : une icône n'est pas une question de sécurité           | `config.ts` → `_normalizeIconVariant`                         |
-| CN-06 | Injection sur `window.fetch`                        | Requête vers une URL préfixée par `baseUrl`           | En-tête d'autorisation ajouté ; **tout le reste passe directement** au `fetch` d'origine                                   | `fetch-interceptor.ts`                                        |
-| CN-07 | `fetch` d'origine capturé **à l'import**            | Chargement du script                                  | La référence est prise avant tout autre remplacement — un second intercepteur ne peut pas s'insérer entre les deux         | `fetch-interceptor.ts`                                        |
-| CN-08 | Injection dans l'ouvrier web                        | Chargement GeoJSON par ouvrier                        | Un crochet global est posé ; le gestionnaire d'ouvriers du core le lit **sans jamais importer ce plugin**                  | `fetch-interceptor.ts`, `worker-manager.ts` du core           |
-| CN-09 | Injection sur les tuiles                            | Tuiles vectorielles ou archive de tuiles              | `setTransformRequest` posé sur la carte native, alimenté par le **cache mémoire** (chemin synchrone obligatoire)           | `maplibre-bridge.ts`                                          |
-| CN-10 | Trois moments d'installation du pont cartographique | Carte prête ou non au moment de la configuration      | Immédiat, ou différé sur `geoleaf:map:ready`, **plus** une réinstallation sur changement de fond de carte                  | `maplibre-bridge.ts`                                          |
-| CN-11 | Routage par format                                  | URL de tuile vs URL de données                        | Les formats de tuiles vont au pont cartographique, le reste au remplacement de `fetch` — deux chemins, pas deux injections | `format-detector.ts`                                          |
-| CN-12 | Persistance du jeton                                | Authentification réussie                              | Base indexée du navigateur, plus un cache mémoire pour la lecture synchrone                                                | `token-store.ts`                                              |
-| CN-13 | Renouvellement **proactif**                         | Jeton à moins de cinq minutes de son expiration       | Renouvellement lancé sans bloquer la requête en cours                                                                      | `token-store.ts`                                              |
-| CN-14 | Une seule promesse de renouvellement en vol         | Requêtes concurrentes sur une expiration              | Les appels rejoignent la **même** promesse — un seul aller-retour réseau                                                   | `token-store.ts`                                              |
-| CN-15 | Fenêtre de connexion                                | Aucun jeton et `auth.ui: true`                        | Fenêtre modale ; la promesse de configuration se résout à l'authentification                                               | `login-ui.ts`                                                 |
-| CN-16 | Absence de jeton **sans** interface : échec franc   | Aucun jeton, `auth.ui` absent ou faux                 | La configuration **jette** — il n'y a pas de chemin silencieux vers une application non authentifiée                       | `connector-api.ts`                                            |
-| CN-17 | Mot de passe effacé immédiatement                   | Envoi du formulaire                                   | La variable est vidée après usage, et le champ de saisie vidé à chaque erreur                                              | `auth-client.ts`, `login-ui.ts`                               |
-| CN-18 | Aucun `innerHTML` dans les surfaces de saisie       | Construction de la fenêtre et du bouton               | Uniquement `createElement` / `createElementNS` / `textContent`                                                             | `login-ui.ts`, `credential-button.ts`                         |
-| CN-19 | Feuille de style injectée par `textContent`         | Première ouverture                                    | Jamais par `innerHTML`, et **aucune donnée utilisateur n'y est interpolée**                                                | `login-ui.ts`                                                 |
-| CN-20 | Bouton d'accès injecté aux deux endroits            | Bandeau d'onglets de bureau, barre d'outils mobile    | Un observateur de mutations attend que le core ait construit ces conteneurs                                                | `credential-button.ts`                                        |
-| CN-21 | L'observateur se déconnecte tout seul               | Cibles jamais construites                             | Abandon après un délai — pas d'observateur qui vit jusqu'à la fin de la session                                            | `credential-button.ts`                                        |
-| CN-22 | Amorçage **interface seule**                        | `ui.showCredentialButton: true` dans le profil        | Le bouton apparaît **sans aucune authentification** ; le clic ne fait qu'émettre un événement                              | `entry.ts` → `_autoBootstrapUiOnly`                           |
-| CN-23 | La configuration explicite reprend la main          | `configure()` après un amorçage interface seule       | Le bouton autonome est retiré, puis réinstallé avec la vraie authentification derrière                                     | `connector-api.ts`, `credential-button.ts`                    |
-| CN-24 | Trois déclencheurs pour l'amorçage, un seul effet   | Deux événements + un repli immédiat                   | Idempotent : un verrou garantit un seul amorçage, quel que soit l'ordre de chargement du script                            | `entry.ts`                                                    |
-| CN-25 | Jeton non conforme signalé                          | Jeton sans point (donc non JWT)                       | Avertissement console **non bloquant** — utile en démonstration, visible en production                                     | `fetch-interceptor.ts`                                        |
-| CN-26 | Instance isolée pour intégrateur avancé             | `createConnector(config)`                             | Une instance **sans mutation de l'état global** ; son `destroy()` neutralise ses lectures de jeton                         | `connector-api.ts`                                            |
-| CN-27 | Six événements de cycle de vie                      | Authentification, renouvellement, clic, erreur, liens | Émis sur le document ; **deux sont annulables** — les demandes d'inscription et de mot de passe oublié                     | `login-ui.ts`, `credential-button.ts`, `fetch-interceptor.ts` |
+| ID    | Fonctionnalité                                      | Entrée                                                | Sortie observable                                                                                                          | Code                                                                                 |
+| ----- | --------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| CN-01 | Configuration explicite                             | `GeoLeaf.Connector.configure(config)`                 | Valide, désinstalle l'instance précédente, pose les trois chemins d'injection, résout un jeton                             | `connector-api.ts` → `configure`                                                     |
+| CN-02 | Deux modes d'obtention du jeton, **exclusifs**      | `getToken` **ou** `auth`                              | Rappel fourni par l'intégrateur, ou gestion autonome par le plugin. Déclarer les deux fait échouer la validation           | `config.ts` → `validateConfig`                                                       |
+| CN-03 | HTTPS imposé hors développement local               | `baseUrl` en `http://`                                | Refusé, sauf sur `localhost` / `127.0.0.1` où un avertissement console suffit                                              | `config.ts`                                                                          |
+| CN-04 | Les URL externes sont validées aussi                | `signupUrl`, `forgotPasswordUrl`                      | Mêmes règles que `baseUrl` — un lien de la fenêtre de connexion est une sortie vers un tiers                               | `config.ts` → `_validateExternalUrl`                                                 |
+| CN-05 | Variante d'icône corrigée en silence                | `iconVariant` inconnue                                | Ramenée à la valeur par défaut — **sans erreur ni avertissement** : une icône n'est pas une question de sécurité           | `config.ts` → `_normalizeIconVariant`                                                |
+| CN-06 | Injection sur `window.fetch`                        | Requête vers une URL préfixée par `baseUrl`           | En-tête d'autorisation ajouté ; **tout le reste passe directement** au `fetch` d'origine                                   | `fetch-interceptor.ts`                                                               |
+| CN-07 | `fetch` d'origine capturé **à l'import**            | Chargement du script                                  | La référence est prise avant tout autre remplacement — un second intercepteur ne peut pas s'insérer entre les deux         | `fetch-interceptor.ts`                                                               |
+| CN-08 | Injection dans l'ouvrier web                        | Chargement GeoJSON par ouvrier                        | Un crochet global est posé ; le gestionnaire d'ouvriers du core le lit **sans jamais importer ce plugin**                  | `fetch-interceptor.ts`, `packages/core/src/kernel/geojson/worker-manager.ts` du core |
+| CN-09 | Injection sur les tuiles                            | Tuiles vectorielles ou archive de tuiles              | `setTransformRequest` posé sur la carte native, alimenté par le **cache mémoire** (chemin synchrone obligatoire)           | `maplibre-bridge.ts`                                                                 |
+| CN-10 | Trois moments d'installation du pont cartographique | Carte prête ou non au moment de la configuration      | Immédiat, ou différé sur `geoleaf:map:ready`, **plus** une réinstallation sur changement de fond de carte                  | `maplibre-bridge.ts`                                                                 |
+| CN-11 | Routage par format                                  | URL de tuile vs URL de données                        | Les formats de tuiles vont au pont cartographique, le reste au remplacement de `fetch` — deux chemins, pas deux injections | `format-detector.ts`                                                                 |
+| CN-12 | Persistance du jeton                                | Authentification réussie                              | Base indexée du navigateur, plus un cache mémoire pour la lecture synchrone                                                | `token-store.ts`                                                                     |
+| CN-13 | Renouvellement **proactif**                         | Jeton à moins de cinq minutes de son expiration       | Renouvellement lancé sans bloquer la requête en cours                                                                      | `token-store.ts`                                                                     |
+| CN-14 | Une seule promesse de renouvellement en vol         | Requêtes concurrentes sur une expiration              | Les appels rejoignent la **même** promesse — un seul aller-retour réseau                                                   | `token-store.ts`                                                                     |
+| CN-15 | Fenêtre de connexion                                | Aucun jeton et `auth.ui: true`                        | Fenêtre modale ; la promesse de configuration se résout à l'authentification                                               | `login-ui.ts`                                                                        |
+| CN-16 | Absence de jeton **sans** interface : échec franc   | Aucun jeton, `auth.ui` absent ou faux                 | La configuration **jette** — il n'y a pas de chemin silencieux vers une application non authentifiée                       | `connector-api.ts`                                                                   |
+| CN-17 | Mot de passe effacé immédiatement                   | Envoi du formulaire                                   | La variable est vidée après usage, et le champ de saisie vidé à chaque erreur                                              | `auth-client.ts`, `login-ui.ts`                                                      |
+| CN-18 | Aucun `innerHTML` dans les surfaces de saisie       | Construction de la fenêtre et du bouton               | Uniquement `createElement` / `createElementNS` / `textContent`                                                             | `login-ui.ts`, `credential-button.ts`                                                |
+| CN-19 | Feuille de style injectée par `textContent`         | Première ouverture                                    | Jamais par `innerHTML`, et **aucune donnée utilisateur n'y est interpolée**                                                | `login-ui.ts`                                                                        |
+| CN-20 | Bouton d'accès injecté aux deux endroits            | Bandeau d'onglets de bureau, barre d'outils mobile    | Un observateur de mutations attend que le core ait construit ces conteneurs                                                | `credential-button.ts`                                                               |
+| CN-21 | L'observateur se déconnecte tout seul               | Cibles jamais construites                             | Abandon après un délai — pas d'observateur qui vit jusqu'à la fin de la session                                            | `credential-button.ts`                                                               |
+| CN-22 | Amorçage **interface seule**                        | `ui.showCredentialButton: true` dans le profil        | Le bouton apparaît **sans aucune authentification** ; le clic ne fait qu'émettre un événement                              | `entry.ts` → `_autoBootstrapUiOnly`                                                  |
+| CN-23 | La configuration explicite reprend la main          | `configure()` après un amorçage interface seule       | Le bouton autonome est retiré, puis réinstallé avec la vraie authentification derrière                                     | `connector-api.ts`, `credential-button.ts`                                           |
+| CN-24 | Trois déclencheurs pour l'amorçage, un seul effet   | Deux événements + un repli immédiat                   | Idempotent : un verrou garantit un seul amorçage, quel que soit l'ordre de chargement du script                            | `entry.ts`                                                                           |
+| CN-25 | Jeton non conforme signalé                          | Jeton sans point (donc non JWT)                       | Avertissement console **non bloquant** — utile en démonstration, visible en production                                     | `fetch-interceptor.ts`                                                               |
+| CN-26 | Instance isolée pour intégrateur avancé             | `createConnector(config)`                             | Une instance **sans mutation de l'état global** ; son `destroy()` neutralise ses lectures de jeton                         | `connector-api.ts`                                                                   |
+| CN-27 | Six événements de cycle de vie                      | Authentification, renouvellement, clic, erreur, liens | Émis sur le document ; **deux sont annulables** — les demandes d'inscription et de mot de passe oublié                     | `login-ui.ts`, `credential-button.ts`, `fetch-interceptor.ts`                        |
 
 Les tests qui couvrent ces lignes : `packages/plugins/connector/src/__tests__/` — l'emplacement
 canonique imposé par le contrat de plugin —, plus `e2e/11-connector.spec.js` côté navigateur.
@@ -166,25 +170,25 @@ défaut : la fiche décrivait `getToken` et `auth.endpoint` sans jamais dire **c
 concrètement dans un navigateur en développement**. Le mécanisme vivait dans trois fichiers qui ne se
 citaient pas.
 
-`apps/geoleaf-app/connector.local.js` (git-ignoré, gabarit `connector.local.example.js`) pose
+`apps/geoleaf-app/connector.local.js` (git-ignoré, gabarit `apps/geoleaf-app/connector.local.example.js`) pose
 `window.GEOLEAF_DEV_CONNECTOR = { baseUrl, getToken }` — un JWT de poste à privilège d'écriture. Il
-est chargé par une balise `<script type="module">` d'`index.html`, placée **avant** celle d'`init.js`
-(deux modules non-`async` s'exécutent dans l'ordre du document), et `init.js` se contente de tester
+est chargé par une balise `<script type="module">` d'`apps/geoleaf-app/index.html`, placée **avant** celle d'`apps/geoleaf-app/init.js`
+(deux modules non-`async` s'exécutent dans l'ordre du document), et `apps/geoleaf-app/init.js` se contente de tester
 le global avant d'appeler `GeoLeaf.Connector.configure(...)` — c'est du mode `getToken`.
 
-| Variante          | Livrée ? | Fichier | Balise dans `index.html` |
-| ----------------- | -------- | ------- | ------------------------ |
-| `deploy-core`     | **oui**  | absent  | retirée                  |
-| `deploy-full`     | **oui**  | absent  | retirée                  |
-| `deploy-coverage` | non      | absent  | retirée (copie du core)  |
-| `deploy-local`    | non      | présent | conservée                |
+| Variante          | Livrée ? | Fichier | Balise dans `apps/geoleaf-app/index.html` |
+| ----------------- | -------- | ------- | ----------------------------------------- |
+| `deploy-core`     | **oui**  | absent  | retirée                                   |
+| `deploy-full`     | **oui**  | absent  | retirée                                   |
+| `deploy-coverage` | non      | absent  | retirée (copie du core)                   |
+| `deploy-local`    | non      | présent | conservée                                 |
 
-Le retrait se fait par la paire de marqueurs `GEOLEAF-DEPLOY:DEV-CONNECTOR` (`build-deploy.cjs`,
+Le retrait se fait par la paire de marqueurs `GEOLEAF-DEPLOY:DEV-CONNECTOR` (`scripts/build-deploy.cjs`,
 `stripDevConnectorScript`), pas par expression régulière — les regexes de gating de ce fichier sont
 `/gm` sans `/s`, donc incapables de couvrir un bloc multi-ligne. `APP-11`
-(`verify-app-template.cjs`) tient la présence des marqueurs et la forme mono-ligne de la balise.
+(`scripts/verify-app-template.cjs`) tient la présence des marqueurs et la forme mono-ligne de la balise.
 
-🛑 **Ce que la garde `localhost` d'`init.js` ne faisait pas, et qu'on lui a fait dire pendant deux
+🛑 **Ce que la garde `localhost` d'`apps/geoleaf-app/init.js` ne faisait pas, et qu'on lui a fait dire pendant deux
 sprints.** Elle empêchait le bootstrap de **s'exécuter** sur une origine déployée. Elle n'empêchait
 pas de **lire** un fichier servi statiquement : jusqu'au 09/08/2026 le fichier réel était recopié
 dans les trois premières variantes — plus dans leurs `.gz` et `.br` —, et un `curl` sur la racine du
@@ -194,15 +198,15 @@ de commits. La garde a été **retirée avec l'import** : elle codait en dur un 
 une source applicative, et elle ne gardait plus rien que le build ne garde mieux.
 
 ⚠️ **La cause première n'était ni le contenu du fichier ni la garde, mais un `import()` OBLIGATOIRE
-d'un fichier OPTIONNEL.** `init.js` importait `./connector.local.js` inconditionnellement, ce qui
+d'un fichier OPTIONNEL.** `apps/geoleaf-app/init.js` importait `./connector.local.js` inconditionnellement, ce qui
 forçait le fichier à exister dans toute variante — d'où un talon inerte, une entrée dans le
-`required` du build, et une exemption nommée dans `verify-app-template.cjs`. Un premier correctif
+`required` du build, et une exemption nommée dans `scripts/verify-app-template.cjs`. Un premier correctif
 n'a traité que le contenu (un talon au lieu du jeton) ; c'est le passage à une **balise gatée** qui a
 supprimé l'obligation, et avec elle les trois pièces de machinerie.
 
-Le partage est désormais : **`build-deploy.cjs`** empêche la diffusion (drapeau
+Le partage est désormais : **`scripts/build-deploy.cjs`** empêche la diffusion (drapeau
 `includeDevConnector` + retrait de la balise, vrais pour `deploy-local` seule),
-**`verify-deploy-no-secrets.cjs`** tient l'invariant côté artefact — vue rougir sur le défaut réel,
+**`scripts/verify-deploy-no-secrets.cjs`** tient l'invariant côté artefact — vue rougir sur le défaut réel,
 `.gz` et `.br` compris, avant d'être crue.
 
 ⚠️ **Un `.env` ne règle pas ce problème** — il n'est ni lisible par un navigateur, ni un endroit où
@@ -231,7 +235,7 @@ Passée à l'appel de `configure()`, **jamais lue dans un profil** — à une ex
 l'appelant. C'est écrit dans le type ; le plugin ne s'en occupe **que** dans le mode `auth`.
 
 ⚠️ **Aucune de ces clés n'est gatée** par le test-garde de cette fiche, qui ne couvre que le
-manifeste. Elles se relisent contre `config.ts` — part humaine de la règle ⛔ de `CLAUDE.md`.
+manifeste. Elles se relisent contre `config.ts` — part humaine de la règle documentaire du dépôt.
 
 ### La seule clé de profil : `ui.showCredentialButton`
 
@@ -397,7 +401,7 @@ retiré du dossier de tri** — même motif que les CDC précédents, tracé au 
 | Énoncé du CDC                                                                                                | Ce que dit le code                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | §11 — `configure`, `openLoginModal` et `createConnector` situés dans `entry.ts`, avec leurs plages de lignes | **Les trois ont déménagé** dans `connector-api.ts`, et pour un motif structurel : faire entrer le paquet dans la gate de pureté des façades. Les plages de lignes ne désignent plus rien                                                            |
-| §23 et §25 — « la direction core ⊄ connector n'est **pas** gatée, revue manuelle »                           | **Périmé** : l'expression de `verify-core-standalone.cjs` couvre `@geoleaf-plugins` en entier. Le trou décrit visait l'ancien nom de paquet                                                                                                         |
+| §23 et §25 — « la direction core ⊄ connector n'est **pas** gatée, revue manuelle »                           | **Périmé** : l'expression de `scripts/verify-core-standalone.cjs` couvre `@geoleaf-plugins` en entier. Le trou décrit visait l'ancien nom de paquet                                                                                                 |
 | §24 — les six événements                                                                                     | ✅ **Vérifiés exacts**, y compris les deux annulables                                                                                                                                                                                               |
 | §25 — les huit mitigations de sécurité                                                                       | ✅ **Vérifiées exactes** sur les points lisibles dans le code : effacement du mot de passe, HTTPS en production, zéro `innerHTML`, feuille par `textContent`, jeton non journalisé, avertissement sur jeton non conforme, observateur qui abandonne |
 | §26 — chemin sans interception « à coût nul »                                                                | ✅ **Exact** — une comparaison de préfixe, puis passage direct au `fetch` d'origine                                                                                                                                                                 |

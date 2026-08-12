@@ -1,138 +1,134 @@
 ---
-title: "GeoLeaf.UI — Documentation du module UI"
+title: "GeoLeaf.UI — UI module documentation"
 ---
 
-# GeoLeaf.UI — Documentation du module UI
+# GeoLeaf.UI — UI module documentation
 
-Product Version: GeoLeaf Platform V3
+**Version:** 3.0.0
 
-**Version :** 3.0.0
+**Module:** `packages/core/src/modules/built-in/ui/` (facade: `geoleaf.ui.ts`)
 
-**Module :** `packages/core/src/modules/built-in/ui/` (façade : `geoleaf.ui.ts`)
-
-**Dernière mise à jour :** juillet 2026
-
-Le module **GeoLeaf.UI** gère tous les aspects d'interface utilisateur de GeoLeaf. Il adopte une **architecture modulaire** avec des sous-modules spécialisés pour des responsabilités spécifiques.
+The **GeoLeaf.UI** module handles every user-interface aspect of GeoLeaf. It follows a **modular architecture**, with dedicated sub-modules for specific responsibilities.
 
 ---
 
-## Architecture du module UI
+## UI module architecture
 
-Le module UI est organisé en sous-modules TypeScript :
+The UI module is split into TypeScript sub-modules:
 
-| Fichier source                  | Responsabilités                                                            |
-| ------------------------------- | -------------------------------------------------------------------------- |
-| **`geoleaf.ui.ts`** (façade)    | Export de `UI` depuis `built-in/ui/ui-api.ts`                              |
-| **`ui-api.ts`** (orchestrateur) | Délégation vers les sous-modules et adaptateur `notify()`                  |
-| **`ui/theme.ts`**               | Thème light/dark : détection système, persistance, application classes CSS |
-| **`ui/components.ts`**          | Agrégat `_UIComponents` — recompose `legend-symbols` + `widgets`           |
-| **`ui/legend-symbols.ts`**      | Rendu des symboles de légende (cercle, ligne, polygone, étoile, icône)     |
-| **`ui/widgets.ts`**             | Composants DOM réutilisables (accordéon, toggles…)                         |
-| **`ui/event-delegation.ts`**    | Délégation d'événements DOM                                                |
-| **`ui/pill-search.ts`**         | Champ de recherche « pill »                                                |
-| **`ui/ui-slot-builder.ts`**     | Garde de visibilité + allowlist SVG des boutons de slot (desktop + mobile) |
-| **`ui/toolbar-dispatch.ts`**    | Émission de `geoleaf:toolbar:action` (résolution lazy incluse)             |
-| **`ui/roving-tabindex.ts`**     | Arithmétique clavier des widgets à roving tabindex (WCAG 1.5.5)            |
-| **`ui/desktop/`**               | Panneau et registre desktop                                                |
-| **`ui/mobile/`**                | Barre d'outils mobile                                                      |
+| Source file                    | Responsibilities                                                       |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| **`geoleaf.ui.ts`** (facade)   | Exports `UI` from `built-in/ui/ui-api.ts`                              |
+| **`ui-api.ts`** (orchestrator) | Delegates to the sub-modules and adapts `notify()`                     |
+| **`ui/theme.ts`**              | Light/dark theme: system detection, persistence, CSS class application |
+| **`ui/components.ts`**         | `_UIComponents` aggregate — recomposes `legend-symbols` + `widgets`    |
+| **`ui/legend-symbols.ts`**     | Legend symbol rendering (circle, line, polygon, star, icon)            |
+| **`ui/widgets.ts`**            | Reusable DOM components (accordion, toggles…)                          |
+| **`ui/event-delegation.ts`**   | DOM event delegation                                                   |
+| **`ui/pill-search.ts`**        | "Pill" search field                                                    |
+| **`ui/ui-slot-builder.ts`**    | Visibility guard + SVG allowlist for slot buttons (desktop and mobile) |
+| **`ui/toolbar-dispatch.ts`**   | Emission of `geoleaf:toolbar:action` (including lazy resolution)       |
+| **`ui/roving-tabindex.ts`**    | Keyboard arithmetic for roving-tabindex widgets (WCAG 1.5.5)           |
+| **`ui/desktop/`**              | Desktop panel and registry                                             |
+| **`ui/mobile/`**               | Mobile toolbar                                                         |
 
-> **Documentation détaillée par composant :**
+> **Detailed documentation per component:**
 >
-> - [GeoLeaf_UI_Components_README.md](./GeoLeaf_UI_Components_README.md) - Composants UI internes
+> - [GeoLeaf_UI_Components_README.md](./GeoLeaf_UI_Components_README.md) - Internal UI components
 
 ---
 
-## Responsabilités du module UI
+## Responsibilities of the UI module
 
-GeoLeaf.UI gère **5 domaines fonctionnels** :
+GeoLeaf.UI covers **5 functional domains**:
 
-### 1. Gestion des thèmes visuels
+### 1. Visual theme management
 
-- Application thème light/dark sur `<body>` et `#geoleaf-map`
-- Détection préférence système (`prefers-color-scheme`) via `initAutoTheme()`
-- Persistance dans `localStorage` (clé `geoleaf_theme`)
-- Toggle interactif via `data-gl-role="theme-toggle"`
-- Écoute continue de `matchMedia` pour le suivi des changements OS en mode auto
+- Applies the light/dark theme to `<body>` and `#geoleaf-map`
+- Detects the system preference (`prefers-color-scheme`) through `initAutoTheme()`
+- Persists the choice in `localStorage` (key `geoleaf_theme`)
+- Interactive toggle through `data-gl-role="theme-toggle"`
+- Keeps listening to `matchMedia` so OS changes are followed in auto mode
 
-### 2. ~~Construction de panneaux POI~~ — déplacée
+### 2. ~~POI panel construction~~ — moved
 
-Le rendu de fiche (side panel, popup, tooltip) avec layouts JSON, résolution de champs
-en dot notation et sections accordéon **n'appartient plus à `GeoLeaf.UI`** : il est
-assuré par la capacité **`feature-info`**, intégrée au core et configurée par couche
-(`layers.<id>.capabilities.feature-info`). Le module `ui/content-builder/` qui portait
-ce domaine a été supprimé, ainsi que `GeoLeaf.POI` (dissolution du sous-système POI,
-v3.0.0). Voir [API_REFERENCE.md](../API_REFERENCE.md).
+Feature-card rendering (side panel, popup, tooltip) with JSON layouts, dot-notation field
+resolution and accordion sections **no longer belongs to `GeoLeaf.UI`**: it is handled by the
+**`feature-info`** capability, built into the core and configured per layer
+(`layers.<id>.capabilities.feature-info`). The `ui/content-builder/` module that carried this
+domain has been removed, along with `GeoLeaf.POI` (the POI sub-system was dissolved in v3.0.0).
+See [API_REFERENCE.md](../API_REFERENCE.md).
 
-### 3. ~~Panneaux de filtres~~ — déplacée
+### 3. ~~Filter panels~~ — moved
 
-Le panneau de filtres (construction depuis le profil, états catégories/tags/recherche/
-proximité, compteurs, tags actifs) appartient à la capacité **`filter`** et se pilote par
-**`GeoLeaf.Filter`** (singulier). `GeoLeaf.UI` n'en construit plus aucun.
+The filter panel (construction from the profile, category/tag/search/proximity states, counters,
+active tags) belongs to the **`filter`** capability and is driven through **`GeoLeaf.Filter`**
+(singular). `GeoLeaf.UI` no longer builds any of it.
 
-### 4. Contrôles MapLibre
+### 4. MapLibre controls
 
-- Contrôle de géolocalisation (`initGeolocationControl`)
-- Contrôle de toggle thème intégré à la carte (`initThemeToggleControl`)
+- Geolocation control (`initGeolocationControl`)
+- Theme-toggle control embedded in the map (`initThemeToggleControl`)
 
-> Ces deux méthodes restent exposées sur `GeoLeaf.UI`, mais l'implémentation vit dans les
-> capacités `geolocation` et `theme-toggle`. Le plein écran et l'ajout de POI ne sont plus
-> des contrôles de `GeoLeaf.UI` : le premier appartient à la capacité `fullscreen`, le
-> second au plugin `@geoleaf-plugins/editor` (`GeoLeaf.Editor`).
+> These two methods are still exposed on `GeoLeaf.UI`, but the implementation lives in the
+> `geolocation` and `theme-toggle` capabilities. Fullscreen and POI creation are no longer
+> `GeoLeaf.UI` controls: the former belongs to the `fullscreen` capability, the latter to the
+> `@geoleaf-plugins/editor` plugin (`GeoLeaf.Editor`).
 
-### 5. Utilitaires DOM
+### 5. DOM utilities
 
-- Notifications toast (`success`, `error`, `warning`, `info`) — rendues par la capacité
-  `toast-renderer` ; `GeoLeaf.UI.notify()` reste la surface d'appel
-- Délégation d'événements
-- Helpers DOM (`resolveField`, `getActiveProfileConfig`)
+- Toast notifications (`success`, `error`, `warning`, `info`) — rendered by the
+  `toast-renderer` capability; `GeoLeaf.UI.notify()` remains the call surface
+- Event delegation
+- DOM helpers (`resolveField`, `getActiveProfileConfig`)
 
-> **Ce que GeoLeaf.UI NE gère PAS** :
+> **What GeoLeaf.UI does NOT handle**:
 >
-> - Fonds de carte (voir `GeoLeaf.Baselayers`)
-> - Données de couches, points compris (voir `GeoLeaf.Layers`)
-> - Logique de filtrage (voir `GeoLeaf.Filter`)
-> - Rendu des fiches au clic (capacité `feature-info`, configurée par couche)
-> - GeoJSON (module interne, configuré via `geojsonLayers` dans `profile.json`)
-> - Légende (voir `GeoLeaf.Legend`)
+> - Basemaps (see `GeoLeaf.Baselayers`)
+> - Layer data, points included (see `GeoLeaf.Layers`)
+> - Filtering logic (see `GeoLeaf.Filter`)
+> - Feature-card rendering on click (`feature-info` capability, configured per layer)
+> - GeoJSON (internal module, configured through `geojsonLayers` in `profile.json`)
+> - Legend (see `GeoLeaf.Legend`)
 
 ---
 
-## API Publique
+## Public API
 
-### API Thème
+### Theme API
 
-| Fonction                      | Description                                         | Retour   |
-| ----------------------------- | --------------------------------------------------- | -------- |
-| `getCurrentTheme()`           | Retourne le thème actif (`"light"` ou `"dark"`)     | `string` |
-| `applyTheme(theme, persist?)` | Applique un thème (`"light"`, `"dark"`)             | `void`   |
-| `toggleTheme()`               | Bascule entre light/dark                            | `void`   |
-| `initThemeToggle(options)`    | Initialise le bouton toggle thème                   | `void`   |
-| `initAutoTheme(themeConfig)`  | Initialise le thème auto selon `ui.theme` du profil | `void`   |
+| Function                      | Description                                            | Returns  |
+| ----------------------------- | ------------------------------------------------------ | -------- |
+| `getCurrentTheme()`           | Returns the active theme (`"light"` or `"dark"`)       | `string` |
+| `applyTheme(theme, persist?)` | Applies a theme (`"light"`, `"dark"`)                  | `void`   |
+| `toggleTheme()`               | Switches between light and dark                        | `void`   |
+| `initThemeToggle(options)`    | Initialises the theme toggle button                    | `void`   |
+| `initAutoTheme(themeConfig)`  | Initialises the auto theme from the profile `ui.theme` | `void`   |
 
-**Exemple :**
+**Example:**
 
 ```js
-// Appliquer thème sombre
+// Apply the dark theme
 GeoLeaf.UI.applyTheme("dark");
 
-// Récupérer thème actuel
+// Read the current theme
 const theme = GeoLeaf.UI.getCurrentTheme(); // "dark"
 
 // Toggle
-GeoLeaf.UI.toggleTheme(); // passe à "light"
+GeoLeaf.UI.toggleTheme(); // switches to "light"
 
-// Initialiser depuis la config profil (appelé automatiquement au boot)
-GeoLeaf.UI.initAutoTheme("auto"); // détecte prefers-color-scheme
+// Initialise from the profile configuration (called automatically at boot)
+GeoLeaf.UI.initAutoTheme("auto"); // detects prefers-color-scheme
 ```
 
-### API Contrôles
+### Controls API
 
-| Fonction                               | Description                       | Paramètres                             |
+| Function                               | Description                       | Parameters                             |
 | -------------------------------------- | --------------------------------- | -------------------------------------- |
-| `initGeolocationControl(map, options)` | Initialise la géolocalisation     | `map`: maplibre.Map, `options`: Object |
-| `initThemeToggleControl(map, options)` | Contrôle thème intégré à la carte | `map`: maplibre.Map, `options`: Object |
+| `initGeolocationControl(map, options)` | Initialises geolocation           | `map`: maplibre.Map, `options`: Object |
+| `initThemeToggleControl(map, options)` | Theme control embedded in the map | `map`: maplibre.Map, `options`: Object |
 
-**Exemple :**
+**Example:**
 
 ```js
 import * as maplibregl from "maplibre-gl";
@@ -141,46 +137,45 @@ const map = new maplibregl.Map({ container: "map", style: "..." });
 GeoLeaf.UI.initGeolocationControl(map, {});
 ```
 
-> **Retirés en v3.0.0** _(breaking)_ : `initFullscreenControl()` et `initPoiAddControl()`
-> n'existent plus sur `GeoLeaf.UI`. Le plein écran est une capacité in-core activée par
-> configuration (`modules.fullscreen`) ; l'ajout de POI appartient au plugin
-> `@geoleaf-plugins/editor` et se pilote via `GeoLeaf.Editor`.
+> **Removed in v3.0.0** _(breaking)_: `initFullscreenControl()` and `initPoiAddControl()` no
+> longer exist on `GeoLeaf.UI`. Fullscreen is an in-core capability enabled by configuration
+> (`modules.fullscreen`); POI creation belongs to the `@geoleaf-plugins/editor` plugin and is
+> driven through `GeoLeaf.Editor`.
 
-### API Notifications
+### Notifications API
 
-| Fonction                           | Description                            |
-| ---------------------------------- | -------------------------------------- |
-| `Notifications.init(config)`       | Initialise le système de notifications |
-| `Notifications.success(msg, dur?)` | Toast succès (vert)                    |
-| `Notifications.error(msg, dur?)`   | Toast erreur (rouge)                   |
-| `Notifications.warning(msg, dur?)` | Toast avertissement (orange)           |
-| `Notifications.info(msg, dur?)`    | Toast information (bleu)               |
-| `Notifications.clearAll()`         | Supprime tous les toasts actifs        |
+| Function                           | Description                         |
+| ---------------------------------- | ----------------------------------- |
+| `Notifications.init(config)`       | Initialises the notification system |
+| `Notifications.success(msg, dur?)` | Success toast (green)               |
+| `Notifications.error(msg, dur?)`   | Error toast (red)                   |
+| `Notifications.warning(msg, dur?)` | Warning toast (orange)              |
+| `Notifications.info(msg, dur?)`    | Information toast (blue)            |
+| `Notifications.clearAll()`         | Removes every active toast          |
 
-**Exemple :**
+**Example:**
 
 ```js
-GeoLeaf.UI.Notifications.success("Données chargées !");
-GeoLeaf.UI.Notifications.error("Erreur réseau", 8000);
+GeoLeaf.UI.Notifications.success("Data loaded");
+GeoLeaf.UI.Notifications.error("Network error", 8000);
 ```
 
-### API Panneaux Filtres — retirée de `GeoLeaf.UI` en v3.0.0
+### Filter panel API — removed from `GeoLeaf.UI` in v3.0.0
 
-> **`GeoLeaf.UI.buildFilterPanelFromActiveProfile()` n'existe plus** _(breaking)_. Son
-> constructeur (`ui/filter-panel/**`) a été retiré avec l'extraction de la capacité
-> `filter` : le panneau se construit désormais tout seul depuis le profil actif, et se
-> pilote via **`GeoLeaf.Filter`**.
+> **`GeoLeaf.UI.buildFilterPanelFromActiveProfile()` no longer exists** _(breaking)_. Its builder
+> (`ui/filter-panel/**`) was removed when the `filter` capability was extracted: the panel now
+> builds itself from the active profile, and is driven through **`GeoLeaf.Filter`**.
 
-**Exemple :**
+**Example:**
 
 ```js
-// Le panneau est monté par la capacité `filter` (activée par configuration).
-// Réagir à un changement de filtre :
+// The panel is mounted by the `filter` capability (enabled by configuration).
+// React to a filter change:
 GeoLeaf.Events.on("geoleaf:filters:applied", () => {
     console.log(GeoLeaf.Filter.getActiveFilter());
 });
 
-// Appliquer / réinitialiser par programme :
+// Apply / reset programmatically:
 GeoLeaf.Filter.applyFilter(filterState);
 GeoLeaf.Filter.reset();
 ```
@@ -189,26 +184,26 @@ GeoLeaf.Filter.reset();
 
 ## Initialisation
 
-### Via `GeoLeaf.UI.init()`
+### Through `GeoLeaf.UI.init()`
 
-Fonction wrapper pour initialiser les composants UI principaux :
+Wrapper function that initialises the main UI components:
 
 ```js
 GeoLeaf.UI.init({
-    buttonSelector: '[data-gl-role="theme-toggle"]', // Sélecteur bouton thème
-    autoInitOnDomReady: true, // Init auto sur DOMContentLoaded
-    map: mapInstance, // Instance MapLibre
-    mapContainer: document.getElementById("map"), // Conteneur pour fullscreen
+    buttonSelector: '[data-gl-role="theme-toggle"]', // Theme button selector
+    autoInitOnDomReady: true, // Auto init on DOMContentLoaded
+    map: mapInstance, // MapLibre instance
+    mapContainer: document.getElementById("map"), // Container used for fullscreen
 });
 ```
 
-En pratique, `init()` est appelé automatiquement au boot. Il n'est pas nécessaire de l'appeler manuellement.
+In practice, `init()` is called automatically at boot. Calling it manually is not required.
 
 ---
 
-## Intégration Configuration JSON
+## JSON configuration integration
 
-Le module UI lit la configuration depuis `GeoLeaf.Config` (profil actif) :
+The UI module reads its configuration from `GeoLeaf.Config` (active profile):
 
 ```json
 {
@@ -241,42 +236,41 @@ Le module UI lit la configuration depuis `GeoLeaf.Config` (profil actif) :
 
 ---
 
-## Intégration avec autres modules
+## Integration with other modules
 
-### UI ↔ Theme (sous-module)
+### UI ↔ Theme (sub-module)
 
 ```js
-// geoleaf.ui.ts délègue à ui/theme.ts
+// geoleaf.ui.ts delegates to ui/theme.ts
 GeoLeaf.UI.applyTheme("dark");
-// → ui/theme.ts applique les classes CSS sur <body> et #geoleaf-map
-// → dispatch event "geoleaf:ui-theme-changed"
+// → ui/theme.ts applies the CSS classes on <body> and #geoleaf-map
+// → dispatches the "geoleaf:ui-theme-changed" event
 ```
 
 ### UI ↔ Filters
 
-> **BREAKING (v3.0.0)** — `GeoLeaf.Filters.filterPoiList` (référencé dans les
-> extraits de cette section) est **retiré** : 0 consommateur interne (roadmap
-> nettoyage, Sprint 3). Le panneau de filtre actif est la capacité `GeoLeaf.Filter`
-> (singulier) — `getActiveFilter()` / `applyFilter(state)`. Voir
+> **BREAKING (v3.0.0)** — `GeoLeaf.Filters.filterPoiList` is **removed**: it had no internal
+> consumer. The active filter panel is the `GeoLeaf.Filter` capability (singular) —
+> `getActiveFilter()` / `applyFilter(state)`. See
 > [API_REFERENCE.md](../API_REFERENCE.md#filter--the-filter-panel-singular).
 >
-> **BREAKING (v3.1.0)** — le namespace `GeoLeaf.Filters` (pluriel) est supprimé
-> en entier. Il ne restait que `filterRouteList`, sans aucun appelant.
+> **BREAKING (v3.1.0)** — the `GeoLeaf.Filters` namespace (plural) is removed entirely. All that
+> remained was `filterRouteList`, with no caller.
 
 ```js
-// UI construit l'interface, GeoLeaf.Filter (capacité) exécute la logique
+// UI builds the interface, GeoLeaf.Filter (capability) runs the logic
 const state = GeoLeaf.Filter.getActiveFilter();
 GeoLeaf.Filter.applyFilter(state);
 ```
 
-### UI ↔ fiches de features
+### UI ↔ feature cards
 
-Le rendu d'une fiche n'est plus piloté depuis `GeoLeaf.UI`. Un clic sur une feature émet
-`geoleaf:feature:click`, que la capacité `feature-info` rend selon la configuration de la
-couche :
+Feature-card rendering is no longer driven from `GeoLeaf.UI`. Clicking a feature emits
+`geoleaf:feature:click`, which the `feature-info` capability renders according to the layer
+configuration:
 
 ```js
-// Se configure par couche — aucun appel impératif :
+// Configured per layer — no imperative call:
 // layers.<id>.capabilities.feature-info = { … }
 GeoLeaf.Events.on("geoleaf:feature:click", (e) => {
     console.log(e.detail.layerId, e.detail.properties);
@@ -286,62 +280,62 @@ GeoLeaf.Events.on("geoleaf:feature:click", (e) => {
 ### UI ↔ Config
 
 ```js
-// UI lit profil actif pour layouts et filtres
+// UI reads the active profile for layouts and filters
 const profile = GeoLeaf.Config.getActiveProfile();
 const layout = profile.layouts?.poiSidePanel || [];
 ```
 
 ---
 
-## Bonnes Pratiques
+## Good practices
 
-### A FAIRE
+### Do
 
 ```js
-// 1. Utiliser applyTheme pour changements programmatiques
+// 1. Use applyTheme for programmatic changes
 GeoLeaf.UI.applyTheme("dark");
 
-// 2. Piloter le panneau de filtres via la capacité Filter
-//    (le panneau est construit depuis le profil par la capacité elle-même)
+// 2. Drive the filter panel through the Filter capability
+//    (the panel is built from the profile by the capability itself)
 GeoLeaf.Filter.applyFilter(filterState);
 GeoLeaf.Filter.reset();
 
-// 3. Personnaliser la fiche d'une couche par CONFIGURATION, pas par appel
-//    layers.<id>.capabilities.feature-info — rendu par la capacité feature-info
+// 3. Customise a layer's feature card by CONFIGURATION, not by call
+//    layers.<id>.capabilities.feature-info — rendered by the feature-info capability
 ```
 
-### A EVITER
+### Avoid
 
 ```js
-// 1. Manipuler directement les classes CSS thème
-document.body.classList.add("gl-theme-dark"); // utiliser applyTheme()
+// 1. Manipulating the theme CSS classes directly
+document.body.classList.add("gl-theme-dark"); // use applyTheme()
 
-// 2. Construire le HTML d'une fiche manuellement
-container.innerHTML = `<h2>${f.label}</h2>`; // configurer capabilities.feature-info
+// 2. Building the HTML of a feature card by hand
+container.innerHTML = `<h2>${f.label}</h2>`; // configure capabilities.feature-info
 
-// 3. Accéder directement aux sous-modules
-import { _UITheme } from "ui/theme.ts"; // utiliser GeoLeaf.UI.applyTheme()
+// 3. Reaching into the sub-modules directly
+import { _UITheme } from "ui/theme.ts"; // use GeoLeaf.UI.applyTheme()
 ```
 
 ---
 
-## Résumé API Complète
+## Full API summary
 
-| Catégorie         | Fonctions principales                                                                        | Documentation                        |
+| Category          | Main functions                                                                               | Documentation                        |
 | ----------------- | -------------------------------------------------------------------------------------------- | ------------------------------------ |
-| **Thème**         | `getCurrentTheme()`, `applyTheme()`, `toggleTheme()`, `initThemeToggle()`, `initAutoTheme()` | Ce README                            |
-| **Contrôles**     | `initGeolocationControl()`, `initThemeToggleControl()`                                       | Ce README                            |
-| **Notifications** | `notify()`, `Notifications.success()`, `.error()`, `.warning()`, `.info()`, `.clearAll()`    | Ce README                            |
-| **Mobile**        | `initMobileToolbar()`                                                                        | Ce README                            |
-| **Init**          | `init()`                                                                                     | Ce README                            |
-| ~~**Filtres**~~   | déplacé — voir `GeoLeaf.Filter` (capacité `filter`)                                          | [API_REFERENCE](../API_REFERENCE.md) |
-| ~~**Content**~~   | déplacé — voir la capacité `feature-info`                                                    | [API_REFERENCE](../API_REFERENCE.md) |
+| **Theme**         | `getCurrentTheme()`, `applyTheme()`, `toggleTheme()`, `initThemeToggle()`, `initAutoTheme()` | This README                          |
+| **Controls**      | `initGeolocationControl()`, `initThemeToggleControl()`                                       | This README                          |
+| **Notifications** | `notify()`, `Notifications.success()`, `.error()`, `.warning()`, `.info()`, `.clearAll()`    | This README                          |
+| **Mobile**        | `initMobileToolbar()`                                                                        | This README                          |
+| **Init**          | `init()`                                                                                     | This README                          |
+| ~~**Filters**~~   | moved — see `GeoLeaf.Filter` (`filter` capability)                                           | [API_REFERENCE](../API_REFERENCE.md) |
+| ~~**Content**~~   | moved — see the `feature-info` capability                                                    | [API_REFERENCE](../API_REFERENCE.md) |
 
 ---
 
-## Voir Aussi
+## See also
 
-- [API_REFERENCE.md](../API_REFERENCE.md#layers--feature-data) - Données des couches (remplace le module POI, dissous en v3)
-- [API_REFERENCE.md](../API_REFERENCE.md#filter--the-filter-panel-singular) - Capacité Filter
+- [API_REFERENCE.md](../API_REFERENCE.md#layers--feature-data) - Layer data (replaces the POI module, dissolved in v3)
+- [API_REFERENCE.md](../API_REFERENCE.md#filter--the-filter-panel-singular) - Filter capability
 - [GeoLeaf_Config_README.md](../config/GeoLeaf_Config_README.md) - Configuration
-- [GeoLeaf_Core_README.md](../core/GeoLeaf_core_README.md) - Module Core
+- [GeoLeaf_Core_README.md](../core/GeoLeaf_core_README.md) - Core module

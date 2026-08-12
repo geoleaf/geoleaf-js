@@ -7,16 +7,20 @@
 > **La nuance qui compte, et que la version précédente écrasait :** il y avait **deux**
 > mécanismes « lazy », et un seul a disparu.
 >
-> | Mécanisme                                                                        | État                                                                                                                 |
-> | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-> | `PluginRegistry.registerLazy(name, resolver)` + `.load()`                        | **VIVANT** — `kernel/api/plugin-registry.ts:80` et `:212`. C'est le lazy au niveau bundle, utilisé par les capacités |
-> | `GeoLeaf._loadModule()` · `GeoLeaf._loadAllSecondaryModules()` · `src/lazy/*.ts` | **SUPPRIMÉS** — `bundle-esm-entry.ts:20` : « BREAKING (S5) … are gone ». Le répertoire n'existe pas                  |
+> | Mécanisme                                                                        | État                                                                                                                               |
+> | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+> | `PluginRegistry.registerLazy(name, resolver)` + `.load()`                        | **VIVANT** — les deux membres sont dans `kernel/api/plugin-registry.ts`. C'est le lazy au niveau bundle, utilisé par les capacités |
+> | `GeoLeaf._loadModule()` · `GeoLeaf._loadAllSecondaryModules()` · `src/lazy/*.ts` | **SUPPRIMÉS** — `bundle-esm-entry.ts:20` : « BREAKING (S5) … are gone ». Le répertoire n'existe pas                                |
 >
 > Confondre les deux fait croire que le registre est mort ; il ne l'est pas.
 
 **Version produit :** GeoLeaf Platform V2
 **Version :** 2.0.0
 **Date :** mars 2026
+
+📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `packages/core/src/`. Un
+chemin qui commence par `packages/`, `scripts/`, `profiles/`, `apps/` ou `docs/` est relatif à la
+**racine du dépôt**.
 
 > **Annexe de référence du [Plugin Contract v1](PLUGIN_ARCHITECTURE_SPEC.md).** Document **descriptif et vivant** (il suit le code). Les règles **normatives figées** vivent dans [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) — en cas de divergence, la spec prévaut.
 
@@ -40,28 +44,30 @@ flowchart TD
     A[GeoLeaf Core MIT<br/>geoleaf.esm.js] --> B[Globals B1→B11<br/>APIController]
     B --> C[GeoLeaf.plugins<br/>PluginRegistry]
     B --> M[GeoLeaf.registry<br/>ModuleRegistry]
-    C --> D[Plugin Storage]
-    C --> E[Plugin AddPOI]
-    M --> MA[SecurityModule]
+    C --> D[Plugin Connector]
+    C --> E[Plugin Editor]
     M --> MB[CoreMapModule]
     M --> MC[ConfigModule]
     M --> MD[SharedModule]
     M --> ME[GeoJSONModule]
     M --> MF[UIModule]
-    M --> MG[POIModule]
-    M --> MH[APIModule]
-    M --> MI[RouteModule — optionnel]
-    M --> MJ[LabelsModule — optionnel]
-    M --> MK[LegendModule — optionnel]
-    M --> ML[TableModule — optionnel]
-    M --> MN[SearchModule — optionnel]
+    M --> MG[ThemeEngineModule]
+    M --> MI[modules de CAPACITÉ — gatés par le preset]
     B --> F[GeoLeaf.boot]
-    D --> G[GeoLeaf.Storage]
-    E --> H[GeoLeaf.POI.AddForm]
+    D --> G[GeoLeaf.Connector]
+    E --> H[GeoLeaf.Editor.AddForm]
     F --> I[startApp + ModuleRegistry.init]
     I --> J[MapLibre GL JS via IMapAdapter]
     I --> K[Init plugins optionnels]
 ```
+
+> ⚠️ **Ce graphe listait HUIT modules noyau et cinq optionnels — corrigé le 11/08/2026.**
+> Il y a **six** modules noyau (`app/boot-install.ts:110` : _« S6 Lot 6: 6 kernel modules, not
+> 8 »_) ; `SecurityModule` et `APIModule` étaient des enveloppes vidées, `POIModule` est dissous
+> au S9, et `TableModule` / `SearchModule` n'ont **jamais eu de classe** dans ce dépôt. Les
+> capacités (route, labels, legend…) ne sont plus des nœuds nommés : elles sont enregistrées par
+> le preset (`presets/apply-preset.ts:203`), gatées par la config. Côté plugins, `AddPOI` a
+> fusionné dans `editor` au Sprint 5 — le namespace vivant est `GeoLeaf.Editor.AddForm`.
 
 ---
 
@@ -79,11 +85,11 @@ sequenceDiagram
 
     U->>C: Load geoleaf.esm.js
     C->>PR: register('core')
-    C->>MR: register(SecurityModule, CoreMapModule, ConfigModule,<br/>SharedModule, GeoJSONModule, UIModule, POIModule, APIModule)
-    U->>S: Load geoleaf-storage.plugin.js (optionnel)
-    S->>PR: register('storage')
-    U->>P: Load geoleaf-addpoi.plugin.js (optionnel)
-    P->>PR: register('addpoi')
+    C->>MR: register(CoreMapModule, ConfigModule, SharedModule,<br/>GeoJSONModule, UIModule, ThemeEngineModule)
+    U->>S: Load geoleaf-connector.plugin.js (optionnel)
+    S->>PR: register('connector')
+    U->>P: Load geoleaf-editor.plugin.js (optionnel)
+    P->>PR: register('editor')
     U->>B: call GeoLeaf.boot()
     B->>B: plugins.reportPlugins()
     B->>C: GeoLeaf.loadConfig(geoleaf.config.json)
@@ -196,7 +202,7 @@ destroy()
 GeoLeaf.registry.register(new MyCustomModule());
 
 // Après init() — accès aux modules
-const poi = GeoLeaf.registry.get<POIModule>("poi");
+const geojson = GeoLeaf.registry.get<GeoJSONModule>("geojson");
 GeoLeaf.registry.has("search"); // → boolean
 GeoLeaf.registry.getAll(); // → readonly ICoreModule[]
 GeoLeaf.registry.getUISlots(); // → IModuleUISlot[] (toolbar mobile + filtres desktop)
@@ -263,30 +269,27 @@ GeoLeaf.createMap(targetId, options); // → IMapAdapter (multi-carte)
 
 ---
 
-## 9. Bundle Lite
+## 9. Bundle Lite — **RETIRÉ** (section requalifiée le 11/08/2026, backlog B-07)
 
-Le bundle Lite (`bundle-core-lite-entry.ts`) utilise `boot-lite.ts` et `globals.api-lite.ts`. Les différences avec le bundle complet :
+🛑 **Le build « Lite » n'existe plus, et cette section le décrivait au présent sur douze
+lignes.** `packages/core/rollup.config.mjs:650` l'acte : _« The frozen "lite" build (S4, presets
+chantier) is GONE. It was never served »_.
 
-| Aspect             | Bundle complet                          | Bundle Lite                                         |
-| ------------------ | --------------------------------------- | --------------------------------------------------- |
-| `boot.ts`          | `app/boot.ts`                           | `app/boot-lite.ts`                                  |
-| API module         | `APIModule`                             | `APILiteModule`                                     |
-| Modules optionnels | Route, Labels, Table, Search, Geocoding | Route, Labels, Table, Search, Geocoding **absents** |
-| Taille             | ~70 KB gz / ~259 KB raw (minifié)       | ~30% plus petit                                     |
+**Les cinq artefacts nommés ici sont introuvables**, vérifié un par un sur le disque :
+`bundle-core-lite-entry.ts`, `app/boot-lite.ts`, `globals.api-lite.ts`, la classe `APILiteModule`,
+et le registre `_registryLite`. S'y ajoutaient les quatre noms déjà faux ailleurs dans cette fiche
+(`SecurityModule`, `APIModule`, `POIModule`, `TableModule`/`SearchModule`) et une **mesure de
+taille recopiée en prose** — « ~70 KB gz / ~259 KB raw », « ~30 % plus petit » — sur un bundle
+qui ne se construit plus, donc invérifiable par construction. C'est le mode d'échec 5 du pré-vol :
+un chiffre qu'on ne peut plus re-mesurer ne se périme pas, il se fossilise.
 
-```typescript
-// boot-lite.ts — modules enregistrés
-_registryLite.register(new SecurityModule());
-_registryLite.register(new CoreMapModule());
-_registryLite.register(new ConfigModule());
-_registryLite.register(new SharedModule());
-_registryLite.register(new GeoJSONModule());
-_registryLite.register(new UIModule());
-_registryLite.register(new POIModule());
-_registryLite.register(new APILiteModule());
-// + LegendModule si activé dans le profil
-// Pas de RouteModule, LabelsModule, TableModule, SearchModule, GeocodingModule
-```
+**Ce qui remplace la variabilité que le Lite portait** : les **presets** (`presets/`), qui gatent
+les modules de capacité à l'enregistrement (`apply-preset.ts:203`). Une entrée qui n'a pas besoin
+de `pwa`/`offline` les laisse tomber par son manifeste, sans build parallèle à maintenir.
+
+📌 **B-07 nommait ce défaut depuis le S4 en visant `CLAUDE.md`** ; cette fiche portait la même
+description, et personne ne l'avait comptée. La ligne du registre reste ouverte tant que les
+autres porteurs ne sont pas soldés.
 
 ---
 

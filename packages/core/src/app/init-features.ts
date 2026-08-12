@@ -131,8 +131,18 @@ export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) 
     const mapOn = asFn(member(map, "on"));
     if (mapOn) {
         mapOn.call(map, "geoleaf:geojson:layers-loaded", function (event: unknown) {
-            const detail = asObject(asObject(event)?.detail);
-            const count = detail?.count;
+            // B-226 — read `count` at the TOP LEVEL, not under `.detail`.
+            //
+            // `loader/profile.ts:399` emits via `map.fire(type, { count, layers })`, and
+            // MapLibre merges that payload into the event object itself. The adapter does
+            // not re-wrap it either: `on()` delegates to `attachWrappedHandler`
+            // (adapters/maplibre/maplibre-event-wrappers.ts:62), whose only job is to
+            // normalise `lngLat → latlng`. No `detail` envelope is ever created.
+            //
+            // Reading `event.detail.count` — the DOM CustomEvent shape — therefore never
+            // matched, and the `typeof count === "number"` guard below turned the miss into
+            // a silent non-event: the boot toast never fired, and nothing said so.
+            const count = asObject(event)?.count;
             if (typeof count === "number") {
                 const message =
                     count === 1 ? "1 GeoJSON layer loaded" : count + " GeoJSON layers loaded";
@@ -157,8 +167,7 @@ export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) 
                 // Bind via .call and call .catch as a BOUND method — extracting it via
                 // asFn(...) would detach `this` (a Promise's .catch needs its receiver).
                 const result = loadAllLayersConfigs.call(loader, activeProfile) as
-                    | { catch?(onRejected: (err: unknown) => unknown): Promise<unknown> }
-                    | undefined;
+                    { catch?(onRejected: (err: unknown) => unknown): Promise<unknown> } | undefined;
                 if (result?.catch) {
                     return result.catch((err: unknown) => {
                         AppLog.warn("Error loading layer configs:", err);

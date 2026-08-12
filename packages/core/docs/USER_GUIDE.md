@@ -4,16 +4,11 @@ title: "GeoLeaf JS — User Guide"
 
 # GeoLeaf JS — User Guide
 
-**Version produit :** GeoLeaf Platform V3
+**Applies to:** `@geoleaf/core` v3.x
 
-**S'applique à :** `@geoleaf/core` v3.x
-**Dernière mise à jour :** mars 2026
+**Audience:** developers integrating GeoLeaf into their own applications
 
-**Public cible :** Développeurs intégrant GeoLeaf dans leurs applications
-
-> Convention de versioning : **Platform V3** est le label produit ; le SemVer technique des packages/releases est en **3.0.x**. Voir [VERSIONING_POLICY.md](VERSIONING_POLICY.md).
-
-Ce guide couvre toutes les fonctionnalités de GeoLeaf JS, de l'utilisation basique aux configurations avancées.
+This guide covers every GeoLeaf JS feature, from basic use to advanced configuration.
 
 ---
 
@@ -38,41 +33,41 @@ Ce guide couvre toutes les fonctionnalités de GeoLeaf JS, de l'utilisation basi
 
 ### What is GeoLeaf?
 
-GeoLeaf JS est une bibliothèque TypeScript de cartographie interactive construite sur **MapLibre GL JS v6** (rendu WebGL, tuiles vectorielles natives). Elle offre une API haut-niveau pour gérer les POIs (Points d'Intérêt), les couches GeoJSON, les thèmes, les filtres et les intégrations de plugins — entièrement configurable via des profils JSON sans développement spécifique côté applicatif.
+GeoLeaf JS is a TypeScript interactive mapping library built on **MapLibre GL JS v6** (WebGL rendering, native vector tiles). It provides a high-level API for POIs (points of interest), GeoJSON layers, themes, filters and plugin integrations — entirely configurable through JSON profiles, with no application-side development.
 
 ### Key Features
 
-- **Multi-Profile System** — Profils préconfigurés pour le Tourisme et cas d'usage personnalisés
-- **Données de couche** — Lecture / écriture des features via `GeoLeaf.Layers`, quelle que soit la géométrie
-- **Theme System** — Thèmes clair/sombre avec présets de visibilité de couches personnalisables
-- **GeoJSON Support** — Affichage de polygones, lignes et données géographiques complexes
-- **WebGL Rendering** — Rendu GPU via MapLibre GL JS v6 pour les performances
-- **Hors-ligne** — Moteur intégré au core (`modules.offline`, IndexedDB), chargé à la demande
-- **Label System** — Labels dynamiques avec visibilité basée sur le zoom
-- **Advanced Filters** — Filtrage multi-critères avec taxonomies et catégories
-- **Symbole du point** — Icônes, teintes et pastilles par catégorie via la capacité `taxonomy`
-- **Security** — Protection XSS via les helpers DOM sécurisés
+- **Multi-Profile System** — preconfigured profiles for tourism and custom use cases
+- **Layer data** — read and write features through `GeoLeaf.Layers`, whatever the geometry
+- **Theme System** — light/dark themes with customisable layer-visibility presets
+- **GeoJSON Support** — display of polygons, lines and complex geographic data
+- **WebGL Rendering** — GPU rendering through MapLibre GL JS v6
+- **Offline** — engine built into the core (`modules.offline`, IndexedDB), loaded on demand
+- **Label System** — dynamic labels with zoom-based visibility
+- **Advanced Filters** — multi-criteria filtering with taxonomies and categories
+- **Point symbol** — per-category icons, tints and badges through the `taxonomy` capability
+- **Security** — XSS protection through the secure DOM helpers
 
-> Le **tableau de données** est désormais fourni par le plugin MIT `@geoleaf-plugins/table`.
+> The **data table** is provided by the MIT plugin `@geoleaf-plugins/table`.
 
 ### When to Use GeoLeaf
 
-**Cas d'usage appropriés :**
+**Suitable use cases:**
 
-- Applications de cartographie touristique (attractions, hôtels, restaurants)
-- Applications immobilières
-- Gestion de lieux événementiels
-- Portails géographiques avec configuration JSON
+- Tourism mapping applications (attractions, hotels, restaurants)
+- Real-estate applications
+- Venue and event management
+- Geographic portals driven by JSON configuration
 
-**Non recommandé pour :**
+**Not recommended for:**
 
-- Tracking GPS temps-réel avec mises à jour sub-seconde
-- Simulateurs de vol ou navigation 3D avancée
-- Applications nécessitant 10 000+ marqueurs simultanés
+- Real-time GPS tracking with sub-second updates
+- Flight simulators or advanced 3D navigation
+- Applications requiring 10,000+ simultaneous markers
 
 ### Browser Support
 
-| Navigateur     | Version minimum |
+| Browser        | Minimum version |
 | -------------- | --------------- |
 | Chrome/Edge    | 90+             |
 | Firefox        | 88+             |
@@ -80,15 +75,15 @@ GeoLeaf JS est une bibliothèque TypeScript de cartographie interactive construi
 | Mobile Safari  | iOS 14+         |
 | Chrome Android | 90+             |
 
-**JavaScript requis :** ES2022+ (async/await, Promises, ESM modules)
+**JavaScript required:** ES2022+ (async/await, Promises, ESM modules)
 
-> MapLibre GL JS v6 nécessite le support WebGL 2.0 (disponible dans tous les navigateurs modernes).
+> MapLibre GL JS v6 requires WebGL 2.0 support (available in every modern browser).
 
 ---
 
 ## 2. Installation
 
-### Option A : NPM (recommandé pour la production)
+### Option A: NPM (recommended for production)
 
 ```bash
 npm install @geoleaf/core maplibre-gl
@@ -101,19 +96,19 @@ import "@geoleaf/core/style.css";
 
 Core.init({
     mapId: "map",
-    center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+    center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], the conversion is internal
     zoom: 12,
 });
 ```
 
-> **Peer dependency :** `maplibre-gl ^6.0.0` doit être installé séparément.
+> **Peer dependency:** `maplibre-gl ^6.0.0` must be installed separately.
 
-### Option B : CDN (démarrage rapide)
+### Option B: CDN (quick start)
 
-GeoLeaf v2 distribue exclusivement en **ESM**. Utiliser `<script type="module">` :
+GeoLeaf is distributed exclusively as **ESM**. Use `<script type="module">`:
 
 ```html
-<!-- MapLibre GL JS (peer dependency — doit être chargé AVANT GeoLeaf) -->
+<!-- MapLibre GL JS (peer dependency — must be loaded BEFORE GeoLeaf) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
 <script type="module">
     import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -127,23 +122,27 @@ GeoLeaf v2 distribue exclusivement en **ESM**. Utiliser `<script type="module">`
 />
 ```
 
-> ⚠️ **Les deux lignes de shim ne sont pas décoratives.** MapLibre est ESM-only depuis sa v6 et
-> n'expose plus de global ; `geoleaf.esm.js` le déclare `external` et ne l'atteint que par
-> `globalThis.maplibregl`. Sans ce shim, `new maplibregl.Map()` lève et la carte ne boote pas.
-> Le bloc étant **en ligne**, il exige `'unsafe-inline'` (ou un nonce/hash) dans `script-src` —
-> en production, préférer l'auto-hébergement de l'Option C, dont le shim est un fichier.
+::: warning
 
-Avant `</body>` :
+The two shim lines are not decorative. MapLibre has been ESM-only since v6 and no longer exposes
+a global; `geoleaf.esm.js` declares it `external` and reaches it only through
+`globalThis.maplibregl`. Without the shim, `new maplibregl.Map()` throws and the map never boots.
+Because the block is **inline**, it requires `'unsafe-inline'` (or a nonce/hash) in `script-src` —
+in production, prefer the self-hosted Option C, whose shim is a file.
+
+:::
+
+Before `</body>`:
 
 ```html
-<!-- geoleaf:docs:fragment — suite du bloc de `<head>` ci-dessus, qui porte le shim MapLibre -->
+<!-- geoleaf:docs:fragment — continues the `<head>` block above, which carries the MapLibre shim -->
 <script type="module">
     import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
     Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 });
 </script>
 ```
 
-Ou via jsDelivr :
+Or through jsDelivr:
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -162,12 +161,12 @@ Ou via jsDelivr :
 </script>
 ```
 
-### Option C : Auto-hébergé
+### Option C: Self-hosted
 
-Télécharger depuis les [releases](https://github.com/geoleaf/geoleaf-js/releases) et héberger sur votre serveur :
+Download from the [releases](https://github.com/geoleaf/geoleaf-js/releases) and host the files on your own server:
 
 ```html
-<!-- MapLibre auto-hébergé : le shim est un FICHIER, donc aucune exception CSP à concéder -->
+<!-- Self-hosted MapLibre: the shim is a FILE, so no CSP exception has to be granted -->
 <link rel="stylesheet" href="/assets/maplibre-gl/maplibre-gl.css" />
 <script type="module" src="/assets/maplibre-gl/global.mjs"></script>
 
@@ -178,17 +177,17 @@ Télécharger depuis les [releases](https://github.com/geoleaf/geoleaf-js/releas
 </script>
 ```
 
-Le contenu de `global.mjs` tient en deux lignes — c'est le même shim que ci-dessus, sorti du
-document pour qu'il n'exige plus `'unsafe-inline'` :
+The contents of `global.mjs` are two lines — the same shim as above, moved out of the document so
+that it no longer requires `'unsafe-inline'`:
 
 ```javascript
 import * as maplibregl from "./maplibre-gl.mjs";
 globalThis.maplibregl = maplibregl;
 ```
 
-### Vérifier l'installation
+### Verifying the installation
 
-Ouvrir la console du navigateur :
+Open the browser console:
 
 ```javascript
 console.log(GeoLeaf.version);
@@ -199,11 +198,11 @@ console.log(GeoLeaf.version);
 
 ## 3. Quick Start
 
-### Exemple minimal
+### Minimal example
 
 ```html
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -237,8 +236,8 @@ console.log(GeoLeaf.version);
 
             GeoLeaf.Core.init({ mapId: "map", center: [46.2, 2.2], zoom: 6 });
 
-            // Une POI est une feature d'une couche de points générique.
-            // `GeoLeaf.POI` n'existe plus depuis la v3 — voir CHANGELOG [3.0.0].
+            // A POI is a feature of an ordinary point layer.
+            // `GeoLeaf.POI` no longer exists as of v3 — see CHANGELOG [3.0.0].
             document.addEventListener("geoleaf:app:ready", () => {
                 GeoLeaf.Layers.addFeature("ma-couche", {
                     type: "Feature",
@@ -246,7 +245,7 @@ console.log(GeoLeaf.version);
                     properties: {
                         id: "paris",
                         title: "Paris",
-                        description: "Capitale de la France",
+                        description: "Capital of France",
                     },
                 });
             });
@@ -255,12 +254,12 @@ console.log(GeoLeaf.version);
 </html>
 ```
 
-> **Attention aux coordonnées — les deux ordres coexistent, et c'est voulu :**
-> `Core.init({ center })` et `map.center` d'un profil attendent **`[lat, lng]`** ; les
-> `coordinates` d'une feature GeoJSON restent **`[lng, lat]`** (standard GeoJSON, que MapLibre
-> suit). La conversion vit exclusivement dans l'adaptateur — voir `ARCHITECTURE_GUIDE.md`.
+> **Coordinate order — both orders coexist, deliberately:**
+> `Core.init({ center })` and a profile's `map.center` expect **`[lat, lng]`**; the
+> `coordinates` of a GeoJSON feature stay **`[lng, lat]`** (the GeoJSON standard, which MapLibre
+> follows). The conversion lives exclusively in the adapter — see `ARCHITECTURE_GUIDE.md`.
 
-### Tutoriel pas à pas
+### Step-by-step tutorial
 
 See [GETTING_STARTED.md](GETTING_STARTED.md) for a detailed 5-minute tutorial.
 
@@ -270,37 +269,37 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a detailed 5-minute tutorial.
 
 ### What Are Profiles?
 
-Les profils sont des configurations prédéfinies qui définissent :
+Profiles are predefined configurations that define:
 
 - **UI layout** (layer manager, filter panel, cache controls)
-- **Basemaps** (fonds de carte disponibles — styles MapLibre GL JS)
-- **POI configuration** (catégories, icônes, recherche)
-- **File paths** (où charger les données JSON)
-- **Taxonomy** (hiérarchie de catégories et icônes)
-- **Default settings** (zoom, centre, thème initiaux)
+- **Basemaps** (available background maps — MapLibre GL JS styles)
+- **POI configuration** (categories, icons, search)
+- **File paths** (where to load the JSON data from)
+- **Taxonomy** (category hierarchy and icons)
+- **Default settings** (initial zoom, centre and theme)
 
-### Profils intégrés
+### Built-in profiles
 
-#### 4.1 Profil Tourism
+#### 4.1 Tourism profile
 
-**Objectif :** Attractions touristiques, hôtels, restaurants, événements
+**Purpose:** tourist attractions, hotels, restaurants, events
 
-**Fonctionnalités :**
+**Features:**
 
-- 35+ couches préconfigurées (climat, zones de conservation, villes, itinéraires)
-- Taxonomie riche avec 50+ catégories (musées, monuments, hôtels, restaurants)
-- Sprites d'icônes optimisés pour le tourisme
-- Recherche par nom d'attraction, ville ou catégorie
+- 35+ preconfigured layers (climate, conservation zones, cities, routes)
+- Rich taxonomy with 50+ categories (museums, monuments, hotels, restaurants)
+- Icon sprites optimised for tourism
+- Search by attraction name, city or category
 
-**Configuration :** `profiles/tourism/geoleaf.config.json`
+**Configuration:** `profiles/tourism/geoleaf.config.json`
 
-#### 4.2 Profils Personnalisés
+#### 4.2 Custom profiles
 
-Vous pouvez créer des profils pour tout domaine métier. Voir [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
+Profiles can be created for any business domain. See [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
 
 ### Switching Profiles
 
-#### À l'initialisation
+#### At initialisation
 
 ```javascript
 const map = GeoLeaf.init({
@@ -312,21 +311,21 @@ const map = GeoLeaf.init({
 });
 ```
 
-#### Charger un profil via URL
+#### Loading a profile from a URL
 
 ```javascript
 await GeoLeaf.loadConfig("/profiles/tourism/geoleaf.config.json");
 ```
 
-**Note :** Le chargement d'un nouveau profil recharge toute la configuration et efface les POIs courants.
+**Note:** loading a new profile reloads the whole configuration and clears the current POIs.
 
 ---
 
 ## 5. Configuration Basics
 
-### 5.1 Fichier de Configuration Principal
+### 5.1 Main configuration file
 
-Le point d'entrée est `geoleaf.config.json` :
+The entry point is `geoleaf.config.json`:
 
 ```json
 {
@@ -341,16 +340,16 @@ Le point d'entrée est `geoleaf.config.json` :
 }
 ```
 
-**Champs clés :**
+**Key fields:**
 
-- `debug.enabled` — Active le logging console détaillé
-- `debug.modules` — Modules à déboguer (ou `["*"]` pour tous)
-- `data.activeProfile` — Profil à charger
-- `data.profilesBasePath` — Chemin de base vers les répertoires de profils
+- `debug.enabled` — enables verbose console logging
+- `debug.modules` — modules to debug (or `["*"]` for all of them)
+- `data.activeProfile` — profile to load
+- `data.profilesBasePath` — base path to the profile directories
 
-### 5.2 Fichier de Configuration de Profil
+### 5.2 Profile configuration file
 
-Chaque profil possède un `profile.json` :
+Every profile has its own `profile.json`:
 
 ```json
 {
@@ -388,12 +387,12 @@ Chaque profil possède un `profile.json` :
 }
 ```
 
-> **Note v2.0.0 :** Les basemaps utilisent désormais le champ `style` (URL vers un
-> style MapLibre GL JS) plutôt qu'un template d'URL de tuiles XYZ.
+> **Note (v2.0.0):** basemaps now use the `style` field (a URL to a MapLibre GL JS style)
+> rather than an XYZ tile URL template.
 
-### 5.3 Configuration de Taxonomie
+### 5.3 Taxonomy configuration
 
-Définit les catégories, sous-catégories et icônes dans `taxonomy.json` :
+Defines the categories, subcategories and icons in `taxonomy.json`:
 
 ```json
 {
@@ -427,9 +426,9 @@ Définit les catégories, sous-catégories et icônes dans `taxonomy.json` :
 }
 ```
 
-### 5.4 Configuration des Thèmes
+### 5.4 Theme configuration
 
-Définit les présets de visibilité de couches dans `themes.json` :
+Defines the layer-visibility presets in `themes.json`:
 
 ```json
 {
@@ -464,9 +463,9 @@ Définit les présets de visibilité de couches dans `themes.json` :
 }
 ```
 
-### 5.5 Configuration des Styles de Couches
+### 5.5 Layer style configuration
 
-Chaque couche peut avoir plusieurs styles dans `layers/<layer-name>/styles/<style-id>.json` :
+A layer can carry several styles in `layers/<layer-name>/styles/<style-id>.json`:
 
 ```json
 {
@@ -500,14 +499,14 @@ Chaque couche peut avoir plusieurs styles dans `layers/<layer-name>/styles/<styl
 }
 ```
 
-**Champs clés :**
+**Key fields:**
 
-- `label.enabled` — Si les labels sont supportés pour cette couche
-- `label.visibleByDefault` — État initial de visibilité des labels
-- `scaleConfig` — Plage de visibilité de la couche, en **dénominateurs d'échelle** (le `X` de `1:X`, ce qu'affiche le contrôle d'échelle) — **pas** en niveaux de zoom. `minScale` est le **plus grand** des deux nombres : il borne la vue la plus large, et un dénominateur augmente quand on dézoome. Une valeur `<= 24` est rejetée (ce serait un niveau de zoom saisi par erreur)
-- `labelScale` — Idem pour les labels (même unité), généralement plus étroite
-- `style` — Options de style pour la couche
-- `legend` — Configuration de la légende
+- `label.enabled` — whether labels are supported for this layer
+- `label.visibleByDefault` — initial label visibility state
+- `scaleConfig` — layer visibility range, in **scale denominators** (the `X` of `1:X`, the value the scale control displays) — **not** zoom levels. `minScale` is the **larger** of the two numbers: it bounds the widest view, and a denominator grows as the map zooms out. A value `<= 24` is rejected (it would be a zoom level entered by mistake)
+- `labelScale` — the same for labels (same unit), usually a narrower range
+- `style` — styling options for the layer
+- `legend` — legend configuration
 
 ---
 
@@ -515,16 +514,16 @@ Chaque couche peut avoir plusieurs styles dans `layers/<layer-name>/styles/<styl
 
 ### 6.1 POI Management
 
-#### Ajout de POIs
+#### Adding POIs
 
-> **BREAKING (v3.0.0) — `GeoLeaf.POI` n'existe plus.** Une POI est une **feature de point
-> d'une couche GeoJSON ordinaire** : on lit et on écrit ses données via **`GeoLeaf.Layers`**,
-> et son symbole est piloté par la capacité `taxonomy`. Les coordonnées suivent la convention
-> GeoJSON / MapLibre GL JS : `[longitude, latitude]`.
-> Référence complète : [API_REFERENCE.md](API_REFERENCE.md#layers--feature-data).
+> **BREAKING (v3.0.0) — `GeoLeaf.POI` no longer exists.** A POI is a **point feature of an
+> ordinary GeoJSON layer**: read and write its data through **`GeoLeaf.Layers`**, and its
+> symbol is driven by the `taxonomy` capability. Coordinates follow the GeoJSON / MapLibre GL JS
+> convention: `[longitude, latitude]`.
+> Full reference: [API_REFERENCE.md](API_REFERENCE.md#layers--feature-data).
 
 ```javascript
-// Ajouter une feature. `layerId` est l'id déclaré dans config/core/layers.json.
+// Add a feature. `layerId` is the id declared in config/core/layers.json.
 GeoLeaf.Layers.addFeature("monuments", {
     type: "Feature",
     geometry: { type: "Point", coordinates: [2.2945, 48.8584] }, // [lng, lat]
@@ -532,46 +531,45 @@ GeoLeaf.Layers.addFeature("monuments", {
         id: "eiffel-tower",
         title: "Eiffel Tower",
         description: "Iconic iron tower",
-        categoryId: "monument", // résolu par la capacité taxonomy
+        categoryId: "monument", // resolved by the taxonomy capability
         address: "Champ de Mars, Paris",
         website: "https://www.toureiffel.paris",
     },
 });
 
-// En ajouter plusieurs : setData remplace le jeu de base en une fois
-// (préférable à N appels à addFeature — un seul re-rendu de la source).
+// Adding several at once: setData replaces the base dataset in a single call
+// (preferable to N calls to addFeature — one source re-render only).
 GeoLeaf.Layers.setData("monuments", features);
 ```
 
-#### Rechargement
+#### Reloading
 
 ```javascript
-// Remplace toutes les features de la couche
+// Replaces every feature of the layer
 GeoLeaf.Layers.setData("monuments", newFeatures);
 ```
 
-#### Lecture
+#### Reading
 
 ```javascript
-// Une feature par son id stable
+// One feature by its stable id
 const feature = GeoLeaf.Layers.getFeatureById("monuments", "eiffel-tower");
 
-// Toutes les features de la couche
+// Every feature of the layer
 const all = GeoLeaf.Layers.getFeatures("monuments");
 
-// Combien, et quelles couches existent
+// How many, and which layers exist
 const n = GeoLeaf.Layers.getFeatureCount("monuments");
 const ids = GeoLeaf.Layers.listLayerIds();
 ```
 
-> **BREAKING (v3.0.0)** — `GeoLeaf.Filters.filterPoiList` is removed (0 internal
-> consumer — roadmap nettoyage Sprint 3). Use the `GeoLeaf.Filter` (singular)
-> capability's active panel state instead: `GeoLeaf.Filter.getActiveFilter()` /
-> `GeoLeaf.Filter.applyFilter(state)`.
+> **BREAKING (v3.0.0)** — `GeoLeaf.Filters.filterPoiList` is removed (no internal
+> consumer). Use the `GeoLeaf.Filter` (singular) capability's active panel state
+> instead: `GeoLeaf.Filter.getActiveFilter()` / `GeoLeaf.Filter.applyFilter(state)`.
 
 ### 6.2 Basemaps
 
-#### Changer de Basemap
+#### Changing basemap
 
 ```javascript
 // Programmatically change basemap
@@ -585,9 +583,9 @@ console.log(currentKey); // "satellite"
 const currentLayer = GeoLeaf.Baselayers.getActiveLayer();
 ```
 
-#### Basemaps Personnalisés
+#### Custom basemaps
 
-Ajouter dans `profile.json` :
+Add them to `profile.json`:
 
 ```json
 {
@@ -602,9 +600,9 @@ Ajouter dans `profile.json` :
 }
 ```
 
-#### Basemaps 3D avec terrain
+#### 3D basemaps with terrain
 
-Activer le relief 3D en ajoutant un objet `terrain` dans la définition du basemap (`basemaps.json`) :
+Enable 3D relief by adding a `terrain` object to the basemap definition (`basemaps.json`):
 
 ```json
 {
@@ -631,23 +629,23 @@ Activer le relief 3D en ajoutant un objet `terrain` dans la définition du basem
 }
 ```
 
-> **`default3D: true`** — Le terrain est activé automatiquement dès que ce basemap est sélectionné. Il n'y a pas de toggle UI : le passage vers un basemap sans terrain désactive automatiquement le relief 3D.
+> **`default3D: true`** — terrain is enabled automatically as soon as this basemap is selected. There is no UI toggle: switching to a basemap without terrain turns 3D relief off automatically.
 
-> **`map.maxPitch`** — La valeur par défaut MapLibre est 60°. GeoLeaf monte le plafond à 80° par défaut. Configurable via `profile.json > map.maxPitch`.
+> **`map.maxPitch`** — the MapLibre default is 60°. GeoLeaf raises the ceiling to 80° by default. Configurable through `profile.json > map.maxPitch`.
 
-#### Couches 3D — Polygones extrudés (fill-extrusion)
+#### 3D layers — extruded polygons (fill-extrusion)
 
-> Disponible depuis **v2.2.0**
+> Available since **v2.2.0**
 
-Les couches de type `fill-extrusion` permettent de représenter des polygones GeoJSON sous forme de volumes 3D (bâtiments, densité, données statistiques). Le rendu est assuré par le moteur WebGL de MapLibre GL JS.
+Layers of type `fill-extrusion` render GeoJSON polygons as 3D volumes (buildings, density, statistical data). Rendering is handled by the MapLibre GL JS WebGL engine.
 
-**Cas d'usage typiques :**
+**Typical use cases:**
 
-- Modèles de bâtiments avec hauteur réelle ou relative
-- Visualisation de données statistiques surfaciques (densité, revenus, votes…)
-- Zones réglementaires ou de risque avec indicateur visuel 3D
+- Building models with real or relative height
+- Visualisation of area statistics (density, income, votes and so on)
+- Regulatory or risk zones with a 3D visual indicator
 
-**Configuration `{layer}_config.json` :**
+**`{layer}_config.json` configuration:**
 
 ```json
 {
@@ -659,7 +657,7 @@ Les couches de type `fill-extrusion` permettent de représenter des polygones Ge
 }
 ```
 
-**Fichier de style associé :**
+**Associated style file:**
 
 ```json
 {
@@ -674,14 +672,14 @@ Les couches de type `fill-extrusion` permettent de représenter des polygones Ge
 }
 ```
 
-> `fillExtrusionHeight` accepte une **valeur numérique fixe** (mètres) ou le **nom d'un champ feature** — GeoLeaf génère alors l'expression MapLibre `["get", "hauteur"]` automatiquement.
+> `fillExtrusionHeight` accepts either a **fixed numeric value** (metres) or a **feature field name** — GeoLeaf then generates the MapLibre expression `["get", "hauteur"]` automatically.
 
-> **Performances GPU** — Le rendu fill-extrusion est accéléré par WebGL. Les performances restent optimales jusqu'à ~10 000 polygones extrudés simultanément aux niveaux de zoom ≥ 14.
+> **GPU performance** — fill-extrusion rendering is WebGL-accelerated. Performance stays optimal up to roughly 10,000 extruded polygons at zoom levels ≥ 14.
 
 ### 6.3 GeoJSON Layers
 
-Les couches GeoJSON sont configurées via le profil (`geojsonLayers` dans `geoleaf.config.json`).
-La visibilité des couches est gérée via le panneau LayerManager (UI).
+GeoJSON layers are configured through the profile (`geojsonLayers` in `geoleaf.config.json`).
+Layer visibility is handled by the LayerManager panel (UI).
 
 ```javascript
 // Initialize the layer manager control on the map (kernel — nothing to load first)
@@ -693,9 +691,9 @@ GeoLeaf.LayerManager.refresh();
 
 ### 6.4 Themes
 
-#### Thème UI (clair/sombre)
+#### UI theme (light/dark)
 
-Pour le thème d'interface (clair/sombre), utiliser `Core.setTheme` :
+For the interface theme (light/dark), use `Core.setTheme`:
 
 ```javascript
 GeoLeaf.Core.setTheme("dark");
@@ -704,12 +702,12 @@ const current = GeoLeaf.Core.getTheme(); // "dark"
 
 ### 6.5 Labels
 
-Les labels sont une **capacité in-core** (`modules.labels`), configurée via les fichiers de style
-de couche (champ `label`). Elle est dans le bundle — rien à charger. La visibilité des labels est
-gérée automatiquement via le panneau LayerManager (bouton toggle par couche), et la capacité se
-désactive dans le profil (`modules.labels.enabled: false`).
+Labels are an **in-core capability** (`modules.labels`), configured through the layer style files
+(the `label` field). They ship in the bundle — nothing to load. Label visibility is handled
+automatically by the LayerManager panel (a per-layer toggle button), and the capability can be
+switched off in the profile (`modules.labels.enabled: false`).
 
-La configuration des labels se fait dans le fichier de style de la couche (voir section 5.5).
+Label configuration happens in the layer's style file (see section 5.5).
 
 ---
 
@@ -717,9 +715,9 @@ La configuration des labels se fait dans le fichier de style de la couche (voir 
 
 ### 7.1 Layer Manager
 
-**Objectif :** Contrôle de la visibilité des couches (catégories POI, couches GeoJSON)
+**Purpose:** control layer visibility (POI categories, GeoJSON layers)
 
-**Configuration dans profile.json :**
+**Configuration in profile.json:**
 
 ```json
 {
@@ -733,7 +731,7 @@ La configuration des labels se fait dans le fichier de style de la couche (voir 
 }
 ```
 
-**Contrôle programmatique :**
+**Programmatic control:**
 
 ```javascript
 GeoLeaf.LayerManager.init({ map });
@@ -742,9 +740,9 @@ GeoLeaf.LayerManager.refresh();
 
 ### 7.2 Filter Panel
 
-**Objectif :** Filtrage des POIs par critères multiples
+**Purpose:** filter POIs by multiple criteria
 
-**Configuration :**
+**Configuration:**
 
 ```json
 {
@@ -758,7 +756,7 @@ GeoLeaf.LayerManager.refresh();
 }
 ```
 
-**Filtrage programmatique :**
+**Programmatic filtering:**
 
 ```javascript
 // Drive the map's own filter panel
@@ -775,9 +773,9 @@ const active = GeoLeaf.Filter.getActiveFilter();
 
 ### 7.3 Search Bar
 
-**Objectif :** Recherche de POIs par nom, catégorie ou adresse
+**Purpose:** search POIs by name, category or address
 
-**Configuration :**
+**Configuration:**
 
 ```json
 {
@@ -792,24 +790,23 @@ const active = GeoLeaf.Filter.getActiveFilter();
 }
 ```
 
-> **BREAKING (v3.0.0) — `GeoLeaf.Search` n'existe plus.** Le moteur full-text (`flexsearch`)
-> était **dormant** : aucun profil ne l'activait et son index ne se construisait jamais. Il a
-> été retiré, avec sa dépendance npm. La recherche textuelle **réelle** de l'interface — le
-> champ « Rechercher… » du panneau Filtrer — est assurée par la capacité in-core **`filter`**
-> (`kind: "text"`), et elle est désormais **insensible aux accents et à l'ordre des mots**.
-> Aucune action pour l'UI ; un intégrateur qui appelait `GeoLeaf.Search.query()` par script
-> doit implémenter sa propre recherche ou indexer côté serveur.
+> **BREAKING (v3.0.0) — `GeoLeaf.Search` no longer exists.** The full-text engine (`flexsearch`)
+> was dormant: no profile enabled it and its index was never built. It has been removed, together
+> with its npm dependency. The interface's actual text search — the search field of the Filter
+> panel — is provided by the in-core **`filter`** capability (`kind: "text"`), and it is now
+> insensitive to accents and to word order. Nothing to change for the UI; an integrator calling
+> `GeoLeaf.Search.query()` from a script must implement their own search or index server-side.
 
-**Utilisation programmatique :**
+**Programmatic use:**
 
 ```javascript
-// Lire l'état du panneau de filtre (dont le champ texte), sérialisable
+// Read the filter panel state (including the text field), serialisable
 const state = GeoLeaf.Filter.getActiveFilter();
 
-// Appliquer un état de filtre sans passer par le DOM
+// Apply a filter state without going through the DOM
 GeoLeaf.Filter.applyFilter(state);
 
-// Un filtre est-il actif ?
+// Is a filter active?
 if (GeoLeaf.Filter.hasActiveFilters()) {
     GeoLeaf.Filter.reset();
 }
@@ -817,11 +814,11 @@ if (GeoLeaf.Filter.hasActiveFilters()) {
 
 ### 7.4 Cache Controls
 
-**Objectif :** Gestion du cache hors-ligne (stockage IndexedDB) via le plugin Storage.
+**Purpose:** offline cache management (IndexedDB storage) through the Storage plugin.
 
-> **Note :** les fonctionnalités de cache hors-ligne nécessitent le plugin `@geoleaf-plugins/offline-ui` (MIT, npmjs.org) — elles ne sont pas dans le bundle core.
+> **Note:** the offline cache features require the `@geoleaf-plugins/offline-ui` plugin (MIT, npmjs.org) — they are not part of the core bundle.
 
-L'API de cache est fournie par le plugin Storage. Consultez la documentation du plugin pour l'intégration.
+The cache API comes from the Storage plugin. See the plugin documentation for integration details.
 
 ```javascript
 // Verify the storage plugin is available
@@ -834,13 +831,13 @@ if (GeoLeaf.plugins.isLoaded("storage")) {
 ### 7.5 Notifications
 
 ```javascript
-GeoLeaf.Notifications.success("POI ajouté avec succès !");
-GeoLeaf.Notifications.error("Échec du chargement des données");
-GeoLeaf.Notifications.warning("Connexion instable");
-GeoLeaf.Notifications.info("Chargement en cours...");
-GeoLeaf.Notifications.success("Sauvegardé", { duration: 2000 });
+GeoLeaf.Notifications.success("POI added successfully");
+GeoLeaf.Notifications.error("Failed to load the data");
+GeoLeaf.Notifications.warning("Unstable connection");
+GeoLeaf.Notifications.info("Loading...");
+GeoLeaf.Notifications.success("Saved", { duration: 2000 });
 
-GeoLeaf.Notifications.notify("Message personnalisé", "info", 5000);
+GeoLeaf.Notifications.notify("Custom message", "info", 5000);
 
 // Clear all visible notifications
 GeoLeaf.Notifications.clearAll();
@@ -851,23 +848,32 @@ const status = GeoLeaf.Notifications.getStatus();
 
 ### 7.6 Address Search (Geocoding)
 
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+::: warning
+
+Address search (geocoding) has moved out of `@geoleaf/core`: it is now provided by the MIT plugin
+**`@geoleaf-plugins/geocoding`** (public on npmjs.org). The configuration moves from the root key
+**`geocodingConfig`** to **`modules.geocoding.*`** (declared in `config/plugins/geocoding.json`
+through `Files.modules.geocoding`) — a breaking migration, with no shim. The `GeoLeaf.Geocoding`
+API, the `geoleaf:geocoding:result` event and the search control all come from the plugin. See the
+plugin README (`packages/plugins/geocoding/README.md`).
+
+:::
 
 ---
 
 ### 7.7 Responsive & Mobile Interface
 
-GeoLeaf embarque une interface entièrement responsive qui s'adapte à toutes les tailles d'écran — du smartphone au grand desktop — sans configuration supplémentaire.
+GeoLeaf ships a fully responsive interface that adapts to every screen size — from smartphone to large desktop — with no extra configuration.
 
 #### Breakpoints
 
-| Plage          | Appareils               | Comportement                                                 |
-| -------------- | ----------------------- | ------------------------------------------------------------ |
-| ≤ 768 px       | Smartphone, tablette 6" | **Mode mobile** — pill toolbar (côté gauche), sheets overlay |
-| 769 – 1 024 px | PC 10" / petit laptop   | Layout desktop, panneau latéral **360 px**                   |
-| ≥ 1 025 px     | PC 13"+                 | Layout desktop, panneau latéral **420 px**                   |
+| Range          | Devices               | Behaviour                                                  |
+| -------------- | --------------------- | ---------------------------------------------------------- |
+| ≤ 768 px       | Smartphone, 6" tablet | **Mobile mode** — pill toolbar (left side), sheet overlays |
+| 769 – 1 024 px | 10" PC / small laptop | Desktop layout, **360 px** side panel                      |
+| ≥ 1 025 px     | 13"+ PC               | Desktop layout, **420 px** side panel                      |
 
-Les valeurs de seuil sont exposées comme variables CSS dans `geoleaf-theme.css` (`:root`) :
+The threshold values are exposed as CSS variables in `geoleaf-theme.css` (`:root`):
 
 ```css
 --gl-bp-sm: 480px; /* smartphone    */
@@ -878,39 +884,39 @@ Les valeurs de seuil sont exposées comme variables CSS dans `geoleaf-theme.css`
 
 #### Mobile pill toolbar (≤ 768 px)
 
-Sur les viewports étroits, les contrôles desktop standard sont remplacés par une **barre d'icônes en forme de pilule** ancrée au côté gauche de la carte.
+On narrow viewports, the standard desktop controls are replaced by a **pill-shaped icon bar** anchored to the left side of the map.
 
-| Icône       | Action                                                               |
-| ----------- | -------------------------------------------------------------------- |
-| Fullscreen  | Basculer le mode plein écran                                         |
-| Legend      | Afficher/masquer la légende                                          |
-| Zoom + / −  | Zoom carte                                                           |
-| My location | Basculer la géolocalisation                                          |
-| Search      | Ouvrir la feuille de recherche                                       |
-| Proximity   | Activer le mode recherche de proximité                               |
-| Filters     | Ouvrir la feuille de filtres. Indicateur **Reset** si filtres actifs |
-| Themes      | Ouvrir la feuille de sélection de thèmes                             |
-| Layers      | Ouvrir la feuille du gestionnaire de couches                         |
-| Table       | Ouvrir la feuille du tableau de données                              |
+| Icon        | Action                                                             |
+| ----------- | ------------------------------------------------------------------ |
+| Fullscreen  | Toggle fullscreen mode                                             |
+| Legend      | Show or hide the legend                                            |
+| Zoom + / −  | Map zoom                                                           |
+| My location | Toggle geolocation                                                 |
+| Search      | Open the search sheet                                              |
+| Proximity   | Enable proximity search mode                                       |
+| Filters     | Open the filter sheet. **Reset** indicator when filters are active |
+| Themes      | Open the theme selection sheet                                     |
+| Layers      | Open the layer manager sheet                                       |
+| Table       | Open the data table sheet                                          |
 
 #### Sheet overlay
 
-Chaque panneau utilise un **bottom sheet** overlay (`role="dialog"`, `aria-modal="true"`, `aria-labelledby`). Support :
+Every panel uses a **bottom sheet** overlay (`role="dialog"`, `aria-modal="true"`, `aria-labelledby`). Supported:
 
-- Tap sur le fond sombre pour fermer
-- Touche **Escape** pour fermer
-- Focus trap complet : Tab/Shift-Tab restent dans la feuille
-- Focus retourné au bouton déclencheur à la fermeture
+- Tap on the dark backdrop to close
+- **Escape** key to close
+- Full focus trap: Tab/Shift-Tab stay inside the sheet
+- Focus returned to the triggering button on close
 
 #### Viewport meta tag
 
-Assurez-vous que votre page HTML inclut :
+Make sure the HTML page includes:
 
 ```html
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 ```
 
-Ne pas utiliser `user-scalable=no` — cela bloque le pinch-zoom et nuit à l'accessibilité.
+Do not use `user-scalable=no` — it blocks pinch-zoom and harms accessibility.
 
 ---
 
@@ -918,24 +924,24 @@ Ne pas utiliser `user-scalable=no` — cela bloque le pinch-zoom et nuit à l'ac
 
 ### 8.1 Custom Profiles
 
-Créer votre propre profil en copiant la structure d'un profil existant :
+Create a profile by copying the structure of an existing one:
 
 ```
 profiles/
   my-custom-profile/
-    geoleaf.config.json    # Optionnel, utilise la config racine si absent
-    profile.json           # Requis
-    taxonomy.json          # Requis
-    themes.json            # Requis
-    layers/                # Optionnel, pour les couches GeoJSON
-    data/                  # Vos fichiers de données POI
+    geoleaf.config.json    # Optional, falls back to the root config
+    profile.json           # Required
+    taxonomy.json          # Required
+    themes.json            # Required
+    layers/                # Optional, for GeoJSON layers
+    data/                  # POI data files
 ```
 
 ### 8.2 OGC API Features
 
-GeoLeaf supporte nativement le chargement de couches depuis un endpoint **OGC API Features** (successeur REST/JSON du WFS classique).
+GeoLeaf natively supports loading layers from an **OGC API Features** endpoint (the REST/JSON successor to classic WFS).
 
-**Configuration minimale :**
+**Minimal configuration:**
 
 ```json
 {
@@ -951,7 +957,7 @@ GeoLeaf supporte nativement le chargement de couches depuis un endpoint **OGC AP
 }
 ```
 
-**Avec auto-refresh viewport :**
+**With viewport auto-refresh:**
 
 ```json
 {
@@ -967,9 +973,9 @@ GeoLeaf supporte nativement le chargement de couches depuis un endpoint **OGC AP
 }
 ```
 
-Lorsque `autoRefresh: true`, GeoLeaf re-charge les données à chaque fin de déplacement/zoom de la carte en passant le bbox courant du viewport. Cela permet d'afficher uniquement les données visibles sans pré-charger l'intégralité du dataset.
+With `autoRefresh: true`, GeoLeaf reloads the data at the end of every map pan or zoom, passing the current viewport bbox. Only the visible data is displayed, without preloading the whole dataset.
 
-**Avec authentification :**
+**With authentication:**
 
 ```json
 {
@@ -983,9 +989,9 @@ Lorsque `autoRefresh: true`, GeoLeaf re-charge les données à chaque fin de dé
 }
 ```
 
-**Via `GeoLeaf.Utils.wktToGeoJSON()` :**
+**Through `GeoLeaf.Utils.wktToGeoJSON()`:**
 
-Si un endpoint OGC API Features retourne des géométries au format WKT (certaines implémentations non-conformes), GeoLeaf les convertit automatiquement. La fonction est aussi disponible publiquement :
+If an OGC API Features endpoint returns geometries in WKT format (some non-conforming implementations do), GeoLeaf converts them automatically. The function is also available publicly:
 
 ```javascript
 const geom = GeoLeaf.Utils.wktToGeoJSON("POINT(2.3522 48.8566)");
@@ -997,10 +1003,10 @@ const polygon = GeoLeaf.Utils.wktToGeoJSON("POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))")
 
 ### 8.3 Offline Mode
 
-> Nécessite le plugin `@geoleaf-plugins/offline-ui`.
+> Requires the `@geoleaf-plugins/offline-ui` plugin.
 
-Le cache offline est fourni par le plugin Storage (`@geoleaf-plugins/offline-ui`).
-Consultez la documentation du plugin pour les détails d'intégration.
+The offline cache is provided by the Storage plugin (`@geoleaf-plugins/offline-ui`).
+See the plugin documentation for integration details.
 
 ```javascript
 // Verify the storage plugin is loaded
@@ -1010,7 +1016,7 @@ console.log("Storage plugin loaded:", isLoaded);
 
 ### 8.3 Custom Themes (CSS)
 
-Surcharger les styles par défaut en chargeant un fichier CSS personnalisé après geoleaf-main.min.css :
+Override the default styles by loading a custom CSS file after geoleaf-main.min.css:
 
 ```html
 <link
@@ -1036,7 +1042,7 @@ Surcharger les styles par défaut en chargeant un fichier CSS personnalisé apr�
 
 ### 8.4 Events API
 
-GeoLeaf utilise le bus d'événements `GeoLeaf.Events` (via `CustomEvent` sur `document`).
+GeoLeaf uses the `GeoLeaf.Events` event bus (`CustomEvent` dispatched on `document`).
 
 ```javascript
 // POI events
@@ -1070,21 +1076,27 @@ GeoLeaf.Events.on("geoleaf:poi:click", handler);
 GeoLeaf.Events.off("geoleaf:poi:click", handler);
 ```
 
-Voir [EVENTS_API.md](EVENTS_API.md) pour la liste complète des événements.
+See [EVENTS_API.md](EVENTS_API.md) for the full list of events.
 
 ### 8.5 Data Import/Export
 
-La table offre une fonctionnalité d'export de la sélection :
+The table can export the current selection:
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. Il se charge via son propre script (après `@geoleaf/core`) ; `GeoLeaf.Table` est disponible une fois le plugin chargé, **sans** `_loadModule("table")`.
+::: info
+
+The data table has been moved out of the core into the MIT plugin `@geoleaf-plugins/table`. It
+loads through its own script (after `@geoleaf/core`); `GeoLeaf.Table` becomes available once the
+plugin is loaded, **without** `_loadModule("table")`.
+
+:::
 
 ```javascript
 // Export the current table selection (CSV/GeoJSON)
 GeoLeaf.Table.exportSelection();
 ```
 
-Pour l'import de points, écrire sur la **couche** qui les porte — une POI est une couche point
-GeoJSON générique depuis la v3.0.0 :
+To import points, write to the **layer** that carries them — since v3.0.0 a POI is a feature of an
+ordinary GeoJSON point layer:
 
 ```javascript
 // Import points from a JSON file into an existing point layer
@@ -1092,32 +1104,32 @@ const fileInput = document.querySelector("#file-input");
 fileInput.addEventListener("change", async (event) => {
     const file = event.target.files[0];
     const text = await file.text();
-    const features = JSON.parse(text); // FeatureCollection ou tableau de Feature
+    const features = JSON.parse(text); // FeatureCollection or array of Feature
     GeoLeaf.Layers.setData("mes-points", features);
 });
 ```
 
-### 8.6 Import de fichiers géographiques (plugin)
+### 8.6 Importing geographic files (plugin)
 
-Pour importer des fichiers **GPX, KML/KMZ, CSV ou TopoJSON** directement dans la carte, utiliser le plugin `@geoleaf-plugins/file-import` (MIT) :
+To import **GPX, KML/KMZ, CSV or TopoJSON** files straight into the map, use the `@geoleaf-plugins/file-import` plugin (MIT):
 
 ```javascript
 import "@geoleaf/core";
 import "@geoleaf-plugins/file-import";
 
-// Convertir un fichier en GeoJSON
-const geojson = await GeoLeaf.FileImport.convert(file); // détection auto du format
+// Convert a file to GeoJSON
+const geojson = await GeoLeaf.FileImport.convert(file); // format detected automatically
 
-// Importer et afficher directement comme couche
+// Import and display it directly as a layer
 await GeoLeaf.FileImport.importAsLayer(file, { layerId: "user-import" });
 ```
 
-Pour les données **FlatGeobuf** (streaming avec filtrage spatial) :
+For **FlatGeobuf** data (streaming with spatial filtering):
 
 ```javascript
 import "@geoleaf-plugins/flatgeobuf";
 
-// Chargement par bounding-box (HTTP Range — seule la zone est téléchargée)
+// Bounding-box loading (HTTP Range — only the area is downloaded)
 const geojson = await GeoLeaf.FlatGeobuf.loadBbox("https://example.com/data.fgb", {
     minX: 2.2,
     minY: 48.8,
@@ -1126,21 +1138,21 @@ const geojson = await GeoLeaf.FlatGeobuf.loadBbox("https://example.com/data.fgb"
 });
 ```
 
-Voir [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) → sections "Plugin File Import" et "Plugin FlatGeobuf" pour les options complètes.
+See [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) → the "Plugin File Import" and "Plugin FlatGeobuf" sections for the full option list.
 
 ---
 
 ## 9. Troubleshooting
 
-### Problèmes Courants
+### Common problems
 
-#### 9.1 La Carte N'Apparaît Pas
+#### 9.1 The map does not appear
 
-**Symptômes :** Espace blanc là où la carte devrait être
+**Symptoms:** blank space where the map should be
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifier que le div `#map` a une hauteur explicite en CSS :
+1. Check that the `#map` div has an explicit height in CSS:
 
     ```css
     #map {
@@ -1148,54 +1160,54 @@ Voir [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) → sections
     }
     ```
 
-2. S'assurer que les CSS MapLibre GL JS **et** GeoLeaf sont chargés
-3. Vérifier les erreurs dans la console navigateur (F12)
-4. S'assurer que l'ID du container correspond à `mapId` dans la config
-5. Vérifier que WebGL est supporté : `console.log(!!window.WebGLRenderingContext)`
+2. Make sure both the MapLibre GL JS **and** the GeoLeaf stylesheets are loaded
+3. Check the browser console for errors (F12)
+4. Make sure the container id matches `mapId` in the configuration
+5. Check that WebGL is supported: `console.log(!!window.WebGLRenderingContext)`
 
-#### 9.2 POIs Non Affichés
+#### 9.2 POIs not displayed
 
-**Symptômes :** Carte visible mais pas de marqueurs
+**Symptoms:** the map is visible but there are no markers
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifier que les coordonnées sont au format `[longitude, latitude]` (convention MapLibre GL JS)
-2. Vérifier que la catégorie POI correspond aux catégories de la taxonomie
-3. S'assurer que la couche est activée dans le gestionnaire de couches
-4. Vérifier que l'échelle courante est dans la plage `scaleConfig` de la couche — et que ses bornes sont bien des **dénominateurs d'échelle** (`1:X`), pas des niveaux de zoom : c'est la confusion la plus fréquente, et elle rend la couche invisible à tous les zooms
+1. Check that the coordinates use the `[longitude, latitude]` order (MapLibre GL JS convention)
+2. Check that the POI category matches a taxonomy category
+3. Make sure the layer is enabled in the layer manager
+4. Check that the current scale falls inside the layer's `scaleConfig` range — and that its bounds really are **scale denominators** (`1:X`), not zoom levels: this is the most frequent confusion, and it makes the layer invisible at every zoom
 
-#### 9.3 Profil Non Chargé
+#### 9.3 Profile not loaded
 
-**Symptômes :** Erreur "Failed to load profile" dans la console
+**Symptoms:** a "Failed to load profile" error in the console
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifier `profilesBasePath` dans geoleaf.config.json
-2. S'assurer que `profile.json` existe dans le répertoire du profil
-3. Vérifier que les chemins dans `profile.json` sont corrects
-4. S'assurer que les fichiers JSON sont valides (JSONLint.com)
-5. Vérifier les erreurs 404 dans l'onglet Réseau des DevTools
+1. Check `profilesBasePath` in geoleaf.config.json
+2. Make sure `profile.json` exists in the profile directory
+3. Check that the paths inside `profile.json` are correct
+4. Make sure the JSON files are valid (JSONLint.com)
+5. Check for 404 errors in the DevTools Network tab
 
-#### 9.4 Labels Non Affichés
+#### 9.4 Labels not displayed
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifier `label.enabled: true` dans le fichier de style de couche
-2. Vérifier que le zoom est dans la plage `labelScale`
-3. Activer le bouton label dans le gestionnaire de couches
-4. S'assurer que `label.visibleByDefault` est présent dans le fichier de style
+1. Check `label.enabled: true` in the layer style file
+2. Check that the zoom falls inside the `labelScale` range
+3. Enable the label button in the layer manager
+4. Make sure `label.visibleByDefault` is present in the style file
 
-#### 9.5 Cache Non Fonctionnel
+#### 9.5 Cache not working
 
-**Solutions :**
+**Solutions:**
 
-1. Vérifier que le plugin `@geoleaf-plugins/offline-ui` est chargé
-2. Vérifier que le navigateur supporte IndexedDB
-3. Vérifier que le quota de stockage navigateur n'est pas dépassé
-4. S'assurer que HTTPS est utilisé
-5. Le mode Privé/Incognito peut désactiver le cache dans certains navigateurs
+1. Check that the `@geoleaf-plugins/offline-ui` plugin is loaded
+2. Check that the browser supports IndexedDB
+3. Check that the browser storage quota is not exceeded
+4. Make sure HTTPS is used
+5. Private/Incognito mode can disable the cache in some browsers
 
-### Mode Debug
+### Debug mode
 
 ```javascript
 const map = GeoLeaf.init({
@@ -1213,25 +1225,25 @@ const map = GeoLeaf.init({
 
 ### Documentation
 
-- **[Configuration Guide](CONFIGURATION_GUIDE.md)** — Détail complet des fichiers JSON de configuration
-- **[Profiles Guide](PROFILES_GUIDE.md)** — Créer des profils métier personnalisés
-- **[Events API](EVENTS_API.md)** — Référence complète des événements GeoLeaf
-- **[Cookbook](COOKBOOK.md)** — 10 recettes pratiques
-- **[usage-cdn.md](usage-cdn.md)** — Chargement CDN et NPM
+- **[Configuration Guide](CONFIGURATION_GUIDE.md)** — full detail of the JSON configuration files
+- **[Profiles Guide](PROFILES_GUIDE.md)** — building custom business profiles
+- **[Events API](EVENTS_API.md)** — complete GeoLeaf event reference
+- **[Cookbook](COOKBOOK.md)** — 10 practical recipes
+- **[usage-cdn.md](usage-cdn.md)** — CDN and NPM loading
 
-### Exemples
+### Examples
 
-- **Demo Application** — Exécuter `npm run build` puis `npm run build:deploy` pour accéder à la démo
-- **Tourism Example** — Voir `profiles/tourism/` pour le showcase du profil tourisme
+- **Demo application** — run `npm run build` then `npm run build:deploy` to reach the demo
+- **Tourism example** — see `profiles/tourism/` for the tourism profile showcase
 
 ### Community
 
-- **[GitHub Repository](https://github.com/geoleaf/geoleaf-js)** — Code source, issues, discussions
-- **Contact** : Mattieu Pottier — contact@geoleaf.dev
+- **[GitHub Repository](https://github.com/geoleaf/geoleaf-js)** — source code, issues, discussions
+- **Contact:** Mattieu Pottier — contact@geoleaf.dev
 
 ---
 
 <p align="center">
-<strong>Besoin d'aide ?</strong><br>
-Consulter <a href="COOKBOOK.md">Cookbook</a> · Signaler des <a href="https://github.com/geoleaf/geoleaf-js/issues">Issues</a> · Lire le <a href="CONTRIBUTING.md">Contributing Guide</a>
+<strong>Need help?</strong><br>
+See the <a href="COOKBOOK.md">Cookbook</a> · Report <a href="https://github.com/geoleaf/geoleaf-js/issues">Issues</a> · Read the <a href="CONTRIBUTING.md">Contributing Guide</a>
 </p>

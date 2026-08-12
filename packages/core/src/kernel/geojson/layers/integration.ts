@@ -43,16 +43,10 @@ interface LayerManagerModule {
 interface SectionItem {
     id: string;
     label?: string;
-    type?: string;
-    color?: string;
-    visible?: boolean;
-    toggleable?: boolean;
-    order?: number;
     zIndex: number;
     themes: unknown;
     styles: unknown;
     labels: unknown;
-    layerManagerId?: string;
     isActive?: boolean;
 }
 
@@ -88,42 +82,6 @@ interface LayerManagerIntegrationShape {
 }
 
 const LayerManager = {} as LayerManagerIntegrationShape;
-
-function _resolveLegendType(type: string): string {
-    if (type === "poi") return "circle";
-    if (type === "route") return "line";
-    return "fill";
-}
-
-/**
- * Resolves the semantic geometry class ("poi" / "route" / "area" / "mixed") for a
- * layer-manager section item from the cached `geometryType`.
- *
- * The former `LayerManager.detectLayerType(layerData.layer)` was a latent defect
- * here: `detectLayerType` lives on the *store* slice, so on this integration slice
- * it is `undefined` (the merged `_GeoJSONLayerManager` has it, but this function
- * body closes over the local object) — calling it threw once a real layer was
- * registered, and its result was discarded anyway (never forwarded to
- * `_registerGeoJsonLayer`). The visible legend geometry is resolved separately by
- * `public-api`, so this only feeds the section-item metadata.
- */
-function _resolveSectionItemType(layerData: GeoJSONLayerEntry): string {
-    const gt =
-        typeof layerData.geometryType === "string" ? layerData.geometryType.toLowerCase() : "";
-    if (gt.includes("point")) return "poi";
-    if (gt.includes("line")) return "route";
-    if (gt.includes("polygon")) return "area";
-    return "mixed";
-}
-
-function _resolveLayerColor(layerData: GeoJSONLayerEntry): string {
-    const defaultColor = "#3388ff";
-    const style = layerData.config.style as { fillColor?: string; color?: string } | undefined;
-    if (style) {
-        return style.fillColor || style.color || defaultColor;
-    }
-    return defaultColor;
-}
 
 function _resolveLayerLabels(layerData: GeoJSONLayerEntry): {
     hasLabels: boolean;
@@ -164,9 +122,6 @@ function _processLayerForSection(
         section = { id: sectionId, order: 99, items: [] };
         sectionMap.set(sectionId, section);
     }
-    const type = _resolveSectionItemType(layerData);
-    const legendType = _resolveLegendType(type);
-    const color = _resolveLayerColor(layerData);
     const { hasLabels, labelsConfig } = _resolveLayerLabels(layerData);
     _logLayerPreparation(id, layerData, Log);
     section.items.push({
@@ -175,12 +130,6 @@ function _processLayerForSection(
         // en aval le ré-appliquaient (`options.label || layerId`, `layer.label || layer.id`) —
         // le hisser ici évite de propager `undefined` dans un objet qui part en registre.
         label: layerData.label ?? id,
-        type: legendType,
-        color: color,
-        // Défaut du producteur, déjà appliqué sous la forme `|| false` par `store.ts`.
-        visible: layerData.visible ?? false,
-        toggleable: true,
-        order: 0,
         zIndex: layerData.config.zIndex || 0,
         themes: layerData.config.themes || null,
         labels: hasLabels ? labelsConfig : null,
@@ -288,8 +237,7 @@ function _resolveStyleId(
     config: LayerStyleConfig
 ): string {
     const styleSelector = getGeoLeaf()?._LayerManagerStyleSelector as
-        | StyleSelectorModule
-        | undefined;
+        StyleSelectorModule | undefined;
     if (styleSelector && typeof styleSelector.getCurrentStyle === "function") {
         const sid = styleSelector.getCurrentStyle(layerId);
         if (sid) return sid;
@@ -358,7 +306,6 @@ function _buildPopulateConfigSectionMap(
         section.items.push({
             id: config.id,
             label: config.label ?? config.id,
-            layerManagerId: sectionId,
             themes: config.themes || null,
             isActive: isActive,
             zIndex: config.zIndex || 0,

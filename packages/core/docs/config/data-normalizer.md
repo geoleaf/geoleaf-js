@@ -1,21 +1,18 @@
 ---
-title: "GeoLeaf — Normalisation de données & format POI unifié"
+title: "GeoLeaf — Data normalisation & unified POI format"
 ---
 
-# GeoLeaf — Normalisation de données & format POI unifié
-
-**Version** : 3.0.0
-**Dernière mise à jour :** mars 2026
+# GeoLeaf — Data normalisation & unified POI format
 
 ---
 
-> **Note architecture :** La normalisation de données est un processus **interne automatique**. Les modules `DataNormalizer`, `Normalization` et `DataConverter` (`src/modules/utils/data/`) ne font pas partie de l'API publique de GeoLeaf et ne sont pas exposés sur le namespace `GeoLeaf.*`. Les développeurs interagissent avec ce système uniquement via la **configuration du profil** (`dataMapping` dans les layers, `mapping.json`).
+> **Architecture note:** data normalisation is an **automatic internal process**. The `DataNormalizer`, `Normalization` and `DataConverter` modules (`src/modules/utils/data/`) are not part of the public GeoLeaf API and are not exposed on the `GeoLeaf.*` namespace. Integrators interact with this system only through the **profile configuration** (`dataMapping` in the layers, `mapping.json`).
 
 ---
 
-## Format POI unifié (référence)
+## Unified POI format (reference)
 
-Toutes les sources de données (JSON, GeoJSON, Routes) sont converties automatiquement vers ce format interne avant d'être affichées sur la carte.
+Every data source (JSON, GeoJSON, routes) is converted automatically into this internal format before being displayed on the map.
 
 ```json
 {
@@ -44,33 +41,33 @@ Toutes les sources de données (JSON, GeoJSON, Routes) sont converties automatiq
 }
 ```
 
-**Champs clés** :
+**Key fields**:
 
-| Champ           | Type   | Description                                             |
-| --------------- | ------ | ------------------------------------------------------- |
-| `id`            | string | Identifiant unique (généré si absent dans la source)    |
-| `title`         | string | Nom affiché (mappé depuis `name`, `nom`, `label`, etc.) |
-| `lat` / `lng`   | number | Coordonnées géographiques                               |
-| `categoryId`    | string | Catégorie principale (taxonomie)                        |
-| `subCategoryId` | string | Sous-catégorie                                          |
-| `attributes`    | object | Toutes les propriétés métier de la source               |
+| Field           | Type   | Description                                               |
+| --------------- | ------ | --------------------------------------------------------- |
+| `id`            | string | Unique identifier (generated when absent from the source) |
+| `title`         | string | Displayed name (mapped from `name`, `nom`, `label`, etc.) |
+| `lat` / `lng`   | number | Geographic coordinates                                    |
+| `categoryId`    | string | Main category (taxonomy)                                  |
+| `subCategoryId` | string | Sub-category                                              |
+| `attributes`    | object | All the business properties coming from the source        |
 
 ---
 
-## Sources supportées
+## Supported sources
 
-| Type      | Format source                              | Détection automatique                           |
+| Type      | Source format                              | Automatic detection                             |
 | --------- | ------------------------------------------ | ----------------------------------------------- |
-| `json`    | Objet JSON brut avec champs plats          | `data.lat` + `data.lng` ou fallbacks            |
+| `json`    | Raw JSON object with flat fields           | `data.lat` + `data.lng`, or fallbacks           |
 | `geojson` | GeoJSON Feature (Point/LineString/Polygon) | `type: "Feature"` + `geometry`                  |
-| `route`   | Objet avec `latLng` ou waypoints           | `data.latLng` ou `data.order`                   |
-| `gpx`     | Waypoint GPX                               | `data.lat` + `data.lon` + `data.name` (partiel) |
+| `route`   | Object with `latLng` or waypoints          | `data.latLng` or `data.order`                   |
+| `gpx`     | GPX waypoint                               | `data.lat` + `data.lon` + `data.name` (partial) |
 
 ---
 
-## Configuration : `dataMapping` dans le profil
+## Configuration: `dataMapping` in the profile
 
-Le `dataMapping` dans la config d'un layer permet de mapper des champs non-standard vers le format GeoLeaf, sans `mapping.json` externe.
+The `dataMapping` entry in a layer configuration maps non-standard fields onto the GeoLeaf format, without an external `mapping.json`.
 
 ```jsonc
 {
@@ -92,9 +89,9 @@ Le `dataMapping` dans la config d'un layer permet de mapper des champs non-stand
 
 ---
 
-## Configuration : `mapping.json`
+## Configuration: `mapping.json`
 
-Pour des transformations plus complexes ou partagées entre plusieurs layers, un fichier `mapping.json` peut être placé dans le répertoire du profil.
+For more complex transformations, or for transformations shared between several layers, a `mapping.json` file can be placed in the profile directory.
 
 ### Structure
 
@@ -117,11 +114,11 @@ Pour des transformations plus complexes ou partagées entre plusieurs layers, un
 }
 ```
 
-### Syntaxe des chemins
+### Path syntax
 
-- **Chemin simple** : `"title": "nom"` — mappe `source.nom` vers `target.title`
-- **Chemin imbriqué** : `"location.lat": "coords.latitude"` — mappe `source.coords.latitude` vers `target.location.lat`
-- **Tableau** : `"attributes.tags": "categories[0]"` — premier élément du tableau
+- **Simple path**: `"title": "nom"` — maps `source.nom` onto `target.title`
+- **Nested path**: `"location.lat": "coords.latitude"` — maps `source.coords.latitude` onto `target.location.lat`
+- **Array**: `"attributes.tags": "categories[0]"` — first element of the array
 
 ### Placement
 
@@ -129,10 +126,10 @@ Pour des transformations plus complexes ou partagées entre plusieurs layers, un
 profiles/
 └── mon-profil/
     ├── geoleaf.config.json
-    └── mapping.json          ← fichier de mapping
+    └── mapping.json          ← mapping file
 ```
 
-### Activation dans le profil
+### Activation in the profile
 
 ```jsonc
 {
@@ -141,7 +138,7 @@ profiles/
             "id": "pois-externes",
             "type": "poi",
             "url": "https://api.example.com/pois",
-            "normalized": false, // déclenche l'application du mapping
+            "normalized": false, // triggers the mapping
             "mappingFile": "mapping.json",
         },
     ],
@@ -150,9 +147,9 @@ profiles/
 
 ---
 
-## Exemple : intégrer une API externe
+## Example: integrating an external API
 
-**Données brutes de l'API** :
+**Raw data returned by the API**:
 
 ```json
 [
@@ -166,7 +163,7 @@ profiles/
 ]
 ```
 
-**mapping.json** :
+**mapping.json**:
 
 ```json
 {
@@ -183,7 +180,7 @@ profiles/
 }
 ```
 
-**Layer config dans le profil** :
+**Layer configuration in the profile**:
 
 ```jsonc
 {
@@ -199,30 +196,30 @@ profiles/
 }
 ```
 
-GeoLeaf applique automatiquement le mapping au chargement, sans appel de code supplémentaire.
+GeoLeaf applies the mapping automatically at load time, with no additional code.
 
 ---
 
-## Comportement par défaut (sans mapping)
+## Default behaviour (no mapping)
 
-Si aucun `dataMapping` ni `mappingFile` n'est configuré :
+When neither `dataMapping` nor `mappingFile` is configured:
 
-- **JSON** : GeoLeaf cherche automatiquement `title`/`name`/`nom`/`label` pour le titre, `lat`/`latitude`/`y` et `lng`/`longitude`/`x` pour les coordonnées
-- **GeoJSON** : propriétés standard (`name`, `title`, `nom`) mappées automatiquement ; coordonnées extraites de `geometry.coordinates`
-- Les POI déjà conformes au format unifié passent sans transformation
+- **JSON**: GeoLeaf looks for `title`/`name`/`nom`/`label` for the title, and `lat`/`latitude`/`y` and `lng`/`longitude`/`x` for the coordinates
+- **GeoJSON**: standard properties (`name`, `title`, `nom`) are mapped automatically; coordinates are extracted from `geometry.coordinates`
+- POIs already matching the unified format pass through unchanged
 
 ---
 
 ## Limitations
 
-- **GPX** : support partiel (waypoints simples uniquement ; import .gpx natif non implémenté)
-- **Transformations calculées** : pas de support pour concatenations ou calculs dans mapping.json
-- **Validation stricte** : un POI sans `id` ou coordonnées après normalisation est ignoré (warning console)
+- **GPX**: partial support (simple waypoints only; native .gpx import is not implemented)
+- **Computed transformations**: concatenations and calculations are not supported in mapping.json
+- **Strict validation**: a POI without an `id` or without coordinates after normalisation is ignored (console warning)
 
 ---
 
-## Voir aussi
+## See also
 
-- [Configuration des layers GeoJSON](../geojson/GEOJSON_LAYERS_GUIDE.md) — format complet de la config layer
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — structure des fichiers de profil
-- [GeoLeaf_Config_README.md](GeoLeaf_Config_README.md) — chargement du profil et des fichiers annexes
+- [GeoJSON layer configuration](../geojson/GEOJSON_LAYERS_GUIDE.md) — full layer configuration format
+- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — structure of the profile files
+- [GeoLeaf_Config_README.md](GeoLeaf_Config_README.md) — loading the profile and its companion files

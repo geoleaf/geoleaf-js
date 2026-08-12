@@ -1,94 +1,84 @@
 ---
-title: "GeoLeaf.Config – Documentation du module Config (Chargement JSON)"
+title: "GeoLeaf.Config – Config module documentation (JSON loading)"
 ---
 
-# GeoLeaf.Config – Documentation du module Config (Chargement JSON)
+# GeoLeaf.Config – Config module documentation (JSON loading)
 
-Product Version: GeoLeaf Platform V3
+The **GeoLeaf.Config** module loads and validates the **external JSON configuration** used by GeoLeaf.
 
-**Version** : 3.0.0
+It provides:
 
-**Fichiers (monorepo)** : `packages/core/src/modules/built-in/config/` (config-core, config-loaders, config-accessors, config-types, config-validation, loader, normalization, profile, taxonomy, storage)
+- loading of an external JSON file (by URL) or of an inline object;
 
-**Dernière mise à jour** : mars 2026
+- validation and normalisation of the schema (`map`, `data`, `ui`, `basemaps`, `layers`, `poi` blocks…);
 
----
+- exposure of the data to the other modules through typed accessors;
 
-Le module **GeoLeaf.Config** est responsable du chargement et de la validation de la **configuration JSON externe** utilisée par GeoLeaf.
+- an internal event signalling that the configuration is ready;
 
-Il fournit :
+- an automatic call to a user callback (`onLoaded`);
 
-- le chargement d'un fichier JSON externe (via URL) ou d'un objet inline ;
+- support for `autoEvent` mode, which dispatches a custom DOM event;
 
-- la validation et la normalisation du schéma (blocs `map`, `data`, `ui`, `basemaps`, `layers`, `poi`…) ;
+- multi-profile handling through `ProfileManager` (the taxonomy belongs to the `GeoLeaf.Taxonomy` capability).
 
-- l'exposition des données au reste des modules via des accesseurs typés ;
-
-- un événement interne indiquant que la configuration est prête ;
-
-- l'appel automatique à un callback utilisateur (`onLoaded`) ;
-
-- le support du mode `autoEvent` pour déclencher un événement DOM personnalisé ;
-
-- la gestion multi-profils via `ProfileManager` (la taxonomie relève de la capacité `GeoLeaf.Taxonomy`).
-
-Ce module pilote la **séquence d'initialisation complète** de GeoLeaf.
+This module drives the **complete initialisation sequence** of GeoLeaf.
 
 ---
 
-## 1. Rôle fonctionnel de GeoLeaf.Config
+## 1. Functional role of GeoLeaf.Config
 
-1. Charger une configuration JSON depuis :
-    - un fichier distant (`url`),
-    - un objet JS inline (`config`).
+1. Load a JSON configuration from:
+    - a remote file (`url`),
+    - an inline JS object (`config`).
 
-2. Valider et normaliser les blocs essentiels :
-    - `map` (cible DOM, centre, zoom, bounds, options MapLibre),
-    - `data` (profil actif, chemin des profils),
-    - `ui` (thème, langue, contrôles),
-    - `basemaps` (couches de fond raster ou vectorielles),
-    - `layers` (couches GeoJSON/vecteur référencées),
+2. Validate and normalise the essential blocks:
+    - `map` (DOM target, centre, zoom, bounds, MapLibre options),
+    - `data` (active profile, profile path),
+    - `ui` (theme, language, controls),
+    - `basemaps` (raster or vector background layers),
+    - `layers` (referenced GeoJSON/vector layers),
     - `poi`, `poiConfig`, `categories`.
 
-3. Exposer la configuration aux autres modules via :
-    - `Config.getAll()` — config complète,
-    - `Config.get(path, default)` — lecture par chemin pointé,
-    - `Config.getSection(name)` — lecture d'un bloc entier,
-    - `Config.getActiveProfile()` — profil actif (via `ProfileManager`),
-    - `Config.getActiveProfileMapping()` — mapping du profil actif,
-    - `Config.isProfilePoiMappingEnabled()` — mapping POI activé.
+3. Expose the configuration to the other modules through:
+    - `Config.getAll()` — full configuration,
+    - `Config.get(path, default)` — read by dotted path,
+    - `Config.getSection(name)` — read a whole block,
+    - `Config.getActiveProfile()` — active profile (through `ProfileManager`),
+    - `Config.getActiveProfileMapping()` — mapping of the active profile,
+    - `Config.isProfilePoiMappingEnabled()` — POI mapping enabled.
 
-4. Déclencher un callback `onLoaded(config)` lorsque tout est prêt.
+4. Call an `onLoaded(config)` callback once everything is ready.
 
-5. Émettre un événement DOM `"geoleaf:config:loaded"` si `autoEvent` est activé.
+5. Dispatch a `"geoleaf:config:loaded"` DOM event when `autoEvent` is enabled.
 
-Ce module constitue le **point d'entrée** de toute la logique GeoLeaf.
+This module is the **entry point** of the whole GeoLeaf logic.
 
 ---
 
-## 2. API publique du module Config
+## 2. Public API of the Config module
 
-- `GeoLeaf.Config.init(options)` — charge la config et initialise les sous-modules
-- `GeoLeaf.Config.loadUrl(url, options?)` — charge un fichier JSON externe
-- `GeoLeaf.Config.loadTaxonomy(url, options?)` — charge un mapping de catégories
-- `GeoLeaf.Config.loadActiveProfileResources(options?)` — charge les ressources du profil actif
-- `GeoLeaf.Config.getAll()` — retourne la configuration complète
-- `GeoLeaf.Config.get(path, default?)` — lit un champ par chemin pointé
-- `GeoLeaf.Config.set(path, value)` — modifie un champ
-- `GeoLeaf.Config.getSection(name, default?)` — lit un bloc de configuration
-- `GeoLeaf.Config.getActiveProfile()` — profil actif (objet complet)
-- `GeoLeaf.Config.getActiveProfileId()` — identifiant du profil actif
-- `GeoLeaf.Config.getActiveProfileMapping()` — mapping de taxonomie du profil actif
-- `GeoLeaf.Config.isProfilePoiMappingEnabled()` — vrai si le mapping POI est activé
-- La taxonomie (catégories / sous-catégories) est exposée par la capacité `GeoLeaf.Taxonomy` — voir `GeoLeaf.Taxonomy.getCategories(ref)`
-- `GeoLeaf.Config.isLoaded()` — vrai si la config est prête
-- `GeoLeaf.Config.getSource()` — source ayant produit la config (`"url"` ou `"inline"`)
+- `GeoLeaf.Config.init(options)` — loads the configuration and initialises the sub-modules
+- `GeoLeaf.Config.loadUrl(url, options?)` — loads an external JSON file
+- `GeoLeaf.Config.loadTaxonomy(url, options?)` — loads a category mapping
+- `GeoLeaf.Config.loadActiveProfileResources(options?)` — loads the resources of the active profile
+- `GeoLeaf.Config.getAll()` — returns the full configuration
+- `GeoLeaf.Config.get(path, default?)` — reads a field by dotted path
+- `GeoLeaf.Config.set(path, value)` — sets a field
+- `GeoLeaf.Config.getSection(name, default?)` — reads a configuration block
+- `GeoLeaf.Config.getActiveProfile()` — active profile (full object)
+- `GeoLeaf.Config.getActiveProfileId()` — identifier of the active profile
+- `GeoLeaf.Config.getActiveProfileMapping()` — taxonomy mapping of the active profile
+- `GeoLeaf.Config.isProfilePoiMappingEnabled()` — true when the POI mapping is enabled
+- The taxonomy (categories / sub-categories) is exposed by the `GeoLeaf.Taxonomy` capability — see `GeoLeaf.Taxonomy.getCategories(ref)`
+- `GeoLeaf.Config.isLoaded()` — true when the configuration is ready
+- `GeoLeaf.Config.getSource()` — source that produced the configuration (`"url"` or `"inline"`)
 
 ---
 
 ## 3. `GeoLeaf.Config.init(options)`
 
-Initialise le module en précisant la source de la configuration.
+Initialises the module by declaring the source of the configuration.
 
 ```js
 GeoLeaf.Config.init({
@@ -100,39 +90,39 @@ GeoLeaf.Config.init({
 });
 ```
 
-### 3.1 Paramètres (`ConfigInitOptions`)
+### 3.1 Parameters (`ConfigInitOptions`)
 
-| Paramètre                  | Type                              | Description                                                      |
-| -------------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| `config`                   | `GeoLeafConfig`                   | Configuration inline (prioritaire sur `url`)                     |
-| `url`                      | `string`                          | URL du fichier JSON à charger via `fetch`                        |
-| `headers`                  | `Record<string, string>`          | En-têtes HTTP personnalisés pour le `fetch`                      |
-| `strictContentType`        | `boolean`                         | Rejette les réponses non-`application/json` (défaut: `true`)     |
-| `autoEvent`                | `boolean`                         | Émet `"geoleaf:config:loaded"` après chargement (défaut: `true`) |
-| `onLoaded`                 | `(config: GeoLeafConfig) => void` | Callback appelé après chargement réussi                          |
-| `onError`                  | `(err: Error) => void`            | Callback appelé en cas d'erreur de chargement                    |
-| `profileId`                | `string`                          | Identifiant du profil actif à activer                            |
-| `mappingUrl`               | `string`                          | URL du fichier de mapping de catégories (taxonomie)              |
-| `mappingHeaders`           | `Record<string, string>`          | En-têtes HTTP pour le fetch de la taxonomie                      |
-| `mappingStrictContentType` | `boolean`                         | Validation content-type pour la taxonomie                        |
+| Parameter                  | Type                              | Description                                                          |
+| -------------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| `config`                   | `GeoLeafConfig`                   | Inline configuration (takes precedence over `url`)                   |
+| `url`                      | `string`                          | URL of the JSON file to load through `fetch`                         |
+| `headers`                  | `Record<string, string>`          | Custom HTTP headers for the `fetch`                                  |
+| `strictContentType`        | `boolean`                         | Rejects non-`application/json` responses (default: `true`)           |
+| `autoEvent`                | `boolean`                         | Dispatches `"geoleaf:config:loaded"` after loading (default: `true`) |
+| `onLoaded`                 | `(config: GeoLeafConfig) => void` | Callback invoked after a successful load                             |
+| `onError`                  | `(err: Error) => void`            | Callback invoked when loading fails                                  |
+| `profileId`                | `string`                          | Identifier of the profile to activate                                |
+| `mappingUrl`               | `string`                          | URL of the category mapping file (taxonomy)                          |
+| `mappingHeaders`           | `Record<string, string>`          | HTTP headers for the taxonomy fetch                                  |
+| `mappingStrictContentType` | `boolean`                         | Content-type validation for the taxonomy                             |
 
-### 3.2 Comportement
+### 3.2 Behaviour
 
-- Si `config` est fourni → la configuration est utilisée immédiatement (chemin synchrone).
-- Si `url` est fourni → appel `fetch` asynchrone.
-- Si `mappingUrl` est fourni → chargement de la taxonomie en parallèle.
-- Après chargement :
-    - normalisation et stockage interne de la configuration,
-    - initialisation de `StorageHelper`, `ProfileManager`,
-    - appel du callback `onLoaded`,
-    - émission de l'événement DOM (si `autoEvent = true`).
-- Retourne une `Promise<GeoLeafConfig>`.
+- When `config` is supplied → the configuration is used immediately (synchronous path).
+- When `url` is supplied → an asynchronous `fetch` call is made.
+- When `mappingUrl` is supplied → the taxonomy is loaded in parallel.
+- After loading:
+    - the configuration is normalised and stored internally,
+    - `StorageHelper` and `ProfileManager` are initialised,
+    - the `onLoaded` callback is invoked,
+    - the DOM event is dispatched (when `autoEvent = true`).
+- Returns a `Promise<GeoLeafConfig>`.
 
 ---
 
 ## 4. `GeoLeaf.Config.loadUrl(url, options?)`
 
-Charge la configuration JSON depuis une URL.
+Loads the JSON configuration from a URL.
 
 ```js
 await GeoLeaf.Config.loadUrl("../data/config.json", {
@@ -140,25 +130,25 @@ await GeoLeaf.Config.loadUrl("../data/config.json", {
 });
 ```
 
-### 4.1 Comportement
+### 4.1 Behaviour
 
-- effectue un `fetch(url)` en mode asynchrone ;
-- valide le content-type si `strictContentType` est activé ;
-- parse le JSON et applique la configuration via `_applyConfig` ;
-- déclenche automatiquement la suite (`_maybeFireLoadedEvent`).
+- performs an asynchronous `fetch(url)`;
+- validates the content-type when `strictContentType` is enabled;
+- parses the JSON and applies the configuration through `_applyConfig`;
+- automatically triggers the follow-up (`_maybeFireLoadedEvent`).
 
-### 4.2 Gestion d'erreurs
+### 4.2 Error handling
 
-- JSON invalide → log contrôlé, retourne la config existante
-- URL inaccessible → log d'erreur + retour propre (pas d'exception non gérée)
+- Invalid JSON → controlled log, returns the existing configuration
+- Unreachable URL → error log and clean return (no unhandled exception)
 
 ---
 
-## 5. Accesseurs principaux
+## 5. Main accessors
 
 ### `GeoLeaf.Config.getAll()`
 
-Retourne la configuration complète actuellement chargée.
+Returns the configuration currently loaded.
 
 ```js
 const config = GeoLeaf.Config.getAll();
@@ -167,7 +157,7 @@ console.log(config.map.zoom);
 
 ### `GeoLeaf.Config.get(path, defaultValue?)`
 
-Lit un champ par chemin pointé.
+Reads a field by dotted path.
 
 ```js
 const theme = GeoLeaf.Config.get("ui.theme", "light");
@@ -176,20 +166,20 @@ const zoom = GeoLeaf.Config.get("map.zoom", 10);
 
 ### `GeoLeaf.Config.getActiveProfile()`
 
-Retourne l'objet profil actif (chargé par `ProfileManager`).
+Returns the active profile object (loaded by `ProfileManager`).
 
 ```js
 const profile = GeoLeaf.Config.getActiveProfile();
 if (profile?.panels?.detail?.layout) {
-    // Utiliser le layout du panneau de détail
+    // Use the detail panel layout
 }
 ```
 
 ---
 
-## 6. Structure JSON officielle supportée
+## 6. Supported JSON structure
 
-Voici la structure complète (tous les blocs sont optionnels sauf `map`) :
+The full structure is shown below (every block is optional except `map`):
 
 ```json
 {
@@ -209,7 +199,7 @@ Voici la structure complète (tous les blocs sont optionnels sauf `map`) :
     },
     "ui": {
         "theme": "auto",
-        "language": "fr",
+        "language": "en",
         "showLayerManager": true,
         "showFilterPanel": true,
         "permalink": {
@@ -237,63 +227,63 @@ Voici la structure complète (tous les blocs sont optionnels sauf `map`) :
 
 ---
 
-## 7. Séquence complète d'initialisation
+## 7. Full initialisation sequence
 
 1. `GeoLeaf.Config.init({ url })`
-2. `fetch()` du fichier JSON
-3. Validation et normalisation du JSON
-4. `StorageHelper.init(config)` — accès lecture/écriture à la config
-5. `ProfileManager.init(config)` — chargement du profil actif
-6. Appel du callback `onLoaded(config)`
-7. Émission de `geoleaf:config:loaded` (si `autoEvent = true`)
-8. La façade `geoleaf.boot.ts` enchaîne :
-    - `GeoLeaf.Core.init(config.map)` → crée la carte MapLibre GL
-    - initialisation de l'UI, des couches, des POI, des plugins
+2. `fetch()` of the JSON file
+3. Validation and normalisation of the JSON
+4. `StorageHelper.init(config)` — read/write access to the configuration
+5. `ProfileManager.init(config)` — loading of the active profile
+6. Call to the `onLoaded(config)` callback
+7. Dispatch of `geoleaf:config:loaded` (when `autoEvent = true`)
+8. The `geoleaf.boot.ts` facade then chains:
+    - `GeoLeaf.Core.init(config.map)` → creates the MapLibre GL map
+    - initialisation of the UI, the layers, the POIs and the plugins
 
 ---
 
-## 8. Résumé rapide de l'API Config
+## 8. Quick summary of the Config API
 
-| Méthode                        | Rôle                                         |
-| ------------------------------ | -------------------------------------------- |
-| `init(options)`                | Démarre le chargement du JSON ou data inline |
-| `loadUrl(url, options?)`       | Charge un fichier JSON externe               |
-| `loadTaxonomy(url, options?)`  | Charge un mapping de catégories              |
-| `loadActiveProfileResources()` | Charge les ressources du profil actif        |
-| `getAll()`                     | Retourne la configuration complète           |
-| `get(path, default?)`          | Lit un champ par chemin pointé               |
-| `set(path, value)`             | Modifie un champ                             |
-| `getSection(name, default?)`   | Lit un bloc de configuration                 |
-| `getActiveProfile()`           | Profil actif (via ProfileManager)            |
-| `getActiveProfileId()`         | Identifiant du profil actif                  |
-| `getActiveProfileMapping()`    | Mapping de taxonomie du profil actif         |
-| `isProfilePoiMappingEnabled()` | `true` si le mapping POI est activé          |
-| `isLoaded()`                   | Vrai si la config est initialisée            |
-| `getSource()`                  | Source de la config (`"url"` ou `"inline"`)  |
-
----
-
-## 9. Types TypeScript
-
-Les types sont définis dans `config-types.ts` :
-
-- `GeoLeafConfig` — objet racine (map, data, ui, basemaps, layers…)
-- `MapConfig` — section `map` (target, bounds, center, zoom, mapOptions…)
-- `DataConfig` — section `data` (activeProfile, profilesBasePath)
-- `UIConfig` — section `ui` (theme, language, contrôles, permalink)
-- `ConfigInitOptions` — options de `Config.init()`
-- `BasemapConfig` — définition d'un fond de carte
-- `LayerConfig` — référence à une couche GeoJSON
-- `LayerFileConfig` — structure d'un fichier de config de couche
-- `PermalinkConfig` — deep-linking URL
+| Method                         | Role                                            |
+| ------------------------------ | ----------------------------------------------- |
+| `init(options)`                | Starts loading the JSON file or the inline data |
+| `loadUrl(url, options?)`       | Loads an external JSON file                     |
+| `loadTaxonomy(url, options?)`  | Loads a category mapping                        |
+| `loadActiveProfileResources()` | Loads the resources of the active profile       |
+| `getAll()`                     | Returns the full configuration                  |
+| `get(path, default?)`          | Reads a field by dotted path                    |
+| `set(path, value)`             | Sets a field                                    |
+| `getSection(name, default?)`   | Reads a configuration block                     |
+| `getActiveProfile()`           | Active profile (through ProfileManager)         |
+| `getActiveProfileId()`         | Identifier of the active profile                |
+| `getActiveProfileMapping()`    | Taxonomy mapping of the active profile          |
+| `isProfilePoiMappingEnabled()` | `true` when the POI mapping is enabled          |
+| `isLoaded()`                   | True when the configuration is initialised      |
+| `getSource()`                  | Configuration source (`"url"` or `"inline"`)    |
 
 ---
 
-## 10. Bonnes pratiques
+## 9. TypeScript types
 
-- Toujours initialiser **Config** avant tous les autres modules.
-- Préférer une configuration JSON unique et centralisée par déploiement.
-- Utiliser `autoEvent: true` (défaut) pour intégrer GeoLeaf dans des frameworks externes.
-- Toujours valider vos fichiers JSON avant utilisation (pas de commentaires JSON5).
-- Utiliser les accesseurs typés (`get`, `getSection`, `getActiveProfile`) plutôt que d'accéder directement à `_config`.
-- Le bloc `map.target` est obligatoire (identifiant HTML de l'élément conteneur).
+The types are declared in `config-types.ts`:
+
+- `GeoLeafConfig` — root object (map, data, ui, basemaps, layers…)
+- `MapConfig` — `map` section (target, bounds, center, zoom, mapOptions…)
+- `DataConfig` — `data` section (activeProfile, profilesBasePath)
+- `UIConfig` — `ui` section (theme, language, controls, permalink)
+- `ConfigInitOptions` — options of `Config.init()`
+- `BasemapConfig` — definition of a basemap
+- `LayerConfig` — reference to a GeoJSON layer
+- `LayerFileConfig` — structure of a layer configuration file
+- `PermalinkConfig` — URL deep-linking
+
+---
+
+## 10. Best practices
+
+- Always initialise **Config** before any other module.
+- Prefer a single, centralised JSON configuration per deployment.
+- Use `autoEvent: true` (the default) to integrate GeoLeaf into external frameworks.
+- Always validate JSON files before use (no JSON5 comments).
+- Use the typed accessors (`get`, `getSection`, `getActiveProfile`) rather than reading `_config` directly.
+- The `map.target` block is mandatory (HTML identifier of the container element).

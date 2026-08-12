@@ -1,207 +1,204 @@
 ---
 title: "GeoLeaf v2.0.0 — Release Notes"
-description: "Notes de release complètes v2.0.0 — Migration MapLibre GL JS, ESM-only, @geoleaf/connector"
+description: "Full v2.0.0 release notes — MapLibre GL JS migration, ESM-only, @geoleaf/connector"
 ---
 
-# Patchnote GeoLeaf V2.0.0
+# GeoLeaf V2.0.0 release notes
 
 **Version:** 2.0.0
-**Date de release:** 2026-03-22
-**Comparaison:** `v1.2.0` → `v2.0.0`
-**Branche:** `main`
+**Release date:** 2026-03-22
+**Comparison:** `v1.2.0` → `v2.0.0`
+**Branch:** `main`
 
 ---
 
-## ⚠️ Breaking Changes
+## Breaking Changes
 
-Cette version introduit une migration majeure du moteur de rendu (Leaflet → MapLibre GL JS v5). Les changements cassants sont détaillés ci-dessous.
+This version introduces a major migration of the rendering engine (Leaflet → MapLibre GL JS v5). The breaking changes are detailed below.
 
-### Moteur de rendu
+### Rendering engine
 
-- **Leaflet 1.9.4 → MapLibre GL JS ^5.0.0** : le moteur de rendu passe du DOM/SVG/Canvas au WebGL GPU. Les performances sont fondamentalement différentes (GPU clustering, vector tiles natif, expressions data-driven).
-- **Convention de coordonnées inversée** : `[lat, lng]` (Leaflet) → `[lng, lat]` (GeoJSON/MapLibre standard). Toutes les coordonnées passées à l'API doivent être adaptées.
-- **Peer dependency** : supprimer `leaflet` et `leaflet.markercluster`, ajouter `maplibre-gl@^5.0.0`.
+- **Leaflet 1.9.4 → MapLibre GL JS ^5.0.0**: the rendering engine moves from DOM/SVG/Canvas to WebGL on the GPU. Performance characteristics are fundamentally different (GPU clustering, native vector tiles, data-driven expressions).
+- **Reversed coordinate convention**: `[lat, lng]` (Leaflet) → `[lng, lat]` (GeoJSON/MapLibre standard). Every coordinate passed to the API must be adapted.
+- **Peer dependency**: remove `leaflet` and `leaflet.markercluster`, add `maplibre-gl@^5.0.0`.
 
-### Package npm
+### npm package
 
-- **Scope renommé** : `geoleaf` → `@geoleaf/core` (le nom peut nécessiter une mise à jour dans `package.json` des projets consommateurs).
-- **UMD supprimé** : aucun bundle UMD CJS disponible. Uniquement ESM. Tout chargement via `<script>` classique doit migrer vers `<script type="module">`.
+- **Scope renamed**: `geoleaf` → `@geoleaf/core` (consumer projects may need to update the name in their `package.json`).
+- **UMD removed**: no UMD CJS bundle is available. ESM only. Any load through a classic `<script>` must migrate to `<script type="module">`.
 
-### Configuration applicative
+### Application configuration
 
-- **`container:` → `mapId:`** : la clé d'initialisation de l'ID du conteneur carte est renommée.
-- **`sidepanel` → `sidepanelConfig`** : clé canonique pour la config side panel dans les profils JSON. La clé `sidepanel` reste acceptée en lecture (fallback rétrocompat) mais `sidepanelConfig` est désormais la référence.
-- **`useProfilePoiMapping`, `useMapping`, `GeoLeafConfig.geojson`** supprimés des interfaces TypeScript (la logique runtime de fallback est conservée pour les profils existants).
+- **`container:` → `mapId:`**: the initialisation key holding the map container ID is renamed.
+- **`sidepanel` → `sidepanelConfig`**: canonical key for the side panel configuration in JSON profiles. The `sidepanel` key is still accepted on read (backwards-compatible fallback), but `sidepanelConfig` is now the reference.
+- **`useProfilePoiMapping`, `useMapping`, `GeoLeafConfig.geojson`** removed from the TypeScript interfaces (the runtime fallback logic is kept for existing profiles).
 
-### API publique
+### Public API
 
-- **`applyTheme(theme)`** → **`applyTheme(layerId, themeId)`** : signature changée, ajout du paramètre `layerId` cible.
+- **`applyTheme(theme)`** → **`applyTheme(layerId, themeId)`**: signature changed, with an added target `layerId` parameter.
 
 ### CSS
 
-- Les classes `.leaflet-*` du moteur sont remplacées par `.maplibregl-*` (MapLibre). Les classes GeoLeaf internes sont toutes préfixées `.gl-*` (isolation complète).
-- `.geoleaf-ctrl-scale` / `.geoleaf-ctrl-scale-line` remplacées par `.gl-scale-graphic` / `.gl-scale-graphic-line`.
+- The engine's `.leaflet-*` classes are replaced by `.maplibregl-*` (MapLibre). Internal GeoLeaf classes are all prefixed `.gl-*` (full isolation).
+- `.geoleaf-ctrl-scale` / `.geoleaf-ctrl-scale-line` replaced by `.gl-scale-graphic` / `.gl-scale-graphic-line`.
 
 ### TypeScript
 
-- **`SecureCookieOptions.secure`** : valeur par défaut changée dans le module CSRF (cf. `csrf-token.ts` — breaking documented en TSDoc).
+- **`SecureCookieOptions.secure`**: default value changed in the CSRF module (see `csrf-token.ts` — breaking change documented in TSDoc).
 
 ---
 
-## Added (Ajouté)
+## Added
 
-### Moteur de rendu — MapLibre GL JS v5 (Sprints 2–9)
+### Rendering engine — MapLibre GL JS v5
 
-- **`MaplibreAdapter`** : implémentation complète de `IMapAdapter` (33 méthodes) en 7 fichiers dédiés, remplaçant `LeafletAdapter` dans tous les contextes runtime :
-    - `maplibre-adapter.ts` — map core, navigation (setView, panTo, flyTo, fitBounds), bridge événements (`geoleaf:map:ready/move/zoom`), markers, clustering, popups, controls, cleanup destroy()
+- **`MaplibreAdapter`**: complete implementation of `IMapAdapter` (33 methods) across 7 dedicated files, replacing `LeafletAdapter` in every runtime context:
+    - `maplibre-adapter.ts` — map core, navigation (setView, panTo, flyTo, fitBounds), event bridge (`geoleaf:map:ready/move/zoom`), markers, clustering, popups, controls, destroy() cleanup
     - `maplibre-helpers.ts` — `bindGeoJSONClusterEvents()`, `addSubLayers()`, `detectGeometryTypes()`, `safeBeforeId()`
-    - `maplibre-hatch-patterns.ts` — génération Canvas de 6 types de hatch (diagonal, dot, cross, x, horizontal, vertical) via `OffscreenCanvas`, enregistrement `map.addImage()` pour `fill-pattern`
-    - `maplibre-poi-icons.ts` — `registerSpriteIcons()` convertit chaque `<symbol>` SVG sprite en `ImageData` (48×48 px, pixelRatio 2), registered via `map.addImage()`
-    - `maplibre-style-converter.ts` — `normalizeToFlat()`, `toFillPaint()`, `toLinePaint()`, `toCirclePaint()`, `toClusterCirclePaint()`, `toRouteLinePaint()`, `conditionToExpression()` (16 opérateurs), expressions data-driven `["case", ...]`, zoom interpolation
-    - `maplibre-layer-registry.ts` — registre source/layers GeoLeaf, ordering par z-index, sentinelle POI, `toSourceId()`, `toSubLayerId()`, `getInsertBeforeId()`
-    - `maplibre-poi-renderer.ts` — source GeoJSON clusterisée (`cluster: true`), 4 layers GPU empilés (clusters circle, cluster-count symbol, unclustered circle, unclustered icons symbol), `applyPoiFilter()`, `poisToFeatureCollection()`
-- **Modèle source/layer GeoJSON** : 1 source `gl-src-{id}` + N sub-layers (`gl-{id}-fill`, `gl-{id}-line`, `gl-{id}-circle`) par couche GeoLeaf
-- **MVT/PBF vector tiles natifs** : `vector-tiles.ts` réécrit — `map.addSource({type:'vector'})` + `map.addLayer()` MapLibre natif, `fill-pattern` data-driven
-- **Symbol layer labels MapLibre** : `LabelRenderer.createSymbolLayerForMapLibre()` — layer natif sur source GeoJSON existante (field, font, color, buffer/halo), résolution dynamique du font stack depuis `map.getStyle()`
-- **Gate CI `verify-no-leaflet.cjs`** : script de scan automatique (6 catégories : runtime, imports, globals, branching, JSDoc, config), résultat final **ZERO LEAFLET REFERENCES**
+    - `maplibre-hatch-patterns.ts` — Canvas generation of 6 hatch types (diagonal, dot, cross, x, horizontal, vertical) through `OffscreenCanvas`, registered with `map.addImage()` for `fill-pattern`
+    - `maplibre-poi-icons.ts` — `registerSpriteIcons()` converts each SVG sprite `<symbol>` into `ImageData` (48×48 px, pixelRatio 2), registered through `map.addImage()`
+    - `maplibre-style-converter.ts` — `normalizeToFlat()`, `toFillPaint()`, `toLinePaint()`, `toCirclePaint()`, `toClusterCirclePaint()`, `toRouteLinePaint()`, `conditionToExpression()` (16 operators), data-driven `["case", ...]` expressions, zoom interpolation
+    - `maplibre-layer-registry.ts` — GeoLeaf source/layer registry, z-index ordering, POI sentinel, `toSourceId()`, `toSubLayerId()`, `getInsertBeforeId()`
+    - `maplibre-poi-renderer.ts` — clustered GeoJSON source (`cluster: true`), 4 stacked GPU layers (cluster circles, cluster-count symbols, unclustered circles, unclustered icon symbols), `applyPoiFilter()`, `poisToFeatureCollection()`
+- **GeoJSON source/layer model**: 1 source `gl-src-{id}` + N sub-layers (`gl-{id}-fill`, `gl-{id}-line`, `gl-{id}-circle`) per GeoLeaf layer
+- **Native MVT/PBF vector tiles**: `vector-tiles.ts` rewritten — native `map.addSource({type:'vector'})` + `map.addLayer()`, data-driven `fill-pattern`
+- **MapLibre symbol layer labels**: `LabelRenderer.createSymbolLayerForMapLibre()` — native layer on the existing GeoJSON source (field, font, colour, buffer/halo), font stack resolved dynamically from `map.getStyle()`
+- **CI gate `verify-no-leaflet.cjs`**: automatic scanning script (6 categories: runtime, imports, globals, branching, JSDoc, config), final result **ZERO LEAFLET REFERENCES**
 
-### Nouveau package — `@geoleaf/connector` v1.0.0 (MIT, npm public)
+### New package — `@geoleaf/connector` v1.0.0 (MIT, public npm)
 
-- **Intercepteur fetch universel** pour sources géospatiales authentifiées (GeoJSON, WFS, vector tiles, FlatGeobuf, PMTiles, OGC API Features)
-- 6 modules : `config-schema.ts`, `format-detector.ts`, `token-store.ts`, `fetch-interceptor.ts`, `auth-client.ts`, `login-ui.ts`
-- **Hook `__GEOLEAF_WORKER_HEADERS_HOOK__`** : couplage optionnel core↔connector sans violer `no-plugin-in-core`
-- 105 tests, documentation `CONNECTOR_GUIDE.md` — à cette date dans `packages/core/docs/` ; déménagée
-  le 10/08/2026 dans le paquet du plugin (`packages/plugins/connector/docs/`). Le lien de la note
-  n'est pas ré-écrit vers la nouvelle adresse : une note de version dit où se trouvait le document
-  **à sa date**, elle ne suit pas les déménagements ultérieurs
+- **Universal fetch interceptor** for authenticated geospatial sources (GeoJSON, WFS, vector tiles, FlatGeobuf, PMTiles, OGC API Features)
+- 6 modules: `config-schema.ts`, `format-detector.ts`, `token-store.ts`, `fetch-interceptor.ts`, `auth-client.ts`, `login-ui.ts`
+- **`__GEOLEAF_WORKER_HEADERS_HOOK__` hook**: optional core↔connector coupling without breaking `no-plugin-in-core`
+- 105 tests, `CONNECTOR_GUIDE.md` documentation
 
 ### Basemaps
 
-- **CARTO tiles** : positron, dark-matter, voyager ajoutés à `DEFAULT_BASELAYERS`
-- **ESRI Street** remplace OpenStreetMap standard
-- **`normalizeTilesArray()`** : expansion `{s}` subdomains (string/array) + support `pmtiles://`
-- `BasemapConfig` étendu : champs `tiles?: string[]` et `tileSize?: number`
+- **CARTO tiles**: positron, dark-matter and voyager added to `DEFAULT_BASELAYERS`
+- **ESRI Street** replaces standard OpenStreetMap
+- **`normalizeTilesArray()`**: `{s}` subdomain expansion (string/array) + `pmtiles://` support
+- `BasemapConfig` extended: `tiles?: string[]` and `tileSize?: number` fields
 
-### Performance & Monitoring
+### Performance and monitoring
 
-- **Performance marks** : `_pm()` helper dans `boot.ts` et `init.ts` — 8 paires de marks gateés sur `window.__GEOLEAF_PERF__ = true`
-- **Deferred UI init** : Legend, LayerManager, Scale, Labels, CoordinatesDisplay déplacés dans un listener `geoleaf:app:ready` `{ once: true }` — TTI amélioré
+- **Performance marks**: `_pm()` helper in `boot.ts` and `init.ts` — 8 pairs of marks gated on `window.__GEOLEAF_PERF__ = true`
+- **Deferred UI init**: Legend, LayerManager, Scale, Labels and CoordinatesDisplay moved into a `geoleaf:app:ready` listener with `{ once: true }` — improved TTI
 
-### Architecture TypeScript
+### TypeScript architecture
 
-- **`lazy-module-loader.ts`** : `LazyModuleName`, `loadModule()`, `loadAllSecondaryModules()` extraites de `bundle-esm-entry.ts` — zero `any`, zero `@ts-nocheck`
-- **`loader-types.ts`** : 13 interfaces service locator, `LoaderDependencies` avec 17 getters — remplace 69 occurrences `(_g as any).GeoLeaf.*`
-- **Contracts enrichis** : `content-builder.contract.ts`, `ui-controls.contract.ts`, `api.contract.ts`, `map-adapter.contract.ts`
+- **`lazy-module-loader.ts`**: `LazyModuleName`, `loadModule()` and `loadAllSecondaryModules()` extracted from `bundle-esm-entry.ts` — zero `any`, zero `@ts-nocheck`
+- **`loader-types.ts`**: 13 service-locator interfaces, `LoaderDependencies` with 17 getters — replaces 69 occurrences of `(_g as any).GeoLeaf.*`
+- **Enriched contracts**: `content-builder.contract.ts`, `ui-controls.contract.ts`, `api.contract.ts`, `map-adapter.contract.ts`
 
-### Sécurité
+### Security
 
-- **Module CSRF complet** (`csrf-token.ts`) : `init`, `getToken`, `validateToken`, `addTokenToHeaders`, `rotateToken`, `getTokenInfo`, `setSecureCookie`, `destroy`
-- **`DOMSecurity.setSafeHTML()`** systématique — whitelist SVG-only
-- **`CSS.escape()`** sur POI ID dans le querySelector popup (prévention injection CSS selector)
-- **Login modal** (`login-ui.ts`) : aucune exposition de données user dans `innerHTML`, focus trap, Escape handler
+- **Complete CSRF module** (`csrf-token.ts`): `init`, `getToken`, `validateToken`, `addTokenToHeaders`, `rotateToken`, `getTokenInfo`, `setSecureCookie`, `destroy`
+- **`DOMSecurity.setSafeHTML()`** used systematically — SVG-only allowlist
+- **`CSS.escape()`** applied to the POI ID in the popup querySelector (CSS selector injection prevention)
+- **Login modal** (`login-ui.ts`): no user data exposed through `innerHTML`, focus trap, Escape handler
 
-### Accessibilité CSS (WCAG 2.1 / RGAA 4.1)
+### CSS accessibility (WCAG 2.1 / RGAA 4.1)
 
-- **`@media (prefers-reduced-motion: reduce)`** dans `geoleaf-mobile-toolbar.css` (WCAG 2.3.3)
-- **`:focus-visible`** remplace `:focus` dans 5 fichiers CSS
-- **`.gl-search-bar:focus-within`** : ring de focus visible (WCAG 2.4.7)
-- **`aria-label` + `role="img"`** sur les markers MapLibre (navigation clavier)
+- **`@media (prefers-reduced-motion: reduce)`** in `geoleaf-mobile-toolbar.css` (WCAG 2.3.3)
+- **`:focus-visible`** replaces `:focus` in 5 CSS files
+- **`.gl-search-bar:focus-within`**: visible focus ring (WCAG 2.4.7)
+- **`aria-label` + `role="img"`** on MapLibre markers (keyboard navigation)
 
 ---
 
-## Changed (Modifié)
+## Changed
 
-### Migration Leaflet → MapLibre GL JS
+### Leaflet → MapLibre GL JS migration
 
-- Tous les appels `L.*` supprimés du code source core — gate CI `verify-no-leaflet.cjs` bloquant
-- `L.Control.extend()` → plain objects avec `addTo(map)/remove()` dans tous les contrôles
-- `L.DomEvent.*` → DOM natif (`addEventListener`, `stopPropagation`, capture phase)
+- All `L.*` calls removed from the core source — blocking CI gate `verify-no-leaflet.cjs`
+- `L.Control.extend()` → plain objects with `addTo(map)/remove()` in every control
+- `L.DomEvent.*` → native DOM (`addEventListener`, `stopPropagation`, capture phase)
 - CSS classes `leaflet-control-*` → `gl-control-*`
 
-### Build & Distribution
+### Build and distribution
 
-- **UMD supprimé** : 3 sorties ESM — bundle full chunked (`dist/esm/`), preserveModules, lite (`dist/esm-lite/`)
-- `packages/core/package.json` v2.0.0 : `exports` ESM-only, `peerDependencies` → `maplibre-gl: ^5.0.0`
+- **UMD removed**: 3 ESM outputs — full chunked bundle (`dist/esm/`), preserveModules, lite (`dist/esm-lite/`)
+- `packages/core/package.json` v2.0.0: ESM-only `exports`, `peerDependencies` → `maplibre-gl: ^5.0.0`
 
-### Infrastructure de tests — Jest → Vitest 3 (Sprints T1–T5)
+### Test infrastructure — Jest → Vitest 3
 
-- **Jest entièrement supprimé** : 10 fichiers de configuration + dépendances retirées
-- **Vitest 3** avec workspace mode, provider `@vitest/coverage-istanbul`
-- Seuils couverture : `branches: 75, functions: 68, lines: 70, statements: 70`
+- **Jest fully removed**: 10 configuration files plus dependencies dropped
+- **Vitest 3** in workspace mode, with the `@vitest/coverage-istanbul` provider
+- Coverage thresholds: `branches: 75, functions: 68, lines: 70, statements: 70`
 
-### TypeScript strict (Sprints R1–R4)
+### Strict TypeScript
 
-- **30 `@ts-nocheck` supprimés** par contrats de types (api/, ui/controls/, ui/content-builder/, loader-types.ts)
-- `tsc --noEmit --strict` 0 erreur maintenu
+- **30 `@ts-nocheck` removed** through type contracts (api/, ui/controls/, ui/content-builder/, loader-types.ts)
+- `tsc --noEmit --strict` kept at 0 errors
 
 ### Dead code — Knip
 
-- **7 fichiers orphelins supprimés**, **172 exports morts supprimés**
+- **7 orphan files removed**, **172 dead exports removed**
 
 ---
 
-## Fixed (Corrections)
+## Fixed
 
-- **Basemap z-ordering** : raster s'affichait au-dessus des couches data — fix `addLayer(spec, firstLayerId)`
-- **Style selector niveau racine** : `_applyStyleResult()` extrait `(styleData).style ?? styleData` avant `normalizeToFlat()`
-- **Filtres GeoJSON MapLibre** : `_applyFeatureVisibilityForLayer()` — nouveau chemin `updateLayerData()` ajouté
-- **Clustering natif** : options `cluster/clusterRadius/clusterMaxZoom` non propagées à la source GeoJSON
-- **Side panel vide** : `normalizeFromGeoJSON` parse `JSON.parse(props.attributes)` quand `typeof props.attributes === "string"`
-- **Échelle graphique invisible** : classes `.gl-scale-graphic` absentes des règles CSS
-- **Labels glyphs 404** : `_resolveMapFontStack()` avec fallback `["Noto Sans Regular", "Arial Unicode MS Bold"]`
-- **Visibilité zoom** : `_applyThemeLayers()` appelle `_reapplyZoomVisibility()` après application du thème
-- **Filtres UI immédiats** : `applyFiltersNow()` dans `attachCategoryTreeListeners()` et `attachTagsListeners()`
-- **Corruption clustering post-filtrage** : `POI.setFilteredDisplay()` ne crase plus `state.allPois`
-- **Tooltips orphelins** : `hoverPopup.remove()` explicite au début de chaque `mouseenter`
-- **StyleRules data-driven** : `conditionToExpression()` supprime le préfixe `"properties."` — 5 couches corrigées
-- **Hachures dot pattern + styleRules** : `collectHatchPatterns()` enregistre les patterns avant `addLayer()`
-- **Contraste texte cluster sombre** : `#e5e7eb` → `#111827` (ratio 1.83:1 → 7.86:1, WCAG AAA)
+- **Basemap z-ordering**: raster rendered above the data layers — fixed with `addLayer(spec, firstLayerId)`
+- **Root-level style selector**: `_applyStyleResult()` extracts `(styleData).style ?? styleData` before `normalizeToFlat()`
+- **MapLibre GeoJSON filters**: `_applyFeatureVisibilityForLayer()` — new `updateLayerData()` path added
+- **Native clustering**: the `cluster/clusterRadius/clusterMaxZoom` options were not propagated to the GeoJSON source
+- **Empty side panel**: `normalizeFromGeoJSON` runs `JSON.parse(props.attributes)` when `typeof props.attributes === "string"`
+- **Invisible graphic scale**: the `.gl-scale-graphic` classes were missing from the CSS rules
+- **Label glyph 404s**: `_resolveMapFontStack()` with the `["Noto Sans Regular", "Arial Unicode MS Bold"]` fallback
+- **Zoom visibility**: `_applyThemeLayers()` calls `_reapplyZoomVisibility()` after applying the theme
+- **Immediate UI filters**: `applyFiltersNow()` in `attachCategoryTreeListeners()` and `attachTagsListeners()`
+- **Clustering corruption after filtering**: `POI.setFilteredDisplay()` no longer clobbers `state.allPois`
+- **Orphan tooltips**: explicit `hoverPopup.remove()` at the start of every `mouseenter`
+- **Data-driven styleRules**: `conditionToExpression()` strips the `"properties."` prefix — 5 layers fixed
+- **Dot hatch pattern with styleRules**: `collectHatchPatterns()` registers the patterns before `addLayer()`
+- **Dark cluster text contrast**: `#e5e7eb` → `#111827` (ratio 1.83:1 → 7.86:1, WCAG AAA)
 
 ---
 
-## Tests & Qualité
+## Tests and quality
 
-| Sprint | Périmètre                                        | Résultat                   |
-| ------ | ------------------------------------------------ | -------------------------- |
-| T1–T5  | Migration Jest → Vitest 3                        | 10 configs Jest supprimées |
-| T6     | UI + integration/controls/basemap/legend/storage | 0 régression               |
-| T7     | +223 tests MapLibre (4 nouvelles suites)         | 284 fichiers, 6 403 tests  |
-| T8     | V8 → Istanbul, imports `require()` → ESM         | thresholds réels débloqués |
-| T9     | Couverture module par module                     | 323 fichiers, ~7 800 tests |
-| T10    | Cible ≥ 75% branches atteinte                    | **8 317 tests, 0 échec**   |
+| Stage | Scope                                            | Result                      |
+| ----- | ------------------------------------------------ | --------------------------- |
+| T1–T5 | Jest → Vitest 3 migration                        | 10 Jest configs removed     |
+| T6    | UI + integration/controls/basemap/legend/storage | 0 regressions               |
+| T7    | +223 MapLibre tests (4 new suites)               | 284 files, 6,403 tests      |
+| T8    | V8 → Istanbul, `require()` imports → ESM         | real thresholds unblocked   |
+| T9    | Module-by-module coverage                        | 323 files, ~7,800 tests     |
+| T10   | Target of 75% branches reached                   | **8,317 tests, 0 failures** |
 
-### Couverture finale (Istanbul)
+### Final coverage (Istanbul)
 
-| Métrique   | v1.2.0  | v2.0.0      |
-| ---------- | ------- | ----------- |
-| Suites     | 280     | **323**     |
-| Tests      | 6 149   | **8 317**   |
-| Statements | 89,49 % | **87,82 %** |
-| Branches   | 85,08 % | **77,97 %** |
-| Functions  | —       | **84,89 %** |
-| Lines      | —       | **87,82 %** |
+| Metric     | v1.2.0 | v2.0.0     |
+| ---------- | ------ | ---------- |
+| Suites     | 280    | **323**    |
+| Tests      | 6,149  | **8,317**  |
+| Statements | 89.49% | **87.82%** |
+| Branches   | 85.08% | **77.97%** |
+| Functions  | —      | **84.89%** |
+| Lines      | —      | **87.82%** |
 
 ---
 
 ## Performance — Baselines
 
-| Métrique        | v1.x (Leaflet) | v2.0.0 (MapLibre)   |
+| Metric          | v1.x (Leaflet) | v2.0.0 (MapLibre)   |
 | --------------- | -------------- | ------------------- |
-| UMD bundle      | 196 KB gzip    | ❌ supprimé         |
+| UMD bundle      | 196 KB gzip    | Removed             |
 | ESM bundle gzip | 35 KB          | ~35 KB              |
 | ESM lite        | —              | ~84 KB              |
 | CSS total       | —              | 151 KB / 22 KB gzip |
-| 10 000 markers  | 4 FPS (DOM)    | **60 FPS** (GPU)    |
-| 10 000 GeoJSON  | 572 ms         | **< 100 ms** WebGL  |
-| TTI             | < 0,5 s        | < 0,5 s             |
+| 10,000 markers  | 4 FPS (DOM)    | **60 FPS** (GPU)    |
+| 10,000 GeoJSON  | 572 ms         | **< 100 ms** WebGL  |
+| TTI             | < 0.5 s        | < 0.5 s             |
 
 ---
 
-## Résumé
+## Summary
 
-- **Breaking change moteur** : Leaflet 1.9.4 → MapLibre GL JS v5. Rendu WebGL, GPU clustering natif, MVT/PBF, expressions data-driven. Voir les changements cassants détaillés ci-dessus.
-- **Nouveau package MIT** : `@geoleaf/connector` v1.0.0 — intercepteur fetch universel, publié sur npmjs.org.
-- **Distribution ESM-only** : bundle UMD supprimé définitivement. 3 sorties ESM.
-- **Tests modernisés** : Vitest 3 + Istanbul, **8 317 tests**, couverture branches 77,97 %.
-- **TypeScript 100% strict** : 30 `@ts-nocheck` supprimés, 0 erreur `tsc --noEmit --strict`.
-- **Documentation complète** : site VitePress `geoleaf.dev/docs/`, 62+ guides mis à jour.
+- **Breaking engine change**: Leaflet 1.9.4 → MapLibre GL JS v5. WebGL rendering, native GPU clustering, MVT/PBF, data-driven expressions. See the detailed breaking changes above.
+- **New MIT package**: `@geoleaf/connector` v1.0.0 — universal fetch interceptor, published on npmjs.org.
+- **ESM-only distribution**: the UMD bundle is removed for good. 3 ESM outputs.
+- **Modernised tests**: Vitest 3 + Istanbul, **8,317 tests**, 77.97% branch coverage.
+- **100% strict TypeScript**: 30 `@ts-nocheck` removed, 0 errors from `tsc --noEmit --strict`.
+- **Complete documentation**: VitePress site `geoleaf.dev/docs/`, 62+ guides updated.

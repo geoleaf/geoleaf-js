@@ -231,6 +231,24 @@ jobs:
             - name: Chemins cités par la prose des TSDoc (TSDOC-PATHS)
               run: npm run check:tsdoc-paths
 
+            # Même cliquet sur les renvois des 45 fiches `docs/specs/` — le corpus qu'AUCUNE
+            # gate ne lisait : `check-dead-links` n'extrait que `[texte](cible)`, TSDOC-PATHS
+            # s'arrête aux `src/` de paquet. 546 paires (fiche→chemin) sans garde, d'où la
+            # classe B de 6.11 « qui se périme sans jamais rougir ». Baseline décroissante de
+            # 115. ⚠️ Contrairement aux autres, cette étape TOURNE sur le dépôt public : son
+            # corpus est `docs/`, pas `_docs_projet/`. Keep in sync with ci-local.cjs.
+            - name: Chemins cités par les fiches docs/specs (SPECS-PATHS)
+              run: npm run check:specs-paths
+
+            # B-222 — la 3ᵉ sous-racine publique, restée sans gate jusqu'au 11/08/2026 :
+            # `SPECS-PATHS` ne gardait que `docs/specs/`, alors que `guides/` et `reference/`
+            # partent dans le MÊME dépôt public. Trou mesuré — `TESTING_GUIDE.md` a enseigné
+            # une suite `poi.test.js` disparue avec le module POI, invisible à
+            # `check-dead-links` qui n'extrait que `[texte](cible)`. Baseline décroissante
+            # de 72. Tourne aussi sur le dépôt public. Keep in sync with ci-local.cjs.
+            - name: Chemins cités par docs/guides et docs/reference (GUIDES-PATHS)
+              run: npm run check:guides-paths
+
             # Tout nom d'événement `geoleaf:*` relevé dans les sources doit être typé dans
             # `contracts/event-bus.contract.ts`. Baseline de 53, qui ne peut que rétrécir
             # (EM-02). Keep in sync with ci-local.cjs.

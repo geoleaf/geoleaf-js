@@ -1,58 +1,57 @@
 ---
-title: "GeoLeaf Notifications — API publique"
+title: "GeoLeaf Notifications — Public API"
 ---
 
-# GeoLeaf Notifications — API publique
+# GeoLeaf Notifications — Public API
 
-> **Module :** `@geoleaf/core` — disponible dès le boot
-> **Namespace :** `GeoLeaf.notify()` (shortcut) + `GeoLeaf.Notifications.*` (namespace complet)
-> **Export ESM :** `import { Notifications } from "@geoleaf/core"`
-> **Version :** 3.0.0 — Mars 2026
+> **Module:** `@geoleaf/core` — available from boot
+> **Namespace:** `GeoLeaf.notify()` (shortcut) + `GeoLeaf.Notifications.*` (full namespace)
+> **ESM export:** `import { Notifications } from "@geoleaf/core"`
 
 ---
 
-## Sommaire
+## Contents
 
-1. [Vue d'ensemble](#vue-densemble)
-2. [Utilisation CDN / ESM](#utilisation-cdn--esm)
-3. [Utilisation ESM (bundler)](#utilisation-esm-bundler)
-4. [API référence](#api-référence)
+1. [Overview](#overview)
+2. [CDN / ESM usage](#cdn--esm-usage)
+3. [ESM usage (bundler)](#esm-usage-bundler)
+4. [API reference](#api-reference)
 5. [Types](#types)
-6. [Options détaillées](#options-détaillées)
-7. [Architecture interne — Queue prioritaire](#architecture-interne--queue-prioritaire)
-8. [Structure DOM et classes CSS](#structure-dom-et-classes-css)
-9. [Intégration Telemetry](#intégration-telemetry)
-10. [Exemples d'intégration](#exemples-dintégration)
-11. [Accessibilité](#accessibilité)
+6. [Option details](#option-details)
+7. [Internal architecture — Priority queue](#internal-architecture--priority-queue)
+8. [DOM structure and CSS classes](#dom-structure-and-css-classes)
+9. [Telemetry integration](#telemetry-integration)
+10. [Integration examples](#integration-examples)
+11. [Accessibility](#accessibility)
 12. [Responsive (mobile)](#responsive-mobile)
 13. [Debugging](#debugging)
-14. [Notes de sécurité](#notes-de-sécurité)
+14. [Security notes](#security-notes)
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-GeoLeaf embarque un système de notifications toast interne (`NotificationSystem`) utilisé par le core pour informer l'utilisateur (chargement de données, erreurs réseau, etc.).
+GeoLeaf ships an internal toast notification system (`NotificationSystem`) used by the core to inform the user (data loading, network errors, and so on).
 
-Depuis la version 2.0.0, ce système est exposé publiquement pour les **intégrateurs** :
+Since version 2.0.0 this system is publicly exposed to **integrators**:
 
-| Point d'accès                                   | Usage                              |
-| ----------------------------------------------- | ---------------------------------- |
-| `GeoLeaf.notify(msg, type, opts)`               | Shortcut top-level, usage simple   |
-| `GeoLeaf.Notifications.success(msg)`            | Namespace complet, méthodes typées |
-| `import { Notifications } from "@geoleaf/core"` | Import ESM pour bundlers tiers     |
+| Entry point                                     | Usage                               |
+| ----------------------------------------------- | ----------------------------------- |
+| `GeoLeaf.notify(msg, type, opts)`               | Top-level shortcut, simple usage    |
+| `GeoLeaf.Notifications.success(msg)`            | Full namespace, typed methods       |
+| `import { Notifications } from "@geoleaf/core"` | ESM import for third-party bundlers |
 
-**Caractéristiques principales :**
+**Main characteristics:**
 
-- Queue prioritaire : errors > warnings > info/success
-- 3 toasts temporaires + 2 persistants visibles simultanément
-- Animations fluides avec réorganisation automatique par priorité
-- Accessibilité : `aria-live="assertive"` pour les erreurs
-- Support `prefers-reduced-motion`
+- Priority queue: errors > warnings > info/success
+- 3 temporary toasts + 2 persistent toasts visible at the same time
+- Smooth animations with automatic reordering by priority
+- Accessibility: `aria-live="assertive"` for errors
+- `prefers-reduced-motion` support
 
 ---
 
-## Utilisation CDN / ESM
+## CDN / ESM usage
 
 ```html
 <script type="module" src="geoleaf.esm.js"></script>
@@ -60,68 +59,68 @@ Depuis la version 2.0.0, ce système est exposé publiquement pour les **intégr
     // After GeoLeaf.boot() / geoleaf:app:ready event
 
     // Top-level shortcut
-    GeoLeaf.notify("Bienvenue sur la carte !", "info");
+    GeoLeaf.notify("Welcome to the map", "info");
 
     // Full namespace
-    GeoLeaf.Notifications.success("Données chargées avec succès");
-    GeoLeaf.Notifications.warning("Connexion instable", { duration: 6000 });
-    GeoLeaf.Notifications.error("Impossible de charger la couche", {
+    GeoLeaf.Notifications.success("Data loaded successfully");
+    GeoLeaf.Notifications.warning("Unstable connection", { duration: 6000 });
+    GeoLeaf.Notifications.error("Unable to load the layer", {
         persistent: true,
         dismissible: true,
     });
 </script>
 ```
 
-### Écouter l'événement `geoleaf:app:ready`
+### Listening for the `geoleaf:app:ready` event
 
 ```js
 document.addEventListener("geoleaf:app:ready", () => {
-    GeoLeaf.notify("Carte prête", "success", 2000);
+    GeoLeaf.notify("Map ready", "success", 2000);
 });
 ```
 
 ---
 
-## Utilisation ESM (bundler)
+## ESM usage (bundler)
 
 ```ts
 import { Notifications } from "@geoleaf/core";
-// ⚠️ Le chemin `contracts/notification.contract` N'EXISTE PAS — vérifié contre la carte
-// `exports` du paquet. Le fichier de contrat s'appelle `notify.contract.ts` et n'est pas
-// publié ; les deux types vivent dans la capacité, atteignable par le joker `capabilities/*`.
+// `contracts/notification.contract` is not a valid import path. The contract file is
+// `notify.contract.ts` and is not published; both types live in the capability and are
+// reachable through the `capabilities/*` subpath export.
 import type { NotifyType, NotifyOptions } from "@geoleaf/core/capabilities/toast-renderer/types.js";
 
 // Simple notification
-Notifications.info("Nouvelle mise à jour disponible");
+Notifications.info("New update available");
 
 // With options
-Notifications.error("Échec de la synchronisation", {
+Notifications.error("Synchronisation failed", {
     duration: 8000,
     dismissible: true,
 });
 
 // Generic signature
-// ⚠️ `notify()` a DEUX formes, et elles ne se mélangent pas :
-//   notify(message, type, duration)  — positionnelle, le 3e argument est un NOMBRE
-//   notify(message, options)         — objet, le type voyage DANS les options
-// Passer des options en 3e position ne compile pas. Pour combiner un type et des options,
-// fusionner les deux dans le second argument :
+// `notify()` has TWO forms, and they do not mix:
+//   notify(message, type, duration)  — positional, the 3rd argument is a NUMBER
+//   notify(message, options)         — object, the type travels INSIDE the options
+// Passing options in 3rd position does not compile. To combine a type and options,
+// merge both into the second argument:
 function notifyUser(message: string, type: NotifyType, opts?: NotifyOptions) {
     Notifications.notify(message, { ...opts, type });
 }
 
 // Check system status
 const status = Notifications.getStatus();
-console.log(`${status.activeToasts} toast(s) actif(s)`);
+console.log(`${status.activeToasts} active toast(s)`);
 ```
 
 ---
 
-## API référence
+## API reference
 
-### `GeoLeaf.notify(message, type, options?)` _(shortcut top-level)_
+### `GeoLeaf.notify(message, type, options?)` _(top-level shortcut)_
 
-Affiche une notification toast. Disponible directement sur le namespace `GeoLeaf`.
+Displays a toast notification. Available directly on the `GeoLeaf` namespace.
 
 ```js
 GeoLeaf.notify(message, type, duration?)
@@ -129,12 +128,12 @@ GeoLeaf.notify(message, type, options?)
 GeoLeaf.notify(message, options?)
 ```
 
-| Paramètre  | Type            | Défaut         | Description                     |
-| ---------- | --------------- | -------------- | ------------------------------- |
-| `message`  | `string`        | —              | Texte affiché dans le toast     |
-| `type`     | `NotifyType`    | `"info"`       | Type de notification            |
-| `duration` | `number`        | _(selon type)_ | Durée d'affichage en ms         |
-| `options`  | `NotifyOptions` | —              | Objet options (voir ci-dessous) |
+| Parameter  | Type            | Default            | Description                 |
+| ---------- | --------------- | ------------------ | --------------------------- |
+| `message`  | `string`        | —                  | Text displayed in the toast |
+| `type`     | `NotifyType`    | `"info"`           | Notification type           |
+| `duration` | `number`        | _(type-dependent)_ | Display duration in ms      |
+| `options`  | `NotifyOptions` | —                  | Options object (see below)  |
 
 ---
 
@@ -142,35 +141,35 @@ GeoLeaf.notify(message, options?)
 
 #### `.notify(message, typeOrOptions?, duration?)`
 
-Méthode générique. Supporte la double signature positionnelle et objet.
+Generic method. Supports both the positional and the object signature.
 
 #### `.success(message, options?)`
 
-Toast vert — confirmation d'action réussie. Durée par défaut : **3 000 ms**.
+Green toast — confirmation of a successful action. Default duration: **3,000 ms**.
 
 #### `.error(message, options?)`
 
-Toast rouge — erreur critique. Durée par défaut : **5 000 ms**. Priorité maximale dans la queue.
+Red toast — critical error. Default duration: **5,000 ms**. Highest priority in the queue.
 
 #### `.warning(message, options?)`
 
-Toast orange — alerte non bloquante. Durée par défaut : **4 000 ms**.
+Orange toast — non-blocking alert. Default duration: **4,000 ms**.
 
 #### `.info(message, options?)`
 
-Toast bleu/neutre — information. Durée par défaut : **3 000 ms**.
+Blue/neutral toast — information. Default duration: **3,000 ms**.
 
 #### `.dismiss(toastEl)`
 
-Ferme un toast spécifique à partir de son élément DOM.
+Closes a specific toast from its DOM element.
 
 #### `.clearAll()`
 
-Supprime immédiatement tous les toasts visibles et vide la queue.
+Immediately removes every visible toast and empties the queue.
 
 #### `.getStatus()` → `NotifyStatus`
 
-Retourne un snapshot de l'état courant du système.
+Returns a snapshot of the current state of the system.
 
 ```js
 const s = GeoLeaf.Notifications.getStatus();
@@ -226,43 +225,43 @@ interface NotifyStatus {
 
 ---
 
-## Options détaillées
+## Option details
 
 ### `duration`
 
-Temps avant fermeture automatique du toast, en millisecondes.
+Time before the toast closes automatically, in milliseconds.
 
 ```js
 GeoLeaf.Notifications.info("Message", { duration: 8000 }); // 8 seconds
 ```
 
-Durées par défaut :
+Default durations:
 
-| Type      | Durée par défaut |
+| Type      | Default duration |
 | --------- | ---------------- |
-| `info`    | 3 000 ms         |
-| `success` | 3 000 ms         |
-| `warning` | 4 000 ms         |
-| `error`   | 5 000 ms         |
+| `info`    | 3,000 ms         |
+| `success` | 3,000 ms         |
+| `warning` | 4,000 ms         |
+| `error`   | 5,000 ms         |
 
 ### `persistent`
 
-Un toast persistant ne se ferme pas automatiquement. Il reste visible jusqu'à un `dismiss()` ou `clearAll()` explicite.
+A persistent toast never closes on its own. It stays visible until an explicit `dismiss()` or `clearAll()`.
 
 ```js
-GeoLeaf.Notifications.error("Perte de connexion au serveur", { persistent: true });
+GeoLeaf.Notifications.error("Lost connection to the server", { persistent: true });
 
 // Later, when connection is restored:
 GeoLeaf.Notifications.clearAll();
-GeoLeaf.Notifications.success("Connexion rétablie");
+GeoLeaf.Notifications.success("Connection restored");
 ```
 
 ### `dismissible`
 
-Affiche un bouton × permettant à l'utilisateur de fermer le toast manuellement.
+Displays a × button that lets the user close the toast manually.
 
 ```js
-GeoLeaf.Notifications.warning("Mise à jour disponible", {
+GeoLeaf.Notifications.warning("Update available", {
     persistent: true,
     dismissible: true, // user can dismiss
 });
@@ -270,31 +269,31 @@ GeoLeaf.Notifications.warning("Mise à jour disponible", {
 
 ---
 
-## Architecture interne — Queue prioritaire
+## Internal architecture — Priority queue
 
-### Priorités
+### Priorities
 
-| Type               | Priorité    |
-| ------------------ | ----------- |
-| `error`            | 3 (haute)   |
-| `warning`          | 2 (moyenne) |
-| `success` / `info` | 1 (basse)   |
+| Type               | Priority   |
+| ------------------ | ---------- |
+| `error`            | 3 (high)   |
+| `warning`          | 2 (medium) |
+| `success` / `info` | 1 (low)    |
 
-### Comportement de la queue
+### Queue behaviour
 
-- **Limite** : 15 notifications max en attente
-- **Éviction** : les moins prioritaires sont abandonnées si la queue est pleine
-- **Compteurs** : 3 toasts temporaires max + 2 toasts persistants max visibles simultanément
+- **Limit**: 15 pending notifications at most
+- **Eviction**: the lowest-priority entries are dropped when the queue is full
+- **Counters**: 3 temporary toasts and 2 persistent toasts visible at the same time, at most
 
-### Flux d'affichage
+### Display flow
 
-1. Toast ajouté avec priorité selon type
-2. Queue triée par priorité (desc) puis timestamp (asc)
-3. Toasts affichés selon disponibilité des slots
-4. **Réorganisation** : si un `error` arrive alors que la queue est pleine, un toast `info`/`success` est retiré avec animation `slideUp`
-5. **Éviction** : si 15 toasts sont en attente, le moins prioritaire est abandonné
+1. Toast added with a priority derived from its type
+2. Queue sorted by priority (desc) then timestamp (asc)
+3. Toasts displayed as slots become available
+4. **Reordering**: when an `error` arrives while the queue is full, an `info`/`success` toast is removed with a `slideUp` animation
+5. **Eviction**: when 15 toasts are pending, the lowest-priority one is dropped
 
-### Exemple de comportement
+### Behaviour example
 
 ```js
 // Initial state: 3 info toasts visible + 5 queued
@@ -304,7 +303,7 @@ GeoLeaf.Notifications.info("Info 3");
 // ... 5 more queued
 
 // A priority error arrives
-GeoLeaf.Notifications.error("Erreur critique !");
+GeoLeaf.Notifications.error("Critical error");
 
 // Result:
 // - 1 info toast removed with slideUp animation
@@ -314,51 +313,51 @@ GeoLeaf.Notifications.error("Erreur critique !");
 
 ---
 
-## Structure DOM et classes CSS
+## DOM structure and CSS classes
 
-### Structure DOM générée
+### Generated DOM structure
 
 ```html
 <div id="gl-notifications" class="gl-notifications gl-notifications--bottom-center">
     <div class="gl-toast gl-toast--success gl-toast--visible" role="alert" aria-live="polite">
-        <span class="gl-toast__message">Message de succès</span>
-        <button class="gl-toast__close" aria-label="Fermer">×</button>
+        <span class="gl-toast__message">Success message</span>
+        <button class="gl-toast__close" aria-label="Close">×</button>
     </div>
 </div>
 ```
 
-### Container HTML requis
+### Required HTML container
 
 ```html
 <div id="gl-notifications" class="gl-notifications gl-notifications--bottom-center"></div>
 ```
 
-### Classes principales
+### Main classes
 
-| Classe                             | Description                               |
-| ---------------------------------- | ----------------------------------------- |
-| `.gl-notifications`                | Conteneur fixe                            |
-| `.gl-notifications--bottom-center` | Variante position                         |
-| `.gl-toast`                        | Toast individuel                          |
-| `.gl-toast--visible`               | État visible (opacity: 1)                 |
-| `.gl-toast--removing`              | Animation de sortie                       |
-| `.gl-toast--sliding-up`            | Animation réorganisation (toast évincé)   |
-| `.gl-toast--sliding-down`          | Animation réorganisation (toast descendu) |
-| `.gl-toast--success`               | Type succès (vert)                        |
-| `.gl-toast--error`                 | Type error (rouge)                        |
-| `.gl-toast--warning`               | Type warning (orange)                     |
-| `.gl-toast--info`                  | Type info (bleu)                          |
-| `.gl-toast__message`               | Contenu du message                        |
-| `.gl-toast__close`                 | Bouton fermeture                          |
+| Class                              | Description                             |
+| ---------------------------------- | --------------------------------------- |
+| `.gl-notifications`                | Fixed container                         |
+| `.gl-notifications--bottom-center` | Position variant                        |
+| `.gl-toast`                        | Individual toast                        |
+| `.gl-toast--visible`               | Visible state (opacity: 1)              |
+| `.gl-toast--removing`              | Exit animation                          |
+| `.gl-toast--sliding-up`            | Reordering animation (evicted toast)    |
+| `.gl-toast--sliding-down`          | Reordering animation (toast moved down) |
+| `.gl-toast--success`               | Success type (green)                    |
+| `.gl-toast--error`                 | Error type (red)                        |
+| `.gl-toast--warning`               | Warning type (orange)                   |
+| `.gl-toast--info`                  | Info type (blue)                        |
+| `.gl-toast__message`               | Message content                         |
+| `.gl-toast__close`                 | Close button                            |
 
-### Positions disponibles
+### Available positions
 
-- `bottom-center` (défaut, recommandé)
+- `bottom-center` (default, recommended)
 - `top-right`
 - `bottom-right`
 - `top-center`
 
-### Animations CSS
+### CSS animations
 
 ```css
 /* Slide-up animation (toast evicted by higher priority) */
@@ -388,78 +387,78 @@ GeoLeaf.Notifications.error("Erreur critique !");
 
 ---
 
-## Intégration Telemetry
+## Telemetry integration
 
-Le système enregistre automatiquement des métriques via `GeoLeaf.Storage.Telemetry` lorsque ce module est disponible.
+The system records metrics automatically through `GeoLeaf.Storage.Telemetry` when that module is available.
 
-| Métrique                        | Description                           | Type    |
-| ------------------------------- | ------------------------------------- | ------- |
-| `notification.shown.success`    | Toasts succès affichés                | Counter |
-| `notification.shown.error`      | Toasts error affichés                 | Counter |
-| `notification.shown.warning`    | Toasts warning affichés               | Counter |
-| `notification.shown.info`       | Toasts info affichés                  | Counter |
-| `notification.dismissed.manual` | Fermeture manuelle (clic ×)           | Counter |
-| `notification.dismissed.auto`   | Fermeture automatique (timeout)       | Counter |
-| `notification.queued`           | Ajouts à la queue                     | Counter |
-| `notification.dropped`          | Notifications évincées (queue pleine) | Counter |
+| Metric                          | Description                        | Type    |
+| ------------------------------- | ---------------------------------- | ------- |
+| `notification.shown.success`    | Success toasts displayed           | Counter |
+| `notification.shown.error`      | Error toasts displayed             | Counter |
+| `notification.shown.warning`    | Warning toasts displayed           | Counter |
+| `notification.shown.info`       | Info toasts displayed              | Counter |
+| `notification.dismissed.manual` | Manual close (× click)             | Counter |
+| `notification.dismissed.auto`   | Automatic close (timeout)          | Counter |
+| `notification.queued`           | Additions to the queue             | Counter |
+| `notification.dropped`          | Notifications evicted (queue full) | Counter |
 
-**Buffer de démarrage** : si `Telemetry` n'est pas encore chargé, les métriques sont bufferisées pendant 30 secondes, puis :
+**Start-up buffer**: when `Telemetry` is not loaded yet, metrics are buffered for 30 seconds, then:
 
-- Flush automatique si `Telemetry` devient disponible
-- Abandon après 30 s si `Telemetry` ne charge pas (évite les fuites mémoire)
+- Flushed automatically if `Telemetry` becomes available
+- Discarded after 30 s if `Telemetry` never loads (avoids memory leaks)
 
 ---
 
-## Exemples d'intégration
+## Integration examples
 
-### Hook sur événement de chargement couche
+### Hook on a layer toggle event
 
 ```js
 document.addEventListener("geoleaf:layer:toggle", (e) => {
     const { layerId, visible } = e.detail;
     if (visible) {
-        GeoLeaf.notify(`Couche "${layerId}" activée`, "info", 2000);
+        GeoLeaf.notify(`Layer "${layerId}" enabled`, "info", 2000);
     }
 });
 ```
 
-### Hook sur erreur de chargement couche
+### Hook on a layer loading error
 
 ```js
 document.addEventListener("geoleaf:layer:error", (e) => {
-    GeoLeaf.Notifications.error(`Impossible de charger la couche "${e.detail.layerId}"`, {
+    GeoLeaf.Notifications.error(`Unable to load layer "${e.detail.layerId}"`, {
         persistent: true,
         dismissible: true,
     });
 });
 ```
 
-### Notification après ajout POI (plugin AddPOI)
+### Notification after adding a POI (AddPOI plugin)
 
 ```js
 document.addEventListener("geoleaf:poi:added", (e) => {
-    GeoLeaf.Notifications.success(`POI "${e.detail.name}" ajouté avec succès`);
+    GeoLeaf.Notifications.success(`POI "${e.detail.name}" added successfully`);
 });
 ```
 
-### Cache offline (plugin Storage)
+### Offline cache (Storage plugin)
 
 ```js
 // Download success
-GeoLeaf.Notifications.success(`Profil téléchargé : ${sizeMB} MB`, 4000);
+GeoLeaf.Notifications.success(`Profile downloaded: ${sizeMB} MB`, 4000);
 
 // Storage error
-GeoLeaf.Notifications.error("Stockage offline non disponible", 5000);
+GeoLeaf.Notifications.error("Offline storage unavailable", 5000);
 
 // Download stopped
-GeoLeaf.Notifications.warning("Téléchargement arrêté", 3000);
+GeoLeaf.Notifications.warning("Download stopped", 3000);
 ```
 
-### Synchronisation POI
+### POI synchronisation
 
 ```js
 // Start info (persistent)
-GeoLeaf.Notifications.info("Synchronisation en cours...", {
+GeoLeaf.Notifications.info("Synchronisation in progress...", {
     persistent: true,
     dismissible: false,
 });
@@ -467,35 +466,35 @@ GeoLeaf.Notifications.info("Synchronisation en cours...", {
 // Conditional success/warning
 if (results.failed > 0) {
     GeoLeaf.Notifications.warning(
-        `Sync terminée : ${results.synced} réussies, ${results.failed} échecs`,
+        `Sync finished: ${results.synced} succeeded, ${results.failed} failed`,
         5000
     );
 } else {
-    GeoLeaf.Notifications.success(`Sync terminée : ${results.synced} réussies`, 5000);
+    GeoLeaf.Notifications.success(`Sync finished: ${results.synced} succeeded`, 5000);
 }
 ```
 
-### Vérification système avant notification
+### Checking the system before notifying
 
 ```js
 const status = GeoLeaf.Notifications.getStatus();
 
 if (status.initialized && status.enabled) {
-    GeoLeaf.Notifications.info("Système de notifications opérationnel");
+    GeoLeaf.Notifications.info("Notification system operational");
 } else {
-    console.warn("[GeoLeaf] Notifications non disponibles", status);
+    console.warn("[GeoLeaf] Notifications unavailable", status);
 }
 ```
 
 ---
 
-## Accessibilité
+## Accessibility
 
-- `role="alert"` sur chaque toast
-- `aria-live="assertive"` pour errors et toasts prioritaires
-- `aria-live="polite"` pour success/warning/info
-- `aria-label` sur le bouton de fermeture
-- Support `prefers-reduced-motion` (transitions désactivées si demandé)
+- `role="alert"` on every toast
+- `aria-live="assertive"` for errors and priority toasts
+- `aria-live="polite"` for success/warning/info
+- `aria-label` on the close button
+- `prefers-reduced-motion` support (transitions disabled when requested)
 - Focus management (`:focus-within`)
 
 ```css
@@ -511,7 +510,7 @@ if (status.initialized && status.enabled) {
 
 ## Responsive (mobile)
 
-Sur mobile (< 768 px) les toasts occupent toute la largeur de l'écran :
+On mobile (< 768 px) toasts span the full width of the screen:
 
 ```css
 @media (max-width: 768px) {
@@ -546,26 +545,30 @@ if (GeoLeaf.Storage?.Telemetry) {
 
 ---
 
-## Notes de sécurité
+## Security notes
 
-> Les messages passés à `GeoLeaf.notify()` sont traités comme du **texte brut** — ils sont insérés via `textContent`, pas `innerHTML`.
->
-> ⚠️ Si vous construisez un message à partir de données utilisateur ou d'une source externe, ne jamais y injecter de HTML. Le système GeoLeaf protège contre les injections XSS à son niveau, mais la responsabilité de la composition du message revient à l'intégrateur.
+::: warning
+
+Messages passed to `GeoLeaf.notify()` are handled as **plain text** — they are inserted through `textContent`, never `innerHTML`.
+
+When a message is built from user input or an external source, never inject HTML into it. GeoLeaf guards against XSS injection at its own level, but composing the message remains the integrator's responsibility.
+
+:::
 
 ```js
-// ✅ Correct — static text or trusted source
-GeoLeaf.notify("Connexion rétablie", "success");
+// Correct — static text or trusted source
+GeoLeaf.notify("Connection restored", "success");
 
-// ✅ Correct — internal GeoLeaf data
-GeoLeaf.notify(`POI "${poi.name}" chargé`, "success");
+// Correct — internal GeoLeaf data
+GeoLeaf.notify(`POI "${poi.name}" loaded`, "success");
 
-// ⚠️ Avoid — raw HTML from user input
+// Avoid — raw HTML from user input
 GeoLeaf.notify(`<b>${userInput}</b>`, "info"); // do not do this
 ```
 
 ---
 
-**Documentation liée :**
+**Related documentation:**
 
-- [GeoLeaf_UI_README.md](../ui/GeoLeaf_UI_README.md) — Module UI principal
-- [EVENTS_API.md](../EVENTS_API.md) — Événements système
+- [GeoLeaf_UI_README.md](../ui/GeoLeaf_UI_README.md) — Main UI module
+- [EVENTS_API.md](../EVENTS_API.md) — System events

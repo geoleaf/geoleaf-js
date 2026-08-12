@@ -10,6 +10,18 @@ GeoLeaf plugin for **creating, editing and deleting geometries** (Point / Line /
 
 ---
 
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/editor version  # what the registry serves
+> npm run versions:check                    # what this repository declares
+> ```
+>
+> Until those agree, build from source.
+
 ## Installation
 
 ```bash
@@ -87,10 +99,9 @@ The form is a **projection** of `attributes.fields[]`: a field is captured when 
 capture and display genuinely differ — a `badge` read as a coloured pill but captured as a
 `dropdown`, say.
 
-⚠️ This block used to be a separate `formSchema` array, removed at task 7.2. It was a second
-field list, parallel to `attributes.fields[]` and reconciled with it by nothing. Declaring
-`edit` on any field obliges the layer to declare both `edition.update: true` and a `write`
-target — rule A14, enforced by `npm run validate:profiles`.
+> [!IMPORTANT]
+> Declaring `edit` on any field obliges the layer to declare both `edition.update: true` and a
+> `write` target — rule A14, enforced by `npm run validate:profiles`.
 
 ---
 
@@ -221,8 +232,8 @@ Six languages bundled (FR/EN/ES/PT/IT/DE) via `GeoLeaf.I18n`. Unknown locales fa
 
 ## AddPOI merged in — breaking, no alias
 
-`@geoleaf-plugins/addpoi` **merged into this plugin** in v3 (Sprint 5). There is one editing plugin
-now, and **`GeoLeaf.AddPOI` was removed without an alias**.
+`@geoleaf-plugins/addpoi` **merged into this plugin** in v3. There is one editing plugin now, and
+**`GeoLeaf.AddPOI` was removed without an alias**.
 
 | Before                                    | Now                                       |
 | ----------------------------------------- | ----------------------------------------- |
@@ -232,13 +243,13 @@ now, and **`GeoLeaf.AddPOI` was removed without an alias**.
 | `modules.addpoi.defaultPosition`          | `modules.editor.poiAddDefaultPosition`    |
 | `ui.showPoiExport`                        | `modules.editor.showExport`               |
 
-⚠️ The two `ui.showPoi*` flags are **not** carried over under those names: neither was declared in
-any profile schema while `ui.schema.json` is `additionalProperties: false`, so writing them failed
-profile validation — one button was permanently visible, the other permanently hidden. Their
-replacements live under `modules.editor.*` and are declared.
-
-⚠️ `ui.showAddPoi` was read by the **core**, which drew the button itself. It now belongs to the
-plugin: the button is a lazy toolbar slot, declared by the host app before the bundle loads.
+> [!WARNING]
+> The two `ui.showPoi*` flags are **not** carried over under those names: neither was declared in
+> any profile schema, and `ui.schema.json` is `additionalProperties: false`, so writing them fails
+> profile validation. Their replacements live under `modules.editor.*` and are declared.
+>
+> `ui.showAddPoi` was read by the **core**, which drew the button itself. It now belongs to the
+> plugin: the button is a lazy toolbar slot, declared by the host app before the bundle loads.
 
 ---
 
@@ -249,11 +260,7 @@ The plugin renders user data via `textContent` / DOM APIs (no `innerHTML` with u
 - Re-validate uploaded file MIME type, size and content (reject polyglot/EXIF-injected files; prevent path traversal).
 - Serve the host page with a Content-Security-Policy, e.g. `default-src 'self'; script-src 'self'; img-src 'self' data: https:;`.
 
-⚠️ This line pointed at `_docs_projet/travail/audits/audit-securite_plugin-editor.md` « for the full
-audit » until 31/07/2026. **That file has never existed under that name in this repository** — the
-reference was a phantom in a published README, invisible to every gate because it sits in inline
-code rather than a markdown link. The recommendations above stand on their own; the security
-guidance that does exist is [`@geoleaf/core` → `docs/SECURITY.md`](../../core/docs/SECURITY.md) and
+Further security guidance: [`@geoleaf/core` → `docs/SECURITY.md`](../../core/docs/SECURITY.md), and
 the repository policy in [`.github/SECURITY.md`](../../../.github/SECURITY.md).
 
 ---

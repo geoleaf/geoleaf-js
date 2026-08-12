@@ -5,16 +5,15 @@ title: "GeoLeaf-JS — Cookbook"
 # GeoLeaf-JS — Cookbook
 
 **Package:** `@geoleaf/core`
-**S'applique à :** `@geoleaf/core` v3.x
+**Applies to:** `@geoleaf/core` v3.x
 **License:** MIT
-**Moteur cartographique:** MapLibre GL JS ^6.0.0
+**Map engine:** MapLibre GL JS ^6.0.0
 
-Recettes pratiques pour les cas d'usage courants de GeoLeaf. Tous les exemples
-utilisent le nom de package correct `@geoleaf/core` et la vraie API publique.
+Practical recipes for common GeoLeaf use cases.
 
-> **Note v3.0.0 :** GeoLeaf est basé sur **MapLibre GL JS v6** (rendu WebGL,
-> tuiles vectorielles natives, ESM-only).
-> MapLibre GL JS est une **peer dependency** — à installer séparément.
+> **Note (v3.0.0):** GeoLeaf is built on **MapLibre GL JS v6** (WebGL rendering,
+> native vector tiles, ESM-only).
+> MapLibre GL JS is a **peer dependency** — install it separately.
 
 ---
 
@@ -51,12 +50,12 @@ import "@geoleaf/core/style.css";
 
 Core.init({
     mapId: "map",
-    center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf ; MapLibre attend [lng, lat], la conversion est interne
+    center: [48.8566, 2.3522], // [lat, lng] in GeoLeaf; MapLibre expects [lng, lat], the conversion is internal
     zoom: 12,
 });
 ```
 
-**CDN/ESM :**
+**CDN/ESM:**
 
 ```html
 <!DOCTYPE html>
@@ -83,9 +82,9 @@ Core.init({
     </head>
     <body>
         <div id="map"></div>
-        <!-- Le shim d'abord, dans SA PROPRE balise : les `import` d'un module sont hissés et
-             évalués avant tout code, donc poser le global entre deux imports le poserait APRÈS
-             l'évaluation de GeoLeaf. Deux balises module s'exécutent, elles, dans l'ordre. -->
+        <!-- The shim first, in its OWN tag: the `import` statements of a module are hoisted and
+             evaluated before any code, so setting the global between two imports would set it
+             AFTER GeoLeaf has been evaluated. Two module tags, by contrast, run in order. -->
         <script type="module">
             import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
             globalThis.maplibregl = maplibregl;
@@ -221,8 +220,8 @@ const hasActive = GeoLeaf.Filter.hasActiveFilters();
 ```
 
 > **BREAKING (v3.0.0)** — `GeoLeaf.Filters.filterPoiList` and the stats helpers
-> (`getUniqueCategories`, `countByCategory`, …) are removed: they had 0 internal
-> consumer (roadmap nettoyage, Sprint 3).
+> (`getUniqueCategories`, `countByCategory`, …) are removed: they had no internal
+> consumer.
 >
 > **BREAKING (v3.1.0)** — the whole `GeoLeaf.Filters` namespace is gone, along with its
 > last method `filterRouteList`. Use the `GeoLeaf.Filter` capability (singular) — see
@@ -250,7 +249,11 @@ const current = GeoLeaf.Core.getTheme(); // → "dark"
 
 ## Recipe 6 — Data table
 
-> ℹ️ The data table has been extracted from the core into the MIT plugin `@geoleaf-plugins/table`. See the plugin README for installation, configuration (`modules.table.*`), and migration.
+::: info
+
+The data table has been extracted from the core into the MIT plugin `@geoleaf-plugins/table`. See the plugin README for installation, configuration (`modules.table.*`), and migration.
+
+:::
 
 ```js
 // Import the table plugin via its own script/entry (after @geoleaf/core).
@@ -287,7 +290,7 @@ Layers must be defined in the profile. Layer ids come from the profile `layers[]
 
 ## Recipe 8 — Shipping less than the whole library
 
-> **BREAKING (v3, S5)** — `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()` **no
+> **BREAKING (v3)** — `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()` **no
 > longer exist**, and there is nothing to call in their place. If your code called them, delete
 > the call: everything they used to fetch is already in the bundle by the time your script runs.
 
@@ -314,12 +317,12 @@ export * from "@geoleaf/core/kernel";
 export { Legend } from "@geoleaf/core/facades/legend.js";
 ```
 
-> **BREAKING (v3, S6)** — these subpaths are new, and the ones this page used to print
-> (`@geoleaf/core/src/…`) **never worked**: `src/` is not in the package's `files`, so it was never
-> published, and `exports` never exposed it. If you copied that snippet, it could not have resolved.
-> The paths above are the real ones, and they are checked on every build — see below.
+> **BREAKING (v3)** — the subpaths above are the supported ones. Imports through
+> `@geoleaf/core/src/…` do not resolve: `src/` is not listed in the package's `files`, so it is
+> never published, and `exports` never exposed it. The supported subpaths are checked on every
+> build — see below.
 
-**The CSS follows the code.** Since v3/S6 each capability imports its own stylesheet from its
+**The CSS follows the code.** Since v3, each capability imports its own stylesheet from its
 `install.ts`, so the CSS is a node of the module graph: leave `filter` out and your bundle carries
 neither its JavaScript nor its proximity bar's CSS. Your bundler extracts the result the usual way
 (GeoLeaf's own build emits `dist/geoleaf-main.min.css`, still reachable as
@@ -328,17 +331,17 @@ neither its JavaScript nor its proximity bar's CSS. Your bundler extracts the re
 the order your bundler happens to concatenate in — and `gl.overrides` is yours: a rule you put
 there wins without `!important`.
 
-**How we know this actually works.** Two entries are built and measured on every single build:
+**How this is verified.** Two entries are built and measured on every single build:
 
-|                              | what it proves                                                                                                                                                 | gate                    |
+|                              | What it proves                                                                                                                                                 | Command                 |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | `examples/minimal/entry.ts`  | the **source graph** tree-shakes                                                                                                                               | `npm run size:example`  |
 | `examples/consumer/entry.ts` | the **published package** does — it imports through the very subpaths printed above, resolving through `exports` into `dist/esm/` exactly as your bundler will | `npm run size:consumer` |
 
 Both read the **sourcemaps** of the real eager closure (JS _and_ CSS): not one source file, and not
-one stylesheet, of an excluded capability is in it. The second one exists because the first cannot
-see past the repository — and in S6 it caught the fact that `import { Config } from "@geoleaf/core"`
-was shipping a `Config` with no `.get()`.
+one stylesheet, of an excluded capability is in it. The second entry exists because the first cannot
+see past the repository — only a resolution through the published `exports` map proves what an
+integrator actually receives.
 
 ---
 
@@ -363,7 +366,7 @@ console.log(GeoLeaf.getHealth());
 // → { initialized: true, modules: {...}, errors: [] }
 ```
 
-> **ESM import :** `import { PluginRegistry } from "@geoleaf/core"` pour les bundlers.
+> **ESM import:** `import { PluginRegistry } from "@geoleaf/core"` for bundlers.
 
 ---
 
@@ -371,7 +374,7 @@ console.log(GeoLeaf.getHealth());
 
 Register and activate a custom vector or raster basemap.
 
-**Basemap vectoriel (style MapLibre GL JS) :**
+**Vector basemap (MapLibre GL JS style):**
 
 ```js
 // Register a vector tile basemap (MapLibre GL JS style spec)
@@ -383,7 +386,7 @@ GeoLeaf.Baselayers.registerBaseLayer("my-vector-map", {
 GeoLeaf.Baselayers.setBaseLayer("my-vector-map");
 ```
 
-**Register multiple basemaps at once :**
+**Register multiple basemaps at once:**
 
 ```js
 GeoLeaf.Baselayers.registerBaseLayers({
@@ -411,18 +414,24 @@ for dynamic basemap switching.
 
 ## Recipe 11 — Address search (geocoding)
 
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
+::: warning
+
+**Extracted into a plugin.** Address search (geocoding) is no longer part of `@geoleaf/core` — it is provided by the MIT plugin **`@geoleaf-plugins/geocoding`**. The configuration moves from the root key **`geocodingConfig`** to **`modules.geocoding.*`** (declared in `config/plugins/geocoding.json` through `Files.modules.geocoding`) — a **breaking migration, with no shim**. The `GeoLeaf.Geocoding` API, the `geoleaf:geocoding:result` event and the search control all come from the plugin. See the plugin README (`packages/plugins/geocoding/README.md`).
+
+:::
 
 ---
 
 ## Named ESM exports reference
 
-Imports directs disponibles depuis `@geoleaf/core` (bundler moderne) :
+Direct imports available from `@geoleaf/core` (modern bundlers):
 
-**21 exports de valeur** — mesuré sur l'AST de `kernel-exports.ts` au 25/07/2026, non recompté à
-la main. ⚠️ Les capacités **`Filter`** et **`Filters`** n'en font pas partie et n'en ont jamais fait :
-la première vit sur le global (`GeoLeaf.Filter`), la seconde a été supprimée en v3.1.0. Les exemples
-qui les importaient ici ne compilaient pas.
+::: warning
+
+The **`Filter`** and **`Filters`** capabilities are not among them, and never were: the first lives
+on the global (`GeoLeaf.Filter`), the second was removed in v3.1.0.
+
+:::
 
 ```ts
 import {
@@ -462,10 +471,15 @@ import {
 } from "@geoleaf/core";
 ```
 
-> **Retirés en v3** _(breaking)_ : `POI` (sous-système dissous — utiliser le global `GeoLeaf.Layers`),
-> `Route` (devenu la capacité in-core `route`), `Table` (extrait → `@geoleaf-plugins/table`),
-> `Themes` (façade morte, retirée) et `Search` (moteur purgé, avec la dépendance `flexsearch`).
+> **Removed in v3** _(breaking)_: `POI` (subsystem dissolved — use the `GeoLeaf.Layers` global),
+> `Route` (now the in-core `route` capability), `Table` (extracted → `@geoleaf-plugins/table`),
+> `Themes` (dead facade, removed) and `Search` (engine purged, along with its `flexsearch`
+> dependency).
 
-> ⚠️ **`Layers`, `Taxonomy`, `Filter`, `Cluster` et `Introspection` ne sont PAS des exports ESM** —
-> ils vivent **uniquement** sur le global `window.GeoLeaf`. `import { Layers } from "@geoleaf/core"`
-> échoue. Voir `API_REFERENCE.md` — _Global namespace_.
+::: warning
+
+**`Layers`, `Taxonomy`, `Filter`, `Cluster` and `Introspection` are NOT ESM exports** — they live
+**only** on the `window.GeoLeaf` global. `import { Layers } from "@geoleaf/core"` fails. See
+`API_REFERENCE.md` — _Global namespace_.
+
+:::

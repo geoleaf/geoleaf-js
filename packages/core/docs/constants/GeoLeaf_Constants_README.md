@@ -1,48 +1,44 @@
 ---
-title: "GeoLeaf.CONSTANTS – Documentation des constantes globales"
+title: "GeoLeaf.CONSTANTS – Global constants documentation"
 ---
 
-# GeoLeaf.CONSTANTS – Documentation des constantes globales
+# GeoLeaf.CONSTANTS – Global constants documentation
 
-Product Version: GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier source** : `packages/core/src/modules/utils/constants/index.ts`
-
-**Dernière mise à jour** : mars 2026
+**Source file**: `packages/core/src/modules/utils/constants/index.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le module **GeoLeaf.CONSTANTS** centralise toutes les valeurs numériques et constantes utilisées dans le projet. Il fournit un **point unique de vérité** pour les paramètres par défaut, évitant ainsi la duplication de valeurs arbitraires dans le code.
+The **GeoLeaf.CONSTANTS** module centralises every numeric value and constant used in the project. It provides a **single source of truth** for default parameters, which keeps arbitrary values from being duplicated throughout the code.
 
-L'objet est exporté comme `Object.freeze({...})` — il est **en lecture seule** au runtime.
+The object is exported as `Object.freeze({...})` — it is **read-only** at runtime.
 
-### Avantages
+### Benefits
 
-- **Centralisation** — toutes les constantes au même endroit
-- **Maintenabilité** — modification facile des valeurs par défaut
-- **Documentation** — référence claire des valeurs utilisées
-- **Cohérence** — garantit l'uniformité entre modules
-- **Immutabilité** — `Object.freeze` empêche toute modification accidentelle
+- **Centralisation** — every constant in one place
+- **Maintainability** — default values are easy to change
+- **Documentation** — a clear reference of the values in use
+- **Consistency** — guarantees uniform behaviour across modules
+- **Immutability** — `Object.freeze` prevents accidental modification
 
 ---
 
-## Constantes disponibles
+## Available constants
 
-### Carte (Map)
+### Map
 
 #### `DEFAULT_ZOOM`
 
-**Valeur** : `3`
+**Value**: `3`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Niveau de zoom initial par défaut. Valeur neutre — le `fitBounds` positionne la vue après chargement des couches.
+**Description**: Default initial zoom level. A neutral value — `fitBounds` positions the view once the layers are loaded.
 
-**Usage** :
+**Usage**:
 
 ```ts
 import { CONSTANTS } from "@geoleaf/core";
@@ -56,13 +52,13 @@ GeoLeaf.Core.init({
 
 #### `DEFAULT_CENTER`
 
-**Valeur** : `[0, 0]`
+**Value**: `[0, 0]`
 
-**Type** : `[number, number]` (lat, lng)
+**Type**: `[number, number]` (lat, lng)
 
-**Description** : Coordonnées centre par défaut. Valeur neutre — le profil ou la config JSON doit fournir un centre métier.
+**Description**: Default centre coordinates. A neutral value — the profile or the JSON config must supply a meaningful centre.
 
-**Usage** :
+**Usage**:
 
 ```ts
 GeoLeaf.Core.init({
@@ -74,13 +70,13 @@ GeoLeaf.Core.init({
 
 #### `MAX_ZOOM_ON_FIT`
 
-**Valeur** : `15`
+**Value**: `15`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Zoom maximum appliqué lors d'un `fitBounds` automatique (POI, GeoJSON).
+**Description**: Maximum zoom applied by an automatic `fitBounds` (POI, GeoJSON).
 
-**Usage** :
+**Usage**:
 
 ```ts
 map.fitBounds(bounds, {
@@ -90,173 +86,173 @@ map.fitBounds(bounds, {
 
 ---
 
-### POI (Points d'intérêt)
+### POI (points of interest)
 
 #### `POI_MARKER_SIZE`
 
-**Valeur** : `12`
+**Value**: `12`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Taille par défaut des marqueurs POI en pixels.
+**Description**: Default POI marker size, in pixels.
 
 ---
 
 #### `POI_MAX_ZOOM`
 
-**Valeur** : `18`
+**Value**: `18`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Niveau de zoom maximum pour les POI.
+**Description**: Maximum zoom level for POIs.
 
 ---
 
 #### `POI_SWIPE_THRESHOLD`
 
-**Valeur** : `50`
+**Value**: `50`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Distance minimale (en pixels) pour détecter un swipe dans le panneau POI.
+**Description**: Minimum distance (in pixels) needed to detect a swipe in the POI panel.
 
 ---
 
 #### `POI_LIGHTBOX_TRANSITION_MS`
 
-**Valeur** : `300`
+**Value**: `300`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Durée de la transition d'ouverture/fermeture du lightbox (en millisecondes).
+**Description**: Duration of the lightbox open/close transition (in milliseconds).
 
 ---
 
 #### `POI_SIDEPANEL_DEFAULT_WIDTH`
 
-**Valeur** : `420`
+**Value**: `420`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Largeur par défaut du panneau latéral POI (en pixels).
+**Description**: Default width of the POI side panel (in pixels).
 
 ---
 
-### Route (Itinéraires)
+### Route
 
 #### `ROUTE_MAX_ZOOM_ON_FIT`
 
-**Valeur** : `14`
+**Value**: `14`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Zoom maximum lors du `fitBounds` d'un itinéraire.
+**Description**: Maximum zoom applied by the `fitBounds` of a route.
 
 ---
 
 #### `ROUTE_WAYPOINT_RADIUS`
 
-**Valeur** : `5`
+**Value**: `5`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Rayon des marqueurs de waypoints (points de passage) en pixels.
+**Description**: Radius of waypoint markers, in pixels.
 
 ---
 
-### GeoJSON (Couches)
+### GeoJSON (layers)
 
 #### `GEOJSON_MAX_ZOOM_ON_FIT`
 
-**Valeur** : `15`
+**Value**: `15`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Zoom maximum lors du `fitBounds` d'une couche GeoJSON.
+**Description**: Maximum zoom applied by the `fitBounds` of a GeoJSON layer.
 
 ---
 
 #### `GEOJSON_POINT_RADIUS`
 
-**Valeur** : `6`
+**Value**: `6`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Rayon par défaut des points GeoJSON (en pixels, via la couche `circle` MapLibre GL).
+**Description**: Default radius of GeoJSON points (in pixels, through the MapLibre GL `circle` layer).
 
 ---
 
-### UI (Interface)
+### UI
 
 #### `FULLSCREEN_TRANSITION_MS`
 
-**Valeur** : `10`
+**Value**: `10`
 
-**Type** : `number`
+**Type**: `number`
 
-**Description** : Délai de transition pour le mode plein écran (en millisecondes). Laisse le temps au navigateur de recalculer les dimensions avant l'invalidation de la vue.
-
----
-
-## Tableau récapitulatif
-
-| Constante                     | Valeur  | Catégorie | Description                       |
-| ----------------------------- | ------- | --------- | --------------------------------- |
-| `DEFAULT_ZOOM`                | `3`     | Map       | Zoom initial neutre               |
-| `DEFAULT_CENTER`              | `[0,0]` | Map       | Centre neutre (méridien/équateur) |
-| `MAX_ZOOM_ON_FIT`             | `15`    | Map       | Zoom max sur fitBounds            |
-| `POI_MARKER_SIZE`             | `12`    | POI       | Taille marqueur (px)              |
-| `POI_MAX_ZOOM`                | `18`    | POI       | Zoom maximum POI                  |
-| `POI_SWIPE_THRESHOLD`         | `50`    | POI       | Seuil détection swipe (px)        |
-| `POI_LIGHTBOX_TRANSITION_MS`  | `300`   | POI       | Durée transition lightbox (ms)    |
-| `POI_SIDEPANEL_DEFAULT_WIDTH` | `420`   | POI       | Largeur panneau latéral (px)      |
-| `ROUTE_MAX_ZOOM_ON_FIT`       | `14`    | Route     | Zoom max itinéraire               |
-| `ROUTE_WAYPOINT_RADIUS`       | `5`     | Route     | Rayon waypoint (px)               |
-| `GEOJSON_MAX_ZOOM_ON_FIT`     | `15`    | GeoJSON   | Zoom max fitBounds GeoJSON        |
-| `GEOJSON_POINT_RADIUS`        | `6`     | GeoJSON   | Rayon cercle point GeoJSON (px)   |
-| `FULLSCREEN_TRANSITION_MS`    | `10`    | UI        | Délai fullscreen (ms)             |
+**Description**: Transition delay for full-screen mode (in milliseconds). It gives the browser time to recompute dimensions before the view is invalidated.
 
 ---
 
-## Exemples d'utilisation
+## Summary table
 
-### Exemple 1 : Initialisation avec constantes
+| Constant                      | Value   | Category | Description                       |
+| ----------------------------- | ------- | -------- | --------------------------------- |
+| `DEFAULT_ZOOM`                | `3`     | Map      | Neutral initial zoom              |
+| `DEFAULT_CENTER`              | `[0,0]` | Map      | Neutral centre (meridian/equator) |
+| `MAX_ZOOM_ON_FIT`             | `15`    | Map      | Max zoom on fitBounds             |
+| `POI_MARKER_SIZE`             | `12`    | POI      | Marker size (px)                  |
+| `POI_MAX_ZOOM`                | `18`    | POI      | Maximum POI zoom                  |
+| `POI_SWIPE_THRESHOLD`         | `50`    | POI      | Swipe detection threshold (px)    |
+| `POI_LIGHTBOX_TRANSITION_MS`  | `300`   | POI      | Lightbox transition duration (ms) |
+| `POI_SIDEPANEL_DEFAULT_WIDTH` | `420`   | POI      | Side panel width (px)             |
+| `ROUTE_MAX_ZOOM_ON_FIT`       | `14`    | Route    | Max route zoom                    |
+| `ROUTE_WAYPOINT_RADIUS`       | `5`     | Route    | Waypoint radius (px)              |
+| `GEOJSON_MAX_ZOOM_ON_FIT`     | `15`    | GeoJSON  | Max zoom on GeoJSON fitBounds     |
+| `GEOJSON_POINT_RADIUS`        | `6`     | GeoJSON  | GeoJSON point circle radius (px)  |
+| `FULLSCREEN_TRANSITION_MS`    | `10`    | UI       | Full-screen delay (ms)            |
+
+---
+
+## Usage examples
+
+### Example 1: initialisation with constants
 
 ```ts
 import { CONSTANTS } from "@geoleaf/core";
 
-// Utiliser les constantes plutôt que des valeurs en dur
+// Prefer the constants over hard-coded values
 GeoLeaf.Core.init({
     center: CONSTANTS.DEFAULT_CENTER,
     zoom: CONSTANTS.DEFAULT_ZOOM,
 });
 ```
 
-### Exemple 2 : FitBounds cohérent
+### Example 2: consistent fitBounds
 
 ```ts
-// POI / GeoJSON — zoom max 15
+// POI / GeoJSON — max zoom 15
 map.fitBounds(poiBounds, {
     maxZoom: CONSTANTS.MAX_ZOOM_ON_FIT,
 });
 
-// Route — zoom max 14 (vue moins rapprochée)
+// Route — max zoom 14 (wider view)
 map.fitBounds(routeBounds, {
     maxZoom: CONSTANTS.ROUTE_MAX_ZOOM_ON_FIT,
 });
 ```
 
-### Exemple 3 : Animation avec constantes
+### Example 3: animation driven by constants
 
 ```ts
-// Transition lightbox POI
+// POI lightbox transition
 const lightbox = document.querySelector(".poi-lightbox") as HTMLElement;
 lightbox.style.transition = `
     opacity ${CONSTANTS.POI_LIGHTBOX_TRANSITION_MS}ms ease-in-out,
     transform ${CONSTANTS.POI_LIGHTBOX_TRANSITION_MS}ms ease-in-out
 `;
 
-// Délai après fullscreen (recalcul des dimensions MapLibre)
+// Delay after going full screen (MapLibre recomputes its dimensions)
 toggleFullscreen().then(() => {
     setTimeout(() => {
         map.resize();
@@ -266,21 +262,21 @@ toggleFullscreen().then(() => {
 
 ---
 
-## Règle d'immutabilité
+## Immutability rule
 
-Les constantes sont **en lecture seule** (`Object.freeze`) et ne doivent **pas** être modifiées :
+The constants are **read-only** (`Object.freeze`) and must **not** be modified:
 
 ```ts
-// Ne pas faire — silencieusement ignoré en mode strict, erreur en mode non-strict
+// Do not do this — silently ignored in sloppy mode, TypeError in strict mode
 CONSTANTS.DEFAULT_ZOOM = 10;
 
-// À la place : passer la valeur personnalisée directement
+// Instead: pass the custom value directly
 GeoLeaf.Core.init({
     zoom: 10,
 });
 ```
 
-Pour configurer des valeurs différentes, utilisez le fichier de configuration JSON :
+To configure different values, use the JSON configuration file:
 
 ```json
 {
@@ -293,47 +289,41 @@ Pour configurer des valeurs différentes, utilisez le fichier de configuration J
 
 ---
 
-## Ajout de nouvelles constantes
+## Adding new constants
 
-Si un nouveau module requiert des constantes :
+When a new module needs constants:
 
-1. Ajouter la valeur dans `packages/core/src/modules/utils/constants/index.ts`
-2. Respecter la convention `UPPER_SNAKE_CASE`
-3. Grouper par domaine fonctionnel (Map, POI, Route, GeoJSON, UI)
-4. Documenter ici
-5. Choisir une valeur par défaut raisonnable — les profils peuvent toujours la surcharger
+1. Add the value to `packages/core/src/modules/utils/constants/index.ts`
+2. Follow the `UPPER_SNAKE_CASE` convention
+3. Group by functional domain (Map, POI, Route, GeoJSON, UI)
+4. Document it here
+5. Pick a sensible default — profiles can always override it
 
 ---
 
-## Modules utilisant ces constantes
+## Modules using these constants
 
-**Map** :
+**Map**:
 
-- `geoleaf.core.ts` — initialisation de la carte
-- `globals.baselayers.ts` — gestion du zoom sur basemap
+- `geoleaf.core.ts` — map initialisation
+- `globals.baselayers.ts` — zoom handling on the basemap
 
-**POI** :
+**POI**:
 
-- `built-in/poi/markers.ts` — création des marqueurs MapLibre
-- `built-in/poi/sidepanel.ts` — dimensions du panneau latéral
-- `built-in/poi/renderers/lightbox-manager.ts` — transitions lightbox
+- `built-in/poi/markers.ts` — creation of the MapLibre markers
+- `built-in/poi/sidepanel.ts` — side panel dimensions
+- `built-in/poi/renderers/lightbox-manager.ts` — lightbox transitions
 
-**Route** :
+**Route**:
 
-- `geoleaf.route.ts` — fitBounds de l'itinéraire
+- `geoleaf.route.ts` — route fitBounds
 - `built-in/route/` — waypoints
 
-**GeoJSON** :
+**GeoJSON**:
 
-- `built-in/geojson/loader/` — fitBounds et style des points
-- `adapters/maplibre/maplibre-primitives.ts` — paint `circle-radius`
+- `built-in/geojson/loader/` — fitBounds and point styling
+- `adapters/maplibre/maplibre-primitives.ts` — `circle-radius` paint
 
-**UI** :
+**UI**:
 
-- `modules/ui/controls.ts` — délai fullscreen
-
----
-
-**Dernière mise à jour** : mars 2026
-
-**Version GeoLeaf** : 3.0.0
+- `modules/ui/controls.ts` — full-screen delay

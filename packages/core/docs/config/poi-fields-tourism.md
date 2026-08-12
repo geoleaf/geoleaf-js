@@ -1,39 +1,35 @@
 ---
-title: "GeoLeaf – Profil tourism"
+title: "GeoLeaf – tourism profile"
 ---
 
-# GeoLeaf – Profil `tourism`
+# GeoLeaf – `tourism` profile
 
-## Spécification des champs horaires, prix, avis voyageurs
+## Specification of the opening hours, price and traveller review fields
 
-### + Gestion officielle des sections accordéon (UI mobile)
-
-Product Version: GeoLeaf Platform V3
-**Date de création**: Décembre 2025
-**Dernière vérification**: mars 2026
+### Accordion section handling (mobile UI)
 
 ---
 
-Ce document définit le **format officiel** des champs utilisés par le profil métier `tourism` pour les POI (MyLatinTrip, tourisme général) :
+This document defines the **official format** of the fields used by the `tourism` business profile for POIs (MyLatinTrip, general tourism):
 
 - `attributes.openingHours`
 - `attributes.price`
 - `attributes.reviews`
-- Options UI de mise en page : `accordion` et `defaultOpen`
+- UI layout options: `accordion` and `defaultOpen`
 
-Ces formats servent de référence pour :
+These formats are the reference for:
 
-- la **génération** des données (backend, Odoo, API),
-- le **rendu** dans le panneau latéral GeoLeaf (`poiProfiles.tourism.layout`),
-- l’affichage optimisé mobile via les **panneaux repliables (accordéons)**.
+- **generating** the data (backend, Odoo, API),
+- **rendering** in the GeoLeaf side panel (`poiProfiles.tourism.layout`),
+- mobile-optimised display through **collapsible panels (accordions)**.
 
 ---
 
-## 0. Système d’accordéons (optimisation mobile)
+## 0. Accordion system (mobile optimisation)
 
-Les sections riches ou longues du profil tourisme peuvent être affichées sous forme de panneaux **repliables** (accordéons) dans le panneau latéral.
+Rich or long sections of the tourism profile can be displayed as **collapsible** panels (accordions) in the side panel.
 
-Deux options UI sont supportées dans chaque entrée de `poiProfiles.tourism.layout` :
+Two UI options are supported in every entry of `poiProfiles.tourism.layout`:
 
 ```json
 {
@@ -42,83 +38,82 @@ Deux options UI sont supportées dans chaque entrée de `poiProfiles.tourism.lay
 }
 ```
 
-- `accordion: true` → indique au moteur UI que la section doit être rendue dans un panneau pliable.
-- `defaultOpen: false` → la section est repliée par défaut (recommandé sur mobile).
+- `accordion: true` → tells the UI engine to render the section inside a collapsible panel.
+- `defaultOpen: false` → the section is collapsed by default (recommended on mobile).
 
-### Sections concernées (référence officielle GeoLeaf)
+### Sections concerned (official GeoLeaf reference)
 
-| Section               | Champ source                 | Accordéon recommandé |
-| --------------------- | ---------------------------- | -------------------- |
-| Description détaillée | `attributes.longDescription` | ✔ oui               |
-| Horaires              | `attributes.openingHours`    | ✔ oui               |
-| Tarifs                | `attributes.price`           | ✔ oui               |
-| Galerie photos        | `attributes.gallery`         | ✔ oui               |
-| Avis voyageurs        | `attributes.reviews`         | ✔ oui               |
+| Section              | Source field                 | Accordion recommended |
+| -------------------- | ---------------------------- | --------------------- |
+| Detailed description | `attributes.longDescription` | Yes                   |
+| Opening hours        | `attributes.openingHours`    | Yes                   |
+| Prices               | `attributes.price`           | Yes                   |
+| Photo gallery        | `attributes.gallery`         | Yes                   |
+| Traveller reviews    | `attributes.reviews`         | Yes                   |
 
-**Objectif :**
+**Purpose:**
 
-- Améliorer la navigation sur mobile,
-- Éviter un scroll excessif,
-- Garder le panneau latéral lisible même avec un contenu riche.
-
----
-
-## 1. Champ `attributes.openingHours`
-
-### 1.1. Niveau 1 – Texte libre (fallback universel)
-
-Le format le plus simple accepté est une **chaîne de caractères**.  
-Dans ce cas, GeoLeaf affiche simplement le texte tel quel.
-
-- Type : `string`
-- Exemples :
-
-```jsonc
-"openingHours": "Tous les jours de 9h à 18h"
-```
-
-```jsonc
-"openingHours": "Sur réservation uniquement"
-```
+- improve navigation on mobile,
+- avoid excessive scrolling,
+- keep the side panel readable even with rich content.
 
 ---
 
-### 1.2. Niveau 2 – Format structuré hebdomadaire
+## 1. `attributes.openingHours` field
 
-Pour exploiter au mieux l’information (tri futur, filtrage par jour ouvert, etc.), on définit un format structuré.
+### 1.1. Level 1 – Free text (universal fallback)
 
-- Type : `object`
-- Clés :
+The simplest accepted format is a **string**. In that case GeoLeaf displays the text as it is.
 
-| Clé        | Type     | Obligatoire | Description                                                            |
-| ---------- | -------- | ----------- | ---------------------------------------------------------------------- |
-| `timezone` | `string` | oui         | Fuseau horaire IANA (ex. `"America/Argentina/Cordoba"`).               |
-| `note`     | `string` | non         | Note générale facultative (fermetures saisonnières, conditions, etc.). |
-| `rows`     | `array`  | oui         | Liste des plages horaires par groupe de jours.                         |
+- Type: `string`
+- Examples:
 
-#### Structure de `rows`
+```jsonc
+"openingHours": "Open daily 9am-6pm"
+```
 
-Chaque entrée `rows[i]` est un objet :
+```jsonc
+"openingHours": "By reservation only"
+```
 
-| Clé     | Type       | Obligatoire | Description                                                                      |
-| ------- | ---------- | ----------- | -------------------------------------------------------------------------------- |
-| `days`  | `string[]` | oui         | Jours concernés (`"mon"`, `"tue"`, `"wed"`, `"thu"`, `"fri"`, `"sat"`, `"sun"`). |
-| `open`  | `string`   | oui         | Heure d’ouverture au format `HH:MM` (24h).                                       |
-| `close` | `string`   | oui         | Heure de fermeture au format `HH:MM` (24h).                                      |
-| `note`  | `string`   | non         | Spécificité de la plage (ex. "haute saison", "sur réservation").                 |
+---
 
-#### Exemple complet
+### 1.2. Level 2 – Structured weekly format
+
+A structured format makes the information usable (future sorting, filtering by open day, and so on).
+
+- Type: `object`
+- Keys:
+
+| Key        | Type     | Required | Description                                                       |
+| ---------- | -------- | -------- | ----------------------------------------------------------------- |
+| `timezone` | `string` | Yes      | IANA time zone (for example `"America/Argentina/Cordoba"`).       |
+| `note`     | `string` | No       | Optional general note (seasonal closures, conditions, and so on). |
+| `rows`     | `array`  | Yes      | List of opening ranges per group of days.                         |
+
+#### Structure of `rows`
+
+Each `rows[i]` entry is an object:
+
+| Key     | Type       | Required | Description                                                                   |
+| ------- | ---------- | -------- | ----------------------------------------------------------------------------- |
+| `days`  | `string[]` | Yes      | Days covered (`"mon"`, `"tue"`, `"wed"`, `"thu"`, `"fri"`, `"sat"`, `"sun"`). |
+| `open`  | `string`   | Yes      | Opening time in `HH:MM` format (24h).                                         |
+| `close` | `string`   | Yes      | Closing time in `HH:MM` format (24h).                                         |
+| `note`  | `string`   | No       | Specific detail for the range (for example "high season", "by reservation").  |
+
+#### Full example
 
 ```jsonc
 "openingHours": {
   "timezone": "America/Argentina/Cordoba",
-  "note": "Fermé les jours fériés nationaux.",
+  "note": "Closed on national public holidays.",
   "rows": [
     {
       "days": ["mon", "tue", "wed", "thu", "fri"],
       "open": "09:00",
       "close": "18:00",
-      "note": "Horaires standard."
+      "note": "Standard hours."
     },
     {
       "days": ["sat"],
@@ -129,7 +124,7 @@ Chaque entrée `rows[i]` est un objet :
       "days": ["sun"],
       "open": "00:00",
       "close": "00:00",
-      "note": "Fermé le dimanche."
+      "note": "Closed on Sundays."
     }
   ]
 }
@@ -137,33 +132,33 @@ Chaque entrée `rows[i]` est un objet :
 
 ---
 
-## 2. Champ `attributes.price`
+## 2. `attributes.price` field
 
-### 2.1. Niveau 1 – Texte libre (fallback universel)
+### 2.1. Level 1 – Free text (universal fallback)
 
 ```jsonc
-"price": "À partir de 25 000 ARS / nuit"
+"price": "From 25,000 ARS / night"
 ```
 
 ```jsonc
-"price": "Gratuit, participation libre"
+"price": "Free, donations welcome"
 ```
 
 ---
 
-### 2.2. Niveau 2 – Format structuré tarifaire
+### 2.2. Level 2 – Structured price format
 
-- Type : `object`
+- Type: `object`
 
-| Clé        | Type     | Obligatoire | Description                         |
-| ---------- | -------- | ----------- | ----------------------------------- |
-| `currency` | `string` | oui         | Code ISO 4217                       |
-| `from`     | `number` | oui         | Prix minimal                        |
-| `to`       | `number` | non         | Prix max                            |
-| `unit`     | `string` | oui         | Unité (per_night, per_person, etc.) |
-| `note`     | `string` | non         | Info supplémentaire                 |
+| Key        | Type     | Required | Description                        |
+| ---------- | -------- | -------- | ---------------------------------- |
+| `currency` | `string` | Yes      | ISO 4217 code                      |
+| `from`     | `number` | Yes      | Minimum price                      |
+| `to`       | `number` | No       | Maximum price                      |
+| `unit`     | `string` | Yes      | Unit (per_night, per_person, etc.) |
+| `note`     | `string` | No       | Additional information             |
 
-#### Exemple
+#### Example
 
 ```jsonc
 "price": {
@@ -171,53 +166,53 @@ Chaque entrée `rows[i]` est un objet :
   "from": 25000,
   "to": 42000,
   "unit": "per_night",
-  "note": "Tarif indicatif basse saison, petit-déjeuner inclus."
+  "note": "Indicative low-season rate, breakfast included."
 }
 ```
 
 ---
 
-## 3. Champ `attributes.reviews`
+## 3. `attributes.reviews` field
 
-Liste d’avis voyageurs.
+List of traveller reviews.
 
-### Structure d’un avis
+### Structure of a review
 
-| Clé          | Type     | Obligatoire |
-| ------------ | -------- | ----------- |
-| `authorName` | `string` | oui         |
-| `rating`     | `number` | non         |
-| `title`      | `string` | non         |
-| `comment`    | `string` | oui         |
-| `date`       | `string` | non         |
-| `source`     | `string` | non         |
-| `language`   | `string` | non         |
-| `url`        | `string` | non         |
+| Key          | Type     | Required |
+| ------------ | -------- | -------- |
+| `authorName` | `string` | Yes      |
+| `rating`     | `number` | No       |
+| `title`      | `string` | No       |
+| `comment`    | `string` | Yes      |
+| `date`       | `string` | No       |
+| `source`     | `string` | No       |
+| `language`   | `string` | No       |
+| `url`        | `string` | No       |
 
-#### Exemple
+#### Example
 
 ```jsonc
 "reviews": [
   {
     "authorName": "Camille",
     "rating": 4.8,
-    "title": "Vue incroyable sur la vallée",
-    "comment": "Excellent accueil, chambre propre et calme.",
+    "title": "Incredible view over the valley",
+    "comment": "Excellent welcome, clean and quiet room.",
     "date": "2025-03-12",
     "source": "internal",
-    "language": "fr-FR"
+    "language": "en-GB"
   }
 ]
 ```
 
 ---
 
-## 4. Accordéon dans `poiProfiles.tourism.layout` (extrait officiel)
+## 4. Accordion in `poiProfiles.tourism.layout` (official excerpt)
 
 ```jsonc
 {
   "type": "text",
-  "label": "Description détaillée",
+  "label": "Detailed description",
   "field": "attributes.longDescription",
   "variant": "multiline",
   "accordion": true,
@@ -225,28 +220,28 @@ Liste d’avis voyageurs.
 },
 {
   "type": "text",
-  "label": "Horaires",
+  "label": "Opening hours",
   "field": "attributes.openingHours",
   "accordion": true,
   "defaultOpen": false
 },
 {
   "type": "text",
-  "label": "Tarifs",
+  "label": "Prices",
   "field": "attributes.price",
   "accordion": true,
   "defaultOpen": false
 },
 {
   "type": "gallery",
-  "label": "Galerie photos",
+  "label": "Photo gallery",
   "field": "attributes.gallery",
   "accordion": true,
   "defaultOpen": false
 },
 {
   "type": "reviews",
-  "label": "Avis voyageurs",
+  "label": "Traveller reviews",
   "field": "attributes.reviews",
   "accordion": true,
   "defaultOpen": false
@@ -255,27 +250,27 @@ Liste d’avis voyageurs.
 
 ---
 
-## 5. Résumé des formats
+## 5. Format summary
 
 ### openingHours
 
-- `string` **ou**
+- `string` **or**
 - `object { timezone, note?, rows[] }`
 
 ### price
 
-- `string` **ou**
+- `string` **or**
 - `object { currency, from, to?, unit, note? }`
 
 ### reviews
 
-- `array` d’objets `{ authorName, rating?, title?, comment, date?, source?, language?, url? }`
+- `array` of `{ authorName, rating?, title?, comment, date?, source?, language?, url? }` objects
 
-### UI accordéons
+### Accordion UI
 
 - `accordion: true`
 - `defaultOpen: false`
 
 ---
 
-Ce document constitue la **référence officielle GeoLeaf** pour le profil `tourism` et sa présentation UI optimisée dans le panneau latéral.
+This document is the **official GeoLeaf reference** for the `tourism` profile and its side-panel presentation.

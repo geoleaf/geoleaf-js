@@ -13,16 +13,23 @@ date: 28 juillet 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-selector/` ·
 **Vérifié contre :** `ed1db5b5` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Trois voisins portent le mot « theme » et sont ORTHOGONAUX** — l'encadré complet est dans
 > [`theme-palette.md`](theme-palette.md). Ce qui distingue **celle-ci** : elle est la seule à agir
 > sur les **données affichées**. Un « thème » ici est un preset nommé de visibilité et de style de
 > couches, déclaré dans `themes.json` — pas une couleur, pas un mode clair/sombre.
+>
+> 📌 **`themes.json` désigne ici `profiles/<profil>/config/core/themes.json`** — un fichier **par
+> profil**, pas un fichier du dépôt. Les mentions courtes qui suivent renvoient toutes à celui-là.
 
 > ⚠️ **Le MOTEUR de thème n'est pas ici, il est au kernel.** `ThemeApplierCore`, `ThemeLoader` et
 > `ThemeCache` (`kernel/themes/`) chargent, composent et appliquent les thèmes ; le thème par défaut
@@ -311,18 +318,18 @@ fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartie
 concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
 décisions de `roadmap_documentation-v3.md`.
 
-| Énoncé du CDC                                                            | Ce que dit le code                                                                                                                                                       |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| « Gate **opt-out**, `configSchema {enabled}` défaut `true` »             | Le schéma annonce **`false`**, et le gate tardif teste `=== true` : c'est un **opt-in**. Corrigé après coup pour que le schéma décrive le runtime — voir §Le double gate |
-| `config.ts` → `getThemeSelectorConfig()` sur `DEFAULTS {enabled:true}`   | **Ce fichier n'existe pas.** Le gate tardif lit `Config.get("modules")` sur place ; l'exemption est nommée dans `scaffold-taxonomy.test.js`                              |
-| `public-api.ts` → `buildPublicApi()` → façade `ThemeSelector`            | **Ce fichier n'existe pas non plus.** L'installeur monte l'orchestrateur directement, et il n'y a pas de façade ESM                                                      |
-| Garde d'acceptation « activée **ET `themes.length > 0`** »               | La garde mesurée est **profil actif + les deux conteneurs**. Le cas « aucun thème » est couvert par le **rejet du chargement**, pas par un test de longueur              |
-| Accès au moteur par **seams** `_ThemeApplier` / `_ThemeLoader`           | **Import direct** du baril `kernel/themes/`. Le CDC l'a lui-même requalifié en v1.0.4 : le namespace ne porte qu'une copie superficielle divergente de l'applier         |
-| `ThemeEngineModule` deps `["geojson"]` (§5)                              | `["geojson", "ui"]` — déjà requalifié en v1.0.4 du CDC, et c'est ce qui rend l'invariant d'ordre robuste au retrait discuté en B-57                                      |
-| Façade montée dans `globals.ui.ts` **et** `globals.ui-lite.ts`           | Montée par `install.ts` → `registerGlobals`. `globals.ui-lite.ts` **n'existe pas**                                                                                       |
-| §10 « Le sélecteur est présent en **Lite** », `boot-lite.ts`             | **Le build Lite n'a plus d'existence** — ni entrée, ni manifeste, ni fichier `*-lite`. Ligne **B-61**                                                                    |
-| Enregistrement inline dans `app/boot.ts`                                 | Passe par l'installeur du manifeste de preset ; le module de cycle de vie vit **dans** la capacité                                                                       |
-| CSS `css/components/_theme-selector.css` importée par `geoleaf-main.css` | La capacité possède sa feuille et l'importe depuis `install.ts`                                                                                                          |
+| Énoncé du CDC                                                                                  | Ce que dit le code                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Gate **opt-out**, `configSchema {enabled}` défaut `true` »                                   | Le schéma annonce **`false`**, et le gate tardif teste `=== true` : c'est un **opt-in**. Corrigé après coup pour que le schéma décrive le runtime — voir §Le double gate         |
+| `config.ts` → `getThemeSelectorConfig()` sur `DEFAULTS {enabled:true}`                         | **Ce fichier n'existe pas.** Le gate tardif lit `Config.get("modules")` sur place ; l'exemption est nommée dans `packages/core/__tests__/capabilities/scaffold-taxonomy.test.js` |
+| `public-api.ts` → `buildPublicApi()` → façade `ThemeSelector`                                  | **Ce fichier n'existe pas non plus.** L'installeur monte l'orchestrateur directement, et il n'y a pas de façade ESM                                                              |
+| Garde d'acceptation « activée **ET `themes.length > 0`** »                                     | La garde mesurée est **profil actif + les deux conteneurs**. Le cas « aucun thème » est couvert par le **rejet du chargement**, pas par un test de longueur                      |
+| Accès au moteur par **seams** `_ThemeApplier` / `_ThemeLoader`                                 | **Import direct** du baril `kernel/themes/`. Le CDC l'a lui-même requalifié en v1.0.4 : le namespace ne porte qu'une copie superficielle divergente de l'applier                 |
+| `ThemeEngineModule` deps `["geojson"]` (§5)                                                    | `["geojson", "ui"]` — déjà requalifié en v1.0.4 du CDC, et c'est ce qui rend l'invariant d'ordre robuste au retrait discuté en B-57                                              |
+| Façade montée dans `packages/core/src/globals/globals.ui.ts` **et** `globals.ui-lite.ts`       | Montée par `install.ts` → `registerGlobals`. `globals.ui-lite.ts` **n'existe pas**                                                                                               |
+| §10 « Le sélecteur est présent en **Lite** », `boot-lite.ts`                                   | **Le build Lite n'a plus d'existence** — ni entrée, ni manifeste, ni fichier `*-lite`. Ligne **B-61**                                                                            |
+| Enregistrement inline dans `app/boot.ts`                                                       | Passe par l'installeur du manifeste de preset ; le module de cycle de vie vit **dans** la capacité                                                                               |
+| CSS `css/components/_theme-selector.css` importée par `packages/core/src/css/geoleaf-main.css` | La capacité possède sa feuille et l'importe depuis `install.ts`                                                                                                                  |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : la décision de conception centrale
 (découpler le chargement des couches du système de thème, et garder le moteur au kernel parce que

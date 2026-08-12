@@ -13,11 +13,20 @@ date: 28 juillet 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/table` ·
 **Code :** `packages/plugins/table/` · **Vérifié contre :** `00e6bdd7` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
+> faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
+> et les exemples pas à pas sont dans [`packages/core/docs/table/GeoLeaf_Table_README.md`](../../../packages/core/docs/table/GeoLeaf_Table_README.md). **Les deux ne se recopient pas** — une
+> divergence entre elles est un défaut, pas une nuance de point de vue.
+
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 ---
 
@@ -121,7 +130,7 @@ navigateur dédié sous `e2e/`.
 
 Bloc `modules.table` d'un profil, lu par `coreConfigGet("modules.table", {})` et fusionné sur les
 défauts. ⚠️ **Cette table n'est PAS gatée** — le garde de cette fiche ne lit que le manifeste. La
-couverture de ces clés relève de `check-config-coverage.cjs` et de l'inventaire.
+couverture de ces clés relève de `scripts/check-config-coverage.cjs` et de l'inventaire.
 
 | Clé                  | Type      | Défaut  | Rôle                                                                                    |
 | -------------------- | --------- | ------- | --------------------------------------------------------------------------------------- |

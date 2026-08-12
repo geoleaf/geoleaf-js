@@ -1,39 +1,35 @@
 ---
-title: "GeoLeaf.Helpers — Documentation du module Helpers"
+title: "GeoLeaf.Helpers — Helpers module documentation"
 ---
 
-# GeoLeaf.Helpers — Documentation du module Helpers
+# GeoLeaf.Helpers — Helpers module documentation
 
-**Product Version** : GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier** : `src/modules/geoleaf.helpers.ts` → `src/modules/utils/helpers/dom-helpers.ts`
-
-**Dernière mise à jour** : Mars 2026
+**Source**: `src/modules/geoleaf.helpers.ts` → `src/modules/utils/helpers/dom-helpers.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le module **GeoLeaf.Helpers** fournit des utilitaires de manipulation DOM, de performance et de gestion des événements pour améliorer les performances et la maintenabilité de GeoLeaf.
+The **GeoLeaf.Helpers** module provides DOM manipulation, performance and event-handling utilities that improve the performance and maintainability of GeoLeaf.
 
-### Catégories d'utilitaires
+### Utility categories
 
-- **DOM Helpers** — manipulation sécurisée du DOM
+- **DOM helpers** — safe DOM manipulation
 - **Performance** — debounce, throttle, lazy loading
-- **Events** — gestion d'événements avec cleanup
+- **Events** — event handling with cleanup
 - **Utilities** — deep clone, retry, wait
 
-> **Note** : `GeoLeaf.Helpers` expose uniquement les utilitaires DOM et les résolveurs de style. Les utilitaires généraux (debounce, throttle, deepMerge, getDistance…) se trouvent dans `GeoLeaf.Utils`.
+> **Note**: `GeoLeaf.Helpers` exposes only the DOM utilities and the style resolvers. General-purpose utilities (debounce, throttle, deepMerge, getDistance, and so on) live in `GeoLeaf.Utils`.
 
 ---
 
-## DOM Helpers
+## DOM helpers
 
 ### `getElementById(id)`
 
-Récupère un élément par ID de manière sécurisée.
+Retrieves an element by ID, safely.
 
 ```js
 const element = GeoLeaf.Helpers.getElementById("my-map");
@@ -44,7 +40,7 @@ const element = GeoLeaf.Helpers.getElementById("my-map");
 
 ### `querySelector(selector, parent?)`
 
-Query selector sécurisé avec gestion d'erreurs.
+Safe query selector with error handling.
 
 ```js
 const element = GeoLeaf.Helpers.querySelector(".gl-map-container");
@@ -56,32 +52,36 @@ const child = GeoLeaf.Helpers.querySelector(".item", parentElement);
 
 ### `querySelectorAll(selector, parent?)`
 
-Query all avec conversion automatique en `Array`.
+Query all, with automatic conversion to an `Array`.
 
 ```js
 const elements = GeoLeaf.Helpers.querySelectorAll(".poi-marker");
-// Returns: Element[] (toujours un array, jamais null)
+// Returns: Element[] (always an array, never null)
 ```
 
 ---
 
-### `createElement(tag, options)` — **retirée (v3, KERNEL S10)**
+### `createElement(tag, options)` — **removed**
 
-> ⚠️ **Cette méthode n'existe plus.** `GeoLeaf.Helpers.createElement()` a été retirée :
-> elle n'avait aucun appelant, et sa forme d'options divergeait silencieusement de la
-> fabrique canonique — elle lisait `styles` là où l'autre lit `style`, et faisait gagner
-> `innerHTML` sur `textContent` (précédence inverse). Les deux interfaces portant un
-> index signature, aucune vérification de type n'aurait signalé une substitution.
->
-> **Migration :** utiliser `GeoLeaf.Utils.createElement(tag, props, ...children)`.
-> Attention à renommer `styles` → `style` si vous passiez un objet de styles, et à ne
-> pas compter sur `innerHTML` pour gagner sur `textContent`.
+::: warning
+
+This method no longer exists. `GeoLeaf.Helpers.createElement()` has been removed: it had no
+caller, and its options shape diverged silently from the canonical factory — it read `styles`
+where the other one reads `style`, and it let `innerHTML` win over `textContent` (the reverse
+precedence). Since both interfaces carried an index signature, no type check would have
+flagged a substitution.
+
+**Migration:** use `GeoLeaf.Utils.createElement(tag, props, ...children)`. Rename `styles` →
+`style` if a style object was being passed, and do not rely on `innerHTML` winning over
+`textContent`.
+
+:::
 
 ---
 
 ### `addClass(element, ...classes)`
 
-Ajoute une ou plusieurs classes CSS.
+Adds one or more CSS classes.
 
 ```js
 GeoLeaf.Helpers.addClass(element, "active");
@@ -92,7 +92,7 @@ GeoLeaf.Helpers.addClass(element, "primary", "highlighted");
 
 ### `removeClass(element, ...classes)`
 
-Supprime une ou plusieurs classes CSS.
+Removes one or more CSS classes.
 
 ```js
 GeoLeaf.Helpers.removeClass(element, "active");
@@ -103,18 +103,18 @@ GeoLeaf.Helpers.removeClass(element, "loading", "disabled");
 
 ### `toggleClass(element, className, force?)`
 
-Bascule une classe CSS.
+Toggles a CSS class.
 
 ```js
 const added = GeoLeaf.Helpers.toggleClass(element, "active");
-// Returns: true si ajoutée, false si supprimée
+// Returns: true when added, false when removed
 ```
 
 ---
 
 ### `hasClass(element, className)`
 
-Vérifie si un élément possède une classe.
+Checks whether an element carries a class.
 
 ```js
 const isActive = GeoLeaf.Helpers.hasClass(element, "active");
@@ -125,7 +125,7 @@ const isActive = GeoLeaf.Helpers.hasClass(element, "active");
 
 ### `removeElement(element)`
 
-Retire un nœud du DOM.
+Removes a node from the DOM.
 
 ```js
 GeoLeaf.Helpers.removeElement(element);
@@ -135,7 +135,7 @@ GeoLeaf.Helpers.removeElement(element);
 
 ### `createFragment(children?)`
 
-Crée un `DocumentFragment` à partir d'un tableau d'éléments.
+Creates a `DocumentFragment` from an array of elements.
 
 ```js
 const fragment = GeoLeaf.Helpers.createFragment([el1, el2, el3]);
@@ -144,31 +144,31 @@ container.appendChild(fragment);
 
 ---
 
-## Performance Helpers
+## Performance helpers
 
 ### `lazyLoadImage(img, options?)`
 
-Charge une image uniquement quand elle devient visible (Intersection Observer).
+Loads an image only once it becomes visible (Intersection Observer).
 
 ```js
 const img = document.querySelector(".poi-image");
 GeoLeaf.Helpers.lazyLoadImage(img, {
-    threshold: 0.1, // charger à 10% de visibilité
+    threshold: 0.1, // load at 10% visibility
 });
 ```
 
-> L'image doit avoir un attribut `data-src` avec l'URL réelle.
-> Fallback automatique si `IntersectionObserver` n'est pas disponible.
+> The image must carry a `data-src` attribute holding the real URL.
+> Automatic fallback when `IntersectionObserver` is unavailable.
 
 ---
 
 ### `lazyExecute(callback, timeout?)`
 
-Exécute une fonction via `requestIdleCallback` (ou `setTimeout` en fallback) quand le navigateur est inactif.
+Runs a function through `requestIdleCallback` (or `setTimeout` as a fallback) while the browser is idle.
 
 ```js
 GeoLeaf.Helpers.lazyExecute(() => {
-    // Initialisation non urgente
+    // Non-urgent initialisation
     loadHeavyData();
 }, 100);
 ```
@@ -177,11 +177,11 @@ GeoLeaf.Helpers.lazyExecute(() => {
 
 ### `requestFrame(callback)`
 
-Exécute un callback au prochain frame d'animation (`requestAnimationFrame`).
+Runs a callback on the next animation frame (`requestAnimationFrame`).
 
 ```js
 GeoLeaf.Helpers.requestFrame(() => {
-    // Animation ou modification DOM optimisée
+    // Animation or optimised DOM update
     element.style.transform = `translateX(${x}px)`;
 });
 // Returns: number (animation frame ID)
@@ -191,7 +191,7 @@ GeoLeaf.Helpers.requestFrame(() => {
 
 ### `cancelFrame(id)`
 
-Annule un frame d'animation planifié.
+Cancels a scheduled animation frame.
 
 ```js
 const frameId = GeoLeaf.Helpers.requestFrame(callback);
@@ -202,32 +202,32 @@ GeoLeaf.Helpers.cancelFrame(frameId);
 
 ### `createAbortController(timeout?)`
 
-Crée un `AbortController` avec timeout optionnel.
+Creates an `AbortController` with an optional timeout.
 
 ```js
-const controller = GeoLeaf.Helpers.createAbortController(5000); // timeout 5s
+const controller = GeoLeaf.Helpers.createAbortController(5000); // 5s timeout
 const response = await fetch("/api/data", { signal: controller.signal });
 ```
 
 ---
 
-## Event Helpers
+## Event helpers
 
 ### `addEventListener(element, event, handler, options?)`
 
-Ajoute un event listener et retourne une fonction de nettoyage.
+Adds an event listener and returns a cleanup function.
 
 ```js
 const cleanup = GeoLeaf.Helpers.addEventListener(
     button,
     "click",
     (e) => {
-        console.log("Click !");
+        console.log("Click!");
     },
     { once: true }
 );
 
-// Nettoyer manuellement si besoin
+// Clean up manually when needed
 cleanup();
 ```
 
@@ -235,7 +235,7 @@ cleanup();
 
 ### `addEventListeners(element, events, options?)`
 
-Ajoute plusieurs event listeners en une seule opération, retourne un cleanup global.
+Adds several event listeners in one call and returns a single cleanup function.
 
 ```js
 const cleanup = GeoLeaf.Helpers.addEventListeners(element, {
@@ -244,7 +244,7 @@ const cleanup = GeoLeaf.Helpers.addEventListeners(element, {
     mouseleave: () => console.log("leave"),
 });
 
-// Nettoyer tous les listeners
+// Clean up every listener
 cleanup();
 ```
 
@@ -252,31 +252,31 @@ cleanup();
 
 ### `delegateEvent(parent, event, selector, handler)`
 
-Délégation d'événements pour éléments dynamiques.
+Event delegation for dynamically created elements.
 
 ```js
-// Écouter tous les markers POI, même ceux ajoutés dynamiquement
+// Listen to every POI marker, including those added later
 GeoLeaf.Helpers.delegateEvent(document.body, "click", ".gl-poi-marker", function (e) {
-    console.log("POI cliqué:", this.dataset.poiId);
+    console.log("POI clicked:", this.dataset.poiId);
 });
 ```
 
-> Note : le `handler` reçoit `this` = l'élément correspondant au `selector`.
+> Note: the `handler` receives `this` = the element matching `selector`.
 
 ---
 
-## Utility Helpers
+## Utility helpers
 
 ### `deepClone(obj)`
 
-Clone profond d'un objet (supporte arrays, objects, dates, RegExp, références circulaires).
+Deep clone of an object (supports arrays, objects, dates, RegExp and circular references).
 
 ```js
 const original = { name: "POI", coords: [45.5, -73.6], tags: ["a", "b"] };
 const clone = GeoLeaf.Helpers.deepClone(original);
 
 clone.tags.push("c");
-console.log(original.tags); // ['a', 'b'] — original non modifié
+console.log(original.tags); // ['a', 'b'] — original untouched
 console.log(clone.tags); // ['a', 'b', 'c']
 ```
 
@@ -284,7 +284,7 @@ console.log(clone.tags); // ['a', 'b', 'c']
 
 ### `isEmpty(value)`
 
-Vérifie si une valeur est vide (`null`, `undefined`, string vide, array vide, objet vide).
+Checks whether a value is empty (`null`, `undefined`, empty string, empty array, empty object).
 
 ```js
 GeoLeaf.Helpers.isEmpty(""); // true
@@ -299,13 +299,13 @@ GeoLeaf.Helpers.isEmpty("hello"); // false
 
 ### `wait(ms)`
 
-Promise de délai (async/await friendly).
+Delay promise (async/await friendly).
 
 ```js
 async function loadData() {
-    console.log("Chargement...");
+    console.log("Loading...");
     await GeoLeaf.Helpers.wait(2000);
-    console.log("Données chargées après 2s");
+    console.log("Data loaded after 2s");
 }
 ```
 
@@ -313,68 +313,65 @@ async function loadData() {
 
 ### `retryWithBackoff(fn, maxRetries?, delay?)`
 
-Réessaye une fonction avec délai exponentiel en cas d'échec.
+Retries a function with an exponential delay on failure.
 
 ```js
 const data = await GeoLeaf.Helpers.retryWithBackoff(
     async () => {
         const response = await fetch("/api/poi");
-        if (!response.ok) throw new Error("Erreur réseau");
+        if (!response.ok) throw new Error("Network error");
         return response.json();
     },
-    3, // maxRetries (défaut : 3)
-    1000 // délai initial en ms (défaut : 1000)
+    3, // maxRetries (default: 3)
+    1000 // initial delay in ms (default: 1000)
 );
 
-// Séquence des tentatives :
-// 1. Échec → attendre 1 000 ms
-// 2. Échec → attendre 2 000 ms (1000 * 2^1)
-// 3. Échec → attendre 4 000 ms (1000 * 2^2)
-// 4. Succès ou erreur finale
+// Sequence of attempts:
+// 1. Failure → wait 1,000 ms
+// 2. Failure → wait 2,000 ms (1000 * 2^1)
+// 3. Failure → wait 4,000 ms (1000 * 2^2)
+// 4. Success, or final error
 ```
 
 ---
 
 ### `clearObject(obj)`
 
-Supprime toutes les clés d'un objet en place.
+Deletes every key of an object in place.
 
 ```js
 const cache = { key1: "val1", key2: "val2" };
 GeoLeaf.Helpers.clearObject(cache);
-// cache === {} (même référence, contenu vidé)
+// cache === {} (same reference, contents cleared)
 ```
 
 ---
 
-## Utilitaires de style — **retirés (taxonomy v3)**
+## Style utilities — **removed (taxonomy v3)**
 
-> ⚠️ **`getColorsFromLayerStyle()` et `resolvePoiColors()` n'existent plus.** Cette section les
-> documentait avec un `import { … } from "@geoleaf/core"` copiable-collable, alors qu'elles
-> avaient été retirées par la refonte **taxonomy v3** (`753d0adb`), qui a fait de la capacité
-> taxonomie le propriétaire du symbole d'un point — couleurs comprises. Mesuré le 30/07/2026 :
-> **0 occurrence** dans `packages/core/src/`, absentes du manifeste de surface comme de
-> l'entrée publiée.
->
-> **Où la résolution vit aujourd'hui** : dans `capabilities/taxonomy/resolver.ts`
-> (`resolvePoiIcon` et ses voisins), pilotée par la taxonomie du profil et non plus par les
-> `styleRules` de la couche. Ce n'est pas un renommage — le point d'entrée **et** la source de
-> vérité ont changé.
->
-> ⚠️ Ni `validate-docs-examples` ni TSD-06 ne pouvaient signaler ces deux fantômes : elles ne
-> reconnaissent que les formes `new X(` et `X.méthode(`, jamais un **spécificateur d'import**.
-> Le trou de gate est suivi en **B-78**.
+::: warning
+
+`getColorsFromLayerStyle()` and `resolvePoiColors()` no longer exist. They were removed by the
+**taxonomy v3** rework, which made the taxonomy capability the owner of a point's symbol,
+colours included. They are absent from `packages/core/src/`, from the surface manifest and from
+the published entry point.
+
+**Where resolution lives now**: in `capabilities/taxonomy/resolver.ts` (`resolvePoiIcon` and
+its neighbours), driven by the profile taxonomy rather than by the `styleRules` of the layer.
+This is not a rename — both the entry point **and** the source of truth have changed.
+
+:::
 
 ---
 
-## Exemples d'utilisation
+## Usage examples
 
-### Optimisation de recherche (debounce via GeoLeaf.Utils)
+### Search optimisation (debounce through GeoLeaf.Utils)
 
 ```js
-// GeoLeaf.Utils.debounce pour les fonctions de performance generiques
-// BREAKING (v3.1.0) — le namespace GeoLeaf.Filters (pluriel) est supprimé en entier.
-// Le panneau de filtre actif expose la recherche via GeoLeaf.Filter (capacité, singulier).
+// GeoLeaf.Utils.debounce for generic performance helpers
+// BREAKING (v3.1.0) — the GeoLeaf.Filters namespace (plural) is removed entirely.
+// The active filter panel exposes search through GeoLeaf.Filter (capability, singular).
 const searchInput = document.querySelector("#search");
 const debouncedSearch = GeoLeaf.Utils.debounce((query) => {
     GeoLeaf.Filter.applyFilter({
@@ -390,10 +387,10 @@ searchInput.addEventListener("input", (e) => {
 
 ---
 
-### Lazy loading de la carte
+### Lazy loading of map data
 
 ```js
-// Ne charger les données d'une couche que quand la carte est visible
+// Load layer data only once the map is visible
 GeoLeaf.Helpers.lazyExecute(() => {
     GeoLeaf.Layers.setData("mes-points", features);
 }, 100);
@@ -401,7 +398,7 @@ GeoLeaf.Helpers.lazyExecute(() => {
 
 ---
 
-### Création d'un élément de popup
+### Building a popup element
 
 ```js
 const popup = GeoLeaf.Utils.createElement(
@@ -409,7 +406,7 @@ const popup = GeoLeaf.Utils.createElement(
     {
         className: "gl-popup",
         dataset: { poiId: poi.id },
-        ariaLabel: `Détails : ${poi.label}`,
+        ariaLabel: `Details: ${poi.label}`,
     },
     GeoLeaf.Utils.createElement("h3", { textContent: poi.label }),
     GeoLeaf.Utils.createElement("p", { textContent: poi.description })
@@ -419,17 +416,17 @@ document.body.appendChild(popup);
 
 ---
 
-## Impact performance
+## Performance impact
 
-| Technique            | Gain                   | Cas d'usage       |
-| -------------------- | ---------------------- | ----------------- |
-| **Debounce**         | -80 % requêtes         | Recherche, resize |
-| **Throttle**         | -90 % exécutions       | Scroll, mousemove |
-| **Lazy loading**     | +50 % vitesse initiale | Images, données   |
-| **requestFrame**     | 60 FPS stable          | Animations        |
-| **Event delegation** | -90 % listeners        | Listes dynamiques |
+| Technique            | Gain               | Use case          |
+| -------------------- | ------------------ | ----------------- |
+| **Debounce**         | -80% requests      | Search, resize    |
+| **Throttle**         | -90% executions    | Scroll, mousemove |
+| **Lazy loading**     | +50% initial speed | Images, data      |
+| **requestFrame**     | Stable 60 FPS      | Animations        |
+| **Event delegation** | -90% listeners     | Dynamic lists     |
 
-> `debounce` et `throttle` sont disponibles dans `GeoLeaf.Utils`, pas dans `GeoLeaf.Helpers`.
+> `debounce` and `throttle` are available in `GeoLeaf.Utils`, not in `GeoLeaf.Helpers`.
 
 ---
 
@@ -438,16 +435,16 @@ document.body.appendChild(popup);
 ```bash
 npm test -- helpers
 
-# Fichiers de tests
+# Test files
 # packages/core/__tests__/helpers/helpers.test.js
 ```
 
-**Couverture** : 85 %+ (90+ tests passants)
+**Coverage**: 85%+ (90+ passing tests)
 
 ---
 
-## Voir aussi
+## See also
 
-- `GeoLeaf.Utils` — utilitaires généraux (debounce, throttle, deepMerge, getDistance…)
-- `GeoLeaf.Filter` — utilise debounce pour la recherche
-- `GeoLeaf.Security` — `DOMSecurity.setSafeHTML`, utilisé par `GeoLeaf.Utils.createElement`
+- `GeoLeaf.Utils` — general-purpose utilities (debounce, throttle, deepMerge, getDistance, and so on)
+- `GeoLeaf.Filter` — uses debounce for search
+- `GeoLeaf.Security` — `DOMSecurity.setSafeHTML`, used by `GeoLeaf.Utils.createElement`

@@ -4,26 +4,22 @@ title: "CSS Animation Optimization Guide — GeoLeaf"
 
 # CSS Animation Optimization Guide — GeoLeaf
 
-**Product Version** : GeoLeaf Platform V3
-
-**S'applique à :** `@geoleaf/core` v3.x
-**Cible** : 60 FPS sur tous les appareils
-
-**Dernière mise à jour** : mars 2026
+**Applies to:** `@geoleaf/core` v3.x
+**Target**: 60 FPS on every device
 
 ---
 
-## Principes d'optimisation
+## Optimisation principles
 
-### 1. Propriétés accélérées GPU
+### 1. GPU-accelerated properties
 
-**Rapide (accéléré GPU) :**
+**Fast (GPU-accelerated):**
 
 - `transform` (translate, rotate, scale)
 - `opacity`
 - `filter`
 
-**Lent (CPU-bound, déclenche layout/paint) :**
+**Slow (CPU-bound, triggers layout/paint):**
 
 - `width`, `height`
 - `top`, `left`, `right`, `bottom`
@@ -50,9 +46,9 @@ title: "CSS Animation Optimization Guide — GeoLeaf"
 
 ---
 
-## Propriété `will-change`
+## The `will-change` property
 
-Indique au navigateur qu'une animation est imminente sur cet élément.
+Tells the browser that an animation is about to run on the element.
 
 ```css
 /* Set before animation */
@@ -85,26 +81,30 @@ element.addEventListener("transitionend", () => {
 });
 ```
 
-**Attention** : trop de déclarations `will-change` simultanées consomment de la mémoire GPU.
+::: warning
+
+Too many simultaneous `will-change` declarations consume GPU memory.
+
+:::
 
 ---
 
-## Profiling performance
+## Performance profiling
 
 ### Chrome DevTools
 
-1. Ouvrir DevTools > onglet **Performance**
-2. Démarrer l'enregistrement (Ctrl+E)
-3. Interagir avec l'application (déclencher les animations)
-4. Arrêter l'enregistrement
-5. Analyser :
-    - **FPS meter** : doit rester à 60 FPS (ligne verte)
-    - **Main thread** : chercher les tâches longues (barres rouges)
-    - **Compositor** : barres vertes = accéléré GPU
+1. Open DevTools > **Performance** tab
+2. Start recording (Ctrl+E)
+3. Interact with the application (trigger the animations)
+4. Stop recording
+5. Analyse:
+    - **FPS meter**: should stay at 60 FPS (green line)
+    - **Main thread**: look for long tasks (red bars)
+    - **Compositor**: green bars mean GPU-accelerated
 
-### Métriques cibles
+### Target metrics
 
-| Métrique         | Cible    | Alerte  | Critique |
+| Metric           | Target   | Warning | Critical |
 | ---------------- | -------- | ------- | -------- |
 | **FPS**          | 60       | < 55    | < 30     |
 | **Frame time**   | 16.67 ms | > 18 ms | > 33 ms  |
@@ -113,7 +113,7 @@ element.addEventListener("transitionend", () => {
 
 ---
 
-## Patterns d'animation optimisés
+## Optimised animation patterns
 
 ### Fade In/Out
 
@@ -171,35 +171,35 @@ element.addEventListener("transitionend", () => {
 
 ---
 
-## Fonctions d'easing
+## Easing functions
 
 ```css
-/* Standard — transitions normales */
+/* Standard — normal transitions */
 .standard {
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Deceleration (ease out) — éléments entrant à l'écran */
+/* Deceleration (ease out) — elements entering the screen */
 .decelerate {
     transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
-/* Acceleration (ease in) — éléments quittant l'écran */
+/* Acceleration (ease in) — elements leaving the screen */
 .accelerate {
     transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
 }
 ```
 
-| Easing        | Cas d'usage          | Effet                       |
-| ------------- | -------------------- | --------------------------- |
-| `ease-out`    | Animations d'entrée  | Démarrage rapide, fin lente |
-| `ease-in`     | Animations de sortie | Démarrage lent, fin rapide  |
-| `ease-in-out` | Changements d'état   | Début et fin lents          |
-| `linear`      | Rotation/spin        | Vitesse constante           |
+| Easing        | Use case         | Effect                  |
+| ------------- | ---------------- | ----------------------- |
+| `ease-out`    | Entry animations | Fast start, slow finish |
+| `ease-in`     | Exit animations  | Slow start, fast finish |
+| `ease-in-out` | State changes    | Slow start and finish   |
+| `linear`      | Rotation/spin    | Constant speed          |
 
 ---
 
-## Optimisations mobiles
+## Mobile optimisations
 
 ```css
 /* Reduce animation duration on mobile */
@@ -227,42 +227,42 @@ element.addEventListener("transitionend", () => {
 
 ---
 
-## Optimisations appliquées dans GeoLeaf
+## Optimisations applied inside GeoLeaf
 
-### Notifications toast
+### Toast notifications
 
-- Double `requestAnimationFrame` pour l'entrée du toast
-- `transform: translateY()` à la place de `top`
-- `will-change: transform, opacity` avant animation, `auto` après
+- Double `requestAnimationFrame` for the toast entry
+- `transform: translateY()` instead of `top`
+- `will-change: transform, opacity` before the animation, `auto` afterwards
 
-### Panneau latéral POI
+### POI side panel
 
-- Slide via `transform: translateX()` (pas de `left`)
-- Transitions `300ms ease-out` pour l'entrée, `200ms ease-in` pour la sortie
+- Slide through `transform: translateX()` (never `left`)
+- `300ms ease-out` transition on entry, `200ms ease-in` on exit
 
 ### Layer manager
 
-- Expand/collapse via `max-height` + `opacity` (évite `height` animé)
-- Durée réduite à 200 ms pour la réactivité
+- Expand/collapse through `max-height` + `opacity` (avoids animating `height`)
+- Duration reduced to 200 ms for responsiveness
 
-### Resize carte MapLibre GL
+### MapLibre GL map resize
 
-- Appel `map.resize()` après fullscreen avec délai `CONSTANTS.FULLSCREEN_TRANSITION_MS` (10 ms) pour laisser le navigateur recalculer les dimensions.
+- `map.resize()` is called after fullscreen with the `CONSTANTS.FULLSCREEN_TRANSITION_MS` delay (10 ms), to let the browser recompute the dimensions.
 
-### Résultats mesurés
+### Measured results
 
-| Animation          | Avant  | Après  | Gain  |
+| Animation          | Before | After  | Gain  |
 | ------------------ | ------ | ------ | ----- |
 | Toast notification | 45 FPS | 60 FPS | +33 % |
 | Modal/backdrop     | 50 FPS | 60 FPS | +20 % |
 | Layer expand       | 40 FPS | 60 FPS | +50 % |
-| Scroll panneau     | 48 FPS | 60 FPS | +25 % |
+| Panel scroll       | 48 FPS | 60 FPS | +25 % |
 
 ---
 
-## Techniques avancées
+## Advanced techniques
 
-### IntersectionObserver pour animations au scroll
+### IntersectionObserver for scroll-driven animations
 
 ```js
 const observer = new IntersectionObserver(
@@ -282,7 +282,7 @@ document.querySelectorAll(".lazy-animate").forEach((el) => {
 });
 ```
 
-### Virtual scrolling (listes longues)
+### Virtual scrolling (long lists)
 
 ```js
 // Only render visible items — 60 FPS even with 10,000 items
@@ -309,25 +309,19 @@ window.addEventListener(
 
 ---
 
-## Checklist de test
+## Test checklist
 
 - [ ] Desktop Chrome — 60 FPS
 - [ ] Mobile Chrome — 60 FPS
 - [ ] Safari iOS — 60 FPS
-- [ ] CPU throttling 4x
-- [ ] Réseau lent (Slow 3G)
-- [ ] `prefers-reduced-motion` activé
+- [ ] 4x CPU throttling
+- [ ] Slow network (Slow 3G)
+- [ ] `prefers-reduced-motion` enabled
 
 ---
 
-## Références
+## References
 
 - [Google Web Fundamentals — Rendering Performance](https://developers.google.com/web/fundamentals/performance/rendering)
 - [CSS Triggers — What triggers layout/paint/composite](https://csstriggers.com/)
 - [MDN — CSS Performance Optimization](https://developer.mozilla.org/en-US/docs/Web/Performance/CSS_performance_optimization)
-
----
-
-**Version** : 3.0.0
-
-**Dernière mise à jour** : mars 2026

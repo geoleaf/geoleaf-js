@@ -137,6 +137,20 @@ const SCRIPTS_ALLOWLIST = new Set([
     // pas en écrire quatre nouveaux du même régime. N'écrit rien dans le dépôt.
     "probe-typedoc-surface.mjs",
     "publish-plugins.cjs",
+    // Portage de l'atelier vers le dépôt public `geoleaf/geoleaf-js` (passage public, S10.A).
+    // DÉLIBÉRÉMENT hors ci:local : il parle au réseau et écrit sur un dépôt distant, ce
+    // qu'aucune gate ne doit faire. Son `--dry-run` par défaut mesure sans écrire.
+    //
+    // ⚠️ Il remplace un `cp` à la main qui avait laissé le dépôt public **15 commits en
+    // retard**, dont sept sur de la doc publique, sans que rien ne le signale : le clone
+    // public est éphémère (créé, poussé, supprimé), donc il n'existait aucun endroit où
+    // comparer les deux dépôts, ni où retrouver la liste d'exclusion.
+    "port-to-public.cjs",
+    // scripts/lib/ — la frontière atelier/public, et le seul domicile de ses quatre motifs.
+    // Ils vivaient hors dépôt (`~/.claude/geoleaf-nuit/`), donc sur un seul poste : un
+    // portage qui ne les retrouvait pas réintroduisait 39 fichiers d'atelier en sortant vert.
+    // Gardé par `public-partition.guard.test.ts`, vu rougir sur deux mutations.
+    "public-partition.cjs",
     // T4.5 — ramène `.turbo/cache` sous un budget de taille. DÉLIBÉRÉMENT hors ci:local :
     // le cache est ce qui rend la séquence tenable, un purgeur en tête garantirait le miss
     // sur ce qu'il vient d'évincer (l'argument complet est dans son en-tête). La cadence

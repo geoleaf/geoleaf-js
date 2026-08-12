@@ -19,8 +19,9 @@ export default defineConfig({
     // Exclude TypeDoc generated HTML (not markdown-based pages)
     srcExclude: ["api/**/*.md", "api/**/*.html"],
 
+    lang: "en-US",
     title: "GeoLeaf",
-    description: "Documentation GeoLeaf — @geoleaf/core v3.0.0",
+    description: "GeoLeaf documentation — @geoleaf/core v3.0.0",
 
     // S7bis.10 — passé à `false` une fois les 26 liens morts réparés. Tant qu'il valait
     // `true`, VitePress MASQUAIT les liens morts au build : combiné à `check:links` qui
@@ -56,19 +57,19 @@ export default defineConfig({
 
         // ── Navigation bar ──
         nav: [
-            { text: "Démarrage", link: "/GETTING_STARTED" },
+            { text: "Get started", link: "/GETTING_STARTED" },
             { text: "API", link: "/API_REFERENCE" },
-            { text: "Accueil", link: "https://www.geoleaf.dev", target: "_self", rel: "" },
+            { text: "Home", link: "https://www.geoleaf.dev", target: "_self", rel: "" },
         ],
 
         // ── Sidebar ──
         sidebar: [
             {
-                text: "Démarrage",
+                text: "Getting started",
                 items: [
                     { text: "Getting Started", link: "/GETTING_STARTED" },
-                    { text: "Tutoriel Quickstart", link: "/QUICKSTART_TUTORIAL" },
-                    { text: "Usage CDN / NPM", link: "/usage-cdn" },
+                    { text: "Quickstart Tutorial", link: "/QUICKSTART_TUTORIAL" },
+                    { text: "CDN / NPM usage", link: "/usage-cdn" },
                     { text: "FAQ", link: "/FAQ" },
                     { text: "Changelog", link: "/CHANGELOG" },
                 ],
@@ -96,7 +97,7 @@ export default defineConfig({
                     { text: "Events API", link: "/EVENTS_API" },
                     { text: "Notifications API", link: "/notifications/NOTIFICATIONS_API" },
                     {
-                        text: "TypeDoc (API générée)",
+                        text: "TypeDoc (generated API)",
                         link: "/api/index.html",
                     },
                 ],
@@ -125,7 +126,7 @@ export default defineConfig({
                 ],
             },
             {
-                text: "GeoJSON & Couches",
+                text: "GeoJSON & Layers",
                 collapsed: true,
                 items: [
                     { text: "GeoJSON Layers Guide", link: "/geojson/GEOJSON_LAYERS_GUIDE" },
@@ -151,39 +152,40 @@ export default defineConfig({
                 ],
             },
             {
-                text: "Avancé",
+                text: "Advanced",
                 collapsed: true,
                 items: [
-                    { text: "Accessibilité", link: "/ACCESSIBILITY" },
-                    { text: "Sécurité (CSP)", link: "/SECURITY" },
+                    { text: "Accessibility", link: "/ACCESSIBILITY" },
+                    { text: "Security (CSP)", link: "/SECURITY" },
                     { text: "Security Module", link: "/security/GeoLeaf_Security_README" },
                     { text: "Security Contract", link: "/security/SECURITY_CONTRACT" },
                     { text: "Permalink / Deep Link", link: "/ui/PERMALINK" },
                     { text: "Breakpoints", link: "/ui/BREAKPOINTS" },
                     { text: "Cache Button", link: "/ui/cache-button" },
-                    { text: "PWA", link: "/pwa/pwa" },
+                    // 11/08/2026 — `/pwa/pwa` et `/pwa` documentaient le même sujet ; la
+                    // seconde l'a emporté (elle est aussi le `projectDocuments` de TypeDoc).
+                    // La première subsiste en page de renvoi, hors barre latérale.
+                    { text: "PWA", link: "/pwa" },
                     { text: "Versioning Policy", link: "/VERSIONING_POLICY" },
                     { text: "Performance Metrics", link: "/PERFORMANCE_METRICS" },
-                    { text: "Schémas JSON", link: "/schema/README" },
+                    { text: "JSON Schemas", link: "/schema/README" },
                     { text: "Legal / NOTICE", link: "/NOTICE" },
                 ],
             },
             {
-                text: "Recettes",
+                text: "Recipes",
                 items: [{ text: "Cookbook", link: "/COOKBOOK" }],
             },
             {
                 text: "Releases",
                 items: [
-                    { text: "v2.0.0 — Migration MapLibre", link: "/releases/PATCHNOTE_V2.0.0" },
+                    { text: "v2.0.0 — MapLibre migration", link: "/releases/PATCHNOTE_V2.0.0" },
                 ],
             },
         ],
 
         // ── Social links ──
-        socialLinks: [
-            { icon: "github", link: "https://github.com/geoleaf/geoleaf-js" },
-        ],
+        socialLinks: [{ icon: "github", link: "https://github.com/geoleaf/geoleaf-js" }],
 
         // ── Search ──
         search: {

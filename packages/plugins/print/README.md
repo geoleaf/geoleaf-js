@@ -9,6 +9,18 @@ GeoLeaf plugin for exporting an interactive map at a controlled scale to a paper
 
 ---
 
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/print version  # what the registry serves
+> npm run versions:check                   # what this repository declares
+> ```
+>
+> Until those agree, build from source.
+
 ## Installation
 
 ```bash
@@ -248,15 +260,15 @@ The default is **300 DPI** (print-quality standard). Other values (150 draft, 60
 
 The off-screen re-render reads the map canvas (`toDataURL` / `toBlob`). If a tile source does not send proper CORS headers (`Access-Control-Allow-Origin`), the canvas becomes **tainted** and client-side export fails.
 
-**Validated providers (Sprint 1 POC — desktop Chrome):**
+**Validated providers (desktop Chrome):**
 
-| Provider        | Status        | Render time (A4 landscape) |
-| --------------- | ------------- | -------------------------- |
-| OSM Raster      | ✅ CORS-clean | ~627 ms                    |
-| Stadia Maps     | ✅ CORS-clean | ~850 ms                    |
-| IGN WMTS (topo) | ✅ CORS-clean | ~3 361 ms                  |
-| Jawg Maps       | ✅ CORS-clean | ~900 ms                    |
-| Thunderforest   | ✅ CORS-clean | ~1 100 ms                  |
+| Provider        | Status     | Render time (A4 landscape) |
+| --------------- | ---------- | -------------------------- |
+| OSM Raster      | CORS-clean | ~627 ms                    |
+| Stadia Maps     | CORS-clean | ~850 ms                    |
+| IGN WMTS (topo) | CORS-clean | ~3 361 ms                  |
+| Jawg Maps       | CORS-clean | ~900 ms                    |
+| Thunderforest   | CORS-clean | ~1 100 ms                  |
 
 If your tile source does not support CORS, configure `serverEndpoint` or switch to a CORS-compatible provider.
 

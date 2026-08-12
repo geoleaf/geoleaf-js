@@ -1,35 +1,31 @@
 ---
-title: "GeoLeaf.Errors — Documentation du module Errors"
+title: "GeoLeaf.Errors — Errors module documentation"
 ---
 
-# GeoLeaf.Errors — Documentation du module Errors
+# GeoLeaf.Errors — Errors module documentation
 
-**Product Version** : GeoLeaf Platform V3
+**Applies to**: @geoleaf/core v3.x
 
-**Version** : 3.0.0
-
-**Fichier** : `src/modules/utils/errors/index.ts`
-
-**Dernière mise à jour** : Mars 2026
+**Source**: `src/modules/utils/errors/index.ts`
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le module **GeoLeaf.Errors** fournit des classes d'erreurs typées pour une gestion cohérente et contextuelle des erreurs dans toute la bibliothèque GeoLeaf.
+The **GeoLeaf.Errors** module provides typed error classes for consistent, contextual error handling across the whole GeoLeaf library.
 
-### Avantages des erreurs typées
+### Benefits of typed errors
 
-- **Catch spécifique** — distinguer les types d'erreurs avec `instanceof`
-- **Contexte enrichi** — données additionnelles pour le debugging (`error.context`)
-- **Stack trace propre** — préservation du stack d'appel via `captureStackTrace`
-- **Sérialisable** — conversion JSON via `toJSON()`
-- **Timestamp** — horodatage automatique (`error.timestamp`)
-- **Code d'erreur** — identifiant machine (`error.code`)
+- **Targeted catch** — tell error types apart with `instanceof`
+- **Richer context** — additional debugging data (`error.context`)
+- **Clean stack trace** — call stack preserved through `captureStackTrace`
+- **Serialisable** — JSON conversion through `toJSON()`
+- **Timestamp** — automatic time stamping (`error.timestamp`)
+- **Error code** — machine-readable identifier (`error.code`)
 
 ---
 
-## Hiérarchie des erreurs
+## Error hierarchy
 
 ```
 Error (native)
@@ -48,36 +44,36 @@ Error (native)
 
 ---
 
-## Classes d'erreurs
+## Error classes
 
-### `GeoLeafError` (Base)
+### `GeoLeafError` (base)
 
-Classe de base pour toutes les erreurs GeoLeaf. Étend `Error` natif.
+Base class for every GeoLeaf error. It extends the native `Error`.
 
-**Propriétés** :
+**Properties**:
 
-| Propriété   | Type           | Description                                   |
-| ----------- | -------------- | --------------------------------------------- |
-| `name`      | `string`       | Nom de la classe (ex. `'ValidationError'`)    |
-| `message`   | `string`       | Message d'erreur                              |
-| `context`   | `ErrorContext` | Données de contexte additionnelles            |
-| `timestamp` | `string`       | ISO 8601 de la création                       |
-| `code`      | `string`       | Code machine (défini dans chaque sous-classe) |
-| `stack`     | `string`       | Stack trace                                   |
+| Property    | Type           | Description                                  |
+| ----------- | -------------- | -------------------------------------------- |
+| `name`      | `string`       | Class name (for example `'ValidationError'`) |
+| `message`   | `string`       | Error message                                |
+| `context`   | `ErrorContext` | Additional context data                      |
+| `timestamp` | `string`       | ISO 8601 creation time                       |
+| `code`      | `string`       | Machine code (defined in each subclass)      |
+| `stack`     | `string`       | Stack trace                                  |
 
-**Méthodes** :
+**Methods**:
 
-- `toJSON()` — retourne un objet `{ name, message, context, timestamp, stack }` sérialisable
-- `toString()` — formatage lisible avec contexte : `"ErrorName: message [Context: {...}]"`
+- `toJSON()` — returns a serialisable object `{ name, message, context, timestamp, stack }`
+- `toString()` — readable formatting with context: `"ErrorName: message [Context: {...}]"`
 
 ```js
-const error = new GeoLeaf.Errors.GeoLeafError("Erreur générique", {
+const error = new GeoLeaf.Errors.GeoLeafError("Generic error", {
     module: "Core",
     operation: "init",
 });
 
 console.log(error.name); // 'GeoLeafError'
-console.log(error.message); // 'Erreur générique'
+console.log(error.message); // 'Generic error'
 console.log(error.context); // { module: 'Core', operation: 'init' }
 console.log(error.timestamp); // '2026-03-15T10:30:00.000Z'
 console.log(error.code); // undefined (base class)
@@ -87,13 +83,13 @@ console.log(error.code); // undefined (base class)
 
 ### `ValidationError`
 
-Erreur de validation de données. **Code** : `VALIDATION_ERROR`
+Data validation error. **Code**: `VALIDATION_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Coordonnées invalides
-- Paramètres manquants ou incorrects
-- Format de données non conforme
+- Invalid coordinates
+- Missing or incorrect parameters
+- Non-conforming data format
 
 ```js
 throw new GeoLeaf.Errors.ValidationError("Latitude must be between -90 and 90", {
@@ -102,14 +98,12 @@ throw new GeoLeaf.Errors.ValidationError("Latitude must be between -90 and 90", 
     expected: "Range: -90 to 90",
 });
 
-// Catch spécifique
+// Targeted catch
 try {
-    GeoLeaf.Core.init({
-        /* options */
-    });
+    GeoLeaf.Core.init({/* options */});
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.ValidationError) {
-        console.error("Erreur de validation:", error.context);
+        console.error("Validation error:", error.context);
     }
 }
 ```
@@ -118,13 +112,13 @@ try {
 
 ### `SecurityError`
 
-Erreur de sécurité détectée. **Code** : `SECURITY_ERROR`
+Security issue detected. **Code**: `SECURITY_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Détection de contenu XSS
-- Protocole URL non autorisé
-- Data URL non-image
+- XSS content detection
+- Disallowed URL protocol
+- Non-image data URL
 
 ```js
 throw new GeoLeaf.Errors.SecurityError("Protocol not allowed: javascript:", {
@@ -136,8 +130,8 @@ try {
     GeoLeaf.Validators.validateUrl(userUrl, { throwOnError: true });
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.SecurityError) {
-        console.error("Tentative de sécurité détectée");
-        // Logger pour analyse
+        console.error("Security attempt detected");
+        // Log it for analysis
     }
 }
 ```
@@ -146,13 +140,13 @@ try {
 
 ### `ConfigError`
 
-Erreur de configuration. **Code** : `CONFIG_ERROR`
+Configuration error. **Code**: `CONFIG_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Configuration JSON invalide
-- Champ de configuration manquant
-- Structure de profil incorrecte
+- Invalid JSON configuration
+- Missing configuration field
+- Incorrect profile structure
 
 ```js
 throw new GeoLeaf.Errors.ConfigError("Invalid profile structure: missing layers", {
@@ -165,7 +159,7 @@ try {
     GeoLeaf.Config.loadProfile("tourism");
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.ConfigError) {
-        console.error("Configuration incorrecte:", error.message);
+        console.error("Incorrect configuration:", error.message);
     }
 }
 ```
@@ -174,13 +168,13 @@ try {
 
 ### `NetworkError`
 
-Erreur réseau ou HTTP. **Code** : `NETWORK_ERROR`
+Network or HTTP error. **Code**: `NETWORK_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Échec de `fetch()`
-- Timeout réseau
-- Status HTTP 4xx/5xx
+- `fetch()` failure
+- Network timeout
+- HTTP 4xx/5xx status
 
 ```js
 throw new GeoLeaf.Errors.NetworkError("Failed to load POI data", {
@@ -194,7 +188,7 @@ async function loadWithRetry() {
         return await GeoLeaf.Config.loadConfig("config.json");
     } catch (error) {
         if (error instanceof GeoLeaf.Errors.NetworkError) {
-            console.warn("Retry après 3s...");
+            console.warn("Retrying in 3s...");
             await GeoLeaf.Helpers.wait(3000);
             return await GeoLeaf.Config.loadConfig("config.json");
         }
@@ -207,13 +201,13 @@ async function loadWithRetry() {
 
 ### `InitializationError`
 
-Erreur lors de l'initialisation. **Code** : `INITIALIZATION_ERROR`
+Error raised during initialisation. **Code**: `INITIALIZATION_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Échec de création de la carte
-- Élément DOM introuvable
-- Dépendance manquante
+- Map creation failure
+- DOM element not found
+- Missing dependency
 
 ```js
 throw new GeoLeaf.Errors.InitializationError("Failed to create map: target element not found", {
@@ -226,13 +220,13 @@ throw new GeoLeaf.Errors.InitializationError("Failed to create map: target eleme
 
 ### `MapError`
 
-Erreur liée à la carte MapLibre. **Code** : `MAP_ERROR`
+Error related to the MapLibre map. **Code**: `MAP_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Opération carte invalide
-- Bounds invalides
-- Layer introuvable
+- Invalid map operation
+- Invalid bounds
+- Layer not found
 
 ```js
 throw new GeoLeaf.Errors.MapError("Cannot fit bounds: no features loaded", {
@@ -245,12 +239,12 @@ throw new GeoLeaf.Errors.MapError("Cannot fit bounds: no features loaded", {
 
 ### `DataError`
 
-Erreur de données génériques. **Code** : `DATA_ERROR`
+Generic data error. **Code**: `DATA_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Données malformées non spécifiques à POI/Route/GeoJSON
-- Parsing de données échoué
+- Malformed data not specific to POI/Route/GeoJSON
+- Failed data parsing
 
 ```js
 throw new GeoLeaf.Errors.DataError("Invalid data structure", {
@@ -264,13 +258,13 @@ throw new GeoLeaf.Errors.DataError("Invalid data structure", {
 
 ### `POIError`
 
-Erreur lors de la gestion des POI. **Code** : `POI_ERROR`
+Error raised while handling POIs. **Code**: `POI_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- POI mal formé
-- Chargement POI échoué
-- Marker invalide
+- Malformed POI
+- Failed POI loading
+- Invalid marker
 
 ```js
 throw new GeoLeaf.Errors.POIError("Invalid POI: missing latlng", {
@@ -284,13 +278,13 @@ throw new GeoLeaf.Errors.POIError("Invalid POI: missing latlng", {
 
 ### `RouteError`
 
-Erreur lors du traitement des itinéraires. **Code** : `ROUTE_ERROR`
+Error raised while processing routes. **Code**: `ROUTE_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- GPX mal formé
-- Parsing GPX échoué
-- Route vide
+- Malformed GPX
+- Failed GPX parsing
+- Empty route
 
 ```js
 throw new GeoLeaf.Errors.RouteError("Failed to parse GPX: invalid XML", {
@@ -303,13 +297,13 @@ throw new GeoLeaf.Errors.RouteError("Failed to parse GPX: invalid XML", {
 
 ### `UIError`
 
-Erreur liée à l'interface utilisateur. **Code** : `UI_ERROR`
+Error related to the user interface. **Code**: `UI_ERROR`
 
-**Utilisée pour** :
+**Used for**:
 
-- Composant UI non initialisé
-- Rendu échoué
-- Élément DOM manquant lors d'une opération UI
+- UI component not initialised
+- Failed rendering
+- DOM element missing during a UI operation
 
 ```js
 throw new GeoLeaf.Errors.UIError("Panel render failed: container not found", {
@@ -320,11 +314,11 @@ throw new GeoLeaf.Errors.UIError("Panel render failed: container not found", {
 
 ---
 
-## Constantes
+## Constants
 
 ### `ErrorCodes`
 
-Objet immuable listant tous les codes d'erreur :
+Immutable object listing every error code:
 
 ```js
 GeoLeaf.Errors.ErrorCodes.VALIDATION; // 'VALIDATION_ERROR'
@@ -341,15 +335,15 @@ GeoLeaf.Errors.ErrorCodes.UI; // 'UI_ERROR'
 
 ---
 
-## Fonctions utilitaires
+## Utility functions
 
 ### `normalizeError(error, defaultMessage?)`
 
-Normalise n'importe quelle valeur en `GeoLeafError`.
+Normalises any value into a `GeoLeafError`.
 
 ```js
 try {
-    // code risqué
+    // risky code
 } catch (rawError) {
     const err = GeoLeaf.Errors.normalizeError(rawError, "Unexpected error");
     GeoLeaf.Log.error(err.toString());
@@ -360,7 +354,7 @@ try {
 
 ### `isErrorType(error, ErrorClass)`
 
-Vérifie si une erreur est instance d'une classe spécifique.
+Checks whether an error is an instance of a given class.
 
 ```js
 const isConfig = GeoLeaf.Errors.isErrorType(error, GeoLeaf.Errors.ConfigError);
@@ -370,7 +364,7 @@ const isConfig = GeoLeaf.Errors.isErrorType(error, GeoLeaf.Errors.ConfigError);
 
 ### `getErrorCode(error)`
 
-Extrait le code d'erreur depuis n'importe quelle valeur.
+Extracts the error code from any value.
 
 ```js
 const code = GeoLeaf.Errors.getErrorCode(error);
@@ -381,7 +375,7 @@ const code = GeoLeaf.Errors.getErrorCode(error);
 
 ### `createError(ErrorClass, message, context?)`
 
-Crée une instance d'erreur typée avec stack trace propre.
+Creates a typed error instance with a clean stack trace.
 
 ```js
 const err = GeoLeaf.Errors.createError(GeoLeaf.Errors.ValidationError, "Invalid zoom level", {
@@ -394,20 +388,20 @@ const err = GeoLeaf.Errors.createError(GeoLeaf.Errors.ValidationError, "Invalid 
 
 ### `createErrorByType(type, message, context?)`
 
-Crée une erreur depuis son type en string.
+Creates an error from its type given as a string.
 
 ```js
 const err = GeoLeaf.Errors.createErrorByType("validation", "Invalid value", { value: 42 });
-// Retourne une instance de ValidationError
+// Returns a ValidationError instance
 ```
 
-Types supportés : `'validation'`, `'security'`, `'config'`, `'network'`, `'initialization'`, `'map'`, `'data'`, `'poi'`, `'route'`, `'ui'`
+Supported types: `'validation'`, `'security'`, `'config'`, `'network'`, `'initialization'`, `'map'`, `'data'`, `'poi'`, `'route'`, `'ui'`
 
 ---
 
 ### `sanitizeErrorMessage(message, maxLength?)`
 
-Sanitise un message d'erreur (échappement HTML, troncature).
+Sanitises an error message (HTML escaping, truncation).
 
 ```js
 const safe = GeoLeaf.Errors.sanitizeErrorMessage(userInput, 500);
@@ -417,7 +411,7 @@ const safe = GeoLeaf.Errors.sanitizeErrorMessage(userInput, 500);
 
 ### `safeErrorHandler(handler, error)`
 
-Exécute un handler d'erreur en toute sécurité (évite les erreurs dans les handlers).
+Runs an error handler safely (guards against errors thrown inside handlers).
 
 ```js
 GeoLeaf.Errors.safeErrorHandler(onError, caughtError);
@@ -425,9 +419,9 @@ GeoLeaf.Errors.safeErrorHandler(onError, caughtError);
 
 ---
 
-## Patterns d'utilisation
+## Usage patterns
 
-### Pattern 1 : Validation avec erreur typée
+### Pattern 1: validation with a typed error
 
 ```js
 function validatePOI(poi) {
@@ -440,40 +434,40 @@ function validatePOI(poi) {
     GeoLeaf.Validators.validateCoordinates(poi.latlng[0], poi.latlng[1], {
         throwOnError: true,
     });
-    // ValidationError lancée automatiquement si invalide
+    // ValidationError is thrown automatically when invalid
 }
 ```
 
 ---
 
-### Pattern 2 : Catch multi-niveaux
+### Pattern 2: multi-level catch
 
 ```js
 try {
     await GeoLeaf.Config.loadConfig("config.json");
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.NetworkError) {
-        console.error("Problème réseau, mode offline activé");
+        console.error("Network problem, offline mode enabled");
         activateOfflineMode();
     } else if (error instanceof GeoLeaf.Errors.ConfigError) {
-        console.error("Configuration invalide");
+        console.error("Invalid configuration");
         showConfigHelp();
     } else if (error instanceof GeoLeaf.Errors.SecurityError) {
-        console.error("Problème de sécurité détecté");
+        console.error("Security problem detected");
         reportSecurityIssue(error);
     } else {
-        console.error("Erreur inconnue:", error);
+        console.error("Unknown error:", error);
     }
 }
 ```
 
 ---
 
-### Pattern 3 : Logging enrichi
+### Pattern 3: enriched logging
 
 ```js
 try {
-    // Code risqué
+    // Risky code
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.GeoLeafError) {
         GeoLeaf.Log.error("[GeoLeaf] Error:", {
@@ -491,7 +485,7 @@ try {
 
 ---
 
-### Pattern 4 : Utiliser `normalizeError` dans les handlers génériques
+### Pattern 4: using `normalizeError` in generic handlers
 
 ```js
 async function safeLoad(url) {
@@ -519,41 +513,41 @@ async function safeLoad(url) {
 ```bash
 npm test -- errors
 
-# Fichiers de tests
+# Test files
 # packages/core/__tests__/core/errors.test.js
 # packages/core/__tests__/core/errors-extended.test.js
 ```
 
-**Couverture** : 95 %+ (150+ tests passants)
+**Coverage**: 95%+ (150+ passing tests)
 
 ---
 
-## Statistiques d'erreurs
+## Error statistics
 
-| Type d'erreur     | Fréquence | Criticité |
-| ----------------- | --------- | --------- |
-| `ValidationError` | 45 %      | Moyenne   |
-| `ConfigError`     | 25 %      | Haute     |
-| `NetworkError`    | 15 %      | Moyenne   |
-| `SecurityError`   | 5 %       | Haute     |
-| Autres            | 10 %      | Variable  |
+| Error type        | Frequency | Criticality |
+| ----------------- | --------- | ----------- |
+| `ValidationError` | 45%       | Medium      |
+| `ConfigError`     | 25%       | High        |
+| `NetworkError`    | 15%       | Medium      |
+| `SecurityError`   | 5%        | High        |
+| Others            | 10%       | Variable    |
 
 ---
 
 ## Changelog
 
-**v2.0.0 (mars 2026)** — version initiale officielle
+**v2.0.0** — first official release
 
-- Module créé avec la hiérarchie de base : `GeoLeafError`, `ValidationError`, `SecurityError`, `ConfigError`, `NetworkError`, `InitializationError`, `MapError`
-- Ajout de `DataError` et `UIError`
-- Ajout de `ErrorCodes` (constantes machines)
-- Ajout de fonctions utilitaires : `normalizeError`, `isErrorType`, `getErrorCode`, `createError`, `createErrorByType`, `sanitizeErrorMessage`, `safeErrorHandler`
+- Module created with the base hierarchy: `GeoLeafError`, `ValidationError`, `SecurityError`, `ConfigError`, `NetworkError`, `InitializationError`, `MapError`
+- Added `DataError` and `UIError`
+- Added `ErrorCodes` (machine-readable constants)
+- Added utility functions: `normalizeError`, `isErrorType`, `getErrorCode`, `createError`, `createErrorByType`, `sanitizeErrorMessage`, `safeErrorHandler`
 
 ---
 
-## Voir aussi
+## See also
 
-- `GeoLeaf.Validators` — utilise `ValidationError` et `SecurityError`
-- `GeoLeaf.Security` — utilise `SecurityError`
-- `GeoLeaf.Config` — utilise `ConfigError` et `NetworkError`
-- `GeoLeaf.Log` — logging des erreurs
+- `GeoLeaf.Validators` — uses `ValidationError` and `SecurityError`
+- `GeoLeaf.Security` — uses `SecurityError`
+- `GeoLeaf.Config` — uses `ConfigError` and `NetworkError`
+- `GeoLeaf.Log` — error logging

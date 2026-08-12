@@ -4,8 +4,8 @@ title: "GeoLeaf Versioning Policy"
 
 # GeoLeaf Versioning Policy
 
-**Version produit :** Platform V3
-**Baseline SemVer technique :** Core `@geoleaf/core` `3.0.x`
+**Product version:** Platform V3
+**Technical SemVer baseline:** core `@geoleaf/core` `3.0.x`
 
 ---
 
@@ -76,20 +76,19 @@ All **13** published plugins are MIT. None of them declares `@geoleaf/core` as a
 { "dependencies": { "@geoleaf/core": "*" } }
 ```
 
-> ⚠️ **`dependencies`, not `peerDependencies` — and the difference is not cosmetic.** A peer
-> dependency asks the consumer to supply the core and merely warns on mismatch; a regular
-> dependency lets npm **install its own copy** next to the one the consumer already has. For a
-> library that mounts a global `GeoLeaf` namespace, two copies in one tree is a different
-> problem from an unenforced range.
->
-> The range `*` means no compatibility constraint either way: a plugin built against V3
-> installs silently alongside a V2 core. Deciding between « tighten to `^3.0.0` » and « move to
-> `peerDependencies` » belongs to the distribution workstream, not to this policy.
->
-> ⚠️ This paragraph said « both manifests declare it as a **peer** dependency » until the
-> 30/07/2026. It named two plugins out of thirteen and the wrong manifest key — while claiming,
-> in the same breath, that writing a contract the manifests do not declare was to be avoided.
-> The list and the key are now derived: `node -e "…"` over the plugin manifests, not recopied.
+::: warning
+
+**`dependencies`, not `peerDependencies` — and the difference is not cosmetic.** A peer
+dependency asks the consumer to supply the core and merely warns on mismatch; a regular
+dependency lets npm **install its own copy** next to the one the consumer already has. For a
+library that mounts a global `GeoLeaf` namespace, two copies in one tree is a different
+problem from an unenforced range.
+
+The range `*` means no compatibility constraint either way: a plugin built against V3
+installs silently alongside a V2 core. Choosing between tightening to `^3.0.0` and moving to
+`peerDependencies` belongs to the distribution workstream, not to this policy.
+
+:::
 
 **Six** of the thirteen do declare peer dependencies — for `maplibre-gl`, never for the core:
 `addpoi`, `editor`, `geocoding`, `measure`, `print`, `table`.

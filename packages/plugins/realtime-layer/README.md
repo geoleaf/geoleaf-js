@@ -1,10 +1,23 @@
 # @geoleaf-plugins/realtime-layer
 
-Mise à jour **temps réel** d'une couche GeoJSON de [GeoLeaf JS](https://github.com/geoleaf/geoleaf-js) — par polling HTTP, WebSocket ou SSE, avec décodage enfichable et éviction des entités périmées.
+**Real-time** updates for a GeoJSON layer of [GeoLeaf JS](https://github.com/geoleaf/geoleaf-js) —
+over HTTP polling, WebSocket or SSE, with pluggable decoding and eviction of stale features.
 
-Licence **MIT** ([`LICENSE`](LICENSE)).
+**MIT** licensed ([`LICENSE`](LICENSE)).
 
 ---
+
+> [!IMPORTANT]
+> **Not on the registry at this version.** The GeoLeaf 3.x line is not published yet, so the
+> install command below either fails with `E404` or resolves to an older release than the one
+> this page describes. Measure rather than assume — no version number is copied into this page:
+>
+> ```bash
+> npm view @geoleaf-plugins/realtime-layer version  # what the registry serves
+> npm run versions:check                            # what this repository declares
+> ```
+>
+> Until those agree, build from source.
 
 ## Installation
 
@@ -12,16 +25,23 @@ Licence **MIT** ([`LICENSE`](LICENSE)).
 npm install @geoleaf-plugins/realtime-layer
 ```
 
-> **Prérequis :** `@geoleaf/core` doit être chargé avant ce plugin.
-> **Uniquement pour les sources `websocket` :** [`@geoleaf-plugins/websocket`](../websocket/README.md) doit être chargé **avant** celui-ci. C'est une dépendance _optionnelle_, déclarée comme telle au registre des plugins — les sources `polling` et `sse` n'en ont aucun besoin.
+> [!NOTE]
+> **Prerequisite:** `@geoleaf/core` must be loaded before this plugin.
+>
+> **For `websocket` sources only:** [`@geoleaf-plugins/websocket`](../websocket/README.md) must be
+> loaded **before** this one. It is an _optional_ dependency, declared as such in the plugin
+> registry — `polling` and `sse` sources do not need it.
 
 ---
 
-## Ce que le plugin fait tout seul
+## What the plugin does on its own
 
-Le plugin **s'amorce depuis le profil**. À la réception de `geoleaf:app:ready`, il balaie les couches et démarre un flux pour chacune dont la configuration porte `data.realtime.enabled: true`. Rien à appeler dans le cas courant.
+The plugin **bootstraps from the profile**. On `geoleaf:app:ready` it scans the layers and starts a
+stream for each one whose configuration carries `data.realtime.enabled: true`. In the common case
+there is nothing to call.
 
-L'API publique existe pour les deux autres cas : démarrer une couche déclarée `enabled: false` (opt-in), et arrêter un flux.
+The public API exists for the two other cases: starting a layer declared `enabled: false` (opt-in),
+and stopping a stream.
 
 ```json
 {
@@ -30,7 +50,7 @@ L'API publique existe pour les deux autres cas : démarrer une couche déclarée
         "realtime": {
             "enabled": true,
             "source": "polling",
-            "url": "https://exemple.test/gtfs-rt/vehicles",
+            "url": "https://example.test/gtfs-rt/vehicles",
             "decoder": "gtfs-rt",
             "intervalMs": 15000,
             "idField": "vehicle_id",
@@ -49,74 +69,88 @@ L'API publique existe pour les deux autres cas : démarrer une couche déclarée
 ```js
 import "@geoleaf-plugins/realtime-layer";
 
-// Opt-in : une couche déclarée `enabled: false` ne démarre pas au boot
+// Opt-in: a layer declared `enabled: false` does not start at boot
 GeoLeaf.RealtimeLayer.start("bus-positions");
 
-// État courant d'une couche
+// Current state of a layer
 const status = GeoLeaf.RealtimeLayer.getStatus("bus-positions");
 
-// Arrêt d'un flux, ou de tous
+// Stop one stream, or all of them
 GeoLeaf.RealtimeLayer.stop("bus-positions");
 GeoLeaf.RealtimeLayer.stopAll();
 ```
 
-| Membre                               | Rôle                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------- |
-| `start(layerId)`                     | Démarre le flux d'une couche. Appelé automatiquement au boot si `enabled: true` |
-| `stop(layerId)`                      | Arrête le flux d'une couche                                                     |
-| `stopAll()`                          | Arrête tous les flux actifs                                                     |
-| `getStatus(layerId)`                 | Rend `{ active, source, lastUpdateAt, staleCount }`                             |
-| `registerDecoder(name, decoder)`     | Enregistre un décodeur — **avant `GeoLeaf.boot()`**                             |
-| `registerStaleAction(name, handler)` | Enregistre une action de péremption — **avant `GeoLeaf.boot()`**                |
-| `version`                            | Version du plugin                                                               |
+| Member                               | Role                                                                       |
+| ------------------------------------ | -------------------------------------------------------------------------- |
+| `start(layerId)`                     | Starts a layer's stream. Called automatically at boot when `enabled: true` |
+| `stop(layerId)`                      | Stops a layer's stream                                                     |
+| `stopAll()`                          | Stops every active stream                                                  |
+| `getStatus(layerId)`                 | Returns `{ active, source, lastUpdateAt, staleCount }`                     |
+| `registerDecoder(name, decoder)`     | Registers a decoder — **before `GeoLeaf.boot()`**                          |
+| `registerStaleAction(name, handler)` | Registers a stale-feature action — **before `GeoLeaf.boot()`**             |
+| `version`                            | Plugin version                                                             |
 
-> ⚠️ **`active: true` ne dit pas que des données arrivent.** Une source polling dont l'endpoint est injoignable reste active avec `lastUpdateAt` figé. Les deux champs se lisent ensemble.
-
-> ⚠️ **`registerDecoder` et `registerStaleAction` doivent être appelés avant `GeoLeaf.boot()`** : le balayage du profil résout les noms de décodeur au démarrage, et un nom enregistré après ne sera jamais vu.
-
----
-
-## Configuration — bloc `data.realtime` d'une couche
-
-Validé au boot ; une couche dont le bloc est invalide est **sautée avec un message nommant la couche**, elle ne fait pas tomber le reste du profil.
-
-| Clé              | Type                                        | Défaut     | Rôle                                                                     |
-| ---------------- | ------------------------------------------- | ---------- | ------------------------------------------------------------------------ |
-| `enabled`        | `boolean`                                   | —          | **Obligatoire.** Démarrage automatique au boot                           |
-| `source`         | `"polling" \| "websocket" \| "sse"`         | —          | **Obligatoire.** Transport                                               |
-| `decoder`        | `string`                                    | —          | **Obligatoire.** Intégrés : `"json"`, `"gtfs-rt"`, plus ceux enregistrés |
-| `updateMode`     | `"upsert" \| "replace" \| "merge"`          | `"upsert"` | Comment appliquer les entités décodées sur la couche                     |
-| `idField`        | `string`                                    | —          | Propriété GeoJSON servant de clé — requise pour `upsert` et `merge`      |
-| `staleTimeoutMs` | `number`                                    | —          | Délai après lequel une entité non rafraîchie est périmée                 |
-| `staleAction`    | `string`                                    | `"remove"` | Intégrées : `"remove"`, `"dim"`, plus celles enregistrées                |
-| `url`            | `string`                                    | —          | **Obligatoire** pour `polling` et `sse`                                  |
-| `intervalMs`     | `number`                                    | `30000`    | Période de polling — `polling` seulement                                 |
-| `fallbackUrl`    | `string`                                    | —          | Instantané servi pendant une panne de `url` — `polling` seulement        |
-| `channel`        | `string`                                    | —          | **Obligatoire** pour `websocket` — passé à `GeoLeaf.Ws.subscribe()`      |
-| `mapping`        | `{ idField?, delayField?, targetLayerId? }` | —          | Indices pour le décodeur GTFS-RT                                         |
-
-### `fallbackUrl` — ce qu'il fait exactement
-
-Quand `url` rend une réponse non-2xx ou lève une erreur réseau, le plugin sert **une fois** l'instantané de `fallbackUrl` pour la fenêtre de panne, **continue** d'interroger `url` toutes les `intervalMs`, et y revient au premier succès. L'instantané est typiquement un fichier statique servi depuis la même origine que le profil.
-
-### `mapping.targetLayerId` — la couche qui reçoit vraiment
-
-Un bloc `realtime` attaché à une couche peut alimenter **une autre** couche. Tout ce qui suit le décodage — écriture des entités **et** cycle de péremption complet — porte sur cette cible, jamais sur la couche qui porte la configuration. Sans `targetLayerId`, les deux coïncident.
+> [!WARNING]
+> **`active: true` does not mean data is arriving.** A polling source whose endpoint is unreachable
+> stays active with a frozen `lastUpdateAt`. Read the two fields together.
+>
+> **`registerDecoder` and `registerStaleAction` must be called before `GeoLeaf.boot()`**: the
+> profile scan resolves decoder names at startup, and a name registered afterwards is never seen.
 
 ---
 
-## Étendre le plugin
+## Configuration — a layer's `data.realtime` block
 
-**Deux points d'extension enregistrables** — un décodeur, une action de péremption. L'entrée ré-exporte les types qui les décrivent : `IDecoder` et `DecodedUpdate`, `StaleActionHandler`, plus `IRealtimeSource`.
+Validated at boot. A layer whose block is invalid is **skipped with a message naming the layer**; it
+does not bring down the rest of the profile.
 
-⚠️ **`IRealtimeSource` est exporté sans point d'enregistrement.** Les trois transports (`polling`, `websocket`, `sse`) sont câblés dans la fabrique du plugin ; le type sert à en implémenter un dans un fork ou un plugin dérivé, pas à en brancher un depuis un profil. Écrit ici pour qu'un type exporté ne se lise pas comme une API disponible.
+| Key              | Type                                        | Default    | Role                                                                 |
+| ---------------- | ------------------------------------------- | ---------- | -------------------------------------------------------------------- |
+| `enabled`        | `boolean`                                   | —          | **Required.** Automatic start at boot                                |
+| `source`         | `"polling" \| "websocket" \| "sse"`         | —          | **Required.** Transport                                              |
+| `decoder`        | `string`                                    | —          | **Required.** Built in: `"json"`, `"gtfs-rt"`, plus registered ones  |
+| `updateMode`     | `"upsert" \| "replace" \| "merge"`          | `"upsert"` | How decoded features are applied to the layer                        |
+| `idField`        | `string`                                    | —          | GeoJSON property used as the key — required for `upsert` and `merge` |
+| `staleTimeoutMs` | `number`                                    | —          | Delay after which a feature that was not refreshed becomes stale     |
+| `staleAction`    | `string`                                    | `"remove"` | Built in: `"remove"`, `"dim"`, plus registered ones                  |
+| `url`            | `string`                                    | —          | **Required** for `polling` and `sse`                                 |
+| `intervalMs`     | `number`                                    | `30000`    | Polling period — `polling` only                                      |
+| `fallbackUrl`    | `string`                                    | —          | Snapshot served while `url` is failing — `polling` only              |
+| `channel`        | `string`                                    | —          | **Required** for `websocket` — passed to `GeoLeaf.Ws.subscribe()`    |
+| `mapping`        | `{ idField?, delayField?, targetLayerId? }` | —          | Hints for the GTFS-RT decoder                                        |
+
+### `fallbackUrl` — what it does exactly
+
+When `url` returns a non-2xx response or raises a network error, the plugin serves the `fallbackUrl`
+snapshot **once** for the duration of the outage, **keeps polling** `url` every `intervalMs`, and
+switches back on the first success. The snapshot is typically a static file served from the same
+origin as the profile.
+
+### `mapping.targetLayerId` — the layer that actually receives
+
+A `realtime` block attached to one layer can feed **another** layer. Everything after decoding —
+writing the features **and** the whole staleness cycle — applies to that target, never to the layer
+carrying the configuration. Without `targetLayerId`, the two are the same.
+
+---
+
+## Extending the plugin
+
+**Two registrable extension points** — a decoder and a stale-feature action. The entry point
+re-exports the types that describe them: `IDecoder` and `DecodedUpdate`, `StaleActionHandler`, plus
+`IRealtimeSource`.
+
+> [!NOTE]
+> **`IRealtimeSource` is exported without a registration point.** The three transports (`polling`,
+> `websocket`, `sse`) are wired into the plugin factory; the type is there to implement one in a
+> fork or a derived plugin, not to plug one in from a profile.
 
 ```js
 import "@geoleaf-plugins/realtime-layer";
 
-// Avant GeoLeaf.boot()
-// decode() rend un TABLEAU de mises à jour, une par entité.
-GeoLeaf.RealtimeLayer.registerDecoder("mon-format", {
+// Before GeoLeaf.boot()
+// decode() returns an ARRAY of updates, one per feature.
+GeoLeaf.RealtimeLayer.registerDecoder("my-format", {
     decode(raw) {
         return [
             { id: "v-42", properties: { delay: 120 } },
@@ -126,21 +160,21 @@ GeoLeaf.RealtimeLayer.registerDecoder("mon-format", {
     },
 });
 
-// (layerId, featureId, feature) => void — appelée UNE fois par entité par péremption,
-// pas en boucle tant qu'elle le reste.
-GeoLeaf.RealtimeLayer.registerStaleAction("signaler", (layerId, featureId, feature) => {
-    console.warn(`[realtime] ${layerId} : ${featureId} est périmée`, feature);
+// (layerId, featureId, feature) => void — called ONCE per feature per staleness event,
+// not repeatedly while it stays stale.
+GeoLeaf.RealtimeLayer.registerStaleAction("report", (layerId, featureId, feature) => {
+    console.warn(`[realtime] ${layerId}: ${featureId} is stale`, feature);
 });
 ```
 
 ---
 
-## Ordre de chargement
+## Load order
 
 1. `@geoleaf/core`
-2. `@geoleaf-plugins/websocket` — **seulement** si un profil déclare `source: "websocket"`
+2. `@geoleaf-plugins/websocket` — **only** if a profile declares `source: "websocket"`
 3. `@geoleaf-plugins/realtime-layer`
-4. `GeoLeaf.boot()` — après tout `registerDecoder` / `registerStaleAction`
+4. `GeoLeaf.boot()` — after every `registerDecoder` / `registerStaleAction`
 
 ---
 

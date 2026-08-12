@@ -13,11 +13,15 @@ date: 28 juillet 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/websocket` ·
 **Code :** `packages/plugins/websocket/` · **Vérifié contre :** `81aa8d29` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Ce plugin ne dessine rien et ne touche à aucune couche.** C'est un **transport** : il tient
 > une connexion, la reconnecte, y multiplexe des canaux nommés, et met en file ce qu'on lui donne
@@ -147,7 +151,7 @@ C'est délibéré, et motivé : une application hors-ligne d'abord ne doit jamai
 reconnecter.
 
 ⚠️ **Aucune de ces clés n'est gatée**, contrairement à la table du manifeste. Elles se relisent
-contre `config.ts` à chaque modification — c'est la part humaine de la règle ⛔ de `CLAUDE.md`.
+contre `config.ts` à chaque modification — c'est la part humaine de la règle documentaire du dépôt.
 
 ⚠️ **La validation ne vérifie PAS que le transport est enregistré.** C'est délibéré et documenté sur
 place : cette responsabilité appartient au registre de transports, au moment de la création. Une

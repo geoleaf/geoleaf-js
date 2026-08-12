@@ -13,11 +13,15 @@ date: 27 juillet 2026
 **Type :** capacité in-core (**de politique**) · **Code :** `packages/core/src/capabilities/vector-tiles/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Cette capacité ne suit pas le patron des autres.** Elle n'a **ni `config.ts`, ni
 > `lifecycle.ts`, ni `module.ts`, ni `public-api.ts`, ni façade ESM, ni `gate`, ni `configSchema`**.
@@ -145,16 +149,16 @@ Bloc `data.vectorTiles` d'une définition de couche. Le schéma est en
 
 ### ⚠️ Deux clés que le code lit et que le schéma refuse
 
-Mesuré sur `layer-config.schema.json` au SHA de vérification :
+Mesuré sur `profiles/schemas/layer-config.schema.json` au SHA de vérification :
 
 | Clé lue par le code                        | Statut dans le schéma                                                       | Conséquence                                                                                                                                                     |
 | ------------------------------------------ | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data.vectorTiles.bounds` (`number[]`)     | **Absente**, et le bloc est `additionalProperties: false`                   | `_buildVtSpec` la transmet à l'adaptateur, mais un profil qui la déclare est **rejeté** par le validateur : le chemin est inatteignable depuis un profil valide |
 | `vectorTiles` **à la racine** d'une couche | **Absente** de la racine du schéma, elle-même `additionalProperties: false` | `_getVTConfig` la cherche en premier, mais aucun profil valide ne peut la porter                                                                                |
 
-Ce n'est **pas** couvert par `check-config-coverage.cjs` : cette gate est bidirectionnelle entre
+Ce n'est **pas** couvert par `scripts/check-config-coverage.cjs` : cette gate est bidirectionnelle entre
 les **schémas** et l'**inventaire**, pas entre le **code** et les schémas. Écart consigné ici et
-versé au registre — voir `_docs_projet/registres/backlog_technique.md`. Il n'est **pas** corrigé
+versé au registre de dette technique du dépôt de travail. Il n'est **pas** corrigé
 dans cette passe : trancher demande de décider si l'on élargit le schéma (les deux formes
 deviennent utilisables) ou si l'on resserre le code (les deux lectures tombent), et c'est une
 décision de contrat de profil.

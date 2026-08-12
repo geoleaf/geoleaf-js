@@ -196,39 +196,17 @@ describe("geojson/layers/integration — T22 branch coverage", () => {
         logMock.warn.mockClear();
     });
 
-    it("_resolveLegendType 'poi' returns 'circle' (branch 2.0)", () => {
-        LayerManagerIntegration.detectLayerType = () => "poi";
-        const _registerGeoJsonLayer = vi.fn();
-        _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
-        state.layers.set("lp1", { layer: {}, label: "POI", visible: true, config: {} });
-        LayerManagerIntegration.registerWithLayerManager();
-        expect(_registerGeoJsonLayer).toHaveBeenCalled();
-    });
+    // B-228 — les blocs `_resolveLegendType` / `_resolveLayerColor` ont été retirés le
+    // 11/08/2026 AVEC les fonctions qu'ils nommaient. Elles alimentaient `SectionItem.type`
+    // et `.color`, deux champs que la charge utile d'enregistrement ne déclare pas et que
+    // personne ne relisait. 🛑 Leur suppression n'a fait rougir AUCUN test : ces cas
+    // exerçaient les lignes pour la couverture sans jamais asserter leur résultat.
 
-    it("_resolveLegendType 'route' returns 'line' (branch 3.0)", () => {
-        LayerManagerIntegration.detectLayerType = () => "route";
-        const _registerGeoJsonLayer = vi.fn();
-        _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
-        state.layers.set("lr1", { layer: {}, label: "Route", visible: true, config: {} });
-        LayerManagerIntegration.registerWithLayerManager();
-        expect(_registerGeoJsonLayer).toHaveBeenCalled();
-    });
-
-    it("_resolveLayerColor uses style.color when fillColor absent (branch 7.1)", () => {
-        LayerManagerIntegration.detectLayerType = () => "fill";
-        const _registerGeoJsonLayer = vi.fn();
-        _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
-        state.layers.set("ls1", {
-            layer: {},
-            label: "S1",
-            visible: true,
-            config: { style: { color: "#ff0000" } },
-        });
-        LayerManagerIntegration.registerWithLayerManager();
-        expect(_registerGeoJsonLayer).toHaveBeenCalled();
-    });
-
-    it("_resolveLayerColor uses pointStyle.fillColor (branch 8.0)", () => {
+    // B-225 — `pointStyle` a été RETIRÉ du résolveur au S3 (`e17e41a6`, « retrait des
+    // fallbacks de format legacy », BREAKING v3.0.0). Les deux cas nommés « uses
+    // pointStyle.fillColor » exerçaient une branche disparue et n'assertaient que
+    // « la fonction a été appelée » : ils passaient quoi qu'il arrive.
+    it("ignore une clé de style héritée (`pointStyle`, retirée en 3.0.0) sans casser l'enregistrement", () => {
         LayerManagerIntegration.detectLayerType = () => "fill";
         const _registerGeoJsonLayer = vi.fn();
         _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
@@ -239,21 +217,10 @@ describe("geojson/layers/integration — T22 branch coverage", () => {
             config: { pointStyle: { fillColor: "#abc" } },
         });
         LayerManagerIntegration.registerWithLayerManager();
-        expect(_registerGeoJsonLayer).toHaveBeenCalled();
-    });
-
-    it("_resolveLayerColor uses pointStyle without fillColor → defaultColor (branch 9.1)", () => {
-        LayerManagerIntegration.detectLayerType = () => "fill";
-        const _registerGeoJsonLayer = vi.fn();
-        _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
-        state.layers.set("lps2", {
-            layer: {},
-            label: "PS2",
-            visible: true,
-            config: { pointStyle: {} },
-        });
-        LayerManagerIntegration.registerWithLayerManager();
-        expect(_registerGeoJsonLayer).toHaveBeenCalled();
+        expect(_registerGeoJsonLayer).toHaveBeenCalledWith(
+            "lps1",
+            expect.objectContaining({ label: "PS1" })
+        );
     });
 
     it("_resolveLayerLabels returns hasLabels true when config.labels.enabled (branch 10.0, line 36)", () => {

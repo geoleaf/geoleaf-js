@@ -1,76 +1,74 @@
-﻿---
-title: "profile.json - Référence Complète"
+---
+title: "profile.json - Reading Guide"
 ---
 
-# profile.json - Référence Complète
+# profile.json — reading guide
 
-**Version:** 3.0.0
-
-**Date de dernière mise à jour:\*\*** 1 avril 2026
-
-**Statut:** ✅ Production Ready
+The authoritative parameter reference is [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md), generated from the ten JSON schemas in `profiles/schemas/`; where the two pages disagree, that one is right.
 
 ---
 
-## Table des Matières
+## Table of Contents
 
-1. [Vue d'ensemble](#vue-densemble)
+1. [Overview](#overview)
 
-2. [Structure complète](#structure-complète)
+2. [Full structure](#full-structure)
 
-3. [Paramètres racine](#paramètres-racine)
+3. [Root parameters](#root-parameters)
 
-4. [Section map](#section-map)
+4. [map section](#map-section)
 
-5. [Section Files](#section-files)
+5. [Files section](#files-section)
 
-6. [Section ui](#section-ui)
+6. [ui section](#ui-section)
 
-7. [Section basemaps](#section-basemaps)
+7. [basemaps section](#basemaps-section)
 
-8. [Section performance](#section-performance)
+8. [performance section — **REMOVED** (dead key)](#performance-section--removed-dead-key)
 
-9. [Section search](#section-search)
+9. [search section — **REMOVED** (dead key)](#search-section--removed-dead-key)
 
-10. [Section layerManagerConfig](#section-layermanagerconfig)
+10. [layerManagerConfig section](#layermanagerconfig-section)
 
-11. [Section modules.legend](#section-moduleslegend)
+11. [modules.legend section](#moduleslegend-section)
 
-12. [Section poiConfig](#section-poiconfig)
+12. [poiConfig section — **REMOVED** (dead key)](#poiconfig-section--removed-dead-key)
 
-13. [Section brandingConfig](#section-brandingconfig)
+13. [brandingConfig section — **REMOVED** (dead key)](#brandingconfig-section--removed-dead-key)
 
-14. [Section tableConfig](#section-tableconfig--extrait-du-core)
+14. [tableConfig section — moved out of the core](#tableconfig-section--moved-out-of-the-core)
 
-15. [Section scaleConfig](#section-scaleconfig)
+15. [scaleConfig section — **REMOVED** (dead key)](#scaleconfig-section--removed-dead-key)
 
-16. [Section storage](#section-storage)
+16. [storage section — **REMOVED** (dead key)](#storage-section--removed-dead-key)
 
-17. [Section poiAddConfig](#section-poiaddconfig)
+17. [poiAddConfig section — **REMOVED** (dead key)](#poiaddconfig-section--removed-dead-key)
 
-18. [Section geocodingConfig](#section-geocodingconfig)
+18. [geocodingConfig section — **REMOVED** (dead key)](#geocodingconfig-section--removed-dead-key)
 
-19. [Tableau récapitulatif](#tableau-récapitulatif)
+19. [Parameters missing from profile.json](#parameters-missing-from-profilejson)
+
+20. [Summary table — **REMOVED**](#summary-table--removed)
+
+21. [Final notes](#final-notes)
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Le fichier `profile.json` est le **fichier de configuration principal** d'un profil GeoLeaf. Il définit :
+The `profile.json` file is the **main configuration file** of a GeoLeaf profile. It declares:
 
-- L'interface utilisateur (composants visibles)
+- The user interface (visible components)
 
-- Les fonds de carte disponibles
+- The available base maps
 
-- Les paramètres de performance
+- The performance settings
 
-- La configuration des filtres et de la recherche
+- The filter and search configuration
 
-- Les réglages des composants (table, légende, gestionnaire de couches)
+- The component settings (table, legend, layer manager)
 
-> **⚠️ Important:** Cette documentation est basée sur l'analyse du **code source réel** (src/modules/) et des **tests unitaires** (\_\_tests\_\_/).
-
-### Emplacement
+### Location
 
 ```
 
@@ -78,21 +76,21 @@ profiles/{profile-name}/profile.json
 
 ```
 
-### Chargement
+### Loading
 
-Le fichier est chargé par :
+The file is loaded by:
 
-- **Fichier source:** `profile.ts`
+- **Source file:** `profile.ts`
 
-- **Fonction principale:** `loadActiveProfileResources()`
+- **Main function:** `loadActiveProfileResources()`
 
-- **Événement émis:** `geoleaf:profile:loaded`
+- **Emitted event:** `geoleaf:profile:loaded`
 
 ---
 
-## Structure complète
+## Full structure
 
-Voici la structure complète avec tous les paramètres disponibles :
+Here is the full structure, with every available parameter:
 
 ```jsonc
 
@@ -154,21 +152,22 @@ Voici la structure complète avec tous les paramètres disponibles :
 
     "showLayerManager": boolean,
 
-    "showFilterPanel": boolean,
-
-    "showGeolocation": boolean,
-
-    "showCoordinates": boolean,
-
-    "showLegend": boolean,
-
     "showCacheButton": boolean,
 
-    "showAddPoi": boolean,
+    "showCredentialButton": boolean,
 
-    "showScale": boolean,
+    "showEditor": boolean,
 
     "interactiveShapes": boolean
+
+  },
+
+  // One block per module — the core treats its contents as OPAQUE (INV-CONFIG):
+  // the inner keys belong to the module. This is the form that replaced the
+  // root keys `ui.show*`, `poiConfig`, `scaleConfig` and their siblings.
+  "modules": {
+
+    "<id>": { "enabled": boolean }
 
   },
 
@@ -220,68 +219,6 @@ Voici la structure complète avec tous les paramètres disponibles :
 
 
 
-  "performance": {
-
-    "maxConcurrentLayers": number,
-
-    "layerLoadDelay": number,
-
-    "fitBoundsOnThemeChange": boolean
-
-  },
-
-
-
-  "search": {
-
-    "title": "string",
-
-    "radiusMin": number,
-
-    "radiusMax": number,
-
-    "radiusStep": number,
-
-    "radiusDefault": number,
-
-    "searchPlaceholder": "string",
-
-    "filters": [
-
-      {
-
-        "id": "string",
-
-        "type": "string",
-
-        "label": "string",
-
-        "placeholder": "string",
-
-        "searchFields": ["string"],
-
-        "buttonLabel": "string",
-
-        "instructionText": "string",
-
-        "field": "string"
-
-      }
-
-    ],
-
-    "actions": {
-
-      "applyLabel": "string",
-
-      "resetLabel": "string"
-
-    }
-
-  },
-
-
-
   "layerManagerConfig": {
 
     "title": "string",
@@ -308,185 +245,142 @@ Voici la structure complète avec tous les paramètres disponibles :
 
 
 
-  // legendConfig migré — voir modules.legend (fichier config/plugins/legend.json)
+  // legendConfig migrated — see modules.legend (file config/plugins/legend.json)
 
 
 
-  "poiConfig": {
-
-    "clusterStrategy": "string"
-
-  },
+  // tableConfig removed — see plugin @geoleaf-plugins/table (modules.table)
 
 
-
-  "brandingConfig": {
-
-    "enabled": boolean,
-
-    "text": "string",
-
-    "position": "string"
-
-  },
-
-
-
-  // tableConfig retiré — voir plugin @geoleaf-plugins/table (modules.table)
-
-
-
-  "scaleConfig": {
-
-    "scaleGraphic": boolean,
-
-    "scaleNumeric": boolean,
-
-    "scaleNumericEditable": boolean,
-
-    "scaleNivel": boolean,
-
-    "position": "string"
-
-  },
-
-
-
-  "storage": {
-
-    "cache": {
-
-      "enableProfileCache": boolean,
-
-      "enableTileCache": boolean
-
-    }
-
-  },
-
-
-
-  "poiAddConfig": {
-
-    "enabled": boolean,
-
-    "defaultPosition": "string"
-
-  }
 
 }
 
 ```
 
----
-
-## Paramètres racine
-
-### `id` (string, obligatoire)
-
-**Description:** Identifiant unique du profil.
-
-**Utilisation dans le code:**
-
-- Utilisé pour charger le profil
-
-- Référencé dans les événements
-
-- Stocké dans `config.data.activeProfile`
-
-**Fichiers source:**
-
-- `profile.ts` ligne 141
-
-**Valeurs possibles:** Chaîne alphanumérique sans espaces (ex: `"tourism"`, `"my-custom-profile"`)
-
-**Valeur par défaut:** Aucune (obligatoire)
-
-**État:** ✅ Actif et fonctionnel
+::: warning
+This block illustrates the structure; it is not a reference. It shows neither every parameter nor their types. The reference is [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md), derived from the schemas.
+:::
 
 ---
 
-### `label` (string, obligatoire)
+::: info
+**What "required" means here.**
 
-**Description:** Nom d'affichage du profil pour l'interface utilisateur.
+- `profile.schema.json` declares `required` at the root only, and only for **`id`**.
+- `kernel/config/profile-loader.ts:555` (`_validateProfile`) is non-blocking: it only logs. A missing `id` produces a warning, never an exception. The only `throw` statements in the loader concern an unavailable `ConfigLoader`, never a profile field.
+- Every read is guarded: `cfg.map ?? {}`, `if (themesFile)`, `if (files)`.
+- `map.bounds` is `bounds` **or** `center`, and the code itself labels it "recommended".
 
-**Utilisation dans le code:**
+`profiles/_reference/profile.json` carries no `Files.themesFile`, and it ships, validates and serves correctly.
+:::
 
-- Affiché dans les logs
+## Root parameters
 
-- Peut être utilisé dans l'interface de sélection de profil
+### `id` (string, **required by the schema**)
 
-**Fichiers source:**
+**Description:** Unique identifier of the profile.
+
+**Code usage:**
+
+- Used to load the profile
+
+- Referenced in events
+
+- Stored in `config.data.activeProfile`
+
+**Source files:**
+
+- `profile.ts` line 141
+
+**Possible values:** Alphanumeric string without spaces (e.g. `"tourism"`, `"my-custom-profile"`)
+
+**Default:** None (required)
+
+**Status:** Active and functional
+
+---
+
+### `label` (string, recommended — not required)
+
+**Description:** Display name of the profile, used by the interface.
+
+**Code usage:**
+
+- Printed in the logs
+
+- May be used by a profile selection interface
+
+**Source files:**
 
 - `profile.ts`
 
-**Valeurs possibles:** Chaîne de caractères libre (ex: `"Profil tourisme"`, `"My Custom Profile"`)
+**Possible values:** Free text (e.g. `"Tourism profile"`, `"My Custom Profile"`)
 
-**Valeur par défaut:** Aucune (obligatoire)
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-### `description` (string, optionnel)
-
-**Description:** Description détaillée du profil et de son usage.
-
-**Utilisation dans le code:**
-
-- Utilisé pour la documentation
-
-- Peut être affiché dans une interface de sélection
-
-**Fichiers source:**
-
-- Stocké dans l'objet profile mais peu utilisé directement dans le code
-
-**Valeurs possibles:** Texte libre
-
-**Valeur par défaut:** Chaîne vide
-
-**État:** ✅ Actif (principalement documentation)
+**Status:** Active and functional
 
 ---
 
-### `version` (string, optionnel)
+### `description` (string, optional)
 
-**Description:** Version du profil suivant le semantic versioning.
+**Description:** Detailed description of the profile and its purpose.
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Utilisé pour la détection de version (legacy vs 1.0.0)
+- Used for documentation
 
-- Fonction `isModularProfile()` dans ProfileLoader
+- May be shown in a selection interface
 
-**Fichiers source:**
+**Source files:**
+
+- Stored on the profile object, but rarely read directly by the code
+
+**Possible values:** Free text
+
+**Default:** Empty string
+
+**Status:** Active (mainly documentation)
+
+---
+
+### `version` (string, optional)
+
+**Description:** Profile version, following semantic versioning.
+
+**Code usage:**
+
+- Used for version detection (legacy vs 1.0.0)
+
+- `isModularProfile()` function in ProfileLoader
+
+**Source files:**
 
 - `profile-loader.ts`
 
-**Valeurs possibles:** Format "X.Y.Z" (ex: `"1.0.0"`, `"1.2.5"`)
+**Possible values:** `"X.Y.Z"` format (e.g. `"1.0.0"`, `"1.2.5"`)
 
-**Valeur par défaut:** `"1.0.0"`
+**Default:** `"1.0.0"`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-## Section map
+## map section
 
-### `map` (object, obligatoire)
+### `map` (object, recommended — not required)
 
-**Description:** Paramètres d'initialisation de la carte : emprise initiale, plafond de zoom au chargement, et restriction de navigation.
+**Description:** Map initialisation settings: initial extent, zoom ceiling applied on load, and navigation restriction.
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Chargé dans `src/app/modules/core-map.module.js` lors de l'initialisation de la carte
+- Read by `packages/core/src/app/boot-modules/core-map.module.ts` while the map is initialised
 
-- `bounds` est utilisé pour le `fitBounds()` initial et comme emprise de `maxBounds` si `positionFixed` est activé
+- `bounds` feeds the initial `fitBounds()`, and serves as the `maxBounds` extent when `positionFixed` is enabled
 
-#### `map.bounds` (array, obligatoire)
+#### `map.bounds` (array, recommended — `bounds` **or** `center`)
 
-Emprise géographique initiale au format `[[sud, ouest], [nord, est]]` en WGS84.
+Initial geographic extent, in the form `[[south, west], [north, east]]`, in WGS84.
 
 ```jsonc
 
@@ -494,73 +388,75 @@ Emprise géographique initiale au format `[[sud, ouest], [nord, est]]` en WGS84.
 
 ```
 
-#### `map.initialMaxZoom` (integer, optionnel)
+#### `map.initialMaxZoom` (integer, optional)
 
-Zoom maximum utilisé par `fitBounds()` au démarrage. **Ne limite PAS** le zoom utilisateur — il empêche seulement le `fitBounds` initial de zoomer trop fort sur une petite emprise.
+Maximum zoom applied by `fitBounds()` at start-up. It does **not** cap the user's zoom — it only prevents the initial `fitBounds` from zooming too far into a small extent.
 
-- **Valeur par défaut:** `12`
+- **Default:** `12`
 
-- **Valeurs possibles:** `1` à `20`
+- **Possible values:** `1` to `20`
 
-- **Rétrocompatibilité:** l'ancien nom `maxZoom` est toujours lu en fallback
+- **Backwards compatibility:** the former name `maxZoom` is still read as a fallback
 
-> **⚠️ Note:** Ce paramètre ne remplace pas le `maxZoom` des basemaps (qui contrôle la disponibilité des tuiles) ni le zoom maximum MapLibre de la carte.
+::: info
+This parameter replaces neither the `maxZoom` of the base maps (which governs tile availability) nor the MapLibre maximum zoom of the map itself.
+:::
 
-#### `map.padding` (array, optionnel)
+#### `map.padding` (array, optional)
 
-Marge en pixels `[vertical, horizontal]` appliquée au `fitBounds()` initial. Évite que l'emprise colle aux bords du conteneur.
+Padding in pixels, `[vertical, horizontal]`, applied to the initial `fitBounds()`. Keeps the extent off the container edges.
 
-- **Valeur par défaut:** `[50, 50]`
+- **Default:** `[50, 50]`
 
-#### `map.positionFixed` (boolean, optionnel)
+#### `map.positionFixed` (boolean, optional)
 
-Restreint le déplacement de la carte à l'emprise définie dans `bounds`. L'utilisateur ne peut pas naviguer trop loin de cette zone mais conserve une liberté de déplacement.
+Restricts panning to the extent declared in `bounds`. The user cannot navigate far outside that area, but retains freedom of movement inside it.
 
-- **Valeur par défaut:** `false`
+- **Default:** `false`
 
-- **Avantage performance:** MapLibre ne chargera pas de tuiles hors emprise → réduction des requêtes réseau
+- **Performance benefit:** MapLibre does not request tiles outside the extent → fewer network requests
 
-- **Implémentation:** utilise `map.setMaxBounds()` avec une marge configurable via `boundsMargin` (défaut 30%)
+- **Implementation:** uses `map.setMaxBounds()` with a margin configurable through `boundsMargin` (default 30%)
 
-- **Comportement:** effet élastique ("rubber-band") aux bords, pas un mur dur
+- **Behaviour:** a rubber-band effect at the edges, not a hard wall
 
-#### `map.boundsMargin` (number, optionnel)
+#### `map.boundsMargin` (number, optional)
 
-Marge supplémentaire autour des `bounds` lorsque `positionFixed` est `true`. Permet de contrôler la liberté de déplacement.
+Additional margin around `bounds` when `positionFixed` is `true`. Controls how far the user may pan.
 
-- **Valeur par défaut:** `0.3` (30% de marge)
+- **Default:** `0.3` (30% margin)
 
-- **Plage:** `0` (aucune marge, très restrictif) à `1` (100%, très libre)
+- **Range:** `0` (no margin, very restrictive) to `1` (100%, very permissive)
 
-- **Ignoré** si `positionFixed` est `false`
+- **Ignored** when `positionFixed` is `false`
 
-#### `map.minZoom` (integer, optionnel)
+#### `map.minZoom` (integer, optional)
 
-Zoom minimum lorsque `positionFixed` est `true`. Empêche l'utilisateur de dézoomer trop et voir le reste du monde.
+Minimum zoom when `positionFixed` is `true`. Prevents the user from zooming out far enough to see the rest of the world.
 
-- **Valeur par défaut:** `3` (si `positionFixed` est `true`)
+- **Default:** `3` (when `positionFixed` is `true`)
 
-- **Ignoré** si `positionFixed` est `false`
-
----
-
-#### `map.maxPitch` (number, optionnel)
-
-**Description:** Inclinaison maximale de la caméra en degrés. MapLibre GL JS plafonne à 60° par défaut — ce paramètre leve cette restriction pour permettre des vues 3D plus prononcées.
-
-**Valeurs possibles:** `0`–`85` (au-delà de 80° des artefacts visuels peuvent apparaître avec un DEM à résolution 30m)
-
-**Valeur par défaut:** `80`
-
-**Utilisé avec:** `basemaps.{id}.terrain` — le pitch défini dans `terrain.pitch` doit être inférieur ou égal à `maxPitch`.
-
-**Ajouté en:** v2.1.0
-
-**État:** ✅ Actif et fonctionnel
+- **Ignored** when `positionFixed` is `false`
 
 ---
 
-#### Exemple complet
+#### `map.maxPitch` (number, optional)
+
+**Description:** Maximum camera pitch, in degrees. MapLibre GL JS caps it at 60° by default; this parameter lifts that restriction to allow steeper 3D views.
+
+**Possible values:** `0`–`85` (beyond 80°, visual artefacts can appear with a 30 m resolution DEM)
+
+**Default:** `80`
+
+**Used with:** `basemaps.{id}.terrain` — the pitch declared in `terrain.pitch` must be less than or equal to `maxPitch`.
+
+**Added in:** v2.1.0
+
+**Status:** Active and functional
+
+---
+
+#### Full example
 
 ```jsonc
 
@@ -584,92 +480,91 @@ Zoom minimum lorsque `positionFixed` est `true`. Empêche l'utilisateur de dézo
 
 ---
 
-## Section Files
+## Files section
 
-### `Files` (object, obligatoire)
+### `Files` (object, recommended — not required)
 
-**Description:** Définit les chemins vers les fichiers de configuration associés au profil.
+**Description:** Declares the paths to the configuration files attached to the profile.
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Chargés en parallèle lors de l'initialisation du profil modulaire
+- Loaded in parallel while a modular profile is initialised
 
 - `profile-loader.ts`
 
-**État:** ✅ Actif et fonctionnel (profils 1.0.0+)
+**Status:** Active and functional (profiles 1.0.0+)
 
 ---
 
-#### `Files.themesFile` (string, obligatoire)
+#### `Files.themesFile` (string, optional)
 
-**Description:** Chemin vers le fichier de thèmes (presets de visibilité des couches).
+**Description:** Path to the themes file (layer visibility presets).
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// profile-loader.js ligne 68
+// profile-loader.js line 68
 
 const themesUrl = `${baseUrl}/${profile.Files.themesFile}?t=${timestamp}`;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `profile-loader.ts` ligne 68
+- `profile-loader.ts` line 68
 
-**Valeurs possibles:** Chemin relatif (layout v2 : `"config/core/themes.json"`)
+**Possible values:** Relative path (layout v2: `"config/core/themes.json"`)
 
-**Valeur par défaut:** aucune (chemin déclaré explicitement ; layout v2 : `"config/core/themes.json"`)
+**Default:** none (the path is declared explicitly; layout v2: `"config/core/themes.json"`)
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `Files.layersFile` (string, optionnel)
+#### `Files.layersFile` (string, optional)
 
-**Description:** Chemin vers le fichier de définition des couches GeoJSON.
+**Description:** Path to the GeoJSON layer definition file.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// profile-loader.js ligne 69
+// profile-loader.js line 69
 
 const layersUrl = `${baseUrl}/${profile.Files.layersFile}?t=${timestamp}`;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `profile-loader.ts` ligne 69
+- `profile-loader.ts` line 69
 
-**Valeurs possibles:** Chemin relatif (layout v2 : `"config/core/layers.json"`)
+**Possible values:** Relative path (layout v2: `"config/core/layers.json"`)
 
-**Valeur par défaut:** aucune (chemin déclaré explicitement ; layout v2 : `"config/core/layers.json"`)
+**Default:** none (the path is declared explicitly; layout v2: `"config/core/layers.json"`)
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `Files.featuresFile` (string, optionnel)
-
-**Description:** Chemin vers le fichier des features core (`clusteringConfig`,
-`performance`, `poiConfig`, `mapOptions` — géocodage → plugin). Son contenu est fusionné
-à la racine du profil consolidé, comme `uiFile` et `basemapsFile`.
-
-**Valeurs possibles:** Chemin relatif (layout v2 : `"config/core/features.json"`)
-
-**État:** ✅ Actif et fonctionnel (layout v2, 2026-06)
+**Status:** Active and functional
 
 ---
 
-#### `Files.modules` (object, optionnel)
+#### `Files.featuresFile` (string, optional)
 
-**Description:** Dictionnaire `{ moduleId: cheminFichier }` — un fichier de
-configuration par plugin (Plugin Contract v1). Chaque fichier contient le bloc
-`modules.<id>` correspondant ; son contenu appartient au plugin (le core ne le valide
-pas, INV-CONFIG). Les fichiers sont chargés en parallèle des sections core ; un bloc
-`modules.<id>` déclaré inline dans `profile.json` prime sur le fichier (deepMerge,
-tableaux remplacés).
+**Description:** Path to the core features file (`clusteringConfig`,
+`performance`, `poiConfig`, `mapOptions` — geocoding moved to a plugin). Its contents are merged
+into the root of the consolidated profile, like `uiFile` and `basemapsFile`.
 
-**Exemple:**
+**Possible values:** Relative path (layout v2: `"config/core/features.json"`)
+
+**Status:** Active and functional (layout v2)
+
+---
+
+#### `Files.modules` (object, optional)
+
+**Description:** A `{ moduleId: filePath }` dictionary — one configuration file
+per plugin (Plugin Contract v1). Each file holds the matching `modules.<id>` block; its
+contents belong to the plugin, and the core does not validate them (INV-CONFIG). The files are
+loaded in parallel with the core sections; a `modules.<id>` block declared inline in
+`profile.json` takes precedence over the file (deepMerge, arrays replaced).
+
+**Example:**
 
 ```json
 "modules": {
@@ -678,405 +573,301 @@ tableaux remplacés).
 }
 ```
 
-**État:** ✅ Actif et fonctionnel (layout v2, 2026-06)
+**Status:** Active and functional (layout v2)
 
 ---
 
-## Section ui
+## ui section
 
-> ⚠️ **Déprécié v2.0.0 :** La section `ui` inline dans `profile.json` est dépréciée. Depuis v2.0.0, la configuration UI doit être définie dans `ui.json` (référencé par `Files.uiFile`). La compatibilité inline est maintenue pour rétrocompatibilité, mais `ui.json` est recommandé pour tous les nouveaux projets.
+::: warning
+**Deprecated in v2.0.0.** The inline `ui` section of `profile.json` is deprecated. Since v2.0.0, the UI configuration belongs in `ui.json` (referenced by `Files.uiFile`). Inline declarations are still accepted for backwards compatibility, but `ui.json` is the recommended form for any new project.
+:::
 
-### `ui` (object, optionnel)
+### `ui` (object, optional)
 
-**Description:** Configuration de l'interface utilisateur et des composants visibles.
+**Description:** Configuration of the user interface and of the visible components.
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `ui.theme` (string, optionnel)
+#### `ui.theme` (string, optional)
 
-**Description:** Thème visuel de l'application.
+**Description:** Visual theme of the application.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// geoleaf.core.ts ligne 132
+// geoleaf.core.ts line 132
 
 const uiConfig = global.GeoLeaf.Config.get("ui") || {};
 
 const theme = uiConfig.theme || "light";
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.core.ts` ligne 132
+- `geoleaf.core.ts` line 132
 
 - `theme.ts`
 
-**Valeurs possibles:**
+**Possible values:**
 
-- `"light"` - Thème clair
+- `"light"` - Light theme
 
-- `"dark"` - Thème sombre
+- `"dark"` - Dark theme
 
-**Valeur par défaut:** `"light"`
+**Default:** `"light"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `ui.language` (string, optionnel)
-
-**Description:** Langue de l'interface utilisateur.
-
-**Utilisation dans le code:**
-
-- Stocké dans la configuration
-
-- Peut influencer les labels et textes
-
-**Fichiers source:**
-
-- Pas d'utilisation directe détectée dans le code actuel
-
-**Valeurs possibles:** Codes ISO 639-1 (ex: `"fr"`, `"en"`, `"es"`)
-
-**Valeur par défaut:** `"fr"`
-
-**État:** ⚠️ Défini mais peu utilisé directement (préparation i18n)
+**Status:** Active and functional
 
 ---
 
-#### `ui.showBaseLayerControls` (boolean, optionnel)
+#### `ui.language` (string, optional)
 
-**Description:** Affiche les contrôles de sélection des fonds de carte.
+**Description:** Language of the user interface.
 
-**Utilisation dans le code:**
+**Code usage:**
+
+- Stored in the configuration
+
+- May influence labels and texts
+
+**Source files:**
+
+- No direct read detected in the current code
+
+**Possible values:** ISO 639-1 codes (e.g. `"fr"`, `"en"`, `"es"`)
+
+**Default:** `"fr"`
+
+**Status:** Declared but rarely read directly (i18n groundwork)
+
+---
+
+#### `ui.showBaseLayerControls` (boolean, optional)
+
+**Description:** Shows the base map selection controls.
+
+**Code usage:**
 
 ```javascript
-// geoleaf.baselayers.ts ligne 217
+// geoleaf.baselayers.ts line 217
 
 const showControls = config && config.ui && config.ui.showBaseLayerControls !== false;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.baselayers.ts` ligne 217
+- `geoleaf.baselayers.ts` line 217
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `false`
+**Default:** `false`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 **Tests:**
 
-- \_\_tests\_\_/baselayers/baselayers.test.js ligne 307
+- \_\_tests\_\_/baselayers/baselayers.test.js line 307
 
 ---
 
-#### `ui.showLayerManager` (boolean, optionnel)
+#### `ui.showLayerManager` (boolean, optional)
 
-**Description:** Affiche le gestionnaire de couches.
+**Description:** Shows the layer manager.
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Utilisé pour conditionner l'affichage du composant LayerManager
+- Read to decide whether the LayerManager component is displayed
 
-**Fichiers source:**
+**Source files:**
 
 - `geoleaf.layer-manager.ts`
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `true`
+**Default:** `true`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `ui.showFilterPanel` (boolean, optionnel)
+#### `ui.showFilterPanel` — **REMOVED** (dead key)
 
-**Description:** Affiche le panneau de filtrage des POI.
+::: warning
+Replaced by **`modules.filter.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showFilterPanel`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
 
-**Utilisation dans le code:**
+#### `ui.showGeolocation` — **REMOVED** (dead key)
+
+::: warning
+Replaced by **`modules.geolocation.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showGeolocation`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
+
+#### `ui.showScale` — **REMOVED** (dead key)
+
+::: warning
+Replaced by **`modules.scale.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showScale`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
+
+#### `ui.showCoordinates` — **REMOVED** (dead key)
+
+::: warning
+Replaced by **`modules.coordinates.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showCoordinates`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
+
+#### `ui.showThemeSelector` — **REMOVED** (dead key)
+
+::: warning
+Replaced by **`modules.theme-selector.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showThemeSelector`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
+
+#### `ui.showLegend` — **REMOVED** (dead key)
+
+::: warning
+Replaced by **`modules.legend.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showLegend`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
+
+#### `ui.showCacheButton` (boolean, optional)
+
+**Description:** Shows the offline cache management button.
+
+**Code usage:**
 
 ```javascript
-// filter-panel/renderer.test.js ligne 425
-
-mockGeoLeaf.Config.get.mockReturnValue({ showFilterPanel: true });
-```
-
-**Fichiers source:**
-
-- `renderer.ts`
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- \_\_tests\_\_/ui/filter-panel/renderer.test.js ligne 424
-
----
-
-#### `ui.showGeolocation` (boolean, optionnel)
-
-**Description:** Affiche le bouton de géolocalisation GPS.
-
-> **Renommage v2.0.0 :** Anciennement `enableGeolocation`. Les deux noms sont acceptés pour la rétrocompatibilité, mais `showGeolocation` est recommandé.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/controls.js (ligne 164 dans les tests)
-
-const config = { ui: { showGeolocation: true } };
-```
-
-**Fichiers source:**
-
-- `controls.ts`
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- `packages/core/__tests__/ui/coverage-modules-ui-controls.test.js`
-
-- \_\_tests\_\_/integration/controls-simple.test.js ligne 214
-
----
-
-#### `ui.showScale` (boolean, optionnel)
-
-**Description:** Affiche la barre d'échelle. La configuration avancée (graphique, édition, position) est contrôlée par le bloc `scaleConfig` dans `ui.json`.
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `ui.showCoordinates` (boolean, optionnel)
-
-**Description:** Affiche l'indicateur de coordonnées.
-
-**Utilisation dans le code:**
-
-```javascript
-// geoleaf.core.ts ligne 132
-
-const showCoordinates = uiConfig ? uiConfig.showCoordinates !== false : true;
-```
-
-**Fichiers source:**
-
-- `geoleaf.core.ts`
-
-- `coordinates-display.ts`
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- `packages/core/__tests__/ui/` — voir les tests de contrôles UI
-
----
-
-#### `ui.showThemeSelector` → **déplacé (breaking, v3)**
-
-**Migration :** ce drapeau a quitté `ui.showThemeSelector` pour **`modules.theme-selector.enabled`** (fichier `config/plugins/theme-selector.json`, déclaré dans `profile.json` → `Files.modules`). **Opt-out** : la barre de thèmes est active sauf `modules.theme-selector.enabled: false`. Le sélecteur est une capacité in-core (`capabilities/theme-selector/`), gatée via `CapabilityRegistry`.
-
-**Fichiers source:**
-
-- `theme-selector.ts` ligne 124
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `ui.showLegend` → **déplacé (breaking, v3)**
-
-**Migration :** ce drapeau a quitté `ui.showLegend` pour **`modules.legend.enabled`** (fichier `config/plugins/legend.json`, déclaré dans `profile.json` → `Files.modules`). **Opt-out** : la légende est active sauf `modules.legend.enabled: false`. La légende est une capacité in-core (`capabilities/legend/`), gatée via `CapabilityRegistry` — voir [Section modules.legend](#section-moduleslegend).
-
-**Fichiers source:**
-
-- `capabilities/legend/legend-capability.ts`
-
-- `capabilities/legend/config.ts`
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `ui.showCacheButton` (boolean, optionnel)
-
-**Description:** Affiche le bouton de gestion du cache hors ligne.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/cache-button.test.js ligne 154
+// ui/cache-button.test.js line 154
 
 const showCacheButton = cfg?.ui?.showCacheButton !== false;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `packages/plugins/offline-ui/src/ui/cache-button/button-control.ts` — le contrôle vit dans **`@geoleaf-plugins/offline-ui`**, pas dans le core. Le chemin `src/modules/ui/cache-button.js` mentionné jusqu'ici n'existe plus depuis l'extraction du sous-système de cache.
+- `packages/plugins/offline-ui/src/ui/cache-button/button-control.ts` — the control lives in **`@geoleaf-plugins/offline-ui`**, not in the core.
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `false`
+**Default:** `false`
 
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- `packages/plugins/offline-ui/src/__tests__/cache-button.test.js` — `ButtonControl.init()` rend `null` quand `showCacheButton` vaut `false`, et la carte réelle sinon.
-
----
-
-#### `ui.showAddPoi` (boolean, optionnel)
-
-**Description:** Affiche le bouton d'ajout de POI.
-
-**Utilisation dans le code:**
-
-```javascript
-// integration/controls-simple.test.js ligne 287
-
-const config = { ui: { showAddPoi: true } };
-```
-
-**Fichiers source:**
-
-- `controls.ts`
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `false`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 **Tests:**
 
-- \_\_tests\_\_/integration/controls-simple.test.js ligne 287
+- `packages/plugins/offline-ui/src/__tests__/cache-button.test.js` — `ButtonControl.init()` returns `null` when `showCacheButton` is `false`, and the real control otherwise.
 
 ---
 
-#### `ui.interactiveShapes` (boolean, optionnel)
+#### `ui.showAddPoi` — **REMOVED** (dead key)
 
-**Description:** Rend les formes géométriques (polygones, lignes) interactives (cliquables).
+::: warning
+Replaced by **`modules.editor.enabled`**. `ui.schema.json` is
+`additionalProperties: false` and does not declare `ui.showAddPoi`: copying the key back
+makes `npm run validate:profiles` fail.
+:::
 
-**Utilisation dans le code:**
+#### `ui.interactiveShapes` (boolean, optional)
+
+**Description:** Makes geometric shapes (polygons, lines) interactive, hence clickable.
+
+**Code usage:**
 
 ```javascript
-// ui/filter-panel/proximity.js ligne 212
+// ui/filter-panel/proximity.js line 212
 
 const interactiveShapes = GeoLeaf.Config.get("ui.interactiveShapes", false);
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `proximity.ts` ligne 212
+- `proximity.ts` line 212
 
-- `controls.ts` ligne 348
+- `controls.ts` line 348
 
-- `layer-config-manager.ts` ligne 115
+- `layer-config-manager.ts` line 115
 
-- `geoleaf.route.ts` ligne 144
+- `geoleaf.route.ts` line 144
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `false`
+**Default:** `false`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-## Section basemaps
+## basemaps section
 
-> ⚠️ **Migration v2.0.0 :** La définition des fonds de carte inline dans `profile.json` est maintenue, mais il est recommandé de les déplacer dans un fichier `basemaps.json` dédié (référencé par `Files.basemapsFile`) pour faciliter la réutilisation entre profils.
+::: warning
+**Migration to v2.0.0.** Declaring base maps inline in `profile.json` is still supported, but moving them to a dedicated `basemaps.json` file (referenced by `Files.basemapsFile`) is recommended, so they can be reused across profiles.
+:::
 
-### `basemaps` (object, obligatoire)
+### `basemaps` (object, required)
 
-**Description:** Définition des fonds de carte disponibles.
+**Description:** Declaration of the available base maps.
 
-**Structure:** Objet avec clés = ID du fond de carte, valeurs = configuration du fond de carte.
+**Structure:** An object whose keys are base map IDs and whose values are base map configurations.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// geoleaf.baselayers.ts ligne 218
+// geoleaf.baselayers.ts line 218
 
 basemaps: global.GeoLeaf.Config.get("basemaps") || {};
 ```
 
-**Fichiers source:**
+**Source files:**
 
 - `geoleaf.baselayers.ts`
 
-- src/modules/storage/cache/resource-enumerator.js ligne 211
+- src/modules/storage/cache/resource-enumerator.js line 211
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.id` (string, obligatoire)
-
-**Description:** Identifiant unique du fond de carte.
-
-**Valeurs possibles:** Chaîne alphanumérique (ex: `"street"`, `"satellite"`, `"topo"`)
-
-**Valeur par défaut:** Aucune (obligatoire)
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.label` (string, obligatoire)
+#### `basemaps.{id}.id` (string, required)
 
-**Description:** Nom d'affichage du fond de carte dans l'interface.
+**Description:** Unique identifier of the base map.
 
-**Valeurs possibles:** Chaîne de caractères libre (ex: `"Street"`, `"Satellite"`, `"Topographique"`)
+**Possible values:** Alphanumeric string (e.g. `"street"`, `"satellite"`, `"topo"`)
 
-**Valeur par défaut:** Aucune (obligatoire)
+**Default:** None (required)
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.url` (string, obligatoire)
+#### `basemaps.{id}.label` (string, required)
 
-**Description:** Template d'URL des tuiles du fond de carte.
+**Description:** Display name of the base map in the interface.
 
-**Format:** Utilise les placeholders `{s}`, `{z}`, `{x}`, `{y}`
+**Possible values:** Free text (e.g. `"Street"`, `"Satellite"`, `"Topographic"`)
 
-**Exemple:**
+**Default:** None (required)
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.url` (string, required)
+
+**Description:** Tile URL template of the base map.
+
+**Format:** Uses the `{s}`, `{z}`, `{x}`, `{y}` placeholders
+
+**Example:**
 
 ```
 
@@ -1084,19 +875,19 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 ```
 
-**Valeurs possibles:** URL valide avec placeholders MapLibre (`{z}`, `{x}`, `{y}`)
+**Possible values:** A valid URL with MapLibre placeholders (`{z}`, `{x}`, `{y}`)
 
-**Valeur par défaut:** Aucune (obligatoire)
+**Default:** None (required)
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.attribution` (string, obligatoire)
+#### `basemaps.{id}.attribution` (string, required)
 
-**Description:** Texte d'attribution/copyright du fond de carte (HTML autorisé).
+**Description:** Attribution/copyright text of the base map (HTML allowed).
 
-**Exemple:**
+**Example:**
 
 ```
 
@@ -1104,107 +895,107 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 ```
 
-**Valeurs possibles:** Chaîne HTML
+**Possible values:** HTML string
 
-**Valeur par défaut:** Aucune (obligatoire)
+**Default:** None (required)
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.minZoom` (number, optionnel)
+#### `basemaps.{id}.minZoom` (number, optional)
 
-**Description:** Niveau de zoom minimum pour ce fond de carte.
+**Description:** Minimum zoom level for this base map.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// geoleaf.baselayers.ts ligne 103
+// geoleaf.baselayers.ts line 103
 
 if (typeof definition.minZoom === "number") {
     opts.minZoom = definition.minZoom;
 }
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.baselayers.ts` ligne 100-107
+- `geoleaf.baselayers.ts` lines 100-107
 
-**Valeurs possibles:** Nombre entier entre 0 et 20 (généralement 0-5 pour fonds de carte)
+**Possible values:** Integer between 0 and 20 (usually 0-5 for base maps)
 
-**Valeur par défaut:** 0
+**Default:** 0
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.maxZoom` (number, optionnel)
+#### `basemaps.{id}.maxZoom` (number, optional)
 
-**Description:** Niveau de zoom maximum pour ce fond de carte.
+**Description:** Maximum zoom level for this base map.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// geoleaf.baselayers.ts ligne 108
+// geoleaf.baselayers.ts line 108
 
 opts.maxZoom = typeof definition.maxZoom === "number" ? definition.maxZoom : 19;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.baselayers.ts` ligne 108
+- `geoleaf.baselayers.ts` line 108
 
-**Valeurs possibles:** Nombre entier entre 1 et 20 (généralement 17-19 pour OSM)
+**Possible values:** Integer between 1 and 20 (usually 17-19 for OSM)
 
-**Valeur par défaut:** `19`
+**Default:** `19`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.defaultBasemap` (boolean, optionnel)
+#### `basemaps.{id}.defaultBasemap` (boolean, optional)
 
-**Description:** Indique si ce fond de carte est sélectionné par défaut au chargement.
+**Description:** Whether this base map is selected by default on load.
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Utilisé lors de l'initialisation de la carte pour sélectionner le fond par défaut
+- Read while the map is initialised, to select the default base map
 
-**Fichiers source:**
+**Source files:**
 
 - `geoleaf.baselayers.ts`
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `false`
+**Default:** `false`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.offline` (boolean, optionnel)
+#### `basemaps.{id}.offline` (boolean, optional)
 
-**Description:** Indique si ce fond de carte est disponible en mode hors ligne (cache).
+**Description:** Whether this base map is available offline (cached).
 
-**Utilisation dans le code:**
+**Code usage:**
 
-- Utilisé par le système de cache pour déterminer si les tuiles doivent être mises en cache
+- Read by the cache subsystem to decide whether the tiles must be cached
 
-**Fichiers source:**
+**Source files:**
 
 - src/modules/storage/cache/resource-enumerator.js
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `false`
+**Default:** `false`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.offlineBounds` (object, optionnel)
+#### `basemaps.{id}.offlineBounds` (object, optional)
 
-**Description:** Limites géographiques pour le cache hors ligne de ce fond de carte.
+**Description:** Geographic bounds of the offline cache for this base map.
 
 **Structure:**
 
@@ -1224,9 +1015,9 @@ opts.maxZoom = typeof definition.maxZoom === "number" ? definition.maxZoom : 19;
 
 ```
 
-**Prérequis:** `offline: true`
+**Requires:** `offline: true`
 
-**Exemple:**
+**Example:**
 
 ```json
 {
@@ -1240,69 +1031,69 @@ opts.maxZoom = typeof definition.maxZoom === "number" ? definition.maxZoom : 19;
 }
 ```
 
-**Valeurs possibles:** Coordonnées WGS84 (latitude/longitude en degrés décimaux)
+**Possible values:** WGS84 coordinates (latitude/longitude in decimal degrees)
 
-**Valeur par défaut:** Aucun
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.cacheMinZoom` (number, optionnel)
-
-**Description:** Niveau de zoom minimum pour le cache hors ligne.
-
-**Prérequis:** `offline: true`
-
-**Valeurs possibles:** Nombre entier entre 0 et `cacheMaxZoom`
-
-**Valeur par défaut:** `4`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.cacheMaxZoom` (number, optionnel)
+#### `basemaps.{id}.cacheMinZoom` (number, optional)
 
-**Description:** Niveau de zoom maximum pour le cache hors ligne.
+**Description:** Minimum zoom level of the offline cache.
 
-**Prérequis:** `offline: true`
+**Requires:** `offline: true`
 
-**Valeurs possibles:** Nombre entier entre `cacheMinZoom` et 20
+**Possible values:** Integer between 0 and `cacheMaxZoom`
 
-**Valeur par défaut:** `12`
+**Default:** `4`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.type` (string, optionnel)
-
-**Description:** Type de basemap. Permet de distinguer les basemaps raster classiques des basemaps vectorielles MapLibre GL.
-
-**Valeurs possibles:**
-
-- `"tile"` — Basemap raster classique via source MapLibre GL JS de type `"raster"` (défaut implicite)
-
-- `"maplibre"` — Basemap vectorielle WebGL via style MapLibre GL JS (fichier JSON de style)
-
-**Valeur par défaut:** `"tile"` (implicite quand absent)
-
-**Comportement:** Si `type: "maplibre"` (ou si `style` est présent), le module Baselayers crée une source vectorielle MapLibre GL. Si le style n'est pas chargé, un fallback vers la source raster est utilisé.
-
-**Ajouté en:** v2.0.0
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.style` (string, requis si type "maplibre")
+#### `basemaps.{id}.cacheMaxZoom` (number, optional)
 
-**Description:** URL du style JSON MapLibre GL (ou objet style inline). Définit les sources de tuiles vectorielles et les layers de rendu.
+**Description:** Maximum zoom level of the offline cache.
 
-**Prérequis:** `type: "maplibre"` (ou implicite si `style` est fourni)
+**Requires:** `offline: true`
 
-**Exemple:**
+**Possible values:** Integer between `cacheMinZoom` and 20
+
+**Default:** `12`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.type` (string, optional)
+
+**Description:** Base map type. Distinguishes classic raster base maps from MapLibre GL vector base maps.
+
+**Possible values:**
+
+- `"tile"` — Classic raster base map, served through a MapLibre GL JS source of type `"raster"` (implicit default)
+
+- `"maplibre"` — WebGL vector base map, served through a MapLibre GL JS style (style JSON file)
+
+**Default:** `"tile"` (implicit when absent)
+
+**Behaviour:** With `type: "maplibre"` (or as soon as `style` is present), the Baselayers module creates a MapLibre GL vector source. If the style fails to load, it falls back to the raster source.
+
+**Added in:** v2.0.0
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.style` (string, required when type is "maplibre")
+
+**Description:** URL of the MapLibre GL style JSON (or an inline style object). It declares the vector tile sources and the render layers.
+
+**Requires:** `type: "maplibre"` (implicit when `style` is provided)
+
+**Example:**
 
 ```
 
@@ -1310,29 +1101,29 @@ https://tiles.openfreemap.org/styles/liberty
 
 ```
 
-**Providers gratuits:**
+**Free providers:**
 
-- OpenFreeMap : `https://tiles.openfreemap.org/styles/liberty` (100% gratuit)
+- OpenFreeMap: `https://tiles.openfreemap.org/styles/liberty` (entirely free)
 
-- OpenFreeMap Dark : `https://tiles.openfreemap.org/styles/dark`
+- OpenFreeMap Dark: `https://tiles.openfreemap.org/styles/dark`
 
-- MapTiler (freemium) : `https://api.maptiler.com/maps/streets-v2/style.json?key=KEY`
+- MapTiler (freemium): `https://api.maptiler.com/maps/streets-v2/style.json?key=KEY`
 
-**Valeur par défaut:** Aucune (requis pour les basemaps MapLibre)
+**Default:** None (required for MapLibre base maps)
 
-**Ajouté en:** v2.0.0
+**Added in:** v2.0.0
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.fallbackUrl` (string, optionnel)
+#### `basemaps.{id}.fallbackUrl` (string, optional)
 
-**Description:** URL de tuiles raster de secours (fallback si le style MapLibre n'est pas disponible).
+**Description:** Raster tile URL used as a fallback when the MapLibre style is unavailable.
 
-**Prérequis:** `type: "maplibre"` (ignoré pour les basemaps raster)
+**Requires:** `type: "maplibre"` (ignored for raster base maps)
 
-**Exemple:**
+**Example:**
 
 ```
 
@@ -1340,23 +1131,23 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 ```
 
-**Comportement:** Si MapLibre GL JS n'est pas chargé (CDN manquant, erreur réseau), la basemap utilise cette URL raster en fallback. Si `fallbackUrl` n'est pas fourni, le fallback utilise la basemap `street` par défaut (OSM).
+**Behaviour:** If MapLibre GL JS is not loaded (missing CDN, network error), the base map falls back to this raster URL. Without `fallbackUrl`, the fallback is the default `street` base map (OSM).
 
-**Valeur par défaut:** URL de la basemap `street` par défaut
+**Default:** the URL of the default `street` base map
 
-**Ajouté en:** v2.0.0
+**Added in:** v2.0.0
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain` (object, optionnel)
+#### `basemaps.{id}.terrain` (object, optional)
 
-**Description:** Configuration du terrain 3D pour ce basemap. Quand présent et `enabled: true`, GeoLeaf charge une source DEM (Digital Elevation Model) et active le rendu de relief MapLibre GL JS. Fonctionne sur les basemaps raster (`type: "tile"`) et vectoriels (`type: "maplibre"`).
+**Description:** 3D terrain configuration for this base map. When present with `enabled: true`, GeoLeaf loads a DEM (Digital Elevation Model) source and switches on MapLibre GL JS relief rendering. Works on both raster (`type: "tile"`) and vector (`type: "maplibre"`) base maps.
 
-**Prérequis:** `terrain.enabled: true` + `terrain.demUrl` valide
+**Requires:** `terrain.enabled: true` and a valid `terrain.demUrl`
 
-**Exemple:**
+**Example:**
 
 ```json
 "terrain": {
@@ -1371,119 +1162,119 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-**Ajouté en:** v2.1.0
+**Added in:** v2.1.0
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.terrain.enabled` (boolean, optionnel)
-
-**Description:** Active le terrain 3D pour ce basemap.
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `false`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain.demUrl` (string, requis si terrain activé)
+#### `basemaps.{id}.terrain.enabled` (boolean, optional)
 
-**Description:** URL du service de tuiles DEM (Digital Elevation Model). Utilise les placeholders `{z}`, `{x}`, `{y}`.
+**Description:** Enables 3D terrain for this base map.
 
-**Sources validées en production:**
+**Possible values:** `true` | `false`
 
-- **AWS Terrarium** (gratuit, mondial, résolution ~30m) :
+**Default:** `false`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.terrain.demUrl` (string, required when terrain is enabled)
+
+**Description:** URL of the DEM (Digital Elevation Model) tile service. Uses the `{z}`, `{x}`, `{y}` placeholders.
+
+**Sources validated in production:**
+
+- **AWS Terrarium** (free, worldwide, ~30 m resolution):
   `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png`
 
-**Valeur par défaut:** Aucune (requis si `terrain.enabled: true`)
+**Default:** None (required when `terrain.enabled: true`)
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.terrain.demEncoding` (string, optionnel)
-
-**Description:** Format d'encodage des valeurs d'élévation dans les tuiles DEM.
-
-**Valeurs possibles:**
-
-- `"terrarium"` — Format Mapzen Terrarium : `elevation = (R * 256 + G + B / 256) - 32768`
-- `"mapbox"` — Format Mapbox Terrain-RGB
-
-**Valeur par défaut:** `"terrarium"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain.demMaxZoom` (number, optionnel)
+#### `basemaps.{id}.terrain.demEncoding` (string, optional)
 
-**Description:** Niveau de zoom maximum des tuiles DEM disponibles. MapLibre utilisera le zoom le plus élevé disponible pour les niveaux supérieurs.
+**Description:** Encoding of the elevation values inside the DEM tiles.
 
-**Valeurs possibles:** Nombre entier entre `0` et `20`
+**Possible values:**
 
-**Valeur par défaut:** `15`
+- `"terrarium"` — Mapzen Terrarium format: `elevation = (R * 256 + G + B / 256) - 32768`
+- `"mapbox"` — Mapbox Terrain-RGB format
 
-**État:** ✅ Actif et fonctionnel
+**Default:** `"terrarium"`
 
----
-
-#### `basemaps.{id}.terrain.exaggeration` (number, optionnel)
-
-**Description:** Facteur d'exagération verticale du relief. Une valeur de `1.0` représente l'élévation réelle ; des valeurs supérieures accentuent le relief visuellement.
-
-**Valeurs possibles:** `1.0`–`3.0` (valeur recommandée : `1.5`)
-
-**Valeur par défaut:** `1.5`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain.default3D` (boolean, optionnel)
+#### `basemaps.{id}.terrain.demMaxZoom` (number, optional)
 
-**Description:** Active automatiquement le terrain 3D dès que ce basemap est sélectionné. Pas de toggle UI requis : le terrain s'active au switch vers ce basemap et se désactive au switch vers un basemap sans terrain.
+**Description:** Highest zoom level available in the DEM tiles. Above it, MapLibre reuses the highest available level.
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** Integer between `0` and `20`
 
-**Valeur par défaut:** `false`
+**Default:** `15`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.terrain.pitch` (number, optionnel)
-
-**Description:** Inclinaison initiale de la caméra (en degrés) lors de l'activation du terrain 3D. Appliqué au switch vers ce basemap quand `default3D: true`.
-
-**Valeurs possibles:** `0`–`85` (doit être ≤ `map.maxPitch`)
-
-**Valeur par défaut:** `45`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain.bearing` (number, optionnel)
+#### `basemaps.{id}.terrain.exaggeration` (number, optional)
 
-**Description:** Rotation initiale de la vue (en degrés, sens des aiguilles d'une montre depuis le nord) lors de l'activation du terrain 3D.
+**Description:** Vertical exaggeration factor of the relief. `1.0` renders true elevation; higher values accentuate the relief visually.
 
-**Valeurs possibles:** `0`–`359`
+**Possible values:** `1.0`–`3.0` (recommended: `1.5`)
 
-**Valeur par défaut:** `0` (nord en haut)
+**Default:** `1.5`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.imageSource` (object, optionnel)
+#### `basemaps.{id}.terrain.default3D` (boolean, optional)
 
-**Description:** Configuration d'une image géoréférencée statique. Requis quand `type: "image"`.
+**Description:** Turns 3D terrain on as soon as this base map is selected. No UI toggle is required: terrain is enabled when switching to this base map, and disabled when switching to a base map without terrain.
 
-**Exemple:**
+**Possible values:** `true` | `false`
+
+**Default:** `false`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.terrain.pitch` (number, optional)
+
+**Description:** Initial camera pitch (in degrees) applied when 3D terrain is enabled. Applied on switching to this base map when `default3D: true`.
+
+**Possible values:** `0`–`85` (must be ≤ `map.maxPitch`)
+
+**Default:** `45`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.terrain.bearing` (number, optional)
+
+**Description:** Initial view rotation (in degrees, clockwise from north) applied when 3D terrain is enabled.
+
+**Possible values:** `0`–`359`
+
+**Default:** `0` (north up)
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.imageSource` (object, optional)
+
+**Description:** Configuration of a static georeferenced image. Required when `type: "image"`.
+
+**Example:**
 
 ```json
 {
@@ -1500,51 +1291,51 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-**État:** ✅ Actif et fonctionnel (depuis v2.1.0)
+**Status:** Active and functional (since v2.1.0)
 
 ---
 
-#### `basemaps.{id}.imageSource.url` (string, obligatoire si type="image")
+#### `basemaps.{id}.imageSource.url` (string, required when type="image")
 
-**Description:** URL de l'image à afficher. Doit être HTTP, HTTPS ou data URI.
+**Description:** URL of the image to display. Must be HTTP, HTTPS or a data URI.
 
-**Valeurs possibles:** URL valide (`http://`, `https://`, `data:`)
+**Possible values:** A valid URL (`http://`, `https://`, `data:`)
 
-**Valeur par défaut:** Aucune
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.imageSource.coordinates` (array, optionnel)
-
-**Description:** Positions des 4 coins de l'image en `[lng, lat]`, dans l'ordre : Nord-Ouest, Nord-Est, Sud-Est, Sud-Ouest.
-
-**Valeurs possibles:** Tableau de 4 paires `[lng, lat]` (WGS84)
-
-**Valeur par défaut:** Limites monde `[[-180, 85.051129], [180, 85.051129], [180, -85.051129], [-180, -85.051129]]`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.imageSource.opacity` (number, optionnel)
+#### `basemaps.{id}.imageSource.coordinates` (array, optional)
 
-**Description:** Opacité de l'image.
+**Description:** Positions of the four image corners as `[lng, lat]`, in this order: north-west, north-east, south-east, south-west.
 
-**Valeurs possibles:** `0.0` (transparent) à `1.0` (opaque)
+**Possible values:** An array of four `[lng, lat]` pairs (WGS84)
 
-**Valeur par défaut:** `1`
+**Default:** world bounds `[[-180, 85.051129], [180, 85.051129], [180, -85.051129], [-180, -85.051129]]`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.hillshade` (object, optionnel)
+#### `basemaps.{id}.imageSource.opacity` (number, optional)
 
-**Description:** Configuration de l'ombrage de relief (hillshade). Requis quand `type: "hillshade"`.
+**Description:** Opacity of the image.
 
-**Exemple:**
+**Possible values:** `0.0` (transparent) to `1.0` (opaque)
+
+**Default:** `1`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.hillshade` (object, optional)
+
+**Description:** Hillshade (relief shading) configuration. Required when `type: "hillshade"`.
+
+**Example:**
 
 ```json
 {
@@ -1560,125 +1351,125 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-> **Note :** Si une source DEM `terrain-dem` (terrain 3D) est déjà présente avec la même `demUrl`, GeoLeaf la réutilise automatiquement au lieu d'en créer une seconde.
+> **Note:** if a `terrain-dem` DEM source (3D terrain) is already present with the same `demUrl`, GeoLeaf reuses it instead of creating a second one.
 
-**État:** ✅ Actif et fonctionnel (depuis v2.1.0)
-
----
-
-#### `basemaps.{id}.hillshade.demUrl` (string, obligatoire si type="hillshade")
-
-**Description:** URL template du Modèle Numérique de Terrain (MNT) raster-dem.
-
-**Valeurs possibles:** URL template avec `{z}/{x}/{y}`
-
-**Valeur par défaut:** Aucune
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional (since v2.1.0)
 
 ---
 
-#### `basemaps.{id}.hillshade.demEncoding` (string, optionnel)
+#### `basemaps.{id}.hillshade.demUrl` (string, required when type="hillshade")
 
-**Description:** Encodage de l'altitude dans l'image MNT.
+**Description:** URL template of the raster-dem Digital Elevation Model.
 
-**Valeurs possibles:** `"terrarium"` | `"mapbox"` | `"custom"`
+**Possible values:** URL template containing `{z}/{x}/{y}`
 
-**Valeur par défaut:** `"terrarium"`
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.hillshade.demMaxZoom` (number, optionnel)
-
-**Description:** Niveau de zoom maximum de la source DEM.
-
-**Valeurs possibles:** Entier entre 1 et 20
-
-**Valeur par défaut:** `15`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.hillshade.shadowColor` (string, optionnel)
+#### `basemaps.{id}.hillshade.demEncoding` (string, optional)
 
-**Description:** Couleur des zones d'ombre.
+**Description:** Encoding of the elevation inside the DEM image.
 
-**Valeurs possibles:** Couleur CSS hexadécimale ou nom de couleur
+**Possible values:** `"terrarium"` | `"mapbox"` | `"custom"`
 
-**Valeur par défaut:** `"#000000"`
+**Default:** `"terrarium"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.hillshade.highlightColor` (string, optionnel)
-
-**Description:** Couleur des zones éclairées.
-
-**Valeurs possibles:** Couleur CSS hexadécimale ou nom de couleur
-
-**Valeur par défaut:** `"#ffffff"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.hillshade.accentColor` (string, optionnel)
+#### `basemaps.{id}.hillshade.demMaxZoom` (number, optional)
 
-**Description:** Couleur d'accentuation (bordures et contours).
+**Description:** Maximum zoom level of the DEM source.
 
-**Valeurs possibles:** Couleur CSS hexadécimale ou nom de couleur
+**Possible values:** Integer between 1 and 20
 
-**Valeur par défaut:** `"#000000"`
+**Default:** `15`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.hillshade.exaggeration` (number, optionnel)
-
-**Description:** Intensité du relief ombré.
-
-**Valeurs possibles:** `0.0` (plat) à `1.0` (maximum)
-
-**Valeur par défaut:** `0.5`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.hillshade.illuminationDirection` (number, optionnel)
+#### `basemaps.{id}.hillshade.shadowColor` (string, optional)
 
-**Description:** Direction de la source lumineuse en degrés.
+**Description:** Colour of the shaded areas.
 
-**Valeurs possibles:** `0`–`359`
+**Possible values:** CSS hexadecimal colour or colour name
 
-**Valeur par défaut:** `335`
+**Default:** `"#000000"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.hillshade.illuminationAnchor` (string, optionnel)
-
-**Description:** Référentiel de la direction lumineuse.
-
-**Valeurs possibles:** `"viewport"` (suit la rotation de la carte) | `"map"` (fixé sur le nord géographique)
-
-**Valeur par défaut:** `"viewport"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wmts` (object, optionnel)
+#### `basemaps.{id}.hillshade.highlightColor` (string, optional)
 
-**Description:** Configuration d'un service OGC WMTS avec résolution dynamique. Requis quand `type: "wmts"`.
+**Description:** Colour of the lit areas.
 
-**Exemple:**
+**Possible values:** CSS hexadecimal colour or colour name
+
+**Default:** `"#ffffff"`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.hillshade.accentColor` (string, optional)
+
+**Description:** Accent colour (edges and outlines).
+
+**Possible values:** CSS hexadecimal colour or colour name
+
+**Default:** `"#000000"`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.hillshade.exaggeration` (number, optional)
+
+**Description:** Intensity of the shaded relief.
+
+**Possible values:** `0.0` (flat) to `1.0` (maximum)
+
+**Default:** `0.5`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.hillshade.illuminationDirection` (number, optional)
+
+**Description:** Direction of the light source, in degrees.
+
+**Possible values:** `0`–`359`
+
+**Default:** `335`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.hillshade.illuminationAnchor` (string, optional)
+
+**Description:** Frame of reference for the light direction.
+
+**Possible values:** `"viewport"` (follows the map rotation) | `"map"` (locked to geographic north)
+
+**Default:** `"viewport"`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.wmts` (object, optional)
+
+**Description:** Configuration of an OGC WMTS service with dynamic resolution. Required when `type: "wmts"`.
+
+**Example:**
 
 ```json
 {
@@ -1691,65 +1482,65 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-> **Note :** GeoLeaf récupère le document `GetCapabilities` au premier affichage du basemap, extrait l'URL template de tuiles et la met en cache pour les switches ultérieurs. Si la requête échoue, le basemap n'est pas affiché et un warning est émis en console.
+> **Note:** GeoLeaf fetches the `GetCapabilities` document the first time the base map is displayed, extracts the tile URL template and caches it for later switches. If the request fails, the base map is not displayed and a warning is logged to the console.
 
-**État:** ✅ Actif et fonctionnel (depuis v2.1.0)
-
----
-
-#### `basemaps.{id}.wmts.getCapabilitiesUrl` (string, obligatoire si type="wmts")
-
-**Description:** URL complète du document GetCapabilities OGC WMTS.
-
-**Valeurs possibles:** URL valide (`http://`, `https://`)
-
-**Valeur par défaut:** Aucune
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional (since v2.1.0)
 
 ---
 
-#### `basemaps.{id}.wmts.layer` (string, optionnel)
+#### `basemaps.{id}.wmts.getCapabilitiesUrl` (string, required when type="wmts")
 
-**Description:** Identifiant de la couche WMTS à utiliser.
+**Description:** Full URL of the OGC WMTS GetCapabilities document.
 
-**Valeurs possibles:** Chaîne correspondant à l'`Identifier` d'une couche dans le GetCapabilities
+**Possible values:** A valid URL (`http://`, `https://`)
 
-**Valeur par défaut:** Première couche disponible dans le GetCapabilities
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.wmts.tileMatrixSet` (string, optionnel)
-
-**Description:** TileMatrixSet à utiliser pour les tuiles.
-
-**Valeurs possibles:** Identifiant valide dans le GetCapabilities (ex: `"PM"`, `"GoogleMapsCompatible"`, `"EPSG:3857"`)
-
-**Valeur par défaut:** `"GoogleMapsCompatible"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wmts.format` (string, optionnel)
+#### `basemaps.{id}.wmts.layer` (string, optional)
 
-**Description:** Format MIME des tuiles WMTS.
+**Description:** Identifier of the WMTS layer to use.
 
-**Valeurs possibles:** `"image/png"` | `"image/jpeg"` | `"image/webp"`
+**Possible values:** A string matching the `Identifier` of a layer in the GetCapabilities document
 
-**Valeur par défaut:** `"image/png"`
+**Default:** The first layer available in the GetCapabilities document
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wms` (object, optionnel)
+#### `basemaps.{id}.wmts.tileMatrixSet` (string, optional)
 
-**Description:** Configuration d'un service OGC WMS (flux raster). Requis quand `type: "wms"`.
+**Description:** TileMatrixSet used for the tiles.
 
-**Exemple:**
+**Possible values:** An identifier declared in the GetCapabilities document (e.g. `"PM"`, `"GoogleMapsCompatible"`, `"EPSG:3857"`)
+
+**Default:** `"GoogleMapsCompatible"`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.wmts.format` (string, optional)
+
+**Description:** MIME type of the WMTS tiles.
+
+**Possible values:** `"image/png"` | `"image/jpeg"` | `"image/webp"`
+
+**Default:** `"image/png"`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.wms` (object, optional)
+
+**Description:** Configuration of an OGC WMS service (raster stream). Required when `type: "wms"`.
+
+**Example:**
 
 ```json
 {
@@ -1764,501 +1555,197 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-**État:** ✅ Actif et fonctionnel (depuis v2.1.0)
+**Status:** Active and functional (since v2.1.0)
 
 ---
 
-#### `basemaps.{id}.wms.url` (string, obligatoire si type="wms")
+#### `basemaps.{id}.wms.url` (string, required when type="wms")
 
-**Description:** URL de base du serveur WMS (sans paramètres de requête).
+**Description:** Base URL of the WMS server (without query parameters).
 
-**Valeurs possibles:** URL valide (`http://`, `https://`)
+**Possible values:** A valid URL (`http://`, `https://`)
 
-**Valeur par défaut:** Aucune
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.wms.layers` (string, obligatoire si type="wms")
-
-**Description:** Nom(s) de couche(s) WMS, séparés par virgule.
-
-**Exemple:** `"ORTHOIMAGERY.ORTHOPHOTOS"` ou `"couche1,couche2"`
-
-**Valeur par défaut:** Aucune
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wms.version` (string, optionnel)
+#### `basemaps.{id}.wms.layers` (string, required when type="wms")
 
-**Description:** Version du protocole WMS.
+**Description:** WMS layer name(s), comma-separated.
 
-**Valeurs possibles:** `"1.1.1"` | `"1.3.0"`
+**Example:** `"ORTHOIMAGERY.ORTHOPHOTOS"` or `"layer1,layer2"`
 
-**Valeur par défaut:** `"1.3.0"`
+**Default:** None
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.wms.crs` (string, optionnel)
-
-**Description:** Système de coordonnées des requêtes WMS.
-
-**Valeurs possibles:** Identifiant EPSG (ex: `"EPSG:3857"`, `"EPSG:4326"`)
-
-**Valeur par défaut:** `"EPSG:3857"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wms.format` (string, optionnel)
+#### `basemaps.{id}.wms.version` (string, optional)
 
-**Description:** Format MIME des images WMS.
+**Description:** Version of the WMS protocol.
 
-**Valeurs possibles:** `"image/png"` | `"image/jpeg"` | `"image/webp"`
+**Possible values:** `"1.1.1"` | `"1.3.0"`
 
-**Valeur par défaut:** `"image/png"`
+**Default:** `"1.3.0"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.wms.tileSize` (number, optionnel)
-
-**Description:** Taille des tuiles de requête WMS en pixels.
-
-**Valeurs possibles:** `256` | `512`
-
-**Valeur par défaut:** `256`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.wms.transparent` (boolean, optionnel)
+#### `basemaps.{id}.wms.crs` (string, optional)
 
-**Description:** Demande des images WMS avec fond transparent (PNG uniquement).
+**Description:** Coordinate reference system used for the WMS requests.
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** EPSG identifier (e.g. `"EPSG:3857"`, `"EPSG:4326"`)
 
-**Valeur par défaut:** `false`
+**Default:** `"EPSG:3857"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `basemaps.{id}.wms.styles` (string, optionnel)
-
-**Description:** Style WMS à appliquer (paramètre `STYLES` de la requête WMS).
-
-**Valeurs possibles:** Identifiant de style valide côté serveur, ou chaîne vide
-
-**Valeur par défaut:** `""` (style par défaut serveur)
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-## Section performance
+#### `basemaps.{id}.wms.format` (string, optional)
 
-### `performance` (object, optionnel)
+**Description:** MIME type of the WMS images.
 
-**Description:** Paramètres d'optimisation de performance pour le chargement des couches.
+**Possible values:** `"image/png"` | `"image/jpeg"` | `"image/webp"`
 
-**État:** ✅ Actif et fonctionnel
+**Default:** `"image/png"`
+
+**Status:** Active and functional
 
 ---
 
-#### `performance.maxConcurrentLayers` (number, optionnel)
+#### `basemaps.{id}.wms.tileSize` (number, optional)
 
-**Description:** Nombre maximum de couches pouvant être chargées en parallèle.
+**Description:** Size, in pixels, of the tiles requested from the WMS.
 
-**Utilisation dans le code:**
+**Possible values:** `256` | `512`
+
+**Default:** `256`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.wms.transparent` (boolean, optional)
+
+**Description:** Requests WMS images with a transparent background (PNG only).
+
+**Possible values:** `true` | `false`
+
+**Default:** `false`
+
+**Status:** Active and functional
+
+---
+
+#### `basemaps.{id}.wms.styles` (string, optional)
+
+**Description:** WMS style to apply (the `STYLES` parameter of the WMS request).
+
+**Possible values:** A style identifier known to the server, or an empty string
+
+**Default:** `""` (the server's default style)
+
+**Status:** Active and functional
+
+---
+
+## performance section — **REMOVED** (dead key)
+
+::: warning
+**`performance` no longer exists, and nothing replaces it — the whole block is gone.**
+
+The three keys it declared (`layerLoadDelay`, `maxConcurrentLayers`, `fitBoundsOnThemeChange`) have no reader in `packages/*/src`, and no schema declares them. The setting disappeared together with the loader it drove.
+
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
+
+---
+
+## search section — **REMOVED** (dead key)
+
+::: warning
+**`search` no longer exists. The live form is the `filter` capability (`modules.filter`).**
+
+The full-text engine (`flexsearch`) was removed from the core — dormant, with no consumer — along with its dependency. The nine keys declared here (`title`, `filters`, `actions`, `radiusMin/Max/Default/Step`, `searchPlaceholder`) are no longer read anywhere. Text search in the interface is provided by the text field of the Filter panel, which ignores accents and word order.
+
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
+
+---
+
+## layerManagerConfig section
+
+> **Note for v2.0.0:** these parameters now belong in `ui.json`. They are still accepted inline in `profile.json` for backwards compatibility.
+
+### `layerManagerConfig` (object, optional)
+
+**Description:** Configuration of the layer manager.
+
+**Code usage:**
 
 ```javascript
-// themes/theme-applier.js ligne 102
-
-const maxLayers = perfConfig.maxConcurrentLayers || 10;
-```
-
-**Fichiers source:**
-
-- src/modules/themes/theme-applier.js ligne 102
-
-**Valeurs possibles:** Nombre entier > 0 (généralement 5-15)
-
-**Valeur par défaut:** `10`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `performance.layerLoadDelay` (number, optionnel)
-
-**Description:** Délai en millisecondes entre le chargement de chaque couche pour éviter la surcharge.
-
-**Utilisation dans le code:**
-
-```javascript
-// themes/theme-applier.js ligne 103
-
-const loadDelay = perfConfig.layerLoadDelay || 200;
-```
-
-**Fichiers source:**
-
-- src/modules/themes/theme-applier.js ligne 103
-
-**Valeurs possibles:** Nombre entier en millisecondes (généralement 100-500)
-
-**Valeur par défaut:** `200`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `performance.fitBoundsOnThemeChange` (boolean, optionnel)
-
-**Description:** Ajuste automatiquement la vue de la carte aux limites des données lors du changement de thème.
-
-**Utilisation dans le code:**
-
-```javascript
-// themes/theme-applier.js ligne 104
-
-const enableFitBounds = perfConfig.fitBoundsOnThemeChange !== false;
-```
-
-**Fichiers source:**
-
-- src/modules/themes/theme-applier.js ligne 104
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `false`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-## Section search
-
-> **Note v2.0.0 :** Ces paramètres sont désormais dans `ui.json` sous la clé `searchConfig`. La clé `search` reste acceptée inline dans `profile.json` pour la rétrocompatibilité. Dans `ui.json`, utiliser `searchConfig` (voir [CONFIGURATION_GUIDE.md — searchConfig](CONFIGURATION_GUIDE.md)).
-
-### `search` (object, optionnel)
-
-**Description:** Configuration du panneau de recherche et de filtrage des POI.
-
-**Note:** Supporte aussi l'ancien format `profile.panels.search` pour la rétrocompatibilité.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-panel/renderer.js ligne 52
-
-const searchPanel = (profile.panels && profile.panels.search) || profile.search;
-```
-
-**Fichiers source:**
-
-- `renderer.ts` ligne 51-52
-
-- `filter-control-builder.ts` ligne 385
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.title` (string, optionnel)
-
-**Description:** Titre du panneau de filtrage.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-panel/renderer.js ligne 93
-
-textContent: searchPanel.title || "Filtres";
-```
-
-**Fichiers source:**
-
-- `renderer.ts` ligne 93
-
-**Valeurs possibles:** Chaîne de caractères libre
-
-**Valeur par défaut:** `"Filtres"`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.radiusMin` (number, optionnel)
-
-**Description:** Rayon minimum (en km) pour la recherche par proximité.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-control-builder.js ligne 387
-
-if (typeof searchConfig.radiusMin === "number" && searchConfig.radiusMin > 0) {
-    minRadius = searchConfig.radiusMin;
-}
-```
-
-**Fichiers source:**
-
-- `filter-control-builder.ts` ligne 387
-
-**Valeurs possibles:** Nombre > 0 (généralement 1-10)
-
-**Valeur par défaut:** `1`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.radiusMax` (number, optionnel)
-
-**Description:** Rayon maximum (en km) pour la recherche par proximité.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-control-builder.js ligne 390
-
-if (typeof searchConfig.radiusMax === "number" && searchConfig.radiusMax > 0) {
-    maxRadius = searchConfig.radiusMax;
-}
-```
-
-**Fichiers source:**
-
-- `filter-control-builder.ts` ligne 390
-
-**Valeurs possibles:** Nombre > `radiusMin` (généralement 50-100)
-
-**Valeur par défaut:** `50`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.radiusStep` (number, optionnel)
-
-**Description:** Pas d'incrémentation pour le curseur de rayon de recherche.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-control-builder.js ligne 393
-
-if (typeof searchConfig.radiusStep === "number" && searchConfig.radiusStep > 0) {
-    stepRadius = searchConfig.radiusStep;
-}
-```
-
-**Fichiers source:**
-
-- `filter-control-builder.ts` ligne 393
-
-**Valeurs possibles:** Nombre > 0 (généralement 1-5)
-
-**Valeur par défaut:** `1`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.radiusDefault` (number, optionnel)
-
-**Description:** Rayon par défaut (en km) pour la recherche par proximité.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-control-builder.js ligne 396
-
-if (typeof searchConfig.radiusDefault === "number" && searchConfig.radiusDefault > 0) {
-    defaultRadius = searchConfig.radiusDefault;
-}
-```
-
-**Fichiers source:**
-
-- `filter-control-builder.ts` ligne 396
-
-**Valeurs possibles:** Nombre entre `radiusMin` et `radiusMax` (généralement 10-20)
-
-**Valeur par défaut:** `10`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.searchPlaceholder` (string, optionnel)
-
-**Description:** Texte de placeholder pour le champ de recherche textuelle.
-
-**Valeurs possibles:** Chaîne de caractères libre
-
-**Valeur par défaut:** `"Rechercher un POI..."`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.filters` (array, optionnel)
-
-**Description:** Liste des filtres disponibles dans le panneau de recherche.
-
-**Structure de chaque filtre:**
-
-```json
-{
-    "id": "string",
-
-    "type": "string",
-
-    "label": "string",
-
-    "placeholder": "string",
-
-    "searchFields": ["string"],
-
-    "buttonLabel": "string",
-
-    "instructionText": "string",
-
-    "field": "string"
-}
-```
-
-**Types de filtres disponibles:**
-
-- `"search"` - Recherche textuelle
-
-- `"proximity"` - Recherche par proximité géographique
-
-- `"tree"` - Arbre de catégories
-
-- `"multiselect-tags"` - Sélection multiple de tags
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/filter-panel/renderer.js ligne 55
-
-const filters = searchPanel && Array.isArray(searchPanel.filters) ? searchPanel.filters : null;
-```
-
-**Fichiers source:**
-
-- `renderer.ts` ligne 55
-
-- `filter-control-builder.ts`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `search.actions` (object, optionnel)
-
-**Description:** Labels des boutons d'action du panneau de filtrage.
-
-**Structure:**
-
-```json
-{
-    "applyLabel": "string",
-
-    "resetLabel": "string"
-}
-```
-
-**Valeurs par défaut:**
-
-- `applyLabel`: `"Appliquer"`
-
-- `resetLabel`: `"Réinitialiser"`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-## Section layerManagerConfig
-
-> **Note v2.0.0 :** Ces paramètres sont désormais dans `ui.json`. Ils restent acceptés inline dans `profile.json` pour la rétrocompatibilité.
-
-### `layerManagerConfig` (object, optionnel)
-
-**Description:** Configuration du gestionnaire de couches.
-
-**Utilisation dans le code:**
-
-```javascript
-// geoleaf.layer-manager.ts ligne 149
+// geoleaf.layer-manager.ts line 149
 
 const layerManagerConfig = GeoLeaf.Config.get("layerManagerConfig");
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.layer-manager.ts` ligne 149
+- `geoleaf.layer-manager.ts` line 149
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `layerManagerConfig.title` (string, optionnel)
-
-**Description:** Titre du gestionnaire de couches.
-
-**Valeurs possibles:** Chaîne de caractères libre
-
-**Valeur par défaut:** `"Couches"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `layerManagerConfig.collapsedByDefault` (boolean, optionnel)
+#### `layerManagerConfig.title` (string, optional)
 
-**Description:** État replié initial du gestionnaire de couches.
+**Description:** Title of the layer manager.
 
-**Utilisation dans le code:**
+**Possible values:** Free text
+
+**Default:** `"Couches"`
+
+**Status:** Active and functional
+
+---
+
+#### `layerManagerConfig.collapsedByDefault` (boolean, optional)
+
+**Description:** Initial collapsed state of the layer manager.
+
+**Code usage:**
 
 ```javascript
-// geoleaf.layer-manager.ts ligne 152
+// geoleaf.layer-manager.ts line 152
 
 collapsed: layerManagerConfig?.collapsedByDefault;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.layer-manager.ts` ligne 152
+- `geoleaf.layer-manager.ts` line 152
 
-- `control.ts` ligne 111
+- `control.ts` line 111
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `true`
+**Default:** `true`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `layerManagerConfig.sections` (array, optionnel)
+#### `layerManagerConfig.sections` (array, optional)
 
-**Description:** Liste des sections du gestionnaire de couches.
+**Description:** List of the sections of the layer manager.
 
-**Structure de chaque section:**
+**Structure of each section:**
 
 ```jsonc
 
@@ -2276,37 +1763,41 @@ collapsed: layerManagerConfig?.collapsedByDefault;
 
 ```
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
-// geoleaf.layer-manager.ts ligne 173
+// geoleaf.layer-manager.ts line 173
 
 collapsedByDefault: s.collapsedByDefault;
 ```
 
-**Fichiers source:**
+**Source files:**
 
-- `geoleaf.layer-manager.ts` ligne 162-176
+- `geoleaf.layer-manager.ts` lines 162-176
 
-- `renderer.ts` ligne 61-62
+- `renderer.ts` lines 61-62
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-## Section modules.legend
+## modules.legend section
 
-> ⚠️ **Migration cassante (S10/F2, capacité `legend`).** La légende ne vit plus sous le flag `ui.showLegend` ni le bloc racine `legendConfig` mais sous **`modules.legend`** — fichier `config/plugins/legend.json` référencé par `Files.modules.legend`. La légende reste **intégrée au core** — ce n'est pas un plugin externe. Elle est déclarée auprès du `CapabilityRegistry` et introspectable via `GeoLeaf.Introspection.getCapabilitySchema("legend")`. La façade publique `GeoLeaf.Legend` est **inchangée**.
+::: warning
+**Breaking migration (`legend` capability).** The legend no longer lives under the `ui.showLegend` flag nor under the root `legendConfig` block, but under **`modules.legend`** — file `config/plugins/legend.json`, referenced by `Files.modules.legend`. The legend remains **built into the core**; it is not an external plugin. It is registered with the `CapabilityRegistry` and can be introspected through `GeoLeaf.Introspection.getCapabilitySchema("legend")`. The public `GeoLeaf.Legend` facade is **unchanged**.
+:::
 
-> ℹ️ **Config réveillée.** `title`, `position` et `collapsedByDefault` étaient auparavant morts (ignorés, écrasés par des défauts internes du contrôle). Sous `modules.legend`, ils sont désormais **réellement lus et appliqués** : un profil qui portait ces clés (ancien `legendConfig`) verra sa légende avec le titre, la position et l'état replié configurés.
+::: info
+**Configuration now honoured.** `title`, `position` and `collapsedByDefault` used to be dead: they were ignored, overwritten by the control's internal defaults. Under `modules.legend` they are read and applied, so a profile carrying these keys (former `legendConfig`) gets the configured title, position and collapsed state.
+:::
 
-> **Événement :** au premier montage du contrôle, la légende émet une fois `geoleaf:legend:ready` (payload `{ position, layerCount }`).
+> **Event:** on the first mount of the control, the legend emits `geoleaf:legend:ready` once (payload `{ position, layerCount }`).
 
-### `modules.legend` (object, optionnel)
+### `modules.legend` (object, optional)
 
-**Description:** Configuration de la capacité de légende cartographique.
+**Description:** Configuration of the map legend capability.
 
-**Utilisation dans le code:**
+**Code usage:**
 
 ```javascript
 // capabilities/legend/config.ts
@@ -2314,57 +1805,57 @@ collapsedByDefault: s.collapsedByDefault;
 const raw = Config.get("modules.legend", {});
 ```
 
-**Fichiers source:**
+**Source files:**
 
 - `capabilities/legend/config.ts`
 
 - `capabilities/legend/legend-capability.ts`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `modules.legend.enabled` (boolean, optionnel)
+#### `modules.legend.enabled` (boolean, optional)
 
-**Description:** Active ou désactive la légende (gate de la capacité, **opt-out** — ex-`ui.showLegend`). Absente ⟹ active.
+**Description:** Enables or disables the legend (capability gate, **opt-out** — former `ui.showLegend`). Absent means enabled.
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** `true` | `false`
 
-**Valeur par défaut:** `true`
+**Default:** `true`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `modules.legend.title` (string, optionnel)
-
-**Description:** Titre de la légende (ex-`legendConfig.title`).
-
-**Valeurs possibles:** Chaîne de caractères libre
-
-**Valeur par défaut:** `"Legend"`
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `modules.legend.collapsedByDefault` (boolean, optionnel)
+#### `modules.legend.title` (string, optional)
 
-**Description:** État replié initial de la légende (ex-`legendConfig.collapsedByDefault`).
+**Description:** Title of the legend (former `legendConfig.title`).
 
-**Valeurs possibles:** `true` | `false`
+**Possible values:** Free text
 
-**Valeur par défaut:** `false`
+**Default:** `"Legend"`
 
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `modules.legend.position` (string, optionnel)
+#### `modules.legend.collapsedByDefault` (boolean, optional)
 
-**Description:** Position de la légende sur la carte (ex-`legendConfig.position`).
+**Description:** Initial collapsed state of the legend (former `legendConfig.collapsedByDefault`).
 
-**Valeurs possibles:**
+**Possible values:** `true` | `false`
+
+**Default:** `false`
+
+**Status:** Active and functional
+
+---
+
+#### `modules.legend.position` (string, optional)
+
+**Description:** Position of the legend on the map (former `legendConfig.position`).
+
+**Possible values:**
 
 - `"topleft"`
 
@@ -2374,936 +1865,224 @@ const raw = Config.get("modules.legend", {});
 
 - `"bottomright"`
 
-**Valeur par défaut:** `"bottomleft"`
+**Default:** `"bottomleft"`
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-## Section poiConfig
-
-### `poiConfig` (object, optionnel)
-
-**Description:** Configuration des Points d'Intérêt (POI) et de leur clustering.
-
-**Utilisation dans le code:**
-
-```javascript
-// geojson/clustering.js ligne 25
-
-return Config.get("poiConfig") || {};
-```
-
-**Fichiers source:**
-
-- `clustering.ts` ligne 25
-
-**État:** ✅ Actif et fonctionnel
+**Status:** Active and functional
 
 ---
 
-#### `poiConfig.enabled` (boolean, optionnel)
+## poiConfig section — **REMOVED** (dead key)
 
-**Description:** Active ou désactive le système de POI.
+::: warning
+**`poiConfig` no longer exists. The live form is `modules.cluster`.**
 
-**Valeurs possibles:** `true` | `false`
+The only two occurrences of `poiConfig` left in the sources are past-tense comments in `capabilities/cluster/types.ts` (_"was `poiConfig.clusterStrategy`"_). The clustering keys (`clustering`, `clusterRadius`, `disableClusteringAtZoom`, `clusterStrategy`) live under `modules.cluster`. `applyToAllSources` has **no equivalent at all**: zero occurrences.
 
-**Valeur par défaut:** `false`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `poiConfig.clustering` (boolean, optionnel)
-
-**Description:** Active le regroupement visuel (clustering) des marqueurs POI.
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-#### `poiConfig.clusterRadius` (number, optionnel)
+## brandingConfig section — **REMOVED** (dead key)
 
-**Description:** Rayon en pixels en dessous duquel deux marqueurs sont regroupés dans un cluster.
+::: warning
+**`brandingConfig` no longer exists. The live form is `modules.branding`.**
 
-**Valeur par défaut:** `80`
+No reader in `packages/*/src`, no schema. The real gate is `modules.branding.enabled` (`capabilities/branding/`).
 
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `poiConfig.disableClusteringAtZoom` (number, optionnel)
-
-**Description:** Niveau de zoom à partir duquel le clustering est désactivé (les marqueurs individuels s'affichent).
-
-**Valeur par défaut:** `12`
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-#### `poiConfig.clusterStrategy` (string, optionnel)
+## tableConfig section — moved out of the core
 
-**Description:** Stratégie de clustering des POI.
-
-**Utilisation dans le code:**
-
-```javascript
-// geojson/clustering.js ligne 123
-
-const strategy = poiConfig.clusterStrategy || "unified";
-```
-
-**Fichiers source:**
-
-- `clustering.ts` ligne 123, 131
-
-- `loader.ts` ligne 495
-
-**Valeurs possibles:**
-
-- `"unified"` - Cluster unique partagé entre toutes les couches (défaut)
-
-- `"by-source"` - Cluster indépendant par source de données
-
-**Valeur par défaut:** `"unified"`
-
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- [\_\_tests\_\_/geojson/geojson-layers.test.js](../__tests__/geojson/geojson-layers.test.js) ligne 373
+::: info
+The data table was moved out of the core into the MIT plugin `@geoleaf-plugins/table`. See the plugin README for installation, configuration (`modules.table.*`) and migration.
+:::
 
 ---
 
-## Section brandingConfig
+## scaleConfig section — **REMOVED** (dead key)
 
-> **Note v2.0.0 :** Ces paramètres sont désormais dans `ui.json`. Ils restent acceptés inline dans `profile.json` pour la rétrocompatibilité.
+::: warning
+**`scaleConfig` (at ROOT level) no longer exists. The live form is `modules.scale`.**
 
-### `brandingConfig` (object, optionnel)
+Do not confuse the two `scaleConfig` objects: a LAYER-level one (`{minScale, maxScale}`, `kernel/geojson/core-types.ts`) is very much alive and is not this one. The five keys declared here (`position`, `scaleGraphic`, `scaleNumeric`, `scaleNumericEditable`, `scaleNivel`) are exactly the keys of the `configSchema` of the scale capability (`scale-capability.ts:42-57`), whose gate is `modules.scale.enabled`.
 
-**Description:** Configuration du bandeau d'attribution/branding.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/branding.js ligne 72
-
-const brandingConfig = GeoLeaf.Config?.get("brandingConfig");
-```
-
-**Fichiers source:**
-
-- `branding.ts` ligne 72
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-#### `brandingConfig.enabled` (boolean, optionnel)
+## storage section — **REMOVED** (dead key)
 
-**Description:** Active/désactive le bandeau de branding.
+::: warning
+**`storage` (at ROOT level) no longer exists. The live form is `modules.offline`.**
 
-**Utilisation dans le code:**
+The capability was renamed `storage` → `offline`. Its gate is `modules.offline.enabled` (`offline-capability.ts:41`, opt-in). `enableOfflineDetector` still exists, but as an INTERNAL lifecycle option fed by `cfg.offlineDetectorEnabled` (`capabilities/offline/lifecycle.ts:128`), not as a root profile key.
 
-```javascript
-// ui/branding.js ligne 74
-
-if (brandingConfig === false || (brandingConfig && brandingConfig.enabled === false)) {
-    return;
-}
-```
-
-**Fichiers source:**
-
-- `branding.ts` ligne 74
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-#### `brandingConfig.text` (string, optionnel)
+## poiAddConfig section — **REMOVED** (dead key)
 
-**Description:** Texte du bandeau de branding (HTML autorisé).
+::: warning
+**`poiAddConfig` no longer exists. The live form is `modules.editor` (`@geoleaf-plugins/editor`).**
 
-**Utilisation dans le code:**
+No reader, no schema. The `addpoi` plugin was merged into `editor`; `config.ts:48` of the plugin records that `defaultPosition` was _"absorbed from `modules.addpoi.defaultPosition`, which the CORE used to read"_. The live block is `modules.editor`, which **is** declared in the schema.
 
-```javascript
-// ui/branding.js ligne 82
-
-this._options.text = brandingConfig.text;
-```
-
-**Fichiers source:**
-
-- `branding.ts` ligne 81-82
-
-**Valeurs possibles:** Chaîne HTML
-
-**Valeur par défaut:** `"Propulsé par © GeoLeaf"`
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-#### `brandingConfig.position` (string, optionnel)
+## geocodingConfig section — **REMOVED** (dead key)
 
-**Description:** Position du bandeau de branding sur la carte.
+::: warning
+**`geocodingConfig` no longer exists. The live form is `modules.geocoding` (`@geoleaf-plugins/geocoding`).**
 
-**Utilisation dans le code:**
+No reader, no schema. The plugin reads `coreConfigGet("modules.geocoding", {})` (`geocoding/src/config.ts:21`), as required by INV-CONFIG of Plugin Contract v1.
 
-```javascript
-// ui/branding.js ligne 85
-
-this._options.position = brandingConfig.position;
-```
-
-**Fichiers source:**
-
-- `branding.ts` ligne 84-85
-
-**Valeurs possibles:**
-
-- `"topleft"`
-
-- `"topright"`
-
-- `"bottomleft"`
-
-- `"bottomright"`
-
-**Valeur par défaut:** `"bottomleft"`
-
-**État:** ✅ Actif et fonctionnel
+Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-## Section tableConfig — extrait du core
+## Parameters missing from profile.json
 
-> ℹ️ Le tableau de données a été extrait du core vers le plugin MIT `@geoleaf-plugins/table`. Voir le README du plugin pour l'installation, la configuration (`modules.table.*`) et la migration.
+This section describes how the GeoLeaf configuration files are organised, so that they are not confused with one another.
 
----
-
-## Section scaleConfig
-
-> **Note v2.0.0 :** Ces paramètres sont désormais dans `ui.json`. Ils restent acceptés inline dans `profile.json` pour la rétrocompatibilité.
-
-### `scaleConfig` (object, optionnel)
-
-**Description:** Configuration du contrôle d'échelle de la carte.
-
-**Utilisation dans le code:**
-
-```javascript
-
-// map/scale-control.js ligne 435
-
-? GeoLeaf.Config.get('scaleConfig')
+### Configuration file hierarchy
 
 ```
-
-**Fichiers source:**
-
-- `scale-control.ts` ligne 435
-
-**Documentation:**
-
-- [docs/config/SCALE_CONFIG.md](../docs/config/SCALE_CONFIG.md)
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `scaleConfig.scaleGraphic` (boolean, optionnel)
-
-**Description:** Affiche l'échelle graphique (barre graduée).
-
-**Utilisation dans le code:**
-
-```javascript
-
-// map/scale-control.js ligne 59
-
-if (this._config.scaleGraphic !== false) {
-
-```
-
-**Fichiers source:**
-
-- `scale-control.ts` ligne 59, 438
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `scaleConfig.scaleNumeric` (boolean, optionnel)
-
-**Description:** Affiche l'échelle numérique (ratio 1:xxxxx).
-
-**Utilisation dans le code:**
-
-```javascript
-
-// map/scale-control.js ligne 65
-
-if (this._config.scaleNumeric || this._config.scaleNivel) {
-
-```
-
-**Fichiers source:**
-
-- `scale-control.ts` ligne 65, 160, 438
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `scaleConfig.scaleNumericEditable` (boolean, optionnel)
-
-**Description:** Permet l'édition manuelle de l'échelle numérique (zoom direct).
-
-**Prérequis:** `scaleNumeric: true`
-
-**Utilisation dans le code:**
-
-```javascript
-
-// map/scale-control.js ligne 161
-
-if (this._config.scaleNumericEditable) {
-
-```
-
-**Fichiers source:**
-
-- `scale-control.ts` ligne 161, 285
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `scaleConfig.scaleNivel` (boolean, optionnel)
-
-**Description:** Affiche l'indicateur de niveau de zoom.
-
-**Utilisation dans le code:**
-
-```javascript
-
-// map/scale-control.js ligne 169
-
-if (this._config.scaleNivel) {
-
-```
-
-**Fichiers source:**
-
-- `scale-control.ts` ligne 65, 169, 438
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `scaleConfig.position` (string, optionnel)
-
-**Description:** Position du contrôle d'échelle sur la carte.
-
-**Valeurs possibles:**
-
-- `"topleft"`
-
-- `"topright"`
-
-- `"bottomleft"`
-
-- `"bottomright"`
-
-**Valeur par défaut:** `"bottomleft"`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-## Section storage
-
-### `storage` (object, optionnel)
-
-**Description:** Configuration du système de stockage et cache hors ligne.
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `storage.enableOfflineDetector` (boolean, optionnel)
-
-**Description:** Active la détection de la connectivité réseau (mode hors ligne). Affiche une notification quand la connexion est perdue ou rétablie.
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `false`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### ~~`storage.enableServiceWorker`~~ — RETIRÉE le 03/08/2026
-
-**Description :** cette clé n'existe plus. Elle était **déclarée ici, jamais posée par aucun
-profil** (`grep -rl enableServiceWorker profiles/` → 0) et sa seule lecture était un
-avertissement de démarrage qui ne s'est donc jamais déclenché. Son texte promettait en outre un
-« Service Worker complémentaire » et un « background sync » que ce dépôt n'a jamais eus.
-
-**Ce qui est vrai à la place :** le Service Worker (`sw-core.js`) est enregistré **au démarrage,
-inconditionnellement**, par la capacité `pwa` — il n'y a rien à activer. La mise en cache
-hors-ligne se règle par `modules.offline.enabled` et le bloc `modules.offline.cache`.
-
-**État :** 🗑 supprimée du code, des schémas et des profils.
-
----
-
-#### `storage.cache` (object, optionnel)
-
-**Description:** Configuration du cache hors ligne.
-
----
-
-##### `storage.cache.enableProfileCache` (boolean, optionnel)
-
-**Description:** Active le cache des ressources du profil (fichiers JSON, GeoJSON).
-
-**Utilisation dans le code:**
-
-```javascript
-// storage/cache/layer-selector.js ligne 97
-
-const profileCacheEnabled = Config.get("storage.cache.enableProfileCache", false);
-```
-
-**Fichiers source:**
-
-- src/modules/storage/cache/layer-selector.js ligne 97
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-##### `storage.cache.enableTileCache` (boolean, optionnel)
-
-**Description:** Active le cache des tuiles des fonds de carte.
-
-**Utilisation dans le code:**
-
-```javascript
-// storage/cache/layer-selector.js ligne 98
-
-const tileCacheEnabled = Config.get("storage.cache.enableTileCache", false);
-```
-
-**Fichiers source:**
-
-- src/modules/storage/cache/layer-selector.js ligne 98, 653
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-## Section poiAddConfig
-
-> **Note v2.0.0 :** Ces paramètres sont désormais dans `ui.json`. Ils restent acceptés inline dans `profile.json` pour la rétrocompatibilité.
-
-### `poiAddConfig` (object, optionnel)
-
-**Description:** Configuration de la fonctionnalité d'ajout de POI par l'utilisateur.
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `poiAddConfig.enabled` (boolean, optionnel)
-
-**Description:** Active/désactive la fonctionnalité d'ajout de POI.
-
-**Valeurs possibles:** `true` | `false`
-
-**Valeur par défaut:** `true`
-
-**État:** ✅ Actif et fonctionnel
-
----
-
-#### `poiAddConfig.defaultPosition` (string, optionnel)
-
-**Description:** Méthode par défaut pour positionner un nouveau POI.
-
-**Utilisation dans le code:**
-
-```javascript
-// ui/controls.js ligne 532
-
-const defaultPosition = config?.poiAddConfig?.defaultPosition || "placement-mode";
-```
-
-**Fichiers source:**
-
-- `controls.ts` ligne 532, 534
-
-**Valeurs possibles:**
-
-- `"geolocation"` - Utilise la position GPS de l'utilisateur
-
-- `"placement-mode"` - Mode placement manuel sur la carte (clic)
-
-- `"map-center"` - Centre actuel de la carte
-
-**Valeur par défaut:** `"placement-mode"`
-
-**État:** ✅ Actif et fonctionnel
-
-**Tests:**
-
-- Voir les tests unitaires dans `__tests__/poi/`
-
----
-
-## Section geocodingConfig
-
-> ⚠️ **Extrait vers un plugin.** La recherche d'adresse (géocodage) n'est plus dans `@geoleaf/core` — elle est désormais fournie par le plugin MIT **`@geoleaf-plugins/geocoding`** (npmjs.org public). La configuration migre de la clé racine **`geocodingConfig`** vers **`modules.geocoding.*`** (déclarée dans `config/plugins/geocoding.json` via `Files.modules.geocoding`) — migration **cassante, sans shim**. L'API `GeoLeaf.Geocoding`, l'événement `geoleaf:geocoding:result` et le contrôle de recherche sont fournis par le plugin. Voir le README du plugin (`packages/plugins/geocoding/README.md`).
-
----
-
-Ces paramètres existent dans le code pour assurer la rétrocompatibilité mais ne devraient plus être utilisés dans les nouveaux profils.
-
-### ⚠️ `panels` (object, déprécié)
-
-**Raison de dépréciation:** Remplacé par la structure plate au premier niveau
-
-**Ancien format:**
-
-```jsonc
-{
-    "panels": {
-        "search": {
-            /* config */
-        },
-
-        "detail": {
-            /* config */
-        },
-
-        "route": {
-            /* config */
-        },
-
-        "poi": {
-            /* config */
-        },
-    },
-}
-```
-
-**Nouveau format:**
-
-```jsonc
-{
-    "search": {
-        /* config */
-    },
-}
-```
-
-**Support actuel:**
-
-```javascript
-// ui/filter-panel/renderer.js ligne 52
-
-const searchPanel = (profile.panels && profile.panels.search) || profile.search;
-```
-
-**État:** ⚠️ Supporté pour rétrocompatibilité mais déprécié
-
-**Migration:** Déplacer `profile.panels.search` vers `profile.search`
-
----
-
-### ⚠️ `defaultSettings.routeConfig` (object, déprécié)
-
-**Raison de dépréciation:** Configuration de routes déplacée vers un autre système
-
-**Utilisation dans le code:**
-
-```javascript
-
-// geoleaf.route.ts ligne 371
-
-if (activeProfile && activeProfile.defaultSettings && activeProfile.defaultSettings.routeConfig) {
-
-```
-
-**Fichiers source:**
-
-- `geoleaf.route.ts` ligne 371-384
-
-**État:** ⚠️ Supporté pour rétrocompatibilité
-
----
-
-### ℹ️ Flags de mapping (rétrocompatibilité)
-
-Ces paramètres ne sont PAS dans profile.json mais dans la configuration racine (geoleaf.config.tson ou dans `config.data`).
-
-**Noms supportés (par ordre de priorité):**
-
-1. `config.data.enableProfilePoiMapping` ✅ **Recommandé** (utiliser celui-ci)
-
-2. `config.data.useProfilePoiMapping` ⚠️ Déprécié — utiliser `enableProfilePoiMapping`
-
-3. `config.data.useMapping` ⚠️ Déprécié — utiliser `enableProfilePoiMapping`
-
-**Utilisation dans le code:**
-
-```javascript
-
-// config/profile.js ligne 87-101
-
-isProfilePoiMappingEnabled() {
-
-    // Cherche plusieurs noms pour rétrocompatibilité (priorité décroissante)
-
-    if (typeof dataCfg.enableProfilePoiMapping === "boolean") {
-
-        return dataCfg.enableProfilePoiMapping;  // Préféré
-
-    }
-
-    if (typeof dataCfg.useProfilePoiMapping === "boolean") {
-
-        return dataCfg.useProfilePoiMapping;     // Fallback
-
-    }
-
-    if (typeof dataCfg.useMapping === "boolean") {
-
-        return dataCfg.useMapping;               // Fallback
-
-    }
-
-    return true;
-
-}
-
-```
-
-**Fichiers source:**
-
-- `profile.ts` ligne 87-101
-
-**État:** ✅ Supportés pour rétrocompatibilité, mais utiliser `enableProfilePoiMapping`
-
----
-
-## Paramètres manquants dans profile.json
-
-CesArchitecture des fichiers de configuration
-
-Cette section clarifie la structure et l'organisation des fichiers de configuration dans GeoLeaf pour éviter toute confusion entre les différents fichiers.
-
-### 📁 Hiérarchie des fichiers de configuration
-
-```
-profiles/{profile-name}/                      (layout v2 — 2026-06)
-├── profile.json                              ← Identité + map + manifeste Files (THIS FILE)
+profiles/{profile-name}/                      (layout v2)
+├── profile.json                              ← Identity + map + Files manifest (THIS FILE)
 ├── config/
 │   ├── core/
-│   │   ├── taxonomy.json                     ← Catégories, tags, métadonnées
-│   │   ├── themes.json                       ← Présets de visibilité des couches
-│   │   ├── layers.json                       ← Définition des couches GeoJSON
-│   │   ├── basemaps.json                     ← Fonds de carte
-│   │   ├── ui.json                           ← Contrôles UI, recherche, échelle
-│   │   └── features.json                     ← Clustering, géocodage, performance, POI
+│   │   ├── taxonomy.json                     ← Categories, tags, metadata
+│   │   ├── themes.json                       ← Layer visibility presets
+│   │   ├── layers.json                       ← GeoJSON layer definitions
+│   │   ├── basemaps.json                     ← Base maps
+│   │   ├── ui.json                           ← UI controls, search, scale
+│   │   └── features.json                     ← Clustering, geocoding, performance, POI
 │   └── plugins/
-│       └── {module-id}.json                  ← Config par plugin (bloc modules.<id>)
+│       └── {module-id}.json                  ← Per-plugin config (modules.<id> block)
 └── [layers/, icons/, data/]
 
-geoleaf.config.json                           ← Configuration globale de l'application (ROOT)
+geoleaf.config.json                           ← Global application configuration (ROOT)
 ```
 
-### 🔄 Responsabilités de chaque fichier
+### Responsibilities of each file
 
-#### **profile.json** (Ce fichier)
+#### **profile.json** (this file)
 
-- ✅ Configuration **UI**: Visibilité des composants, thèmes, langues
+- **UI** configuration: component visibility, themes, languages
 
-- ✅ Configuration **Performance**: Limites de chargement, délais
+- **Performance** configuration: loading limits, delays
 
-- ✅ Configuration **Basemaps**: Fonds de carte disponibles
+- **Base map** configuration: available base maps
 
-- ✅ Configuration **Composants**: Tables, légende, gestionnaire de couches
+- **Component** configuration: tables, legend, layer manager
 
-- ✅ Configuration **Filtres/Recherche**: Paramètres de recherche et filtrage
+- **Filter/search** configuration: search and filtering parameters
 
-- ✅ **Références** vers taxonomie/thèmes/couches (via `Files`)
+- **References** to taxonomy/themes/layers (through `Files`)
 
-- ⚠️ `defaultSettings.routeConfig` : Configuration de routage (déprécié)
+- `defaultSettings.routeConfig`: routing configuration (deprecated)
 
 #### **taxonomy.json**
 
-- ✅ Catégories et hiérarchie
+- Categories and hierarchy
 
-- ✅ **Métadonnées des icônes** (sprites, formats)
+- **Icon metadata** (sprites, formats)
 
-- ✅ Tags et classifications
+- Tags and classifications
 
-- ✅ Propriétés de couches non spatiales
+- Non-spatial layer properties
 
 #### **themes.json**
 
-- ✅ Presets de visibilité (groupes de couches)
+- Visibility presets (layer groups)
 
-- ✅ Thèmes cartographiques
+- Map themes
 
-- ✅ Configurations de styles alternatifs (par thème)
+- Alternative style configurations (per theme)
 
 #### **layers.json**
 
-- ✅ Définitions GeoJSON des couches
+- GeoJSON layer definitions
 
-- ✅ **Métadonnées de chaque couche**: Styles, icônes, attributs
+- **Metadata of each layer**: styles, icons, attributes
 
-- ✅ Configuration spécifique par couche
+- Per-layer configuration
 
-- ✅ Chemins vers fichiers de données
+- Paths to the data files
 
-### 🎨 Où vit chaque paramètre?
+### Where each parameter lives
 
-| Paramètre | Fichier | Utilisation |
+| Parameter | File | Usage |
 
 | ----------------------------- | ----------------- | -------------------------------------------- |
 
-| `icons` | **taxonomy.json** | Métadonnées des sprites/icônes |
+| `icons` | **taxonomy.json** | Sprite/icon metadata |
 
-| `stylesConfig` | **profile.json** | Configuration globale des styles alternatifs |
+| `stylesConfig` | **profile.json** | Global configuration of alternative styles |
 
-| `Directory` | **layers.json** | Templates de chemins (définis par couche) |
+| `Directory` | **layers.json** | Path templates (declared per layer) |
 
-| `defaultSettings.routeConfig` | **profile.json** | Configuration de routage (déprécié) |
+| `defaultSettings.routeConfig` | **profile.json** | Routing configuration (deprecated) |
 
-| `ui.*` | **profile.json** | Configuration UI |
+| `ui.*` | **profile.json** | UI configuration |
 
-| `basemaps` | **profile.json** | Fonds de carte |
+| `basemaps` | **profile.json** | Base maps |
 
-| Tous les autres | **profile.json** | Voir section structure |
+| All the others | **profile.json** | See the structure section |
 
-### ✅ Validation
+### Validation
 
-- profile.json contient **uniquement** les paramètres documentés dans ce fichier
+- profile.json holds **only** the parameters documented in this file
 
-- Chaque paramètre a un usage clair et vérifié dans le code source
+- Every parameter has a clear purpose, verified against the source code
 
-- Aucun paramètre "fantôme" ou inutilisé
+- No phantom or unused parameter
 
-- Architecture cohérente et maintenabl
+- A consistent, maintainable architecture
 
-## Tableau récapitulatif
+## Summary table — **REMOVED**
 
-| Section | Paramètre | Type | Défaut | État | Obligatoire |
+::: info
+A hand-written table of every parameter duplicates the schemas.
 
-| ------------------ | ------------------------ | ------- | ---------------- | ---- | ----------- |
-
-| Racine | `id` | string | - | ✅ | Oui |
-
-| Racine | `label` | string | - | ✅ | Oui |
-
-| Racine | `description` | string | "" | ✅ | Non |
-
-| Racine | `version` | string | "1.0.0" | ✅ | Non |
-
-| Files | `themesFile` | string | "config/core/themes.json" | ✅ | Oui |
-
-| Files | `featuresFile` | string | "config/core/features.json" | ✅ | Non |
-
-| Files | `modules` | object | `{ "<moduleId>": "config/plugins/<moduleId>.json" }` | ✅ | Non |
-
-| Files | `layersFile` | string | "layers.json" | ✅ | Non |
-
-| ui | `theme` | string | "light" | ✅ | Non |
-
-| ui | `language` | string | "fr" | ⚠️ | Non |
-
-| ui | `showBaseLayerControls` | boolean | false | ✅ | Non |
-
-| ui | `showLayerManager` | boolean | true | ✅ | Non |
-
-| ui | `showFilterPanel` | boolean | true | ✅ | Non |
-
-| ui | `showGeolocation` | boolean | true | ✅ | Non |
-| ui | `showScale` | boolean | true | ✅ | Non |
-
-| ui | `showCoordinates` | boolean | true | ✅ | Non |
-
-| ui | `showLegend` | boolean | true | ✅ | Non |
-
-| ui | `showCacheButton` | boolean | false | ✅ | Non |
-
-| ui | `showAddPoi` | boolean | false | ✅ | Non |
-
-| ui | `interactiveShapes` | boolean | false | ✅ | Non |
-
-| basemaps | `{id}.id` | string | - | ✅ | Oui |
-
-| basemaps | `{id}.label` | string | - | ✅ | Oui |
-
-| basemaps | `{id}.url` | string | - | ✅ | Oui |
-
-| basemaps | `{id}.attribution` | string | - | ✅ | Oui |
-
-| basemaps | `{id}.minZoom` | number | 0 | ✅ | Non |
-
-| basemaps | `{id}.maxZoom` | number | 19 | ✅ | Non |
-
-| basemaps | `{id}.defaultBasemap` | boolean | false | ✅ | Non |
-
-| basemaps | `{id}.offline` | boolean | false | ✅ | Non |
-
-| basemaps | `{id}.offlineBounds` | object | - | ✅ | Non |
-
-| basemaps | `{id}.cacheMinZoom` | number | 4 | ✅ | Non |
-
-| basemaps | `{id}.cacheMaxZoom` | number | 12 | ✅ | Non |
-
-| performance | `maxConcurrentLayers` | number | 10 | ✅ | Non |
-
-| performance | `layerLoadDelay` | number | 200 | ✅ | Non |
-
-| performance | `fitBoundsOnThemeChange` | boolean | false | ✅ | Non |
-
-| search | `title` | string | "Filtres" | ✅ | Non |
-
-| search | `radiusMin` | number | 1 | ✅ | Non |
-
-| search | `radiusMax` | number | 50 | ✅ | Non |
-
-| search | `radiusStep` | number | 1 | ✅ | Non |
-
-| search | `radiusDefault` | number | 10 | ✅ | Non |
-
-| search | `searchPlaceholder` | string | "Rechercher..." | ✅ | Non |
-
-| search | `filters` | array | [] | ✅ | Non |
-
-| search | `actions` | object | {...} | ✅ | Non |
-
-| layerManagerConfig | `title` | string | "Couches" | ✅ | Non |
-
-| layerManagerConfig | `collapsedByDefault` | boolean | true | ✅ | Non |
-
-| layerManagerConfig | `sections` | array | [] | ✅ | Non |
-
-| modules.legend | `enabled` | boolean | true | ✅ | Non |
-
-| modules.legend | `title` | string | "Legend" | ✅ | Non |
-
-| modules.legend | `collapsedByDefault` | boolean | false | ✅ | Non |
-
-| modules.legend | `position` | string | "bottomleft" | ✅ | Non |
-
-| poiConfig | `clusterStrategy` | string | "unified" | ✅ | Non |
-
-| brandingConfig | `enabled` | boolean | true | ✅ | Non |
-
-| brandingConfig | `text` | string | "..." | ✅ | Non |
-
-| brandingConfig | `position` | string | "bottomleft" | ✅ | Non |
-
-| scaleConfig | `scaleGraphic` | boolean | true | ✅ | Non |
-
-| scaleConfig | `scaleNumeric` | boolean | true | ✅ | Non |
-
-| scaleConfig | `scaleNumericEditable` | boolean | true | ✅ | Non |
-
-| scaleConfig | `scaleNivel` | boolean | true | ✅ | Non |
-
-| scaleConfig | `position` | string | "bottomleft" | ✅ | Non |
-
-| storage.cache | `enableProfileCache` | boolean | true | ✅ | Non |
-
-| storage.cache | `enableTileCache` | boolean | true | ✅ | Non |
-
-| poiAddConfig | `enabled` | boolean | true | ✅ | Non |
-
-| poiAddConfig | `defaultPosition` | string | "placement-mode" | ✅ | Non |
-
-**Légende:**
-
-- ✅ : Actif et fonctionnel
-
-- ⚠️ : Défini mais peu utilisé
-
-- ❌ : Non présent/manquant
-
-- 🔶 : Déprécié
+The equivalent generated table is [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
+:::
 
 ---
 
-## Notes finales
+## Final notes
 
-### Points d'attention
+### Points of attention
 
-1. **Nomenclature des sections** : La section `Files` utilise des noms avec suffixe "File" (`themesFile`, `layersFile`) ce qui est cohérent.
+1. **Section naming**: the `Files` section uses names suffixed with "File" (`themesFile`, `layersFile`), which is consistent.
 
-2. **Rétrocompatibilité** : Le code supporte l'ancienne structure `profile.panels.search` mais la nouvelle structure `profile.search` est recommandée.
+2. **Backwards compatibility**: the code still supports the older `profile.panels.search` structure, but the newer `profile.search` structure is recommended.
 
-3. **Paramètres data.\*** : Les paramètres comme `data.activeProfile`, `data.profilesBasePath`, `data.enableProfilePoiMapping` ne sont PAS dans profile.json mais dans geoleaf.config.tson ou passés via init().
+3. **`data.*` parameters**: parameters such as `data.activeProfile`, `data.profilesBasePath` and `data.enableProfilePoiMapping` do NOT belong in profile.json, but in `geoleaf.config.json`, or are passed through `init()`.
 
-4. **Position des contrôles** : Toutes les positions utilisent les valeurs standard MapLibre GL JS : `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"`.
+4. **Control positions**: every position uses the standard MapLibre GL JS values: `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"`.
 
-5. **Cache hors ligne** : Les paramètres `offline`, `offlineBounds`, `cacheMinZoom`, `cacheMaxZoom` dans basemaps sont pleinement fonctionnels.
+5. **Offline cache**: the `offline`, `offlineBounds`, `cacheMinZoom` and `cacheMaxZoom` parameters of a base map are fully functional.
 
-### Recommandations
+### Recommendations
 
-1. **Ajouter `defaultSettings`** pour centraliser les paramètres par défaut de la carte.
+1. **Add `defaultSettings`** to centralise the default map parameters.
 
-2. **Documenter `Directory`** si ce pattern est utilisé pour les couches.
+2. **Document `Directory`** if that pattern is used for layers.
 
-3. **Considérer l'ajout de `stylesConfig`** pour supporter les styles alternatifs.
+3. **Consider adding `stylesConfig`** to support alternative styles.
 
-4. **Maintenir la rétrocompatibilité** avec `panels.*` pendant au moins une version majeure.
+4. **Keep backwards compatibility** with `panels.*` for at least one major version.
 
-5. **Migration `useMapping` → `enableProfilePoiMapping`** dans les exemples et documentation.
-
----
-
-**Fichier mis à jour le mars 2026**
-
-**Basé sur l'analyse du code source GeoLeaf JS v2.0.0**
+5. **Migrate `useMapping` → `enableProfilePoiMapping`** in the examples and the documentation.

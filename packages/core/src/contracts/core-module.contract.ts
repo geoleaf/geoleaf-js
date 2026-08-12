@@ -469,7 +469,7 @@ export interface IModuleRegistry {
      * @example
      * ```typescript
      * const geojson = registry.get<GeoJSONModule>('geojson');
-     * poi.displayPois(features);
+     * geojson.destroy();
      * ```
      */
     get<T extends ICoreModule = ICoreModule>(id: string): T;

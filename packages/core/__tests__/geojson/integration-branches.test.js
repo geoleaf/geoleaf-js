@@ -1,7 +1,7 @@
 /**
  * Branch-coverage companion for src/kernel/geojson/layers/integration.ts
  * Covers: registerWithLayerManager, _loadLayerLegend, populateLayerManagerWithAllConfigs,
- *         helper functions: _resolveLegendType, _resolveLayerColor, _resolveLayerLabels,
+ *         helper functions:, _resolveLayerColor, _resolveLayerLabels,
  *         _resolveStyleIdFromAvailable, _resolveStyleId, _getActiveThemeLayers,
  *         _triggerLayerManagerUIUpdate, _processLayerForSection, _buildPopulateConfigSectionMap,
  *         _registerPopulateSectionMap, _logLayerPreparation
@@ -132,83 +132,11 @@ describe("geojson/layers/integration.ts — branch coverage", () => {
         });
     });
 
-    // ── _resolveLegendType (via registerWithLayerManager) ─────────
-
-    describe("legend type resolution", () => {
-        function setupWithType(type) {
-            const registerFn = vi.fn();
-            _g.GeoLeaf = {
-                LayerManager: {
-                    _registerGeoJsonLayer: registerFn,
-                },
-            };
-            LayerManagerIntegration.detectLayerType = vi.fn(() => type);
-            GeoJSONShared.state.layers.set("t", {
-                label: "T",
-                visible: true,
-                layer: {},
-                config: { style: { color: "#000" } },
-            });
-            LayerManagerIntegration.registerWithLayerManager();
-            return registerFn.mock.calls[0][1];
-        }
-
-        it("maps poi → circle", () => {
-            // We can probe the registered item indirectly
-            // The type is set but not directly in register options
-            // It's used internally — the coverage is via _processLayerForSection
-            setupWithType("poi");
-        });
-
-        it("maps route → line", () => {
-            setupWithType("route");
-        });
-
-        it("maps unknown → fill (default)", () => {
-            setupWithType("polygon");
-        });
-    });
-
-    // ── _resolveLayerColor ────────────────────────────────────────
-
-    describe("layer color resolution", () => {
-        function getColor(config) {
-            const registerFn = vi.fn();
-            _g.GeoLeaf = {
-                LayerManager: {
-                    _registerGeoJsonLayer: registerFn,
-                },
-            };
-            GeoJSONShared.state.layers.set("c", {
-                label: "C",
-                visible: true,
-                layer: {},
-                config,
-            });
-            LayerManagerIntegration.registerWithLayerManager();
-            return registerFn;
-        }
-
-        it("uses style.fillColor first", () => {
-            getColor({ style: { fillColor: "#ff0000", color: "#00ff00" } });
-        });
-
-        it("falls back to style.color", () => {
-            getColor({ style: { color: "#00ff00" } });
-        });
-
-        it("falls back to pointStyle.fillColor", () => {
-            getColor({ pointStyle: { fillColor: "#0000ff" } });
-        });
-
-        it("uses default when pointStyle has no fillColor", () => {
-            getColor({ pointStyle: {} });
-        });
-
-        it("uses default when no style or pointStyle", () => {
-            getColor({});
-        });
-    });
+    // B-228 — les blocs `_resolveLegendType` / `_resolveLayerColor` ont été retirés le
+    // 11/08/2026 AVEC les fonctions qu'ils nommaient. Elles alimentaient `SectionItem.type`
+    // et `.color`, deux champs que la charge utile d'enregistrement ne déclare pas et que
+    // personne ne relisait. 🛑 Leur suppression n'a fait rougir AUCUN test : ces cas
+    // exerçaient les lignes pour la couverture sans jamais asserter leur résultat.
 
     // ── _resolveLayerLabels ───────────────────────────────────────
 

@@ -47,8 +47,10 @@ Element parameters are passed as **getters**, not values: the menus rebuild thei
 ## Bundle contract
 
 Imports **no value** from `@geoleaf/core` — that would pull the whole core (boot
-side-effects, non-tree-shakable) into the plugin bundle. ⚠️ Load-bearing: do not import
-from `@geoleaf/core` here, not even a type.
+side-effects, non-tree-shakable) into the plugin bundle.
+
+> [!WARNING]
+> This is load-bearing: do not import from `@geoleaf/core` here, not even a type.
 
 ## Onboarding a plugin
 

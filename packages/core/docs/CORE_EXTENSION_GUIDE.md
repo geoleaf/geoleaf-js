@@ -5,63 +5,63 @@ title: "GeoLeaf-JS — Core Extension Guide"
 # GeoLeaf-JS — Core Extension Guide
 
 **Package:** `@geoleaf/core`
-**Version:** 3.0.0
-**License:** MIT
 
-> Ce guide s'adresse aux développeurs qui **forkent le core MIT** et souhaitent y ajouter un nouveau module interne (nouvelle couche métier, nouvelle façade publique, nouveau lazy chunk). Pour créer un **plugin externe** sans modifier le core, consultez [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md).
+> This guide is aimed at developers who **fork the MIT core** and want to add a new internal module to it (a new domain layer, a new public facade). To build an **external plugin** without touching the core, see [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md).
 
 ---
 
 ## Table of contents
 
-1. [Prérequis et lecture obligatoire](#prérequis-et-lecture-obligatoire)
-2. [Anatomie d'un module core](#anatomie-dun-module-core)
-3. [Étape 1 — Créer le module métier](#étape-1--créer-le-module-métier)
-4. [Étape 2 — Enregistrer dans la séquence boot](#étape-2--enregistrer-dans-la-séquence-boot)
-5. [Étape 3 — Exposer une façade publique](#étape-3--exposer-une-façade-publique)
-6. [Étape 4 — Exporter depuis bundle-esm-entry.ts](#étape-4--exporter-depuis-bundle-esm-entryts)
-7. [Règles à respecter impérativement](#règles-à-respecter-impérativement)
-8. [Checklist avant merge](#checklist-avant-merge)
+1. [Prerequisites and required reading](#prerequisites-and-required-reading)
+2. [Anatomy of a core module](#anatomy-of-a-core-module)
+3. [Step 1 — Create the domain module](#step-1--create-the-domain-module)
+4. [Step 2 — Register in the boot sequence](#step-2--register-in-the-boot-sequence)
+5. [Step 3 — Expose a public facade](#step-3--expose-a-public-facade)
+6. [Step 4 — Export from bundle-esm-entry.ts](#step-4--export-from-bundle-esm-entryts)
+7. [Rules that must be followed](#rules-that-must-be-followed)
+8. [Pre-merge checklist](#pre-merge-checklist)
 
 ---
 
-## Prérequis et lecture obligatoire
+## Prerequisites and required reading
 
-Avant de toucher au code, lire dans l'ordre :
+Before touching the code, read, in order:
 
-1. [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — séquence boot B1→B11, chunks lazy, bundles
+1. [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — boot sequence B1→B11, bundles
 2. [CONTRIBUTING.md](CONTRIBUTING.md) — conventions, TSDoc, ESLint
 
-> **Règle critique :** Ne jamais modifier l'ordre des imports dans `globals.*.ts` sans avoir tracé toutes les dépendances aval. L'ordre B1→B11 est non-négociable.
+::: danger
+**Critical rule:** never change the import order in `globals.*.ts` without having traced every downstream dependency. The B1→B11 order is non-negotiable.
+:::
 
 ---
 
-## Anatomie d'un module core
+## Anatomy of a core module
 
-Un module core GeoLeaf est composé de 3 à 5 fichiers selon sa complexité :
-
-```
-src/modules/{nom}/
-├── {nom}.module.ts          ← Implémentation — logique métier pure
-├── {nom}.types.ts           ← Types et interfaces (optionnel)
-├── {nom}-state.ts           ← État partagé si nécessaire (dans shared/)
-└── geoleaf.{nom}.ts         ← Façade publique (dans src/modules/)
-```
-
-Et 2 points d'entrée globaux :
+A GeoLeaf core module is made of 3 to 5 files, depending on its complexity:
 
 ```
-src/modules/globals.{group}.ts   ← Import du module dans la séquence boot
-src/bundle-esm-entry.ts          ← Export nommé ESM de la façade
+src/modules/{name}/
+├── {name}.module.ts          ← Implementation — pure domain logic
+├── {name}.types.ts           ← Types and interfaces (optional)
+├── {name}-state.ts           ← Shared state when required (in shared/)
+└── geoleaf.{name}.ts         ← Public facade (in src/modules/)
+```
+
+Plus 2 global entry points:
+
+```
+src/modules/globals.{group}.ts   ← Import of the module into the boot sequence
+src/bundle-esm-entry.ts          ← Named ESM export of the facade
 ```
 
 ---
 
-## Étape 1 — Créer le module métier
+## Step 1 — Create the domain module
 
-### 1a. Structure minimale
+### 1a. Minimal structure
 
-Créez `src/modules/{nom}/{nom}.module.ts` :
+Create `src/modules/{name}/{name}.module.ts`:
 
 ```typescript
 // src/modules/analytics/analytics.module.ts
@@ -89,15 +89,15 @@ export class AnalyticsModule {
 }
 ```
 
-> **Règles de nommage :**
+> **Naming rules:**
 >
-> - Classe : `PascalCase` + suffixe `Module`
-> - Fichier : `kebab-case.module.ts`
-> - Namespace de logs : identique au nom de classe
+> - Class: `PascalCase` with a `Module` suffix
+> - File: `kebab-case.module.ts`
+> - Log namespace: identical to the class name
 
-### 1b. Implémentation de ICoreModule (si ModuleRegistry)
+### 1b. Implementing ICoreModule (when using ModuleRegistry)
 
-Si votre module doit s'intégrer au `ModuleRegistry` (recommandé pour les modules conditionnels) :
+If the module has to integrate with the `ModuleRegistry` (recommended for conditional modules):
 
 ```typescript
 import type {
@@ -122,41 +122,43 @@ export class AnalyticsModule implements ICoreModule {
 
 ---
 
-## Étape 2 — Enregistrer dans la séquence boot
+## Step 2 — Register in the boot sequence
 
-### 2a. Choisir le fichier globals approprié
+### 2a. Choose the right globals file
 
-| Fichier globals      | Groupes                       | Quand l'utiliser                       |
-| -------------------- | ----------------------------- | -------------------------------------- |
-| `globals.core.ts`    | B1, B2                        | Utilitaires bas niveau, log, sécurité  |
-| `globals.config.ts`  | B3, B4                        | Helpers, validators, config, renderers |
-| `globals.geojson.ts` | B5                            | GeoJSON, couches vectorielles, route   |
-| `globals.ui.ts`      | B6, B7, B9                    | Labels, UI, contrôles, filtres         |
-| `globals.poi.ts`     | B10                           | POI, formulaires, renderers POI        |
-| `globals.api.ts`     | B11 — **toujours en dernier** | Façades publiques uniquement           |
+| Globals file         | Groups                | When to use it                         |
+| -------------------- | --------------------- | -------------------------------------- |
+| `globals.core.ts`    | B1, B2                | Low-level utilities, logging, security |
+| `globals.config.ts`  | B3, B4                | Helpers, validators, config, renderers |
+| `globals.geojson.ts` | B5                    | GeoJSON, vector layers, route          |
+| `globals.ui.ts`      | B6, B7, B9            | Labels, UI, controls, filters          |
+| `globals.poi.ts`     | B10                   | POI, forms, POI renderers              |
+| `globals.api.ts`     | B11 — **always last** | Public facades only                    |
 
-> `globals.storage.ts` (B8) est réservé au plugin Storage — ne pas ajouter de code core ici.
+> `globals.storage.ts` (B8) is reserved for the Storage plugin — do not add core code here.
 
-### 2b. Ajouter l'import dans le bon fichier
+### 2b. Add the import to the right file
 
-Par exemple, pour un module utilitaire post-config :
+For example, for a post-config utility module:
 
 ```typescript
-// src/modules/globals.config.ts  (extrait)
+// src/modules/globals.config.ts  (excerpt)
 // ...existing imports...
 import { AnalyticsModule } from "./analytics/analytics.module";
 
-// Init dans la séquence
+// Init within the sequence
 AnalyticsModule.init();
 ```
 
-> **Important :** Vérifiez que toutes les dépendances de votre module sont dans des groupes **antérieurs** (B numéro plus petit). Si votre module dépend de `Config`, il doit être en B4 ou après.
+::: warning
+**Important:** check that every dependency of the module sits in an **earlier** group (a lower B number). A module that depends on `Config` must be in B4 or later.
+:::
 
 ---
 
-## Étape 3 — Exposer une façade publique
+## Step 3 — Expose a public facade
 
-Créez `src/modules/geoleaf.analytics.ts` :
+Create `src/modules/geoleaf.analytics.ts`:
 
 ````typescript
 // src/modules/geoleaf.analytics.ts
@@ -186,33 +188,31 @@ export const Analytics = {
 } as const;
 ````
 
-> **Règles façades (`geoleaf.*.ts`) :**
+> **Facade rules (`geoleaf.*.ts`):**
 >
-> - Aucune logique métier — délégation pure vers le module
-> - TSDoc obligatoire : `@description`, `@example`, `@see`
-> - ⚠️ **Jamais `@module`** — le tag est interdit depuis STRUCT S5 et la gate
->   `check-module-headers` (MH-03) refuse le commit. Rien ne le lisait, et 204 des
->   478 tags du dépôt désignaient un chemin inexistant : le chemin du fichier dit
->   déjà où il est
-> - `as const` sur l'objet exporté
-> - Nommage : `Analytics`, `POI`, `UI`… (PascalCase, sans suffixe)
+> - No domain logic — pure delegation to the module
+> - TSDoc is mandatory: `@description`, `@example`, `@see`
+> - **Never `@module`** — the tag is forbidden, and the commit is rejected if it appears.
+>   Nothing read it, and the file path already says where the file is
+> - `as const` on the exported object
+> - Naming: `Analytics`, `POI`, `UI`, … (PascalCase, no suffix)
 
 ---
 
-## Étape 4 — Exporter depuis bundle-esm-entry.ts
+## Step 4 — Export from bundle-esm-entry.ts
 
-Ajoutez votre façade aux exports nommés ESM :
+Add the facade to the named ESM exports:
 
 ```typescript
-// src/bundle-esm-entry.ts  (extrait)
+// src/bundle-esm-entry.ts  (excerpt)
 // ...existing exports...
 export { Analytics } from "./modules/geoleaf.analytics";
 ```
 
-Et si vous voulez l'assigner également au namespace global (`window.GeoLeaf.Analytics`), ajoutez dans `globals.api.ts` (B11) :
+And to assign it to the global namespace as well (`window.GeoLeaf.Analytics`), add this to `globals.api.ts` (B11):
 
 ```typescript
-// src/modules/globals.api.ts  (extrait)
+// src/modules/globals.api.ts  (excerpt)
 import { Analytics } from "./geoleaf.analytics";
 // ...
 (globalThis as any).GeoLeaf.Analytics = Analytics;
@@ -220,42 +220,42 @@ import { Analytics } from "./geoleaf.analytics";
 
 ---
 
-## Règles à respecter impérativement
+## Rules that must be followed
 
-| Règle                                                                 | Raison                                                                              |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Ne jamais importer depuis `@geoleaf-plugins/*`                        | Règle no-plugin-in-core — frontière d'architecture, vérifiée en CI et en pre-commit |
-| Ne jamais utiliser `innerHTML` sans `DOMSecurity`                     | Surface XSS critique                                                                |
-| Passer par `IMapAdapter` pour toute interaction map                   | Abstraction moteur cartographique                                                   |
-| Déclarer les dépendances inter-modules via `ICoreModule.dependencies` | Ordre topologique garanti                                                           |
-| TSDoc sur toutes les méthodes publiques de la façade                  | Prérequis TypeDoc                                                                   |
-| Fichiers source ≤ 700 lignes (soft limit 500)                         | Maintenabilité                                                                      |
-| Commenter le code en anglais                                          | Convention projet                                                                   |
-
----
-
-## Checklist avant merge
-
-```
-[ ] Module implémente ICoreModule si conditionnel (ModuleRegistry)
-[ ] Import ajouté dans le bon globals.*.ts (B1→B10, jamais B11)
-[ ] Façade geoleaf.{nom}.ts créée avec TSDoc complet
-[ ] Export ajouté dans bundle-esm-entry.ts
-[ ] Export global ajouté dans globals.api.ts si nécessaire
-[ ] Aucun import @geoleaf-plugins/* dans le code
-[ ] Aucun innerHTML sans DOMSecurity
-[ ] Tests unitaires créés dans packages/core/__tests__/
-[ ] README de module créé dans packages/core/docs/{nom}/
-[ ] INDEX_CORE.md mis à jour avec le nouveau module
-[ ] npm run build passe
-[ ] npm run test:jest passe
-[ ] npm run lint passe
-```
+| Rule                                                             | Reason                                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Never import from `@geoleaf-plugins/*`                           | The no-plugin-in-core rule — an architecture boundary, checked in CI and pre-commit |
+| Never use `innerHTML` without `DOMSecurity`                      | Critical XSS surface                                                                |
+| Go through `IMapAdapter` for every map interaction               | Mapping engine abstraction                                                          |
+| Declare inter-module dependencies via `ICoreModule.dependencies` | Guaranteed topological order                                                        |
+| TSDoc on every public method of the facade                       | TypeDoc prerequisite                                                                |
+| Source files ≤ 700 lines (soft limit 500)                        | Maintainability                                                                     |
+| Comment the code in English                                      | Project convention                                                                  |
 
 ---
 
-## Voir aussi
+## Pre-merge checklist
 
-- [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — Architecture complète et séquence boot
-- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — Créer un plugin **externe** (sans modifier le core)
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Conventions et workflow de contribution
+```
+[ ] Module implements ICoreModule when conditional (ModuleRegistry)
+[ ] Import added to the right globals.*.ts (B1→B10, never B11)
+[ ] Facade geoleaf.{name}.ts created with complete TSDoc
+[ ] Export added to bundle-esm-entry.ts
+[ ] Global export added to globals.api.ts when required
+[ ] No @geoleaf-plugins/* import in the code
+[ ] No innerHTML without DOMSecurity
+[ ] Unit tests created in packages/core/__tests__/
+[ ] Module README created in packages/core/docs/{name}/
+[ ] INDEX_CORE.md updated with the new module
+[ ] npm run build passes
+[ ] npm run test:jest passes
+[ ] npm run lint passes
+```
+
+---
+
+## See also
+
+- [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) — Full architecture and boot sequence
+- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — Build an **external** plugin (without modifying the core)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Conventions and contribution workflow

@@ -11,13 +11,18 @@ date: 8 août 2026
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
-**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** `1a8f7137` (28/07/2026)
+**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** `ada9449a` (07/08/2026) — ⚠️ cette ligne portait `1a8f7137` (28/07/2026),
+dix jours plus tôt que le frontmatter.
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Ce plugin ne contient PAS le moteur hors ligne.** Il pilote celui du core — capacité
 > `offline`, fiche [`offline.md`](../capacites/offline.md) — au travers de la seule façade
@@ -237,12 +242,21 @@ les couches sont évincées faute de place **n'en est pas informé**, alors que 
 🛑 **`geoleaf:cache:cancelled` — TRANCHÉ le 02/08/2026 : il l'écoute pour rien.** La fiche laissait
 l'alternative ouverte (« le plugin l'émet lui-même, ou l'écoute pour rien ») ; la mesure la ferme.
 
-| Rôle                        | Compte | Où                                                       |
-| --------------------------- | ------ | -------------------------------------------------------- |
-| Définition de la constante  | 1      | `cache/cache-control-types.ts:20`                        |
-| Écouteurs                   | **2**  | `cache/cache-control-events.ts:69` **et** `:125`         |
-| Émetteurs de **production** | **0**  | — ni le core, ni ce plugin, ni l'application             |
-| `dispatchEvent` du dépôt    | 1      | `__tests__/cache-control-view.test.js:613` — **un test** |
+| Rôle                        | Compte | Où                                                                                                                                                                  |
+| --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Définition de la constante  | 1      | `CACHE_EVENTS.CANCELLED`, dans `cache/cache-control-types.ts`                                                                                                       |
+| Écouteurs                   | **2**  | les deux dans `cache/cache-control-events.ts` — l'un via `CACHE_EVENTS.CANCELLED` dans la table de câblage, l'autre en `addEventListener` vers `_handleCancelled()` |
+| Émetteurs de **production** | **0**  | — ni le core, ni ce plugin, ni l'application                                                                                                                        |
+| `dispatchEvent` du dépôt    | **2**  | `__tests__/cache-control-view.test.js` **et** `__tests__/cache-control-factory.test.js` — **deux tests, aucune production**                                         |
+
+> ⚠️ **Ré-mesuré le 11/08/2026 (6.11) — les quatre citations de ce tableau étaient fausses, et
+> de deux façons distinctes.** ① Les trois numéros de ligne étaient décalés **d'exactement un**
+> (`:20` au lieu de `:21`, `:69`/`:125` au lieu de `:70`/`:126`) : une ligne insérée plus haut a
+> suffi, et `:20` désignait dès lors `CLEARED` — **une autre constante**, ce qu'aucune relecture
+> ne voit. ② Le compte des `dispatchEvent` disait **1**, il y en a **2**
+> (`packages/plugins/offline-ui/src/__tests__/cache-control-factory.test.js` n'était pas compté). Le verdict, lui, tient : **zéro émetteur
+> de production**. Les citations sont ré-ancrées **par symbole** — un symbole renommé se voit,
+> une ligne décalée non.
 
 ⚠️ **Le seul émetteur du dépôt est un test.** C'est la forme la plus trompeuse du défaut : la suite
 prouve qu'un écouteur réagit correctement à un signal que **rien n'envoie jamais**, et sort verte en
@@ -286,12 +300,12 @@ registre.
 
 ## Dépendances et frontières
 
-| Dépendance                 | Nature        | Note                                                                                                                                                                          |
-| -------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@geoleaf/core`            | production    | —                                                                                                                                                                             |
-| `@geoleaf/field-renderer`  | production    | Pour le dialogue de confirmation et le piège de focus                                                                                                                         |
-| **aucune** dépendance pair | —             | Il ne touche pas la carte, donc pas de peer `maplibre-gl`. ⚠️ **Pas le seul** : 7 des 13 plugins n'en déclarent aucune (corrigé le 30/07/2026 — se compte, ne se recopie pas) |
-| `@geoleaf/host-runtime`    | développement | Utilisé, lui — journalisation, lecture de configuration, accès au namespace                                                                                                   |
+| Dépendance                 | Nature        | Note                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`            | production    | —                                                                                                                                                                                                                                                                                                                                                                                        |
+| `@geoleaf/field-renderer`  | production    | Pour le dialogue de confirmation et le piège de focus                                                                                                                                                                                                                                                                                                                                    |
+| **aucune** dépendance pair | —             | Il ne touche pas la carte, donc pas de peer `maplibre-gl`. ⚠️ **Pas le seul** : une majorité des plugins n'en déclarent aucune. ⚠️ Cette case annonçait « 7 des **13** » jusqu'au 11/08/2026, dans la parenthèse même qui dit « se compte, ne se recopie pas » — ils sont **12**, et 7 sur 12 au dernier relevé. Le compte se dérive : `node -e "…peerDependencies…"` sur les manifestes |
+| `@geoleaf/host-runtime`    | développement | Utilisé, lui — journalisation, lecture de configuration, accès au namespace                                                                                                                                                                                                                                                                                                              |
 
 ### Les arêtes statiques vers le core — et une seule vers la capacité
 

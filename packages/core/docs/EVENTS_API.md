@@ -4,37 +4,43 @@ title: "GeoLeaf Events API"
 
 # GeoLeaf Events API
 
-**Module :** `@geoleaf/core` — `GeoLeaf.Events`
-**Version :** 3.0.0
-**Dernière mise à jour :** Mars 2026
+**Module:** `@geoleaf/core` — `GeoLeaf.Events`
 
-GeoLeaf émet des événements DOM natifs (`CustomEvent`) sur `document`. Ils sont typés via `GeoLeafEventMap`.
+GeoLeaf dispatches native DOM events (`CustomEvent`) on `document`. They are typed through `GeoLeafEventMap`.
 
-> **Casse — `GeoLeaf.Events` et `GeoLeaf.events`.** Les deux sont montés et équivalents
-> (`GeoLeaf.Events === GeoLeaf.events`). `Events` est la forme canonique : c'est celle
-> qu'emploie cette page et que porte la façade exportée. `events` est un alias historique, conservé
-> durablement et **non déprécié** — même contrat que `Baselayers` / `BaseLayers`.
->
-> ⚠️ Avant la v3.0.0 (S13.7), seul `events` existait au runtime alors que les types et cette
-> documentation prescrivaient `Events` : `GeoLeaf.Events.on(...)` compilait puis levait un
-> `TypeError`. Si vous aviez contourné le problème en écrivant `events`, votre code continue
-> de fonctionner à l'identique.
+::: info
 
-> Les intégrateurs **s'abonnent uniquement** — le dispatch est interne à GeoLeaf.
+**Casing — `GeoLeaf.Events` and `GeoLeaf.events`.** Both are mounted and equivalent
+(`GeoLeaf.Events === GeoLeaf.events`). `Events` is the canonical form: it is the one used
+throughout this reference and the one carried by the exported facade. `events` is a historical
+alias, kept for the long term and **not deprecated** — same contract as `Baselayers` /
+`BaseLayers`.
+
+:::
+
+::: warning
+
+Before v3.0.0, only `events` existed at runtime while the type definitions declared `Events`:
+`GeoLeaf.Events.on(...)` compiled and then threw a `TypeError`. Code that worked around this by
+writing `events` keeps working unchanged.
+
+:::
+
+> Integrators **subscribe only** — dispatching is internal to GeoLeaf.
 
 ---
 
-## API publique
+## Public API
 
 ### `GeoLeaf.Events.on(event, handler)`
 
 ```ts
 GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
-    console.log("POI cliqué :", e.detail.poiId);
+    console.log("POI clicked:", e.detail.poiId);
 });
 ```
 
-Enregistre un listener pour l'événement `event`. Appelé à chaque déclenchement jusqu'à `off()`.
+Registers a listener for `event`. Called on every dispatch until `off()`.
 
 ### `GeoLeaf.Events.off(event, handler)`
 
@@ -42,59 +48,59 @@ Enregistre un listener pour l'événement `event`. Appelé à chaque déclenchem
 GeoLeaf.Events.off("geoleaf:poi:click", myHandler);
 ```
 
-Supprime un listener précédemment enregistré. La **même référence** de fonction doit être passée.
+Removes a previously registered listener. The **same function reference** must be passed.
 
 ### `GeoLeaf.Events.once(event, handler)`
 
 ```ts
 GeoLeaf.Events.once("geoleaf:app:ready", () => {
-    console.log("App prête !");
+    console.log("App ready");
 });
 ```
 
-Listener déclenché **une seule fois** puis automatiquement supprimé.
+Listener fired **once**, then removed automatically.
 
 ---
 
-## Référence complète des événements
+## Full event reference
 
-| Nom de l'événement           | Déclenchement                          | Champs clés du payload                                      |
-| ---------------------------- | -------------------------------------- | ----------------------------------------------------------- |
-| `geoleaf:app:ready`          | App entièrement initialisée            | `version`, `timestamp`                                      |
-| `geoleaf:map:ready`          | Carte MapLibre créée                   | —                                                           |
-| `geoleaf:profile:loaded`     | Profil JSON complètement chargé        | `profileId`, `data`                                         |
-| `geoleaf:basemap:change`     | Changement de fond de carte            | `key`, `previousKey`                                        |
-| `geoleaf:theme:applied`      | Thème appliqué (couches chargées)      | `themeName`, `layerCount`                                   |
-| `geoleaf:poi:click`          | Marker POI cliqué                      | `poiId`, `layerId`, `source`                                |
-| `geoleaf:poi:panel:open`     | Panneau latéral ouvert sur un POI      | `poiId`, `poiName`                                          |
-| `geoleaf:poi:panel:close`    | Panneau latéral fermé                  | `poiId`                                                     |
-| `geoleaf:layer:toggle`       | Couche affichée ou masquée             | `layerId`, `visible`, `source`                              |
-| `geoleaf:filter:apply`       | Filtre appliqué sur des entités        | `layerIds`, `geometryType?`, `activeCount`                  |
-| `geoleaf:filter:reset`       | Filtre réinitialisé (tout visible)     | `layerIds`                                                  |
-| `geoleaf:map:move`           | Carte déplacée (`moveend` MapLibre)    | `center.lat`, `center.lng`, `zoom`                          |
-| `geoleaf:map:zoom`           | Zoom changé (`zoomend` MapLibre)       | `zoom`, `oldZoom`, `center`                                 |
-| `geoleaf:plugin:loaded`      | Plugin enregistré de façon synchrone   | `name`, `version`                                           |
-| `geoleaf:plugin:lazy-loaded` | Plugin lazy chargé de façon asynchrone | `name`                                                      |
-| `geoleaf:plugin:failed`      | Échec du chargement d'un plugin lazy   | `name`, `error`                                             |
-| `geoleaf:popup:action`       | Bouton d'action de popup cliqué        | `actionId`, `layerId`, `featureId`, `properties`, `lngLat?` |
+| Event name                   | Dispatched when                   | Key payload fields                                          |
+| ---------------------------- | --------------------------------- | ----------------------------------------------------------- |
+| `geoleaf:app:ready`          | App fully initialised             | `version`, `timestamp`                                      |
+| `geoleaf:map:ready`          | MapLibre map created              | —                                                           |
+| `geoleaf:profile:loaded`     | JSON profile fully loaded         | `profileId`, `data`                                         |
+| `geoleaf:basemap:change`     | Basemap changed                   | `key`, `previousKey`                                        |
+| `geoleaf:theme:applied`      | Theme applied (layers loaded)     | `themeName`, `layerCount`                                   |
+| `geoleaf:poi:click`          | POI marker clicked                | `poiId`, `layerId`, `source`                                |
+| `geoleaf:poi:panel:open`     | Side panel opened on a POI        | `poiId`, `poiName`                                          |
+| `geoleaf:poi:panel:close`    | Side panel closed                 | `poiId`                                                     |
+| `geoleaf:layer:toggle`       | Layer shown or hidden             | `layerId`, `visible`, `source`                              |
+| `geoleaf:filter:apply`       | Filter applied to features        | `layerIds`, `geometryType?`, `activeCount`                  |
+| `geoleaf:filter:reset`       | Filter reset (everything visible) | `layerIds`                                                  |
+| `geoleaf:map:move`           | Map panned (MapLibre `moveend`)   | `center.lat`, `center.lng`, `zoom`                          |
+| `geoleaf:map:zoom`           | Zoom changed (MapLibre `zoomend`) | `zoom`, `oldZoom`, `center`                                 |
+| `geoleaf:plugin:loaded`      | Plugin registered synchronously   | `name`, `version`                                           |
+| `geoleaf:plugin:lazy-loaded` | Lazy plugin loaded asynchronously | `name`                                                      |
+| `geoleaf:plugin:failed`      | Lazy plugin failed to load        | `name`, `error`                                             |
+| `geoleaf:popup:action`       | Popup action button clicked       | `actionId`, `layerId`, `featureId`, `properties`, `lngLat?` |
 
 ---
 
 ## `geoleaf:popup:action`
 
-Émis sur `document` à chaque clic sur un bouton d'action de popup (renderer `type: "action"` dans `popup.fields[]`, rendu par `@geoleaf-plugins/feature-info`). C'est le seul canal de réaction à une action popup — écouteurs faiblement couplés (analytics, intégration hôte, backend).
+Dispatched on `document` on every click of a popup action button (renderer `type: "action"` in `popup.fields[]`, rendered by `@geoleaf-plugins/feature-info`). This is the only channel for reacting to a popup action — loosely coupled listeners (analytics, host integration, backend).
 
-**Payload (`e.detail`) :**
+**Payload (`e.detail`):**
 
-| Champ        | Type    | Description                                                                                                    |
-| ------------ | ------- | -------------------------------------------------------------------------------------------------------------- |
-| `actionId`   | string  | Identifiant opaque de l'action (token `^[A-Za-z0-9:_-]{1,64}$`), tel que défini dans la config.                |
-| `layerId`    | string  | Identifiant de la couche/source de l'entité cliquée.                                                           |
-| `featureId`  | string  | Identifiant de l'entité (feature GeoJSON ou POI).                                                              |
-| `properties` | object  | Sous-ensemble des propriétés de l'entité, borné par `payloadFields` (défaut : `id`, `name`, `title`, `label`). |
-| `lngLat`     | object? | Coordonnées `[lng, lat]` du point d'ancrage du popup (optionnel).                                              |
+| Field        | Type    | Description                                                                                             |
+| ------------ | ------- | ------------------------------------------------------------------------------------------------------- |
+| `actionId`   | string  | Opaque action identifier (token `^[A-Za-z0-9:_-]{1,64}$`), as defined in the configuration.             |
+| `layerId`    | string  | Identifier of the layer/source of the clicked feature.                                                  |
+| `featureId`  | string  | Identifier of the feature (GeoJSON feature or POI).                                                     |
+| `properties` | object  | Subset of the feature properties, bounded by `payloadFields` (default: `id`, `name`, `title`, `label`). |
+| `lngLat`     | object? | `[lng, lat]` coordinates of the popup anchor point (optional).                                          |
 
-> Le payload est sérialisable (JSON-only) : pas de référence DOM ni de fonction.
+> The payload is serialisable (JSON only): no DOM reference and no function.
 
 ```ts
 GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
@@ -107,7 +113,7 @@ GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
 
 ---
 
-## Exemples d'intégration
+## Integration examples
 
 ### Analytics — Matomo
 
@@ -131,7 +137,7 @@ GeoLeaf.Events.on("geoleaf:layer:toggle", (e) => {
 });
 ```
 
-### Nettoyage des listeners
+### Removing listeners
 
 ```ts
 const handlePoiClick = (e) => {
@@ -139,14 +145,14 @@ const handlePoiClick = (e) => {
 };
 GeoLeaf.Events.on("geoleaf:poi:click", handlePoiClick);
 
-// Plus tard :
+// Later:
 GeoLeaf.Events.off("geoleaf:poi:click", handlePoiClick);
 ```
 
 ---
 
-## Notes de sécurité
+## Security notes
 
-- Les payloads contiennent uniquement des primitives (`string`, `number`, `boolean`). Aucune référence DOM.
-- L'erreur de `plugin:failed` est tronquée à 200 caractères pour éviter les fuites de stack trace.
-- Compatible SSR : les appels sont silencieux si `document` n'est pas défini.
+- Payloads contain primitives only (`string`, `number`, `boolean`). No DOM references.
+- The error carried by `plugin:failed` is truncated to 200 characters to avoid leaking stack traces.
+- SSR-safe: calls are silent when `document` is undefined.

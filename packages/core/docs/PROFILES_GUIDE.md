@@ -1,15 +1,11 @@
-﻿---
+---
 title: "GeoLeaf Profiles Guide"
 ---
 
-﻿# GeoLeaf Profiles Guide
+# GeoLeaf Profiles Guide
 
-**Product Version:** GeoLeaf Platform V3
-**Version:** 3.0.0
-**Last Updated:** mars 2026
-**Audience:** Developers creating custom business profiles
-
-> Version courante : **GeoLeaf v3.0.0** — structure de profil modulaire (10 fichiers).
+**Applies to:** @geoleaf/core v3.x
+**Audience:** developers creating custom business profiles
 
 ---
 
@@ -29,9 +25,9 @@ title: "GeoLeaf Profiles Guide"
 
 ### Definition
 
-A **GeoLeaf Profile** is a self-contained configuration package that defines the complete behavior and appearance of a GeoLeaf map application for a specific business domain or use case.
+A **GeoLeaf Profile** is a self-contained configuration package that defines the complete behaviour and appearance of a GeoLeaf map application for a specific business domain or use case.
 
-Think of profiles as **themes on steroids** — they control not just visual styling, but also:
+A profile controls far more than visual styling:
 
 - Available POI categories and icons
 - Map layers and data sources
@@ -51,19 +47,19 @@ Think of profiles as **themes on steroids** — they control not just visual sty
 
 ### When to Create Custom vs Use Built-in
 
-**Use Built-in Profile** if:
+**Use a built-in profile** when:
 
-- ✅ Your use case closely matches Tourism
-- ✅ You only need minor customization (colors, labels)
-- ✅ You want to start quickly
+- The use case closely matches Tourism
+- Only minor customisation is needed (colours, labels)
+- Starting quickly matters more than full control
 
-**Create Custom Profile** if:
+**Create a custom profile** when:
 
-- ✅ You have unique business domain requirements
-- ✅ You need custom POI categories (e.g., medical facilities, schools)
-- ✅ You require specific data sources or layers
-- ✅ You need specialized UI components
-- ✅ You want complete control over behavior
+- The business domain has its own requirements
+- Custom POI categories are needed (medical facilities, schools)
+- Specific data sources or layers are required
+- Specialised UI components are needed
+- Full control over behaviour is required
 
 ---
 
@@ -73,36 +69,36 @@ Think of profiles as **themes on steroids** — they control not just visual sty
 
 ```
 profiles/
-├── geoleaf.config.json          # Config racine (sélection du profil)
-└── {profile-name}/              # Répertoire du profil (layout v2 — 2026-06)
-    ├── profile.json             # ✅ REQUIS — identité + map + manifeste Files
+├── geoleaf.config.json          # Root config (profile selection)
+└── {profile-name}/              # Profile directory (layout v2)
+    ├── profile.json             # REQUIRED — identity + map + Files manifest
     ├── config/
     │   ├── core/
-    │   │   ├── basemaps.json    # ✅ REQUIS — sources de tuiles
-    │   │   ├── ui.json          # ✅ REQUIS — contrôles UI
-    │   │   ├── layers.json      # ✅ REQUIS — liste des couches
-    │   │   ├── taxonomy.json    # ✅ REQUIS — catégories & icônes POI
-    │   │   ├── themes.json      # ✅ REQUIS — préréglages de visibilité
-    │   │   └── features.json    # ⚪ Optionnel — clustering, géocodage, performance, POI
+    │   │   ├── basemaps.json    # REQUIRED — tile sources
+    │   │   ├── ui.json          # REQUIRED — UI controls
+    │   │   ├── layers.json      # REQUIRED — layer list
+    │   │   ├── taxonomy.json    # REQUIRED — POI categories & icons
+    │   │   ├── themes.json      # REQUIRED — visibility presets
+    │   │   └── features.json    # Optional — clustering, geocoding, performance, POI
     │   └── plugins/
-    │       └── {module-id}.json # ⚪ Optionnel — config par plugin (storage, addpoi…)
-    └── layers/                  # ⚪ Optionnel — configs & données GeoJSON
+    │       └── {module-id}.json # Optional — per-plugin config (offline, taxonomy…)
+    └── layers/                  # Optional — layer configs & GeoJSON data
         └── {layer-id}/
-            ├── {layer-id}_config.json   # Config de la couche
+            ├── {layer-id}_config.json   # Layer config
             └── styles/
-                ├── defaut.json          # Style par défaut
-                └── *.json               # Styles alternatifs
+                ├── defaut.json          # Default style
+                └── *.json               # Alternative styles
 ```
 
-> Tous les chemins sont déclarés dans le manifeste `Files` de `profile.json` — seul
-> `profile.json` a un nom et un emplacement imposés. En déploiement, un
-> `profile-bundle.json` pré-généré fusionne toutes les sections en un seul fetch.
+> Every path is declared in the `Files` manifest of `profile.json` — only `profile.json` has an
+> imposed name and location. In a deployed build, a pre-generated `profile-bundle.json` merges
+> all sections into a single fetch.
 
 ### Required Files
 
 #### 1. profile.json
 
-**Purpose:** Main configuration file defining UI, basemaps, and behavior.
+**Purpose:** Main configuration file defining UI, basemaps, and behaviour.
 
 **Key Sections:**
 
@@ -190,7 +186,7 @@ profiles/
 }
 ```
 
-> **Terrain 3D** — `default3D: true` active automatiquement le relief 3D dès que ce basemap est sélectionné. Pas de toggle UI : le passage vers un basemap sans terrain désactive le relief. La clé `map.maxPitch` dans `profile.json` contrôle l'inclinaison maximale autorisée (défaut GeoLeaf : 80°). Voir la [référence complète des champs `terrain.*`](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optionnel).
+> **3D terrain** — `default3D: true` turns 3D relief on as soon as this basemap is selected. There is no UI toggle: switching to a basemap without terrain turns the relief off. The `map.maxPitch` key in `profile.json` caps the maximum allowed tilt (GeoLeaf default: 80°). See the [full reference for the `terrain.*` fields](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optional).
 
 **See:** [Configuration Guide - basemaps.json](CONFIGURATION_GUIDE.md#basemapsjson)
 
@@ -210,7 +206,7 @@ profiles/
     "showCacheButton": false,
     "showAddPoi": false,
     "enableGeolocation": true,
-    "language": "fr",
+    "language": "en",
     "permalink": {
         "enabled": false,
         "mode": "hash"
@@ -232,7 +228,7 @@ profiles/
 [
     {
         "id": "villes_principales",
-        "label": "Villes principales",
+        "label": "Main cities",
         "configFile": "layers/villes_principales/villes_principales_config.json",
         "visible": true,
         "layerManagerId": "group-geo"
@@ -286,12 +282,12 @@ profiles/
     "config": {
         "defautTheme": "default",
         "primaryThemes": { "enabled": false },
-        "secondaryThemes": { "enabled": true, "placeholder": "Choisir un thème" }
+        "secondaryThemes": { "enabled": true, "placeholder": "Choose a theme" }
     },
     "themes": [
         {
             "id": "default",
-            "label": "Vue complète",
+            "label": "Full view",
             "type": "primary",
             "icon": "🗺️",
             "layers": [
@@ -311,7 +307,7 @@ profiles/
 
 #### mapping.json
 
-**Purpose:** Normalizes external data to GeoLeaf's internal format.
+**Purpose:** Normalises external data to GeoLeaf's internal format.
 
 **Use When:**
 
@@ -376,7 +372,7 @@ layers/{layer-id}/
 
 The config file name and the directory name must match the layer `id` — the file is resolved
 from the `configFile` path declared in `layers.json`, and the layer's own directory is derived
-from it. See `PRF-LAYERS` in `docs/specs/contrats/PROFILE_CONTRACT_SPEC.md`.
+from it.
 
 **See:** [Configuration Guide - layers.json](CONFIGURATION_GUIDE.md#6-layersjson---layer-definitions)
 
@@ -417,7 +413,7 @@ template, it _is_ an instance of one.
                 "styles": {
                     "directory": "styles",
                     "default": "defaut.json",
-                    "available": [{ "id": "defaut", "label": "défaut", "file": "defaut.json" }]
+                    "available": [{ "id": "defaut", "label": "default", "file": "defaut.json" }]
                 },
                 "table": { "enabled": false },
                 "clustering": { "enabled": false }
@@ -425,12 +421,12 @@ template, it _is_ an instance of one.
             "instances": [
                 {
                     "id": "pluviometrie_janvier",
-                    "label": "Pluviométrie — Janvier",
+                    "label": "Rainfall — January",
                     "dataFile": "pluviometrie_janvier.geojson"
                 },
                 {
                     "id": "pluviometrie_fevrier",
-                    "label": "Pluviométrie — Février",
+                    "label": "Rainfall — February",
                     "dataFile": "pluviometrie_fevrier.geojson",
                     "zIndex": 92
                 }
@@ -463,19 +459,22 @@ express:
 - **`layerManagerId` is per-template**, never per-instance: one template serves exactly one
   layer-manager section.
 
-⚠️ **A templated layer skips the HTTP fetch entirely**, so a `{layer-id}_config.json` sitting next
-to it would never be read. Leaving one there is a build failure, enforced by
-`scripts/check-template-layer-configs.cjs` (**TPL-CFG**) — a dead file that looks like a live one
-gets edited, and the edit silently does nothing.
+::: warning
 
-N.B. `templateId` is required by the schema and used only as a human label; the loader never reads
-it (tracked as ANO-051).
+A templated layer skips the HTTP fetch entirely, so a `{layer-id}_config.json` sitting next to it
+would never be read. Do not leave one there: a dead file that looks like a live one gets edited,
+and the edit silently does nothing.
+
+:::
+
+N.B. `templateId` is required by the schema and used only as a human-readable label; the loader
+never reads it.
 
 ---
 
 ## Built-in Profiles
 
-GeoLeaf includes three production-ready profiles that showcase different use cases.
+The repository ships a complete, production-ready Tourism profile as a working reference.
 
 ### Tourism Profile
 
@@ -485,14 +484,14 @@ GeoLeaf includes three production-ready profiles that showcase different use cas
 
 ```
 profiles/tourism/
-├── profile.json         (identité + map + Files)
+├── profile.json         (identity + map + Files)
 ├── config/core/
 │   ├── taxonomy.json    (categories: activites, culture, nature, hebergements)
 │   ├── themes.json      (4+ themes)
 │   ├── layers.json      (35+ layer configs)
 │   ├── basemaps.json
 │   ├── ui.json
-│   └── features.json    (clustering, performance, POI — géocodage → plugin)
+│   └── features.json    (clustering, performance, POI — geocoding → plugin)
 └── layers/              (35+ directories)
     ├── activites-aquatiques/
     │   ├── data.geojson
@@ -506,7 +505,7 @@ profiles/tourism/
 
 **Key Features:**
 
-- **35+ layers** organized by category
+- **35+ layers** organised by category
 - **46 migrated styles** (introduced with `label.visibleByDefault`)
 - **Icon sprite** with 50+ tourism symbols
 - **Sample data** for major French cities
@@ -543,8 +542,6 @@ profiles/tourism/
 - Travel apps
 - Hiking/outdoor applications
 - Cultural heritage sites
-
----
 
 ---
 
@@ -592,18 +589,18 @@ Start with a minimal template:
 }
 ```
 
-**Customization checklist:**
+**Customisation checklist:**
 
-- ✅ Set unique `id` (lowercase, no spaces)
-- ✅ Configure `ui` components needed
-- ✅ Define at least one basemap
-- ✅ Set default map `center` and `zoom`
+- Set a unique `id` (lowercase, no spaces)
+- Configure the `ui` components needed
+- Define at least one basemap
+- Set the default map `center` and `zoom`
 
 ---
 
 ### Step 3: Create taxonomy.json
 
-Define your POI categories:
+Define the POI categories:
 
 ```json
 {
@@ -698,7 +695,7 @@ Define layer visibility presets:
 
 ### Step 5: Add Layers (Optional)
 
-If you have GeoJSON layers:
+For GeoJSON layers:
 
 **A. Create layers directory:**
 
@@ -791,7 +788,7 @@ mkdir -p layers/my-layer/styles
 
 ### Step 6: Prepare Sample Data (Optional)
 
-If you have POI data, create `poi.json`:
+For POI data, create `poi.json`:
 
 ```json
 {
@@ -826,7 +823,7 @@ If you have POI data, create `poi.json`:
 
 ### Step 7: Update Root Config
 
-Add your profile to `profiles/geoleaf.config.json`:
+Add the profile to `profiles/geoleaf.config.json`:
 
 ```json
 {
@@ -869,10 +866,10 @@ http://localhost:8080/demo/?profile=my-profile
 **C. Enable debug mode:**
 
 ```javascript
-// Activer dans geoleaf.config.json
+// Enable it in geoleaf.config.json
 // { "debug": true }
 
-// Ou en console
+// Or from the console
 GeoLeaf.Config.set("debug", true);
 ```
 
@@ -880,10 +877,10 @@ GeoLeaf.Config.set("debug", true);
 
 Look for:
 
-- ❌ Profile loading errors
-- ❌ Missing files (taxonomy, themes)
-- ❌ Invalid JSON syntax
-- ❌ Icon sprite not found
+- Profile loading errors
+- Missing files (taxonomy, themes)
+- Invalid JSON syntax
+- Icon sprite not found
 
 ---
 
@@ -895,7 +892,7 @@ Look for:
 # Install AJV CLI
 npm install -g ajv-cli
 
-# Valider les fichiers du profil
+# Validate the profile files
 ajv validate -s profiles/schemas/geoleaf-profile.schema.json -d profiles/my-profile/profile.json
 ajv validate -s profiles/schemas/basemaps.schema.json -d profiles/my-profile/basemaps.json
 ajv validate -s profiles/schemas/ui.schema.json -d profiles/my-profile/ui.json
@@ -907,7 +904,7 @@ ajv validate -s profiles/schemas/style.schema.json -d "profiles/my-profile/layer
 
 **B. Test in VS Code:**
 
-Add `$schema` reference to each file:
+Add a `$schema` reference to each file:
 
 ```jsonc
 {
@@ -923,23 +920,23 @@ Add `$schema` reference to each file:
 
 **Profile IDs:**
 
-- ✅ Use lowercase with hyphens: `my-profile`
-- ❌ Avoid spaces or special chars: `My Profile!`
-- ✅ Be descriptive: `retail-store-locator`
-- ❌ Don't be generic: `profile1`
+- Use lowercase with hyphens: `my-profile`
+- Avoid spaces or special chars: `My Profile!`
+- Be descriptive: `retail-store-locator`
+- Do not be generic: `profile1`
 
 **Category IDs:**
 
-- ✅ Use semantic names: `restaurants`, `hotels`
-- ❌ Avoid abbreviations: `rest`, `htl`
-- ✅ Pluralize categories: `museums`, not `museum`
-- ❌ Don't use generic names: `type1`, `category-a`
+- Use semantic names: `restaurants`, `hotels`
+- Avoid abbreviations: `rest`, `htl`
+- Pluralise categories: `museums`, not `museum`
+- Do not use generic names: `type1`, `category-a`
 
 **Layer IDs:**
 
-- ✅ Use descriptive names: `heritage-sites`, `bike-routes`
-- ❌ Avoid technical names: `layer1`, `geojson-data`
-- ✅ Include type if helpful: `zones-nature`, `routes-bike`
+- Use descriptive names: `heritage-sites`, `bike-routes`
+- Avoid technical names: `layer1`, `geojson-data`
+- Include the type if helpful: `zones-nature`, `routes-bike`
 
 ---
 
@@ -960,26 +957,26 @@ Add `$schema` reference to each file:
 
 **Best Practices:**
 
-1. **Consistent prefix:** All symbol IDs start with same prefix
+1. **Consistent prefix:** all symbol IDs start with the same prefix
 
     ```json
     "symbolPrefix": "my-prefix-"
     ```
 
-2. **Standardize viewBox:** Use 24x24 for consistency
+2. **Standardise viewBox:** use 24x24 for consistency
 
     ```xml
     viewBox="0 0 24 24"
     ```
 
-3. **Optimize file size:**
+3. **Optimise file size:**
     - Remove unnecessary groups
     - Simplify paths
     - Use SVGO: `svgo sprite.svg -o sprite.optimized.svg`
 
 4. **Limit icon count:** 50-100 icons max per sprite
     - Split into multiple sprites if needed
-    - Load sprites on-demand
+    - Load sprites on demand
 
 5. **Use semantic names:** `hotel`, not `icon-01`
 
@@ -992,12 +989,12 @@ Add `$schema` reference to each file:
 ```
 Category (Level 1)
 └── Subcategory (Level 2)
-    └── ❌ DON'T GO DEEPER
+    └── DO NOT GO DEEPER
 ```
 
 **Why?**
 
-- UI becomes cluttered with >2 levels
+- The UI becomes cluttered beyond 2 levels
 - Filter panel complexity increases
 - User confusion increases
 
@@ -1029,7 +1026,7 @@ Category (Level 1)
                     "subcategories": {
                         "italian": {
                             "subcategories": {
-                                "pizza": {}, // ❌ Too deep!
+                                "pizza": {}, // Too deep!
                             },
                         },
                     },
@@ -1052,10 +1049,10 @@ Category (Level 1)
 
 **Theme Strategy:**
 
-1. **Always include "All Layers"** - Users want to see everything
+1. **Always include "All Layers"** - users want to see everything
 2. **Create purpose-based themes** - "Heritage Sites", not "Theme A"
-3. **Group related layers** - Don't scatter similar layers across themes
-4. **Test switching performance** - Keep <1 second to switch
+3. **Group related layers** - do not scatter similar layers across themes
+4. **Test switching performance** - keep it under 1 second to switch
 
 ---
 
@@ -1063,7 +1060,7 @@ Category (Level 1)
 
 #### For Large Profiles (100+ layers)
 
-**Problem:** Slow loading, memory issues, UI lag
+**Problem:** slow loading, memory issues, UI lag
 
 **Solutions:**
 
@@ -1079,7 +1076,7 @@ Category (Level 1)
     ```
 
 2. **Use layer visibility themes strategically:**
-    - Don't enable all layers by default
+    - Do not enable all layers by default
     - Create focused themes with 5-10 layers max
 
 3. **Enable clustering for dense POI layers:**
@@ -1095,7 +1092,7 @@ Category (Level 1)
     }
     ```
 
-4. **Optimize GeoJSON:**
+4. **Optimise GeoJSON:**
     - Simplify geometries (reduce precision)
     - Remove unnecessary properties
     - Use `.geojson` instead of inline JSON
@@ -1108,7 +1105,7 @@ Category (Level 1)
 
 #### For POI-heavy Profiles
 
-**If you have 1000+ POIs:**
+**With 1000+ POIs:**
 
 1. **Enable clustering** (essential)
 2. **Set appropriate zoom levels:**
@@ -1131,10 +1128,10 @@ Category (Level 1)
 
 **Key Changes:**
 
-1. **Modular structure** - Split monolithic config
-2. **New file structure** - Separate taxonomy, themes, layers
-3. **Layer manager** - New UI component
-4. **Profile object** - New top-level structure
+1. **Modular structure** - split the monolithic config
+2. **New file structure** - separate taxonomy, themes, layers
+3. **Layer manager** - new UI component
+4. **Profile object** - new top-level structure
 
 **Migration Steps:**
 
@@ -1142,15 +1139,9 @@ Category (Level 1)
 
 ```jsonc
 {
-    "pois": [
-        /* all POIs inline */
-    ],
-    "categories": {
-        /* inline taxonomy */
-    },
-    "basemaps": {
-        /* ... */
-    },
+    "pois": [/* all POIs inline */],
+    "categories": {/* inline taxonomy */},
+    "basemaps": {/* ... */},
 }
 ```
 
@@ -1164,21 +1155,21 @@ profiles/my-profile/
 └── poi.json           # POIs (extracted)
 ```
 
-**After (layout v2 — 2026-06):**
+**After (layout v2):**
 
 ```
 profiles/my-profile/
-├── profile.json               # identité + map + manifeste Files UNIQUEMENT
+├── profile.json               # identity + map + Files manifest ONLY
 └── config/
     ├── core/                  # taxonomy / themes / layers / basemaps / ui / features
-    └── plugins/{module}.json  # un fichier par plugin (bloc modules.<id>)
+    └── plugins/{module}.json  # one file per plugin (modules.<id> block)
 ```
 
-Migration v1 → v2 : déplacer les fichiers de section dans `config/core/`, extraire les
-features core (`clusteringConfig`, `performance`, `poiConfig` — géocodage → plugin) de
-`profile.json` vers `config/core/features.json`, extraire chaque bloc plugin
-(`storage`, `poiAddConfig`, `editorConfig`…) vers `config/plugins/{module-id}.json`,
-puis mettre à jour les chemins du manifeste `Files` (+ `featuresFile`, `modules`).
+Migration v1 → v2: move the section files into `config/core/`, extract the core features
+(`clusteringConfig`, `performance`, `poiConfig` — geocoding → plugin) from `profile.json`
+into `config/core/features.json`, extract each plugin block (`storage`, `poiAddConfig`,
+`editorConfig`…) into `config/plugins/{module-id}.json`, then update the paths in the `Files`
+manifest (adding `featuresFile` and `modules`).
 
 **See:** Developer Guide for complete migration guidance
 
@@ -1188,8 +1179,8 @@ puis mettre à jour les chemins du manifeste `Files` (+ `featuresFile`, `modules
 
 **Key Changes:**
 
-1. **Label configuration moved** - `visibleByDefault` now in style files
-2. **Breaking change** - Layer config `label.visibleByDefault` deprecated
+1. **Label configuration moved** - `visibleByDefault` now lives in style files
+2. **Breaking change** - layer config `label.visibleByDefault` deprecated
 
 **Migration Steps:**
 
@@ -1202,7 +1193,7 @@ puis mettre à jour les chemins du manifeste `Files` (+ `featuresFile`, `modules
             "id": "my-layer",
             "label": {
                 "enabled": true,
-                "visibleByDefault": true, // ❌ DEPRECATED
+                "visibleByDefault": true, // DEPRECATED
                 "field": "name",
             },
         },
@@ -1217,12 +1208,10 @@ puis mettre à jour les chemins du manifeste `Files` (+ `featuresFile`, `modules
     "id": "default",
     "label": {
         "enabled": true,
-        "visibleByDefault": true, // ✅ NOW HERE
+        "visibleByDefault": true, // NOW HERE
         "field": "name",
     },
-    "style": {
-        /* ... */
-    },
+    "style": {/* ... */},
 }
 ```
 
@@ -1240,16 +1229,16 @@ node scripts/add-missing-label-config.cjs
 
 ---
 
-### Structure modulaire (v2.0.0)
+### Modular structure (v2.0.0)
 
-**Changements principaux :**
+**Key changes:**
 
-1. **`basemaps` extrait** — Déplacé de `profile.json` vers `basemaps.json`
-2. **`ui` extrait** — Déplacé de `profile.json` vers `ui.json`
-3. **`layers` extrait** — Déplacé de `profile.json` vers `layers.json`
-4. **Section `Files`** — `profile.json` contient maintenant une section `Files` pointant vers les fichiers séparés
+1. **`basemaps` extracted** — moved from `profile.json` to `basemaps.json`
+2. **`ui` extracted** — moved from `profile.json` to `ui.json`
+3. **`layers` extracted** — moved from `profile.json` to `layers.json`
+4. **`Files` section** — `profile.json` now carries a `Files` section pointing at the separate files
 
-**Avant (structure monolithique héritée) :**
+**Before (legacy monolithic structure):**
 
 ```json
 {
@@ -1260,7 +1249,7 @@ node scripts/add-missing-label-config.cjs
 }
 ```
 
-**Après (structure modulaire — v2.0.0) :**
+**After (modular structure — v2.0.0):**
 
 `profile.json`
 
@@ -1282,7 +1271,7 @@ node scripts/add-missing-label-config.cjs
 
 `layers.json` → `[ { "id": "couche1", ... } ]`
 
-> **Rétrocompat** — Les sections `ui` et `basemaps` directement dans `profile.json` restent supportées (chargement inline).
+> **Backwards compatibility** — `ui` and `basemaps` sections placed directly in `profile.json` are still supported (inline loading).
 
 ---
 
@@ -1290,7 +1279,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Profile Not Loading
 
-**Symptom:** Blank map, console error "Profile not found"
+**Symptom:** blank map, console error "Profile not found"
 
 **Causes & Solutions:**
 
@@ -1314,7 +1303,7 @@ node scripts/add-missing-label-config.cjs
     ```
 
 3. **profile.json syntax error**
-    - Use JSON validator: https://jsonlint.com/
+    - Use a JSON validator: https://jsonlint.com/
     - Check for trailing commas (invalid in JSON)
     - Check for missing quotes
 
@@ -1326,7 +1315,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Icons Not Showing
 
-**Symptom:** Generic markers instead of custom icons
+**Symptom:** generic markers instead of custom icons
 
 **Causes & Solutions:**
 
@@ -1351,9 +1340,9 @@ node scripts/add-missing-label-config.cjs
     ```
 
 3. **Sprite not loading (check Network tab)**
-    - 404: Incorrect spriteUrl path
-    - CORS: Sprite on different domain
-    - 200 but still not showing: Check symbol IDs
+    - 404: incorrect spriteUrl path
+    - CORS: sprite on a different domain
+    - 200 but still not showing: check symbol IDs
 
 4. **Missing defaultIcon**
     ```json
@@ -1368,7 +1357,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Layers Empty
 
-**Symptom:** Layer loads but shows 0 features
+**Symptom:** layer loads but shows 0 features
 
 **Causes & Solutions:**
 
@@ -1401,7 +1390,7 @@ node scripts/add-missing-label-config.cjs
     }
     ```
 
-    - Zoom to correct level or adjust min/maxZoom
+    - Zoom to the correct level or adjust min/maxZoom
 
 5. **Layer hidden by theme**
     - Check current theme settings
@@ -1411,7 +1400,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Themes Not Working
 
-**Symptom:** Theme selector shows themes but switching doesn't change layers
+**Symptom:** theme selector shows themes but switching does not change layers
 
 **Causes & Solutions:**
 
@@ -1450,7 +1439,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Labels Not Showing
 
-**Symptom:** Labels configured but not appearing
+**Symptom:** labels configured but not appearing
 
 **Causes & Solutions:**
 
@@ -1459,7 +1448,7 @@ node scripts/add-missing-label-config.cjs
     ```json
     {
         "label": {
-            "enabled": true, // ✅ Must be true
+            "enabled": true, // Must be true
             "visibleByDefault": true,
             "field": "name"
         }
@@ -1488,7 +1477,7 @@ node scripts/add-missing-label-config.cjs
     ```
 
 4. **visibleByDefault = false**
-    - Click label button in Layer Manager to enable
+    - Click the label button in the Layer Manager to enable it
 
 5. **1.0.x config still in use**
     - Migrate to 1.1.0: see [Labels Documentation](labels/GeoLeaf_Labels_README.md)
@@ -1497,7 +1486,7 @@ node scripts/add-missing-label-config.cjs
 
 ### Performance Issues
 
-**Symptom:** Map slow, browser hangs, high memory usage
+**Symptom:** map slow, browser hangs, high memory usage
 
 **Causes & Solutions:**
 
@@ -1530,8 +1519,8 @@ node scripts/add-missing-label-config.cjs
     ```
 
 4. **Too many label updates**
-    - Check console for "[LabelButtonManager] Bouton créé" spam
-    - Labels module should debounce updates (300ms)
+    - Check the console for "[LabelButtonManager] Bouton créé" spam
+    - The labels module should debounce updates (300 ms)
 
 5. **Memory leak from layers**
     ```javascript
@@ -1556,13 +1545,8 @@ node scripts/add-missing-label-config.cjs
 
 For help with profile creation:
 
-1. **Check Tourism profile:** `profiles/tourism/` directory has complete working profile
-2. **Review built-in profiles:** Tourism in `profiles/` directory
-3. **Validate your JSON:** Use JSON Schema validation
-4. **Enable debug mode:** See detailed logs in console
+1. **Check the Tourism profile:** the `profiles/tourism/` directory holds a complete working profile
+2. **Review built-in profiles:** Tourism in the `profiles/` directory
+3. **Validate the JSON:** use JSON Schema validation
+4. **Enable debug mode:** see detailed logs in the console
 5. **Open an issue:** [GitHub Issues](https://github.com/yourusername/geoleaf-js/issues)
-
----
-
-**Last Updated:** January 23, 2026  
-**GeoLeaf Version:** 1.2.0

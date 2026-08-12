@@ -13,11 +13,15 @@ date: 27 juillet 2026
 **Type :** capacité in-core (**de surcouche**) · **Code :** `packages/core/src/capabilities/route/` ·
 **Vérifié contre :** `5535694b` (27/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Cette capacité n'a ni `public-api.ts` ni façade ESM, et son `registerGlobals` est vide** —
 > une quatrième forme, après le patron canonique, la capacité de politique et l'atypique
@@ -168,12 +172,12 @@ appelant atteignable — voir §Écarts au CDC.
 
 ### Ce que la capacité consomme
 
-| Surface                                    | Usage                                                                 |
-| ------------------------------------------ | --------------------------------------------------------------------- |
-| `Core.getMap()` (façade `geoleaf.core.ts`) | Obtenir l'adaptateur actif — chemin canonique, jamais un accès direct |
-| `Layers.getFeatures(layerId)` (façade)     | Lire les entités de la couche : **la différence clé avec `taxonomy`** |
-| `adapter.addGeoJSONLayer` / `removeLayer`  | Rendre et retirer la sous-couche d'extrémités                         |
-| `adapter.getLayerRegistry()`               | Énumérer les couches lors du balayage et du démontage                 |
+| Surface                                                          | Usage                                                                 |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `Core.getMap()` (façade `packages/core/src/api/geoleaf.core.ts`) | Obtenir l'adaptateur actif — chemin canonique, jamais un accès direct |
+| `Layers.getFeatures(layerId)` (façade)                           | Lire les entités de la couche : **la différence clé avec `taxonomy`** |
+| `adapter.addGeoJSONLayer` / `removeLayer`                        | Rendre et retirer la sous-couche d'extrémités                         |
+| `adapter.getLayerRegistry()`                                     | Énumérer les couches lors du balayage et du démontage                 |
 
 ⚠️ **C'est ce qui distingue `route` de `taxonomy`**, dont elle reprend par ailleurs le patron :
 `taxonomy` n'applique que du style, `route` a besoin des **coordonnées** pour calculer les
@@ -270,7 +274,7 @@ tri — trace au §Journal des décisions de
 | Énoncé du CDC                                                                                     | Ce que dit le code                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Décision 6 — « **`GeoLeaf.Filters.filterRouteList` conservé** », API publique découplée du module | **Partie.** Toute la chaîne (installeur → seam de filtre → baril) est tombée avec `GeoLeaf.Filters`, son seul appelant atteignable. L'installeur ne porte plus que son module — ce que sa propre documentation annonçait déjà |
-| « la capacité est **exclue du build Lite** »                                                      | **Il n'y a plus de build Lite** : `CLAUDE.md` et `CDC_kernel.md` l'énoncent. Une entrée qui veut moins de capacités écrit son propre manifeste                                                                                |
+| « la capacité est **exclue du build Lite** »                                                      | **Il n'y a plus de build Lite** : [`CDC_kernel.md`](../CDC_kernel.md) l'énonce. Une entrée qui veut moins de capacités écrit son propre manifeste                                                                             |
 | Deux sous-couches `-start` / `-end` implicites dans le modèle                                     | **Une seule** sous-couche `gl-route-<id>-endpoints`, les deux rôles distingués par `properties.role` — fusion faite depuis, motif écrit dans `apply.ts`                                                                       |
 | Décision 5 — retrait de la façade `GeoLeaf.Route`                                                 | ✅ **Exact** : `registerGlobals` est vide, il n'y a ni `public-api.ts` ni façade ESM                                                                                                                                          |
 | Décision 2 — gate de boot opt-out obligatoire                                                     | ✅ **Exact**, et le CDC note lui-même que le piège a été découvert au smoke runtime                                                                                                                                           |

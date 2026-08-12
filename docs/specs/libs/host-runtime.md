@@ -13,16 +13,20 @@ date: 28 juillet 2026
 **Type :** bibliothèque partagée **interne** · **Paquet :** `@geoleaf/host-runtime` ·
 **Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `21630103` (28/07/2026)
 
-> **Deux règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
+> **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
 > 1. **Aucun chiffre mesurable n'est recopié ici** — la commande qui l'imprime est citée à sa place.
 > 2. **Aucune duplication d'un généré** — l'inventaire par fichier est dans
 >    [`ARBORESCENCE_QUALIFIEE.md`](../../reference/ARBORESCENCE_QUALIFIEE.md), générée et gatée.
+> 3. **Un chemin cité sans racine se lit depuis le répertoire annoncé par « Code : » ci-dessus**,
+>    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
+>    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
+>    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Cette fiche n'a PAS de CDC source.** C'est la seule des 37 du §2.4 écrite **entièrement depuis
 > le code**, parce que ce paquet est né d'une consolidation et non d'une spécification. Et **aucune
 > gate documentaire ne la lit** : les deux gardes du §2.4 visent les capacités et les plugins. Sa
-> véracité repose entièrement sur sa relecture — règle ⛔ de `CLAUDE.md`, sans filet mécanique.
+> véracité repose entièrement sur sa relecture — règle documentaire du dépôt, sans filet mécanique.
 
 > ⚠️ **`private: true` — ce paquet n'est JAMAIS publié sur npm.** Il n'a pas de `publishConfig`. Il
 > est **regroupé à la construction** dans chacun des paquets qui l'utilisent, et se déclare donc en
@@ -146,11 +150,11 @@ d'écart que la vérification et l'assemblage ne voient pas au même moment.
 
 ### Trois gardes surveillent ce paquet, et il faut savoir laquelle fait quoi
 
-| Garde                           | Ce qu'elle tient                                                                                               |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `verify-seam-drift.cjs`         | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                    |
-| `verify-plugin-shared-fork.cjs` | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus** |
-| `verify-host-contract-sync.cjs` | La synchronisation des contrats du namespace                                                                   |
+| Garde                                   | Ce qu'elle tient                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-seam-drift.cjs`         | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                     |
+| `scripts/verify-plugin-shared-fork.cjs` | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus** |
+| `scripts/verify-host-contract-sync.cjs` | La synchronisation des contrats du namespace                                                                   |
 
 ⚠️ **L'exemption de la deuxième est ce qui rend la première indispensable.** Sans la gate de dérive,
 le couple `getGeoLeaf` serait la seule copie du dépôt que **rien** ne surveille — exemptée d'un côté,
