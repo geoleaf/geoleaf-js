@@ -1,7 +1,7 @@
 # Architecture — GeoLeaf-JS
 
 > Référence arborescence, modules, points d'entrée et conventions structurelles.  
-> Source unique — ne pas dupliquer dans CLAUDE.md.
+> Source unique — ne pas dupliquer ailleurs.
 
 > 📄 **Arborescence exhaustive et qualifiée** : [`ARBORESCENCE_QUALIFIEE.md`](ARBORESCENCE_QUALIFIEE.md) — **tous les répertoires et fichiers source** du dépôt (`.ts`, `.css`, `scripts/`) — le décompte est imprimé par `npm run docs:tree`, il n'est pas recopié ici — chacun portant quatre qualifications : le nom est-il bon, l'emplacement pertinent, l'existence justifiée, et que fait l'élément. Vue interactive : [`ref/ARBORESCENCE_QUALIFIEE.html`](ARBORESCENCE_QUALIFIEE.html) (repli, filtres par verdict, recherche). **Fichiers générés** (`npm run docs:tree`) depuis les verdicts versionnés de `scripts/docs-tree-verdicts/`, vérifiés à chaque `ci:local` : ils ne peuvent pas diverger de l'arbre en silence. Le présent document reste la lecture _narrative_ de l'architecture ; celui-là est l'inventaire **et** l'audit structurel.
 
@@ -252,8 +252,8 @@ GeoLeaf-JS/                          ← monorepo racine
 > Elle disait « ne pas modifier directement » : une consigne de prudence sur des répertoires
 > disparus ne produit aucune erreur visible — elle ne protège rien et ne rougit jamais. Elle
 > pouvait donc survivre indéfiniment à ce qu'elle décrivait, contrairement à un chemin de code
-> qui casse à la compilation. C'est la même classe que « toute garde doit être VUE rougir »
-> (`CLAUDE.md`), appliquée à la documentation.
+> qui casse à la compilation. C'est la même classe que « toute garde doit être VUE rougir »,
+> appliquée à la documentation.
 >
 > **Conservé ici plutôt que supprimé sans trace** : le wrapper `storage/` était explicitement
 > distingué du plugin Storage MIT, et cette distinction-là reste utile — le plugin (UI offline)

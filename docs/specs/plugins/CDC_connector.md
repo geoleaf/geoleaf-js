@@ -170,11 +170,16 @@ défaut : la fiche décrivait `getToken` et `auth.endpoint` sans jamais dire **c
 concrètement dans un navigateur en développement**. Le mécanisme vivait dans trois fichiers qui ne se
 citaient pas.
 
-`apps/geoleaf-app/connector.local.js` (git-ignoré, gabarit `apps/geoleaf-app/connector.local.example.js`) pose
-`window.GEOLEAF_DEV_CONNECTOR = { baseUrl, getToken }` — un JWT de poste à privilège d'écriture. Il
-est chargé par une balise `<script type="module">` d'`apps/geoleaf-app/index.html`, placée **avant** celle d'`apps/geoleaf-app/init.js`
-(deux modules non-`async` s'exécutent dans l'ordre du document), et `apps/geoleaf-app/init.js` se contente de tester
-le global avant d'appeler `GeoLeaf.Connector.configure(...)` — c'est du mode `getToken`.
+Le bootstrap se nomme `connector.local.js` et vit à côté de son gabarit,
+`apps/geoleaf-app/connector.local.example.js`. ⚠️ **Ce n'est pas un fichier du dépôt** : il n'est
+suivi par aucun des deux, il se crée sur le poste en copiant le gabarit, et le chercher dans un
+clone est vain — c'est précisément ce que sa nature de porteur de jeton impose.
+
+Il pose `window.GEOLEAF_DEV_CONNECTOR = { baseUrl, getToken }` — un JWT de poste à privilège
+d'écriture. Il est chargé par une balise `<script type="module">` d'`apps/geoleaf-app/index.html`,
+placée **avant** celle d'`apps/geoleaf-app/init.js` (deux modules non-`async` s'exécutent dans
+l'ordre du document), et `apps/geoleaf-app/init.js` se contente de tester le global avant d'appeler
+`GeoLeaf.Connector.configure(...)` — c'est du mode `getToken`.
 
 | Variante          | Livrée ? | Fichier | Balise dans `apps/geoleaf-app/index.html` |
 | ----------------- | -------- | ------- | ----------------------------------------- |

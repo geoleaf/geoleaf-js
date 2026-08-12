@@ -71,7 +71,7 @@ Le sort des 3 dépôts satellites — suppression ou passage public du monorepo 
 - **`packages/core/demo/`** : fichiers support démo uniquement — `demo-header.html` (barre header avec sélecteurs) et `demo.extensions.js` (log verbeux, sélecteur de thème CSS, sélecteur de profil). Les deux blocs à retirer pour tout projet réel sont balisés `DEMO ONLY` dans `index.html`.
 - **`deploy/`** : application prête à copier sur un serveur (chemins plats, bundles minifiés). **`npm run build:deploy`** produit les variantes livrables ; `scripts/build-deploy-coverage.cjs` produit en plus **`deploy-coverage/`**, une copie instrumentée qui n'est **pas** un livrable. La liste ne se recopie pas ici — elle se lit sur le disque (`ls deploy/`) ou dans `scripts/build-deploy.cjs`.
 
-    > 🛑 **Cette ligne a décrit TROIS variantes dont `deploy-addpoi` jusqu'au 08/08/2026, et les trois assertions qu'elle portait étaient fausses ensemble.** `addpoi` a fusionné dans `editor` au Sprint 5 (05/08/2026) : le plugin, la variante et le port **8770** ont disparu le même jour. Le motif écrit ici — « AddPOI et Editor sont mutuellement exclusifs, d'où trois variantes et non deux » — est **éteint**, pas seulement périmé : c'est le mode d'échec n° 6 de `CLAUDE.md`, celui où la cible est correctement décrite et où la contrainte qui la motivait est tombée. Les ports E2E réels sont dérivés par `e2e/helpers/base-url.js` et déclarés dans `playwright.config.js` — ne pas les recopier non plus.
+    > 🛑 **Cette ligne a décrit TROIS variantes dont `deploy-addpoi` jusqu'au 08/08/2026, et les trois assertions qu'elle portait étaient fausses ensemble.** `addpoi` a fusionné dans `editor` au Sprint 5 (05/08/2026) : le plugin, la variante et le port **8770** ont disparu le même jour. Le motif écrit ici — « AddPOI et Editor sont mutuellement exclusifs, d'où trois variantes et non deux » — est **éteint**, pas seulement périmé : c'est le mode d'échec où la cible est correctement décrite et où la contrainte qui la motivait est tombée. Les ports E2E réels sont dérivés par `e2e/helpers/base-url.js` et déclarés dans `playwright.config.js` — ne pas les recopier non plus.
 
 ---
 
@@ -127,11 +127,11 @@ Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) pour la gouvernance docu
 
 - [MONOREPO_WORKFLOW.md](MONOREPO_WORKFLOW.md) — workflow quotidien, release, CI, sécurité.
 - [ARBORESCENCE_QUALIFIEE.md](ARBORESCENCE_QUALIFIEE.md) — arborescence détaillée du dépôt, **générée**.
-- `_docs_projet/guides/DISTRIBUTION_GUIDE_2026.md` — build, artefacts, test-deploy, publication npm. **Interne**, non publié : c'est une procédure d'exploitation, pas de la doc d'usage.
+- Le guide de distribution — build, artefacts, test-deploy, publication npm — est **interne et non publié** : c'est une procédure d'exploitation, pas de la doc d'usage. Il vit dans le dépôt de travail et n'est donc pas atteignable depuis ici ; c'est délibéré, et le nommer par son chemin donnerait un renvoi qui ne résout pas.
 
 > ⚠️ Les deux premières entrées portaient un **texte et une cible qui désignaient deux
-> documents différents** — `PROJECT_TREE.md` pour `ARBORESCENCE_QUALIFIEE.md`, et
-> `_docs_projet/guides/DISTRIBUTION_GUIDE_2026.md` pour cette même arborescence. `check-dead-links` ne
+> documents différents** — `PROJECT_TREE.md` pour `ARBORESCENCE_QUALIFIEE.md`, et le guide de
+> distribution interne pour cette même arborescence. `check-dead-links` ne
 > voit pas cette classe : la cible résolvait, donc la gate se taisait. C'est la troisième
 > occurrence du même défaut dans ce seul fichier — voir l'avertissement du §Flux vers les
 > dépôts publics, qui en consigne une autre.

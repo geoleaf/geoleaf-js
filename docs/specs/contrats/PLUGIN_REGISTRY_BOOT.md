@@ -287,10 +287,6 @@ un chiffre qu'on ne peut plus re-mesurer ne se périme pas, il se fossilise.
 les modules de capacité à l'enregistrement (`apply-preset.ts:203`). Une entrée qui n'a pas besoin
 de `pwa`/`offline` les laisse tomber par son manifeste, sans build parallèle à maintenir.
 
-📌 **B-07 nommait ce défaut depuis le S4 en visant `CLAUDE.md`** ; cette fiche portait la même
-description, et personne ne l'avait comptée. La ligne du registre reste ouverte tant que les
-autres porteurs ne sont pas soldés.
-
 ---
 
 ## 10. Références

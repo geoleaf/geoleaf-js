@@ -1,6 +1,6 @@
 {
     "_comment": "Chemins morts CONNUS dans les renvois de `docs/guides/` et `docs/reference/`, figés par `audit-report-freshness.cjs --source guides --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (GUIDES-PATHS-01) ET sur une entrée d'ici qui n'existe plus (GUIDES-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
-    "generatedCount": 72,
+    "generatedCount": 71,
     "paths": [
         "docs/guides/core/DEVELOPER_GUIDE.md→DEMO_SYSTEM_GUIDE.md",
         "docs/guides/core/DEVELOPER_GUIDE.md→DEMO_SYSTEM_GUIDE_perime.md",
@@ -51,7 +51,6 @@
         "docs/reference/MONOREPO_WORKFLOW.md→INSTALLATION.md",
         "docs/reference/MONOREPO_WORKFLOW.md→PROJECT_TREE.md",
         "docs/reference/MONOREPO_WORKFLOW.md→_docs_projet/CHANGELOG.md",
-        "docs/reference/MONOREPO_WORKFLOW.md→dette_technique.md",
         "docs/reference/MONOREPO_WORKFLOW.md→scripts/serve-test.cjs",
         "docs/reference/MONOREPO_WORKFLOW.md→travail/roadmaps/roadmap_documentation-v3.md",
         "docs/reference/inventaire_config_parametres.md→app/init.ts",

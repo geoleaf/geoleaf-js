@@ -368,7 +368,7 @@ Le dossier **`deploy/`** est la sortie de `npm run build:deploy` (trois sous-dos
 3. **Documentation**
     - Mettre à jour MONOREPO_STRUCTURE.md, PROJECT_TREE.md et le spec si des chemins ou scripts obsolètes sont cités (ex. `sync-to-public.ps1` → workflow CI).
 
-Cette étape peut être planifiée comme une tâche de maintenance (sprint dédié ou critère d’acceptation d’une release). Le suivi vit aux registres : `_docs_projet/registres/backlog_technique.md` et `dette_technique.md`.
+Cette étape peut être planifiée comme une tâche de maintenance (sprint dédié ou critère d’acceptation d’une release). Le suivi vit aux deux registres internes du projet — backlog et dette technique —, qui restent dans le dépôt de travail et ne sont pas atteignables depuis ici.
 
 > ⚠️ **Ce renvoi affichait `AUDIT_COMPLET_APPLICATION.md` et pointait
 > `travail/roadmaps/roadmap_documentation-v3.md`** — deuxième cas de texte et cible divergents
