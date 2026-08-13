@@ -113,6 +113,14 @@ jobs:
             - name: Publier sur la branche `demo`
               run: |
                   cd deploy/deploy-full
+                  # 🛑 LE FICHIER `CNAME` EST RÉÉCRIT À CHAQUE FOIS, et son absence coûterait le
+                  # domaine. GitHub Pages stocke le domaine personnalisé DANS un fichier `CNAME`
+                  # à la racine de la branche publiée — or celle-ci est orpheline et force-pushée,
+                  # donc tout fichier non regénéré ici DISPARAÎT au déploiement suivant. Pages
+                  # désactive alors le domaine, et `demo.geoleaf.dev` retombe en 404 sans que rien
+                  # ne l'annonce. Le poser depuis l'interface GitHub ne suffit donc PAS : il doit
+                  # être produit par le build.
+                  echo "demo.geoleaf.dev" > CNAME
                   git init -q -b demo
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
