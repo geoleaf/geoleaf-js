@@ -1,0 +1,124 @@
+name: Deploy demo
+
+# Publie `deploy-full` sur la branche `demo`, que le serveur de prod TIRE.
+#
+# ## Le sens du flux, et pourquoi il compte
+#
+# C'est un **PULL** : le serveur va chercher, GitHub ne pousse pas chez lui. Le dépôt étant
+# public, il tire sans aucune authentification — rien à stocker côté serveur, aucun port à
+# ouvrir, aucune clé privée dans les secrets GitHub.
+#
+# 🛑 L'alternative (Actions envoie par SSH) donnerait au compte GitHub un accès en ÉCRITURE
+# sur la prod : si le compte tombe, le serveur tombe avec. Le PULL n'expose rien. C'est le
+# sens inverse de ce que la tâche 11.3 prescrivait (« clé SSH en secret ») — et c'est la
+# bascule publique du 12/08 qui l'a rendu possible, un dépôt privé exigeant une auth pour
+# être cloné.
+#
+# ## Côté serveur, une seule fois
+#
+#   git clone --branch demo --single-branch --depth 1 \
+#       https://github.com/geoleaf/geoleaf-js.git /var/www/geoleaf-demo
+#
+#   */5 * * * * git -C /var/www/geoleaf-demo fetch --depth 1 origin demo \
+#               && git -C /var/www/geoleaf-demo reset --hard origin/demo
+#
+# Le `reset --hard` est ce qui rend le force-push ci-dessous sans danger.
+#
+# ⚠️ nginx doit connaître le type MIME de `.mjs` (`types { text/javascript mjs; }`), sinon les
+# modules MapLibre partent en `application/octet-stream` et RIEN ne boote. La recette voyage
+# dans le `SERVEUR.md` que `build-deploy.cjs` écrit à côté du dossier.
+#
+# ## Pourquoi sur TAG et pas sur push de `main`
+#
+# Deux raisons qui vont dans le même sens :
+#
+#   ① La tâche 11.1 le veut ainsi — « la démo suit les versions, pas les brouillons ». Un
+#     serveur de prod qui rejoue chaque commit de `main` montre des états intermédiaires.
+#   ② `scripts/lib/ci-parity.cjs` classe les workflows VALIDATION/LIVRAISON par leur
+#     déclencheur : `tags:` **sans** `branches:`. Un `push: branches: [main]` ici serait donc
+#     lu comme une validation, et la parité rougirait sur `npm run build:deploy` — une
+#     commande qui n'a rien à faire dans `ci:local`. Le critère est volontairement étroit :
+#     classer à tort une livraison en validation fait rougir, donc regarder ; l'inverse la
+#     sortirait de la comparaison EN SILENCE.
+#
+# `workflow_dispatch` couvre le besoin de publier hors version : un clic, pas une connexion.
+
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+
+permissions:
+    # Écrire la branche `demo` du dépôt courant. `GITHUB_TOKEN` suffit — aucun secret à créer.
+    contents: write
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            # SHA épinglés, et les MÊMES que `ci.yml` : deux workflows qui figent des versions
+            # différentes de la même action divergent sans que rien ne le dise.
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: ".nvmrc"
+                  cache: "npm"
+
+            - run: npm ci
+
+            # ⚠️ LES DEUX TEMPS, et le premier n'est pas optionnel. `build-deploy.cjs` ne
+            # rebâtit qu'une PARTIE de ce qu'il copie : son étape 2 ne tire que le core et ses
+            # dépendances, or les plugins dépendent de lui et non l'inverse — 10 des 12
+            # garderaient leur `dist/` d'avant. L'enchaîner seul produit un déployé PÉRIMÉ en
+            # sortant 0 (mesuré le 01/08/2026, B-105).
+            - run: npx turbo run build
+            - run: npm run build:deploy
+
+            # 🛑 LA VÉRIFICATION PRÉCÈDE LE TRANSFERT, jamais l'inverse — c'est la tâche 11.2,
+            # et la mettre ici la rend automatique au lieu d'être un geste à ne pas oublier.
+            # Cinq invariants : motifs de secrets, absence du bootstrap de poste, `.env`, scan
+            # non vide, backend de preuve retiré.
+            - name: Aucun secret dans le livrable (DNS-01…05)
+              run: node scripts/verify-deploy-no-secrets.cjs
+
+            # Contrôle ciblé sur ce qui part RÉELLEMENT — le livrable, pas la source. Il double
+            # la gate ci-dessus sur trois points précis dont la démo publique dépend, et il
+            # échoue en NOMMANT lequel a lâché.
+            - name: Ce que la démo publique ne doit pas porter
+              run: |
+                  cd deploy/deploy-full
+                  fail=0
+                  if [ -f connector.local.js ]; then echo "✗ bootstrap de poste présent"; fail=1; fi
+                  if grep -rq "qgis\.geoleaf\.dev" . 2>/dev/null; then echo "✗ backend de preuve référencé"; fail=1; fi
+                  if grep -rho '"enableTileCache": *true' profiles/ 2>/dev/null | grep -q .; then
+                      echo "✗ téléchargement de tuiles ACTIF — aspiration de tuiles tierces ouverte"; fail=1
+                  fi
+                  if node -e "
+                    const fs=require('fs');const j=JSON.parse(fs.readFileSync('profiles/tourism/profile-bundle.json','utf8'));
+                    const w=j.layerConfigs?.sites_rosario?.write;
+                    process.exit(w && w.enabled === true ? 1 : 0);"; then :; else
+                      echo "✗ écriture ACTIVE dans le profil servi"; fail=1
+                  fi
+                  [ "$fail" -eq 0 ] && echo "✓ livrable conforme" || exit 1
+
+            # Publication sur une branche ORPHELINE, réécrite à chaque fois.
+            #
+            # ⚠️ L'orphelin n'est pas une coquetterie : `deploy-full` pèse 34 Mo, dont 4,6 Mo de
+            # `dist/` qui changent à CHAQUE build (noms hashés). Une branche normale
+            # accumulerait ~5 Mo d'historique par déploiement, indéfiniment. Ici la branche ne
+            # porte qu'un commit — l'état courant —, et le `reset --hard` du cron serveur suit
+            # le force-push sans broncher.
+            - name: Publier sur la branche `demo`
+              run: |
+                  cd deploy/deploy-full
+                  git init -q -b demo
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add -A
+                  git commit -q -m "deploy: ${GITHUB_REF_NAME} (${GITHUB_SHA::8})"
+                  git push -q --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" demo
+                  echo "✓ branche demo publiée — $(git ls-files | wc -l) fichiers"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
