@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/measure",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Measure Plugin — Distance, surface, GPS & annotation tools with GeoJSON export",

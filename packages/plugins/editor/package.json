@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/editor",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Editor Plugin — Geometry creation & editing (Point/Line/Polyline/Polygon) with Terra Draw, responsive form catalog, and online/offline persistence",

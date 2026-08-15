@@ -8,6 +8,7 @@
 
 const { execSync } = require("child_process");
 const registry = require("./lib/packages.cjs");
+const { alreadyPublished } = require("./lib/npm-registry.cjs");
 
 // Identified by npm NAME, not by workspace path (ARCHI S9.4). A name is the stable
 // identity of a package: ARCHI S10 moves these directories under `packages/plugins/`
@@ -98,28 +99,27 @@ for (const name of PUBLISHED_PLUGINS) {
  * deux, sans quoi « 12/12 » se lirait comme douze publications alors qu'il pourrait n'y avoir
  * eu que cinq.
  *
- * @param {string} name Nom npm du paquet.
- * @param {string} version Version déclarée dans son manifeste.
- * @returns {boolean} `true` si le registre porte déjà exactement cette version.
+ * ✅ **Le corps vit désormais dans `lib/npm-registry.cjs`** (15/08/2026), parce qu'il en
+ * fallait un SECOND appelant : les étapes `@geoleaf/core` et `@geoleaf/field-renderer` de
+ * `publish.yml` étaient des `npm publish` nus et mouraient en `E403` sur une version déjà
+ * publiée — le workflow n'atteignait donc jamais les 12 plugins d'en dessous. Recopier ce
+ * corps aurait fait diverger deux définitions de « déjà publié », dans un geste irréversible.
  */
-function alreadyPublished(name, version) {
-    try {
-        const out = execSync(`npm view ${name}@${version} version --json`, {
-            stdio: ["ignore", "pipe", "ignore"],
-            encoding: "utf8",
-        }).trim();
-        return out.length > 0 && out !== "undefined";
-    } catch {
-        // `npm view` sort en erreur sur un E404 — le paquet ou la version n'existe pas.
-        return false;
-    }
-}
 
 let published = 0;
 let skipped = 0;
 
 for (const workspace of PUBLISHED_PLUGINS) {
-    const version = registry.byName(workspace).version;
+    // 🛑 `.manifest.version`, et c'est un CORRECTIF — cette ligne lisait `.version`, que
+    // `byName()` n'expose pas : elle rendait `undefined`, `npm view <nom>@undefined` échouait,
+    // et `alreadyPublished()` concluait donc TOUJOURS « pas publié ».
+    //
+    // ⚠️ Conséquence, mesurée le 15/08/2026 : la rejouabilité que les vingt lignes de
+    // commentaire ci-dessus documentent **n'a jamais fonctionné**. Une reprise après échec
+    // partiel n'aurait rien sauté et serait morte en `E403` sur le premier paquet déjà publié
+    // — précisément le scénario que ce contrôle existe pour éviter. La gate n'avait jamais été
+    // vue mordre, et elle ne mordait pas.
+    const version = registry.byName(workspace).manifest.version;
     if (!dryRun && alreadyPublished(workspace, version)) {
         console.log(`\n↷ ${workspace}@${version} — DÉJÀ au registre, sauté (reprise de run).`);
         skipped++;

@@ -177,6 +177,31 @@ function main() {
         range = "origin/main..HEAD";
     }
 
+    /**
+     * Nombre de lignes AJOUTÉES par la plage, ou `-1` si le compte n'est pas sûr.
+     *
+     * 🛑 Compté PAR COMMIT (`git log --numstat`), jamais sur le diff net (`git diff`). Un
+     * secret ajouté puis retiré dans la même plage rend un diff net vide : s'y fier
+     * laisserait passer exactement ce que cette gate existe pour attraper.
+     *
+     * Rend `-1` — donc REFUSE de conclure — sur un fichier binaire (`-` en numstat, contenu
+     * indénombrable) ou sur une sortie git illisible. Dans le doute, la gate rougit.
+     */
+    function addedLinesIn(r) {
+        const st = git("log", "--numstat", "--pretty=format:", r);
+        if (st.status !== 0) return -1;
+        let total = 0;
+        for (const line of (st.stdout || "").split("\n")) {
+            if (!line.trim()) continue;
+            const add = line.split("\t")[0];
+            if (add === "-") return -1;
+            const v = Number(add);
+            if (!Number.isFinite(v)) return -1;
+            total += v;
+        }
+        return total;
+    }
+
     const count = git("rev-list", "--count", range);
     const n = count.status === 0 ? Number(count.stdout.trim()) : -1;
     if (n === 0) {
@@ -290,12 +315,34 @@ function main() {
     // 4. Le contrôle de vacuité, en seconde ligne. Le compte de commits ci-dessus peut être
     //    non nul alors que gitleaks n'a rien lu (commits sans ajout, plage mal transmise) —
     //    et c'est précisément l'état dans lequel la CI a annoncé « aucune fuite ».
+    //
+    //    ⚠️ MAIS LES DEUX CAS CITÉS N'ONT PAS LE MÊME STATUT, et les confondre a fait rougir
+    //    la CI le 15/08/2026 sur un commit de 62 suppressions et ZÉRO ajout — la rotation du
+    //    plafond du JOURNAL, c'est-à-dire un geste que le dépôt IMPOSE tous les mois.
+    //    « Plage mal transmise » est un défaut ; « la plage n'ajoute rien » est un état sûr et
+    //    récurrent. gitleaks ne lit que le contenu AJOUTÉ : sur une plage qui n'en a aucun,
+    //    son silence n'est pas une cécité, c'est la vérité.
     const scanned = out.match(/scanned ~(\d+) bytes/);
     if (res.status === 0 && scanned && Number(scanned[1]) === 0) {
+        const added = addedLinesIn(range);
+        if (added === 0) {
+            console.log(
+                `  ${C.y}⚠ scan vide, et il est VRAI : la plage n'ajoute aucune ligne.${C.x}`
+            );
+            console.log(
+                `  ${C.d}${n} commit(s), 0 ligne ajoutée — gitleaks ne scanne que les ajouts,\n` +
+                    `  il n'avait donc rien à lire. Suppression pure (rotation, purge, retrait).${C.x}`
+            );
+            process.exit(0);
+        }
         console.log(
             `  ${C.r}✗ gitleaks n'a lu AUCUN octet, et annonce pourtant « no leaks ».${C.x}`
         );
-        console.log(`  ${C.d}Un scan vide n'est pas un verdict. Vérifier la plage.${C.x}`);
+        console.log(
+            `  ${C.d}Un scan vide n'est pas un verdict — et la plage ajoute pourtant ` +
+                `${added < 0 ? "un contenu indénombrable (binaire ou illisible)" : `${added} ligne(s)`}` +
+                `. Vérifier la plage.${C.x}`
+        );
         process.exit(1);
     }
 

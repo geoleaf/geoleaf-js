@@ -78,11 +78,22 @@ jobs:
             #
             # Le core d'abord : les 12 plugins le déclarent en `^3.0.0`, donc sans lui leurs
             # installs échouent toutes. `field-renderer` ensuite : `editor` en dépend.
+            # 🛑 PAS un `npm publish` NU, et le motif est mesuré. Ces deux étapes l'étaient
+            # jusqu'au 15/08/2026 : `core@3.0.0` et `field-renderer@1.0.0` étant au registre
+            # depuis le 12/08, npm rendait `E403 You cannot publish over the previously
+            # published versions` et le run mourait ICI — sans jamais atteindre les 12 plugins
+            # qu'il existe pour publier. Un correctif qui ne touche que des plugins était donc
+            # INPUBLIABLE par ce workflow.
+            #
+            # ⚠️ Ce n'est pas une tolérance ajoutée, c'est la promesse du bloc `on:` tenue :
+            # « la publication est un acte irréversible, on doit pouvoir la relancer ». Seuls
+            # les 12 plugins l'étaient. `publish-one.cjs` saute ce que le registre porte déjà
+            # EN LE DISANT — sauter n'est pas publier, et la sortie ne laisse pas confondre.
             - name: "@geoleaf/core"
-              run: npm publish -w @geoleaf/core --access public
+              run: node scripts/publish-one.cjs @geoleaf/core
 
             - name: "@geoleaf/field-renderer"
-              run: npm publish -w @geoleaf/field-renderer --access public
+              run: node scripts/publish-one.cjs @geoleaf/field-renderer
 
             # Les 12 plugins. Le script est REJOUABLE : un paquet déjà au registre est sauté
             # en le disant, et son décompte final sépare publiés et sautés — sans quoi

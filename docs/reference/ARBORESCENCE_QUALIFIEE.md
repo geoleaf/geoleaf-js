@@ -29,9 +29,9 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | --- | --- |
 | Packages | 17 |
 | Répertoires | 172 |
-| Fichiers | **1022** — 847 `.ts` · 46 `.css` · 129 `scripts/` |
-| Lignes de code | 195 542 |
-| Artefacts qualifiés | **1061 / 1194** (88.9 %) |
+| Fichiers | **1024** — 847 `.ts` · 46 `.css` · 131 `scripts/` |
+| Lignes de code | 195 731 |
+| Artefacts qualifiés | **1061 / 1196** (88.7 %) |
 
 | Verdict | Artefacts |
 | --- | ---: |
@@ -40,7 +40,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | déplacer | 0 |
 | fusionner | 0 |
 | supprimer | 0 |
-| ? | 133 |
+| ? | 135 |
 
 ## Sommaire
 
@@ -110,8 +110,8 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | &nbsp;&nbsp;&nbsp;&nbsp;[`packages/plugins/realtime-layer/`](#packagespluginsrealtime-layer) | 16 |  |
 | &nbsp;&nbsp;&nbsp;&nbsp;[`packages/plugins/table/`](#packagespluginstable) | 32 |  |
 | &nbsp;&nbsp;&nbsp;&nbsp;[`packages/plugins/websocket/`](#packagespluginswebsocket) | 13 |  |
-| [`scripts/`](#scripts) | 129 |  |
-| &nbsp;&nbsp;[`scripts/lib/`](#scriptslib) | 23 |  |
+| [`scripts/`](#scripts) | 131 |  |
+| &nbsp;&nbsp;[`scripts/lib/`](#scriptslib) | 24 |  |
 
 ## packages/
 
@@ -1768,7 +1768,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ```
 Élément                                 |   sz | nom | emp | existence | description
 ------------------------------------------------------------------------------------
-├── lib/                                |  23f |  ok |  ok | justifié  | Modules partagés de l'outillage : registre de paquets, périmètres de…
+├── lib/                                |  24f |  ok |  ok | justifié  | Modules partagés de l'outillage : registre de paquets, périmètres de…
 ├── audit-ci.cjs                        |  110 |  ok |  ok | justifié  | Gate CI bloquante de sécurité : npm audit --omit=dev, échec sur toute…
 ├── audit-cleanup.cjs                   |  429 |  ok |  ok | justifié  | Orchestrateur d'audit de campagne : enchaîne knip, ts-prune, depcheck,…
 ├── audit-dev-report.cjs                |  117 |  ok |  ok | justifié  | Pendant informatif du gate de sécurité : journalise les avis High et…
@@ -1825,7 +1825,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── generate-docs-tree.cjs              |  952 |  ok |  ok | justifié  | Générateur de l'arborescence qualifiée : croise l'inventaire mesuré et…
 ├── generate-pwa-icons.cjs              |  175 |  ok |  ok | justifié  | Produit les quatre icônes PNG de la PWA — 192 et 512, variantes any et…
 ├── generate-vector-tiles.cjs           |  415 |  ok |  ok | justifié  | Outil manuel : génère les tuiles vectorielles PBF des couches d'un…
-├── gitleaks-local.cjs                  |  332 |   ? |   ? | ?         | (à qualifier)
+├── gitleaks-local.cjs                  |  379 |   ? |   ? | ?         | (à qualifier)
 ├── golden-master.cjs                   |  165 |  ok |  ok | justifié  | Harnais d'empreinte par capacité : fige avant et après extraction la…
 ├── port-to-public.cjs                  |  306 |   ? |   ? | ?         | (à qualifier)
 ├── probe-boot-contract.mjs             |  273 |  ok |  ok | justifié  | Sonde manuelle : pilote Chromium contre le déployé réel et vérifie la…
@@ -1840,6 +1840,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── probe-tile-cache-arbitration.mjs    |  294 |   ? |   ? | ?         | (à qualifier)
 ├── probe-tile-cache-trim.mjs           |  212 |   ? |   ? | ?         | (à qualifier)
 ├── probe-typedoc-surface.mjs           |  317 |  ok |  ok | justifié  | Sonde de la surface que TypeDoc rendrait s'il était élargi (expand +…
+├── publish-one.cjs                     |   85 |   ? |   ? | ?         | (à qualifier)
 ├── publish-plugins.cjs                 |  167 |  ok |  ok | justifié  | Publie sur npm la liste de plugins retenue par politique, identifiés par…
 ├── purge-dist.cjs                      |   61 |   ? |   ? | ?         | (à qualifier)
 ├── purge-turbo-cache.cjs               |  309 |  ok |  ok | justifié  | Ramène `.turbo/cache` sous un budget de taille — le seul critère qui…
@@ -1897,6 +1898,7 @@ Modules partagés de l'outillage : registre de paquets, périmètres de test, in
 ├── knip-hints-reporter.mjs |   41 |  ok |  ok | justifié  | Reporter knip émettant les configurationHints sur stderr — le reporter…
 ├── license-banner.cjs      |  335 |   ? |   ? | ?         | Le bandeau de licence — sa forme canonique, en un seul endroit (npm S3,…
 ├── namespace-surface.mjs   |  819 |  ok |  ok | justifié  | Description unique de la surface `globalThis.GeoLeaf` (les 3 tiers) et…
+├── npm-registry.cjs        |   57 |   ? |   ? | ?         | (à qualifier)
 ├── packages.cjs            |  313 |  ok |  ok | justifié  | Registre dérivé des paquets du monorepo, lu depuis les globs workspaces…
 ├── public-partition.cjs    |  235 |   ? |   ? | ?         | (à qualifier)
 ├── purgecss-config.cjs     |  189 |  ok |  ok | justifié  | Configuration PurgeCSS partagée — sources CSS, globs de contenu et…
