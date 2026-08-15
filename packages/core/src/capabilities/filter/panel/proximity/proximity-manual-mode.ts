@@ -16,6 +16,7 @@
  */
 import { getLog } from "../../../../utils/general/di-accessors.js";
 import type { IMapAdapter } from "../../../../contracts/map-adapter.contract.js";
+import { armToolCursor, disarmToolCursor } from "../../../../kernel/shared/index.js";
 import { ProximityState } from "./proximity-state.js";
 import {
     createProximityCircle,
@@ -47,7 +48,10 @@ export function activateManualMode(
 
     Log.info("[GeoLeaf.Proximity] Manual mode: click on the map to define the search point");
 
-    map.getContainer().style.cursor = "crosshair";
+    // ⚠️ Targets the CANVAS, not the root container. `.maplibregl-canvas-container` carries
+    // an explicit `cursor: grab`, which beats anything inherited from `.maplibregl-map` —
+    // this line wrote `crosshair` on the root for months and it was never once painted.
+    armToolCursor(map, "crosshair");
 
     ProximityState.clickHandler = function (e: unknown): void {
         // Read the radius at click time, not at activation time
@@ -69,7 +73,7 @@ export function activateManualMode(
         wrapper.setAttribute("data-proximity-radius", String(radiusKm));
         wrapper.setAttribute("data-proximity-active", "true");
 
-        map.getContainer().style.cursor = "";
+        disarmToolCursor(map);
         map.off("click", ProximityState.clickHandler!);
         ProximityState.clickHandler = null;
 

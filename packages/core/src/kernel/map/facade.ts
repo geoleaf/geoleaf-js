@@ -255,6 +255,96 @@ function listMaps(): string[] {
     return Array.from(_instances.keys());
 }
 
+// ── Attachment ────────────────────────────────────────────────────────────────
+
+/**
+ * Tells whether a map is registered **and** its container is still in the document.
+ *
+ * Distinct from {@link hasMap}, which answers the weaker question: `hasMap()` says the
+ * registry holds an entry, `isAttached()` says that entry is still wired into the page.
+ * They diverge exactly where it matters — a host that removed the map's subtree without
+ * calling {@link destroy} leaves a registered map that renders nowhere.
+ *
+ * @param mapId - The id to check.
+ * @returns `true` when an instance exists for `mapId` and its container is attached.
+ *
+ * @example
+ * ```ts
+ * const Core = GeoLeaf?.Core;
+ * if (Core && !Core.isAttached("main")) {
+ *     Core.reattach("main", document.getElementById("slot")!);
+ * }
+ * ```
+ */
+function isAttached(mapId: string): boolean {
+    const adapter = _instances.get(mapId);
+    if (!adapter) return false;
+    try {
+        return document.contains(adapter.getContainer());
+    } catch {
+        // `getContainer()` goes through the adapter's readiness guard and THROWS once
+        // the map has been destroyed. A destroyed map is not attached — that is an
+        // answer, not an error, so it must not propagate to the caller.
+        return false;
+    }
+}
+
+/**
+ * Moves a live map into another parent element, without destroying and rebuilding it.
+ *
+ * The whole container is re-parented; its children are NOT moved one by one. That is
+ * forced by the engine, not a preference: MapLibre memorises the element it was
+ * constructed with, so moving the children would leave `map.getContainer()` pointing at
+ * the old node and every subsequent measurement wrong. Integrators who lacked a handle
+ * on the map did move the children, and inherited exactly that bug.
+ *
+ * ⚠️ **The panels do not follow.** `#gl-right-panel` and its siblings live in the shell
+ * (`glMain`), not inside the map container, so they stay where they are. Rebuilding them
+ * around the new location is the host's call, through three already-public exports:
+ * `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`.
+ * Making them follow would tie this API to the shell's DOM — the very coupling it exists
+ * to remove.
+ *
+ * @param mapId - The id of the map to move.
+ * @param parent - The element that should receive the map container.
+ * @returns `true` when the map was found and moved, `false` otherwise.
+ *
+ * @example
+ * ```ts
+ * const ok = GeoLeaf?.Core?.reattach("main", document.getElementById("fullscreen-slot")!);
+ * ```
+ */
+function reattach(mapId: string, parent: HTMLElement): boolean {
+    const context = "[GeoLeaf.Core]";
+    const adapter = _instances.get(mapId);
+    if (!adapter) {
+        Log.warn(`${context} reattach: no instance for "${mapId}"`);
+        return false;
+    }
+    if (!parent || typeof parent.appendChild !== "function") {
+        Log.warn(`${context} reattach: "${mapId}" needs a parent element to move into`);
+        return false;
+    }
+
+    let container: HTMLElement;
+    try {
+        container = adapter.getContainer();
+    } catch (e) {
+        // Same guard as isAttached(): a destroyed map throws here.
+        Log.warn(`${context} reattach: "${mapId}" has no live container:`, e);
+        return false;
+    }
+
+    if (container.parentElement === parent) return true;
+    parent.appendChild(container);
+
+    // The canvas keeps the drawing-buffer size it was built with, so a parent of
+    // different dimensions renders at the old size until the engine is told.
+    // Optional at the contract, hence `?.` — its absence means "no telling needed".
+    adapter.resize?.();
+    return true;
+}
+
 // ── Public Core object ────────────────────────────────────────────────────────
 
 /**
@@ -272,6 +362,8 @@ export const Core = {
     destroy,
     hasMap,
     listMaps,
+    isAttached,
+    reattach,
     setTheme,
     getTheme,
 };

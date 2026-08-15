@@ -10,7 +10,14 @@
  * All events are dispatched on `document` using native CustomEvent (no external lib).
  *
  * Security notes:
- * - Payloads contain primitives only (string, number, boolean). No DOM refs or Leaflet objects.
+ * - Payloads dispatched THROUGH THIS MODULE contain primitives only (string, number, boolean):
+ *   no DOM refs, no functions. That is not a convention but a mechanical consequence of
+ *   {@link _sanitizePayload} below — anything else is silently replaced by `{}` or dropped.
+ *   ⚠️ The GeoLeaf events that DO carry a live node (`geoleaf:popup:action`,
+ *   `geoleaf:toolbar:action`, `geoleaf:layer-manager:panel`) are dispatched as raw
+ *   `CustomEvent`s by their own emitters and never reach this file; their keys live in
+ *   `GeoLeafRawEventMap`. This line read as a property of ALL GeoLeaf events until 14/08/2026,
+ *   which made the raw seams look like violations of it rather than the reason it holds here.
  * - `plugin:failed` error is truncated to 200 chars to prevent stack trace leakage.
  * - Guard for SSR environments where `document` is undefined.
  */
@@ -24,6 +31,7 @@ export type {
     GeoLeafPoiClickDetail,
     GeoLeafPoiPanelOpenDetail,
     GeoLeafPoiPanelCloseDetail,
+    GeoLeafPanelToggleDetail,
     GeoLeafLayerToggleDetail,
     GeoLeafFilterApplyDetail,
     GeoLeafFilterResetDetail,
@@ -32,6 +40,12 @@ export type {
     GeoLeafPluginLoadedDetail,
     GeoLeafPluginLazyLoadedDetail,
     GeoLeafPluginFailedDetail,
+    // ⚠️ `GeoLeafPopupActionDetail` est le seul type de cette liste dont la clé ne vit PLUS dans
+    // `GeoLeafEventMap` : elle est passée dans `GeoLeafRawEventMap` le 14/08/2026, et son detail
+    // porte désormais un `HTMLElement` et deux fonctions. Le ré-export reste ici — le retirer
+    // casserait des importateurs pour un gain nul —, mais il ne dit plus « ce type passe par le
+    // bus assaini ». Aucune gate ne peut voir cet écart : c'est une réexportation valide d'un
+    // type valide. Ne pas en déduire que cette clé s'émet par `dispatchGeoLeafEvent`.
     GeoLeafPopupActionDetail,
     IEventBus,
 } from "../../contracts/event-bus.contract.js";

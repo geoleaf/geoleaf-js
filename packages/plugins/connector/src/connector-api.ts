@@ -92,7 +92,7 @@ function _wireRefreshDelegate(config: ConnectorConfig): void {
             await TokenStore.save(baseUrl, result.token, expiresAt);
             if (typeof document !== "undefined") {
                 document.dispatchEvent(
-                    new CustomEvent("connector:token-refreshed", { detail: { baseUrl } })
+                    new CustomEvent("geoleaf:connector:token-refreshed", { detail: { baseUrl } })
                 );
             }
             return result.token;

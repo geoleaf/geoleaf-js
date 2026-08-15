@@ -33,12 +33,22 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 8px;
+    /* 8px à l'origine. La cible tactile de référence du dépôt est 44px, inatteignable ici
+       sans casser la mise en page ; 16px est sûr parce que la poignée est `position:absolute;
+       top:0` AU-DESSUS d'un toolbar dont le padding haut offre une bande morte — elle mange
+       du padding, pas des boutons. Ne pas l'agrandir vers le HAUT : ce serait par-dessus la
+       carte. */
+    height: 16px;
     cursor: ns-resize;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    /* 🛑 OBLIGATOIRE, et sans elle la conversion en Pointer Events est PUREMENT COSMÉTIQUE :
+       au doigt, le navigateur revendique le glissement vertical comme un défilement et
+       n'émet aucun `pointermove` — il émet un `pointercancel`. C'est la règle CSS qui rend
+       le geste au JS, pas le `preventDefault()` du `pointerdown`. */
+    touch-action: none;
 }
 
 .gl-table-panel__resize-handle:hover .gl-table-panel__resize-bar {

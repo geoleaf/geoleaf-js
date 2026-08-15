@@ -39,9 +39,7 @@ function _resolveNativeMap(): unknown {
     const Core = GeoLeaf["Core"] as Record<string, unknown> | undefined;
     if (!Core || typeof Core["getMap"] !== "function") return null;
     const adapter = (Core["getMap"] as () => unknown)() as
-        | Record<string, unknown>
-        | null
-        | undefined;
+        Record<string, unknown> | null | undefined;
     if (!adapter || typeof adapter["getNativeMap"] !== "function") return null;
     return (adapter["getNativeMap"] as () => unknown)();
 }

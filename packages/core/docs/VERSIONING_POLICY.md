@@ -62,19 +62,111 @@ Keep **technical SemVer** in:
 
 ---
 
+## Deprecation
+
+The table above says a breaking change lands in a MAJOR. It does not say how one gets
+there. This section does: a public symbol is never removed without notice, and the notice
+is what makes that MAJOR predictable instead of surprising.
+
+### What counts as an announcement
+
+Three artifacts, all three required. They are not three copies of one statement — each
+reaches a different reader through a different channel.
+
+| Artifact                             | Role         | Reaches                                                                         |
+| ------------------------------------ | ------------ | ------------------------------------------------------------------------------- |
+| `@deprecated` TSDoc on the symbol    | the carrier  | every consumer — the tag ships inside the package and editors strike call sites |
+| An entry in `CHANGELOG.md`           | the record   | whoever reads the version history, on the repository and the documentation site |
+| An entry in the deprecation register | the register | machines — this is the artifact a gate can read                                 |
+
+::: warning
+
+**Only the first one travels inside the package.** The npm tarball carries `dist/`,
+`README.md` and `LICENSE`, nothing else — `CHANGELOG.md` and this page are published on the
+repository and the documentation site, not in the tarball. The `@deprecated` tag reaches a
+consumer who never leaves `node_modules`, because it rides in the emitted `.d.ts` files.
+That is why it is required rather than recommended.
+
+:::
+
+The register lives at `docs/reference/consumers/DEPRECATIONS.json`. It is public because it
+names **symbols**, never a customer: downstream declares what it depends on, upstream
+declares what it allows itself to remove, and the two files are not written by the same
+hand.
+
+Each entry carries four fields, and each one closes a different door:
+
+| Field         | Meaning                                        | Constraint                                        |
+| ------------- | ---------------------------------------------- | ------------------------------------------------- |
+| `since`       | the version that first shipped the tag         | within the current MAJOR line                     |
+| `removeIn`    | the version that removes the symbol            | a MAJOR **strictly greater** than the current one |
+| `replacement` | what to use instead                            | must resolve on the current published surface     |
+| `symbol`      | where the tag lives, as `path.ts#Owner.member` | must designate a real `@deprecated` declaration   |
+
+A deprecation whose `replacement` does not resolve is refused: **a symbol is not deprecated
+towards nothing.** If no replacement exists, the symbol is not deprecated — it is
+unsupported, which is a different statement, made elsewhere.
+
+### How long the announcement must stand
+
+**The announcement must survive at least one published `minor`, and `removeIn` is the next
+MAJOR.** These are one rule, not two: the announcement enters on a `minor` of the current
+MAJOR line, and the removal lands on the first MAJOR published after it.
+
+::: danger
+
+A release that both announces and removes announces nothing. `removeIn` must be strictly
+greater than the current MAJOR — an announcement dated in the present is a removal one
+warns about afterwards. And the clock runs on **published** versions, never on commits: a
+deprecation announced in a release nobody published has not been announced.
+
+:::
+
+### What `@deprecated` does not mark
+
+The tag marks a symbol that is **going away**. It does not mark:
+
+- **A kept alias.** A misnomer preserved so existing configurations keep working is
+  normalised into its canonical spelling and is not scheduled for removal. Tagging it
+  strikes the key through in the integrator's editor while promising a removal that is not
+  planned — the tag would lie to autocompletion. Describe it as a kept alias instead, and
+  point at the canonical name.
+- **An option with no effect.** A declared key that no code reads is a defect to fix, or a
+  field to withdraw under this policy — not a permanent state to annotate.
+
+Both cases existed in these sources before this policy was written. Anything left tagged
+without a register entry is exempted **by name** in the verifier below, never by class: a
+named exemption is auditable, an implicit one is a hole.
+
+### The verifier
+
+This policy is enforced by **`CC-10`** of `scripts/verify-consumer-contract.cjs`, wired into
+the local and CI gate runs. A path may leave the consumed public surface only if it appears
+in the register with its four fields **and** carries a real `@deprecated` tag on its symbol.
+Any other disappearance turns the run red.
+
+A policy with no named verifier goes stale in silence. The verifier is named here for that
+reason, and renaming it without updating this section is itself a defect.
+
+---
+
 ## Plugin Versioning
 
 Plugins are versioned independently of the core: a plugin's own version says nothing
-about which core it targets. That relationship is carried by its manifest — and today,
-**not** by `peerDependencies`.
+about which core it targets. That relationship is carried by the dependency range each
+plugin declares — and **not** by `peerDependencies`.
 
-All **13** published plugins are MIT. None of them declares `@geoleaf/core` as a
-**peer** dependency; every one lists it under `dependencies`, at range `*`:
+Every published plugin is MIT, and each lists `@geoleaf/core` under `dependencies` at range
+`^3.0.0`:
 
 ```jsonc
-// packages/plugins/<name>/package.json — the shape all 13 share
-{ "dependencies": { "@geoleaf/core": "*" } }
+// packages/plugins/<name>/package.json — the shape they share
+{ "dependencies": { "@geoleaf/core": "^3.0.0" } }
 ```
+
+The list of published plugins and their versions is not restated here — it changes, and a
+count written by hand goes wrong the first time one is added or merged away. Read it with
+`npm run versions:check`.
 
 ::: warning
 
@@ -84,14 +176,15 @@ dependency lets npm **install its own copy** next to the one the consumer alread
 library that mounts a global `GeoLeaf` namespace, two copies in one tree is a different
 problem from an unenforced range.
 
-The range `*` means no compatibility constraint either way: a plugin built against V3
-installs silently alongside a V2 core. Choosing between tightening to `^3.0.0` and moving to
-`peerDependencies` belongs to the distribution workstream, not to this policy.
+That choice is settled: the ranges were tightened from `*` to `^3.0.0` on 2026-08-09.
+Under `*` a plugin built against V3 installed silently alongside a V2 core — which is what
+would have happened at the first publication, `latest` for `@geoleaf/core` being `2.1.8` at
+the time. `check-versions.cjs` now guards the range.
 
 :::
 
-**Six** of the thirteen do declare peer dependencies — for `maplibre-gl`, never for the core:
-`addpoi`, `editor`, `geocoding`, `measure`, `print`, `table`.
+Some plugins additionally declare a peer dependency on `maplibre-gl` — never on the core.
+Which ones is derived, not listed here.
 
 ---
 

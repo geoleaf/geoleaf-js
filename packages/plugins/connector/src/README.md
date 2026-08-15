@@ -1,141 +1,107 @@
 # plugin-connector — Internals (`src/`)
 
-Documentation des modules internes du plugin `@geoleaf-plugins/connector`.  
-**Ne pas importer ces modules directement** — utiliser l'API publique via `GeoLeaf.Connector` ou `createConnector()`.
+Ce document décrit les **interactions entre modules** du plugin `@geoleaf-plugins/connector` :
+l'ordre dans lequel `configure()` installe ses crochets, par quel canal chaque requête reçoit son
+en-tête, et comment le pont MapLibre se raccroche à une carte qui n'existe pas encore.
+
+**Ne pas importer ces modules directement** — utiliser l'API publique via `GeoLeaf.Connector` ou
+`createConnector()`.
+
+> ⚠️ **Ce document ne liste plus les exports, ni les interfaces, ni l'arbre des imports** — et
+> l'omission est délibérée. Il l'a fait jusqu'au 14/08/2026, et **toutes ses erreurs étaient là** :
+> un champ `auth.credentials` qui n'a jamais existé, `configure()` et `ConnectorInstance` attribués
+> à `entry.ts` alors qu'ils vivent dans `connector-api.ts`, `TokenRecord` et `DataFormat` annoncés
+> exportés sans l'être, trois modules sur onze absents de la table. Une signature recopiée à la main
+> rediverge ; celle du fichier, non. **Pour un module : lire son fichier.** Ce qui reste ici est ce
+> qu'aucun fichier ne porte seul.
 
 ---
 
 ## Modules
 
-| Fichier                | Rôle                                                           | Exports clés                                                              |
-| ---------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `entry.ts`             | Point d'entrée — boot, singleton global, `createConnector()`   | `ConnectorInstance`, `createConnector()`, `GeoLeaf.Connector.configure()` |
-| `config.ts`            | Types + validation de `ConnectorConfig`                        | `ConnectorConfig`, `ConfigError`, `validateConfig()`                      |
-| `auth-client.ts`       | Appels HTTP vers l'endpoint d'authentification                 | `AuthClient`, `AuthError`                                                 |
-| `token-store.ts`       | Persistance IndexedDB + cache RAM + silent refresh JWT         | `TokenStore`, `TokenRecord`                                               |
-| `fetch-interceptor.ts` | Monkey-patch `window.fetch` — injection header `Authorization` | `install()`, `uninstall()`, `getWorkerHeaders()`                          |
-| `maplibre-bridge.ts`   | `map.setTransformRequest()` pour tuiles MVT/PMTiles            | `installMapLibreBridge()`                                                 |
-| `format-detector.ts`   | Détection du format de données depuis une URL                  | `detectFormat()`, `DataFormat`                                            |
-| `login-ui.ts`          | Modal de connexion accessible (CSS inliné, zéro dépendance)    | `showLoginModal()`                                                        |
+Rôle seulement — les exports se lisent dans le fichier.
+
+| Fichier                | Rôle                                                                  |
+| ---------------------- | --------------------------------------------------------------------- |
+| `entry.ts`             | Point d'entrée — boot, auto-bootstrap du bouton, ré-exports ESM       |
+| `connector-api.ts`     | **L'orchestrateur** — `configure()`, le singleton global, la fabrique |
+| `public-api.ts`        | Construction du namespace `GeoLeaf.Connector`                         |
+| `config.ts`            | Types et validation de `ConnectorConfig`                              |
+| `auth-client.ts`       | Appels HTTP vers l'endpoint d'authentification                        |
+| `token-store.ts`       | Persistance IndexedDB + cache RAM + refresh JWT silencieux            |
+| `fetch-interceptor.ts` | Monkey-patch `window.fetch` — injection de l'en-tête `Authorization`  |
+| `maplibre-bridge.ts`   | `map.setTransformRequest()` pour les tuiles MVT / PMTiles             |
+| `credential-button.ts` | Injection du bouton credential (desktop + mobile)                     |
+| `login-ui.ts`          | Modal de connexion accessible (feuille de style adoptée)              |
+| `format-detector.ts`   | Détection du format de données depuis une URL — fonction pure         |
+| `lang/`                | Dictionnaires i18n de la modal                                        |
+
+⚠️ **L'orchestrateur est `connector-api.ts`, pas `entry.ts`.** C'est l'erreur que l'ancien arbre des
+dépendances portait, et elle induit en erreur sur le point qui compte : `entry.ts` n'importe que
+quatre modules et délègue ; c'est `connector-api.ts` qui en tire sept et tient l'état.
 
 ---
 
-## Flux de données — `configure()`
+## Flux — `configure()`
 
 ```mermaid
 flowchart TD
     A["GeoLeaf.Connector.configure(config)"] --> B["validateConfig(config)\nconfig.ts"]
     B -->|ConfigError| ERR["throw ConfigError"]
-    B -->|Valid| C{"auth.endpoint\nprésent ?"}
-
-    C -->|Oui| D["TokenStore.getTokenAsync()\ntoken-store.ts — warm IDB cache"]
-    C -->|Non| E["skip IDB warm-up"]
-    D --> F["TokenStore._setRefreshFn()\nsilent refresh JWT"]
-    E --> F
-
-    F --> G["installFetchInterceptor(config)\nfetch-interceptor.ts"]
+    B -->|valide| R{"une instance\nexiste déjà ?"}
+    R -->|oui| R2["uninstallCredentialButton()\ndestroy() + uninstallFetchInterceptor()"]
+    R -->|non| C{"auth.endpoint\nprésent ?"}
+    R2 --> C
+    C -->|oui| D["TokenStore.getTokenAsync()\nwarm du cache IDB\n+ délégué de refresh"]
+    C -->|non| E["pas de warm-up IDB"]
+    D --> G["installFetchInterceptor(config)\n+ hook worker-headers"]
+    E --> G
     G --> H["installMapLibreBridge(config)\nmaplibre-bridge.ts"]
-
-    H --> I{"auth.ui = true\nET pas de token ?"}
-    I -->|Oui| J["showLoginModal()\nlogin-ui.ts"]
-    I -->|Non| K["ConnectorInstance exposé\ngetTokenSync / getTokenAsync / destroy"]
+    H --> I{"un token a-t-il\nété obtenu ?"}
+    I -->|non, et auth.ui = true| J["showLoginModal()\nlogin-ui.ts"]
+    I -->|oui| K["installCredentialButton(config)"]
     J --> K
+    K --> L["createConnector(config)\n→ ConnectorInstance"]
 ```
+
+Deux étapes sont faciles à manquer en lisant le code de haut en bas :
+
+- **`configure()` est ré-entrant.** Un second appel démonte l'instance précédente avant tout le
+  reste — bouton, `destroy()`, interception `fetch`. Sans quoi deux monkey-patches se
+  superposeraient sur `window.fetch`.
+- **Le hook worker.** L'interception pose aussi `__GEOLEAF_WORKER_HEADERS_HOOK__` sur le global :
+  un Worker n'hérite pas du `window.fetch` patché, il doit demander ses en-têtes.
 
 ---
 
-## Modèle de données
+## Routage des requêtes
 
-### `ConnectorConfig` (`config.ts`)
-
-```ts
-interface ConnectorConfig {
-    baseUrl: string; // Préfixe URL — toutes les req. matchant ce préfixe reçoivent le token
-    getToken?: () => string | null | Promise<string | null>; // Mode callback (exclusif avec auth)
-    auth?: {
-        endpoint: string; // URL du serveur d'auth (POST credentials → JWT)
-        ui?: boolean; // Afficher le modal de connexion si pas de token
-        credentials?: {
-            // Optionnel — pré-rempli dans le modal
-            username?: string;
-            password?: string;
-        };
-    };
-}
-```
-
-Les deux modes `getToken` et `auth` sont **mutuellement exclusifs** — `validateConfig()` lève une `ConfigError` si les deux sont fournis.
-
-### `ConnectorInstance` (`entry.ts`)
-
-```ts
-interface ConnectorInstance {
-    getTokenSync(): string | null; // RAM cache seulement (sync — non bloquant)
-    getTokenAsync(): Promise<string | null>; // IDB → RAM cache (async, refresh si expiré)
-    destroy(): void; // Restaure window.fetch, vide le cache RAM
-}
-```
-
-### `TokenRecord` (`token-store.ts`)
-
-```ts
-interface TokenRecord {
-    baseUrl: string; // Clé primaire IDB
-    token: string; // JWT
-    expiresAt: number; // Timestamp ms
-}
-```
-
-### `DataFormat` (`format-detector.ts`)
-
-```ts
-type DataFormat = "geojson" | "flatgeobuf" | "kml" | "csv" | "pmtiles" | "oapif" | "mvt";
-```
-
----
-
-## Règles de routage des requêtes (`fetch-interceptor.ts`)
-
-| Format détecté                                 | Chemin d'injection                                   |
+| Format détecté                                 | Canal d'injection                                    |
 | ---------------------------------------------- | ---------------------------------------------------- |
-| `geojson`, `flatgeobuf`, `kml`, `csv`, `oapif` | `window.fetch` monkey-patch                          |
+| `geojson`, `flatgeobuf`, `kml`, `csv`, `oapif` | monkey-patch de `window.fetch`                       |
 | `mvt`, `pmtiles`                               | `map.setTransformRequest()` via `maplibre-bridge.ts` |
 
-La séparation est nécessaire car MapLibre gère ses propres requêtes de tuiles en interne et n'utilise pas `window.fetch`.
+La séparation est **nécessaire**, pas esthétique : MapLibre gère ses requêtes de tuiles en interne
+et n'utilise pas `window.fetch`. Le partage se lit dans `fetch-interceptor.ts`, sur une seule
+condition — l'intercepteur se retire pour `pmtiles` et `mvt`, et le pont les reprend.
+
+⚠️ **`transformRequest` est SYNCHRONE**, donc le pont lit le token par `getTokenSync()` — le cache
+RAM seul. Conséquence à connaître avant de s'étonner : **si la RAM est froide, la requête de tuile
+part SANS en-tête.** Le pont déclenche au passage un `getTokenAsync()` non bloquant, qui réchauffe
+le cache pour les requêtes suivantes ; le warm IDB au début de `configure()` réduit la fenêtre, il
+ne la ferme pas.
 
 ---
 
-## MapLibre Bridge — stratégie de résolution (`maplibre-bridge.ts`)
+## Pont MapLibre — stratégie de résolution
 
-Le bridge s'installe en 3 temps pour couvrir tous les cas :
+Le pont s'installe en **trois temps**, parce que la carte peut naître avant ou après le plugin :
 
-1. **Immédiat** — si `GeoLeaf.Core.getMap()` est disponible au moment de `configure()`
-2. **Différé** — via listener `geoleaf:map:ready` si la carte n'est pas encore initialisée
-3. **Défensif** — re-install sur `geoleaf:basemap:change` après un `map.setStyle()`
+1. **Immédiat** — si la carte est disponible au moment de `configure()`.
+2. **Différé** — via un écouteur `geoleaf:map:ready` si elle ne l'est pas encore.
+3. **Défensif** — ré-installation sur `geoleaf:basemap:change`, un `setStyle()` pouvant emporter le
+   hook.
 
-L'accès à la carte est fait via `globalThis.GeoLeaf.Core.getMap().getNativeMap()` — **aucun import de `@geoleaf/core`** (règle `no-plugin-in-core` en sens inverse).
-
----
-
-## Dépendances internes
-
-```
-entry.ts
-├── config.ts
-├── token-store.ts
-├── fetch-interceptor.ts
-│   ├── config.ts
-│   ├── token-store.ts
-│   └── format-detector.ts
-├── maplibre-bridge.ts
-│   ├── config.ts
-│   └── token-store.ts
-├── auth-client.ts
-└── login-ui.ts
-    ├── config.ts
-    ├── token-store.ts
-    └── auth-client.ts
-```
-
-`format-detector.ts` — zéro dépendance interne (fonction pure).  
-`auth-client.ts` — zéro dépendance interne (HTTP pur).
+L'accès à la carte passe par `globalThis.GeoLeaf.Core.getMap().getNativeMap()` — **aucun import de
+`@geoleaf/core`**. Ce n'est pas une commodité : le plugin doit rester chargeable sans que le core
+soit un module de son graphe.

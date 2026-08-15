@@ -12,6 +12,10 @@
     pointer-events: auto;
     -webkit-user-select: none;
     user-select: none;
+    /* Le `preventDefault()` du `touchmove` suffit à bloquer le défilement, mais il n'agit
+       qu'au PREMIER mouvement : sans cette règle le navigateur spécule un défilement dès la
+       pression, ce qui se voit comme une latence à la première frame sur Android. */
+    touch-action: none;
 }
 
 /* Floating hint bar at the top of the overlay */
@@ -55,6 +59,17 @@
     cursor: nwse-resize;
     z-index: 20;
     box-sizing: border-box;
+}
+
+/* 🛑 14×14 px sous un doigt (~9 mm), c'est manquer la poignée et toucher l'INTÉRIEUR du
+   rectangle : le geste déplace au lieu de redimensionner, et se perçoit comme cassé plutôt
+   que comme absent. Les poignées sont centrées par `translate(-50%, -50%)`, donc les
+   agrandir est symétrique — l'ancre ne bouge pas et `_applyRect` n'a rien à changer. */
+@media (hover: none), (pointer: coarse) {
+    .gl-emprise-handle {
+        width: 28px;
+        height: 28px;
+    }
 }
 
 .gl-emprise-handle--tr,

@@ -43,8 +43,14 @@ interface CacheManagerConfig {
      */
     maxAttempts?: number;
     /**
-     * @deprecated Misnomer kept so existing profile configs keep working — it never
-     * meant "retries". Use {@link CacheManagerConfig.maxAttempts}.
+     * Kept alias for {@link CacheManagerConfig.maxAttempts}, normalised into it on read.
+     *
+     * A misnomer — it never meant "retries" — kept so existing profile configs keep
+     * working. It is **not deprecated**: nothing schedules its removal, and no MAJOR is
+     * announced for it. The distinction is not cosmetic. A `@deprecated` tag strikes the
+     * key through in the integrator's editor and promises a removal; saying that about a
+     * key we intend to keep makes the tag lie to autocompletion. See the Deprecation
+     * section of `VERSIONING_POLICY.md` for what the tag does and does not mark.
      */
     maxRetries?: number;
     concurrentDownloads?: number;

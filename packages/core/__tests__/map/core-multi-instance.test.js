@@ -24,10 +24,16 @@ vi.mock("../../src/adapters/maplibre/maplibre-adapter.js", () => ({
         // a distinct object with its own spies (as the test requires).
         class {
             constructor() {
+                // Its OWN container node, as the real adapter has: `isAttached` and
+                // `reattach` are about where that node sits, so a shared one would make
+                // both untestable.
+                const container = document.createElement("div");
                 return {
                     init: vi.fn(),
                     destroy: vi.fn(),
                     getNativeMap: vi.fn(() => null),
+                    getContainer: vi.fn(() => container),
+                    resize: vi.fn(),
                 };
             }
         }
@@ -93,6 +99,104 @@ describe("Core multi-instance — init / registry", () => {
         expect(second).toBe(first);
         expect(Log.warn).toHaveBeenCalled();
         expect(Core.listMaps()).toEqual(["map-1"]);
+    });
+});
+
+describe("Core — isAttached (S6.4)", () => {
+    it("false for an unknown id", () => {
+        expect(Core.isAttached("nope")).toBe(false);
+    });
+
+    it("distinguishes REGISTERED from ATTACHED — the whole reason it is not hasMap()", () => {
+        Core.init({ mapId: "m" });
+        // Registered, but its container was never put in the document.
+        expect(Core.hasMap("m")).toBe(true);
+        expect(Core.isAttached("m")).toBe(false);
+
+        document.body.appendChild(Core.getMap("m").getContainer());
+        expect(Core.isAttached("m")).toBe(true);
+    });
+
+    it("false — not a throw — when getContainer() throws, as it does after destroy()", () => {
+        Core.init({ mapId: "m" });
+        Core.getMap("m").getContainer.mockImplementation(() => {
+            throw new Error("MaplibreAdapter: map is not ready. Call init() first.");
+        });
+        expect(() => Core.isAttached("m")).not.toThrow();
+        expect(Core.isAttached("m")).toBe(false);
+    });
+
+    it("false after destroy()", () => {
+        Core.init({ mapId: "m" });
+        document.body.appendChild(Core.getMap("m").getContainer());
+        Core.destroy("m");
+        expect(Core.isAttached("m")).toBe(false);
+    });
+});
+
+describe("Core — reattach (S6.5)", () => {
+    it("false for an unknown id, and for a missing parent", () => {
+        expect(Core.reattach("nope", document.createElement("div"))).toBe(false);
+        Core.init({ mapId: "m" });
+        expect(Core.reattach("m", null)).toBe(false);
+    });
+
+    it("moves the WHOLE container, and does not move its children", () => {
+        Core.init({ mapId: "m" });
+        const container = Core.getMap("m").getContainer();
+        const child = document.createElement("canvas");
+        container.appendChild(child);
+        const from = document.createElement("div");
+        const to = document.createElement("div");
+        from.appendChild(container);
+        document.body.append(from, to);
+
+        expect(Core.reattach("m", to)).toBe(true);
+        // The container itself moved — MapLibre memorises this node, so moving its
+        // children instead would leave getContainer() pointing at the old parent.
+        expect(container.parentElement).toBe(to);
+        expect(child.parentElement).toBe(container);
+        expect(from.children).toHaveLength(0);
+    });
+
+    it("tells the engine to resize — without it the canvas keeps the old dimensions", () => {
+        Core.init({ mapId: "m" });
+        const adapter = Core.getMap("m");
+        const to = document.createElement("div");
+        document.body.appendChild(to);
+
+        Core.reattach("m", to);
+        expect(adapter.resize).toHaveBeenCalledTimes(1);
+    });
+
+    it("is a no-op when the map already sits in that parent", () => {
+        Core.init({ mapId: "m" });
+        const adapter = Core.getMap("m");
+        const to = document.createElement("div");
+        document.body.appendChild(to);
+        to.appendChild(adapter.getContainer());
+
+        expect(Core.reattach("m", to)).toBe(true);
+        expect(adapter.resize).not.toHaveBeenCalled();
+    });
+
+    it("survives an adapter without resize() — the member is optional at the contract", () => {
+        Core.init({ mapId: "m" });
+        const adapter = Core.getMap("m");
+        delete adapter.resize;
+        const to = document.createElement("div");
+        document.body.appendChild(to);
+
+        expect(() => Core.reattach("m", to)).not.toThrow();
+        expect(adapter.getContainer().parentElement).toBe(to);
+    });
+
+    it("false — not a throw — when the container is gone", () => {
+        Core.init({ mapId: "m" });
+        Core.getMap("m").getContainer.mockImplementation(() => {
+            throw new Error("MaplibreAdapter: map is not ready. Call init() first.");
+        });
+        expect(Core.reattach("m", document.createElement("div"))).toBe(false);
     });
 });
 

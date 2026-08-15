@@ -196,8 +196,9 @@ describe("Coverage — APIFactoryManager", () => {
             expect(manager.isReady).toBe(true);
         });
 
-        it("mapInstances starts empty", () => {
-            expect(manager.mapInstances.size).toBe(0);
+        it("holds no registry of its own (S6.3 — the mirror is gone)", () => {
+            expect(manager.mapInstances).toBeUndefined();
+            expect(manager.getAllMapInstances()).toEqual([]);
         });
 
         it("stats are zeroed", () => {
@@ -289,6 +290,13 @@ describe("Coverage — APIController (T10.3.11)", () => {
                 }
             },
             APIFactoryManager: class {
+                constructor() {
+                    this.wiredWith = null;
+                }
+                init(getModule) {
+                    this.wiredWith = getModule;
+                    return true;
+                }
                 createMap(_targetId, _opts, _getModule) {
                     return {};
                 }
@@ -366,6 +374,26 @@ describe("Coverage — APIController (T10.3.11)", () => {
         it("sets healthStatus.lastUpdate on success", () => {
             controller.init();
             expect(controller.healthStatus.lastUpdate).not.toBeNull();
+        });
+
+        // S6.3 — the factory reads `Core` through `getModule`, so a factory that never
+        // receives one reads nothing. That was the state of the world until this call
+        // was added: `APIFactoryManager.init()` existed and nobody invoked it.
+        it("hands moduleAccessFn to the factory manager", () => {
+            controller.init();
+            expect(controller.managers.factory.wiredWith).toBe(controller.moduleAccessFn);
+            expect(typeof controller.managers.factory.wiredWith).toBe("function");
+        });
+
+        it("survives a factory manager that has no init() — warns, does not fail init", () => {
+            globalThis.GeoLeaf.API.APIFactoryManager = class {
+                createMap() {
+                    return {};
+                }
+            };
+            const fresh = new APIController();
+            expect(fresh.init()).toBe(true);
+            expect(fresh.isInitialized).toBe(true);
         });
 
         it("is idempotent — second init() returns true immediately", () => {

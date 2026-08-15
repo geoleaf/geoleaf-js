@@ -309,42 +309,53 @@ describe("table-branches-deep (T10.2.7)", () => {
     // fireEvent — branch coverage
     // ════════════════════════════════════════════════════════════════════
 
+    // ⚠️ Ces quatre cas utilisaient des noms INVENTÉS (`test-event`, `no-map-event`,
+    // `no-fire-method`, `safe-event`), possibles tant que `fireEvent` prenait un `string` et
+    // composait `"geoleaf:" + eventName`. Depuis le Sprint 4 du contrat inverse il prend le nom
+    // COMPLET, contraint par `TableEventName` — lui-même dérivé de `GeoLeafEventMap` —, et la
+    // charge est vérifiée contre la map. Un nom inventé ne compile plus.
+    //
+    // Ce n'est pas une contrainte subie : ces tests éprouvent les trois branches d'aiguillage
+    // de `fireEvent` (carte présente / absente / sans `fire`), pas sa tolérance aux noms
+    // arbitraires. Les jouer sur de vrais noms éprouve la même mécanique sur la vraie surface.
     describe("fireEvent", () => {
         test("fires both map.fire and DOM CustomEvent when map present", () => {
             const mockFire = vi.fn();
             tableState._map = { fire: mockFire };
 
             const handler = vi.fn();
-            document.addEventListener("geoleaf:test-event", handler);
-            fireEvent("test-event", { data: 42 });
+            document.addEventListener("geoleaf:table:layerChanged", handler);
+            fireEvent("geoleaf:table:layerChanged", { layerId: "roads" });
 
-            expect(mockFire).toHaveBeenCalledWith("geoleaf:test-event", { data: 42 });
+            expect(mockFire).toHaveBeenCalledWith("geoleaf:table:layerChanged", {
+                layerId: "roads",
+            });
             expect(handler).toHaveBeenCalledOnce();
-            document.removeEventListener("geoleaf:test-event", handler);
+            document.removeEventListener("geoleaf:table:layerChanged", handler);
         });
 
         test("fires only DOM event when map not set", () => {
             tableState._map = null;
             const handler = vi.fn();
-            document.addEventListener("geoleaf:no-map-event", handler);
-            fireEvent("no-map-event", { data: "hello" });
+            document.addEventListener("geoleaf:table:layerChanged", handler);
+            fireEvent("geoleaf:table:layerChanged", { layerId: null });
             expect(handler).toHaveBeenCalledOnce();
-            document.removeEventListener("geoleaf:no-map-event", handler);
+            document.removeEventListener("geoleaf:table:layerChanged", handler);
         });
 
         test("fires only DOM event when map has no fire method", () => {
             tableState._map = { noFire: true };
             const handler = vi.fn();
-            document.addEventListener("geoleaf:no-fire-method", handler);
-            fireEvent("no-fire-method", {});
+            document.addEventListener("geoleaf:table:opened", handler);
+            fireEvent("geoleaf:table:opened", {});
             expect(handler).toHaveBeenCalledOnce();
-            document.removeEventListener("geoleaf:no-fire-method", handler);
+            document.removeEventListener("geoleaf:table:opened", handler);
         });
 
         test("no-op when document is not available (safe guard)", () => {
             // This tests the typeof document check — in jsdom document always exists
             // but the branch is covered by normal execution
-            fireEvent("safe-event", null);
+            fireEvent("geoleaf:table:closed", {});
         });
     });
 

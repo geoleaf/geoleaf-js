@@ -48,6 +48,12 @@ import { LMControl } from "../kernel/layer-manager/control.js";
 import { StyleSelector } from "../kernel/layer-manager/style-selector.js";
 // B7 : theme ENGINE (kernel) — the theme-selector BAR migrated to its installer (S2 Lot 8)
 import { ThemeCache } from "../kernel/themes/theme-cache.js";
+// `ThemeLoader` is imported for ONE public entry point: `GeoLeaf.Config.clearThemesCache`
+// (Sprint 2 task 2.6). ⚠️ It is mounted from HERE, and not from `globals.config.ts`, on a
+// measured constraint: `kernel/themes/**` already imports `kernel/config/**` (three sites in
+// `theme-applier/*`), so wiring the reverse edge would close a directory cycle. This file
+// already depends on `kernel/themes/**` — the mount costs no new edge.
+import { ThemeLoader } from "../kernel/themes/theme-loader.js";
 
 // ⚠️ IMPORTS D'EFFET DE BORD — NE PAS RETIRER, ET NE PAS LES CROIRE MORTS.
 //
@@ -88,6 +94,9 @@ import {
     initDesktopPanel,
     activateDesktopPanel,
     destroyDesktopPanel,
+    openPanel,
+    closePanel,
+    getOpenPanel,
 } from "../kernel/ui/desktop/desktop-panel.js";
 // Share (capability `permalink`, sub-feature): both `GeoLeaf.Share` and the lifecycle
 // wiring left the kernel in S2 Lot 6 — see capabilities/permalink/install.ts.
@@ -139,6 +148,22 @@ export function setupUIKernel(): void {
     // `_ThemeApplier`. Aucune n'avait de lecteur. `_ThemeApplier` composait un objet
     // (`Object.assign` de quatre modules) exprès pour le poser sur le global : personne ne
     // l'a jamais lu, donc la composition elle-même n'existait que pour cette écriture.
+    //
+    // S4.3 a donc laissé le cache du loader SANS AUCUNE porte publique : le corps de
+    // `ThemeLoader.clearCache` existait, et plus rien ne pouvait l'appeler depuis
+    // l'extérieur. C'est ce trou que la ligne suivante ferme (Sprint 2, tâches 2.5/2.6).
+    //
+    // Pourquoi sur `Config` et pas ailleurs — les quatre refus sont mesurés :
+    //   • `GeoLeaf.Themes` n'existe pas — la façade a été retirée, motif au CHANGELOG.
+    //   • `GeoLeaf.ThemeCache` est un homonyme piégeux : c'est le cache IndexedDB des
+    //     DONNÉES DE COUCHE, pas celui de `themes.json`.
+    //   • `GeoLeaf.ThemeSelector` est l'UI ; le moteur reste kernel (S8/F2).
+    //   • une clé RACINE ne se déplace jamais sans rupture, là où une méthode se déprécie.
+    // Et `Config` est l'une des 23 façades de `DEPTH2_FACADES` : le symbole NAÎT GELÉ,
+    // là où toute autre accroche naîtrait dans l'angle mort de la dette D-29.
+    if (!_gl.Config) _gl.Config = {};
+    (_gl.Config as Record<string, unknown>).clearThemesCache = (profileId?: string): void =>
+        ThemeLoader.clearCache(profileId);
 
     // -- B9 assignations : ui -------------------------------------------------
     if (!_gl.UI) _gl.UI = {};
@@ -215,6 +240,12 @@ export function setupUIKernel(): void {
     ui.initDesktopPanel = initDesktopPanel;
     ui.activateDesktopPanel = activateDesktopPanel;
     ui.destroyDesktopPanel = destroyDesktopPanel;
+    // Sprint 2, tâche 2.4 — piloter le panneau depuis l'hôte. ⚠️ `openPanel` NE BASCULE PAS,
+    // là où un clic sur l'onglet ouvert le referme : c'est la seule différence entre les deux,
+    // et c'est elle qui évite de reproduire B-71 sur une surface publique.
+    ui.openPanel = openPanel;
+    ui.closePanel = closePanel;
+    ui.getOpenPanel = getOpenPanel;
     // Share (`GeoLeaf.Share` + ShareLifecycle wiring) migrated to
     // capabilities/permalink/install.ts + ShareModule.init() — S2 Lot 6.
 }

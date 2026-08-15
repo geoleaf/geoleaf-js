@@ -18,22 +18,58 @@ import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 ensureGeoLeaf();
 
 /**
+ * The map registry, as this manager reaches it — `GeoLeaf.Core`, and nothing else.
+ *
+ * Deliberately structural and reached through `getModule`, never imported: the
+ * `kernel/api → kernel/map` edge is INVERTED on purpose, and an import here would
+ * quietly re-establish it.
+ */
+interface CoreRegistryLike {
+    getMap(mapId?: string): unknown;
+    listMaps(): string[];
+    hasMap(mapId: string): boolean;
+    destroy(mapId: string): boolean;
+}
+
+/**
  * Factory manager for multi-map support.
+ *
+ * ⚠️ It holds NO registry of its own, and that is the point (S6.3). It used to keep a
+ * `mapInstances` map alongside the one `Core` already owns, filled only by its own
+ * `createMap()` with the very `IMapAdapter` that `Core.getMap()` returns — a mirror,
+ * not a second source of truth. `Core.destroy()` purged one of the two, so
+ * `GeoLeaf.getMap()` and `GeoLeaf.Core.getMap()` could disagree (B-205).
+ *
+ * The fix is subtraction: every accessor delegates, so there is nothing left to keep
+ * in sync. Measured before removing it — no production caller ever reached
+ * `GeoLeaf.createMap()` (boot uses its own local `createMap` in
+ * `app/boot-modules/core-map-lifecycle.ts`), so the mirror was never even populated:
+ * `GeoLeaf.getMap()` returned `null` for every live map. This is a simplification
+ * that happens to restore two published members, not a leak being patched.
  */
 class APIFactoryManager {
     isReady: boolean;
-    mapInstances: Map<string, unknown>;
     stats: { mapsCreated: number; errors: number };
     getModule: IModuleAccessFn | null;
 
     constructor() {
         this.isReady = true;
-        this.mapInstances = new Map();
         this.stats = {
             mapsCreated: 0,
             errors: 0,
         };
         this.getModule = null;
+    }
+
+    /**
+     * The `Core` registry, or `null` before {@link APIFactoryManager.init} has run.
+     *
+     * @returns The `Core` façade, or `null` when no module access is wired yet.
+     */
+    private _registry(): CoreRegistryLike | null {
+        if (!this.getModule) return null;
+        const Core = this.getModule("Core") as CoreRegistryLike | null;
+        return Core && typeof Core.getMap === "function" ? Core : null;
     }
 
     /**
@@ -86,10 +122,11 @@ class APIFactoryManager {
                 ...options,
             };
 
+            // `Core.init()` registers the adapter in the one registry there is. Nothing
+            // to mirror here — see the class docblock.
             const mapInstance = Core.init(mapOptions);
 
             if (mapInstance) {
-                this.mapInstances.set(targetId, mapInstance);
                 if (Log) Log.info(`[APIFactoryManager] Map created for target: ${targetId}`);
             }
 
@@ -102,53 +139,76 @@ class APIFactoryManager {
     }
 
     /**
-     * Returns a map instance by id.
-     * @param {string} targetId - Target element id
-     * @returns {*} Map instance, or null
+     * Returns a map instance by id, read from the `Core` registry.
+     *
+     * @param targetId - Target element id.
+     * @returns The registered `IMapAdapter`, or `null` when there is none (or when
+     *   the manager has not been initialised yet).
      */
     getMapInstance(targetId: string) {
-        return this.mapInstances.get(targetId) || null;
+        return this._registry()?.getMap(targetId) ?? null;
     }
 
     /**
-     * Returns all map instances.
-     * @returns {Array} List of instances
+     * Returns every live map instance, read from the `Core` registry.
+     *
+     * @returns The registered adapters, in registration order; `[]` when there is
+     *   none (or when the manager has not been initialised yet).
      */
     getAllMapInstances() {
-        return Array.from(this.mapInstances.values());
+        const registry = this._registry();
+        if (!registry) return [];
+        return registry
+            .listMaps()
+            .map((id) => registry.getMap(id))
+            .filter((m) => m != null);
     }
 
     /**
-     * Removes a map instance by id.
-     * @param {string} targetId - Target element id
-     * @returns {boolean} Removal success flag
+     * Destroys a map instance by id.
+     *
+     * ⚠️ It now DESTROYS, where it used to drop a mirror entry and leave the real map
+     * running — that discrepancy was half of B-205. No production caller reached it
+     * (measured 14/08/2026: definition and unit tests only), so nothing depended on
+     * the old, weaker meaning.
+     *
+     * @param targetId - Target element id.
+     * @returns `true` when an instance was found and destroyed, `false` otherwise.
      */
     removeMapInstance(targetId: string) {
-        if (!this.mapInstances.has(targetId)) {
+        const registry = this._registry();
+        if (!registry || !registry.hasMap(targetId)) {
             if (Log) Log.warn(`[APIFactoryManager] No map instance found for: ${targetId}`);
             return false;
         }
-        this.mapInstances.delete(targetId);
-        if (Log) Log.info(`[APIFactoryManager] Map instance removed for: ${targetId}`);
-        return true;
+        const removed = registry.destroy(targetId);
+        if (removed && Log) Log.info(`[APIFactoryManager] Map instance removed for: ${targetId}`);
+        return removed;
     }
 
     /**
      * Returns the manager statistics.
+     *
+     * `activeInstances` counts what `Core` holds — this manager counts nothing of its
+     * own. ⚠️ It is NOT on the `GeoLeaf.getHealth()` path: that one reads
+     * `APIController.healthStatus` and never calls in here (measured 14/08/2026, against
+     * a roadmap note claiming the opposite).
      */
     getStats() {
         return {
             ...this.stats,
-            activeInstances: this.mapInstances.size,
+            activeInstances: this._registry()?.listMaps().length ?? 0,
             isReady: this.isReady,
         };
     }
 
     /**
      * Resets the manager.
+     *
+     * Resets ITS OWN state only — counters and module access. It does not destroy live
+     * maps, and never did: it used to clear a mirror, which left every real map running.
      */
     reset() {
-        this.mapInstances.clear();
         this.getModule = null;
         this.stats = {
             mapsCreated: 0,

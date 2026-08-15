@@ -67,10 +67,31 @@ export interface RenderContext {
      * exactement ce qui a fait abandonner la fonctionnalité : le détail du clic les porte
      * (`GeoLeafFeatureClickDetail`), mais le contexte de rendu s'arrêtait au `layerId` — donc le
      * renderer ne pouvait pas construire la charge utile que le contrat promettait.
+     *
+     * ⚠️ **Et B-69 n'a réparé que la MOITIÉ, ce qui ne s'est vu que le 14/08/2026** :
+     * `surfaces/popup.ts` passait les trois champs, `surfaces/sidepanel.ts` s'en tenait au
+     * `layerId`. Le widget `action` vivant dans la table de dispatch partagée, il rend sur les
+     * deux surfaces — une action cliquée dans le panneau émettait donc `featureId: null`
+     * pendant seize jours, sous un commentaire qui disait le contraire. Une réparation
+     * asymétrique se lit comme une réparation.
      */
     readonly featureId?: string | number | null;
     /** Geographic position of the popup, for the `action` payload (B-69). */
     readonly lngLat?: { readonly lat: number; readonly lng: number };
+    /**
+     * Closes the surface this context belongs to — supplied by `surfaces/popup.ts`
+     * (`closePopup`) and `surfaces/sidepanel.ts` (`closeSidePanel`).
+     *
+     * ⚠️ **First non-data field of this interface, and it is injected rather than imported for a
+     * structural reason.** The graph runs `surfaces/popup.ts → render/popup-content.ts →
+     * render/widget-dispatch.ts` (and symmetrically for the side panel); a renderer importing a
+     * surface back would close a cycle. Injection is also **the only way to close the RIGHT
+     * surface** — the `action` widget is in the shared dispatch table and renders on both.
+     *
+     * Optional because most render paths have no surface to close (tooltip, tests, direct
+     * `renderFieldNode` calls). Absent, `close()` on the event detail is a no-op.
+     */
+    readonly onClose?: () => void;
 }
 
 /** Structural view of the runtime `GeoLeaf.Security` seam (duck-typed). */

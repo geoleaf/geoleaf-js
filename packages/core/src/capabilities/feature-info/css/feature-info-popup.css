@@ -207,6 +207,50 @@
         color: var(--gl-color-text-primary, var(--gl-color-text-main, #111));
     }
 
+    /* ------------------------------------------------------------
+   Action button (`type: "action"`) — emits `geoleaf:popup:action`.
+
+   ⚠️ These rules did not exist until 14/08/2026. The button had been rendered
+   since B-69 (29/07) with `class="gl-poi-popup__action"` and NO rule matching it
+   anywhere in the repo — so it inherited the host page's bare `<button>` styling,
+   silently, on both the popup and the side panel. Nothing could catch that: a class
+   with no stylesheet is indistinguishable from a class whose stylesheet is elsewhere.
+
+   Rendered by the SHARED dispatch table, so these rules must hold on both surfaces —
+   hence no `.maplibregl-popup-content` ancestor here.
+   ------------------------------------------------------------ */
+    .gl-poi-popup__action {
+        align-self: flex-start;
+        margin-top: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--gl-color-on-accent, #fff);
+        background: var(--gl-color-accent);
+        border: 1px solid transparent;
+        border-radius: var(--gl-radius-small, 4px);
+        cursor: pointer;
+    }
+
+    .gl-poi-popup__action:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--gl-color-accent) 85%, transparent);
+    }
+
+    .gl-poi-popup__action:focus-visible {
+        outline: 2px solid var(--gl-color-accent);
+        outline-offset: 2px;
+    }
+
+    /* Pending state, set by `setBusy(true)` on the event detail. The three marks are
+   applied together (`disabled`, `aria-busy`, this modifier); styling keys off the
+   modifier so a host that drives `aria-busy` itself is not overridden. */
+    .gl-poi-popup__action--busy,
+    .gl-poi-popup__action:disabled {
+        cursor: default;
+        opacity: 0.6;
+    }
+
     /* "See more" link colour, driven by the theme. */
     .gl-poi-popup__link {
         display: inline-flex;

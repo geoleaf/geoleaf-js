@@ -116,6 +116,12 @@ const KNOWN_TOP_LEVEL = new Set([
     "requested_events",
     "withdrawn",
     "broken_since_v3",
+    // Ce que l'hôte ÉCRIT sur le namespace, par opposition à tout le reste, qu'il LIT.
+    // Entrée en v1.7.0 du manifeste aval. Gardée par CC-11 : un chemin écrit par l'aval
+    // ne doit PAS résoudre ici, sans quoi deux écrivains se disputent une clé et le
+    // vainqueur dépend de l'ordre de boot. La déclarer sans lui donner de code aurait
+    // satisfait la lettre du refus CC-00 en manquant sa raison.
+    "installed_by_host",
     "out_of_scope",
     "oracles",
     "sequence",
@@ -157,7 +163,8 @@ function refuse(message, code = "CC-00") {
 function cmpVersion(a, b, whence) {
     const parse = (v) => {
         const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(v ?? ""));
-        if (!m) refuse(`\`manifest_version\` illisible (\`${v}\`) dans ${whence} — attendu \`x.y.z\``);
+        if (!m)
+            refuse(`\`manifest_version\` illisible (\`${v}\`) dans ${whence} — attendu \`x.y.z\``);
         return [Number(m[1]), Number(m[2]), Number(m[3])];
     };
     const [a1, a2, a3] = parse(a);
@@ -249,7 +256,9 @@ function readConsumers() {
         }
         const unknownReq = Object.keys(req).filter((k) => !isMeta(k) && !KNOWN_REQUIRED.has(k));
         if (unknownReq.length > 0) {
-            refuse(`sous-clé(s) inconnue(s) de \`required\` dans ${name} : ${unknownReq.join(", ")}`);
+            refuse(
+                `sous-clé(s) inconnue(s) de \`required\` dans ${name} : ${unknownReq.join(", ")}`
+            );
         }
 
         // ── Plancher de version ────────────────────────────────────────────────────────

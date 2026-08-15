@@ -193,3 +193,30 @@ describe("cumulative measurements", () => {
         expect(getEngineCollection().features).toHaveLength(2);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Cursor guard (MutationObserver)
+// ---------------------------------------------------------------------------
+//
+// See the twin block in `tool-circle.test.ts`: both drag tools share `createDragTool`, and
+// neither had a cursor guard until 14/08/2026 — unlike the click tools, which have had one
+// since S5. A POI mouseleave wiped their crosshair permanently.
+
+describe("cursor guard", () => {
+    it("restores crosshair when the canvas style is changed externally", async () => {
+        activateRect(map);
+        const canvas = map.getCanvas() as HTMLCanvasElement;
+        canvas.style.cursor = ""; // exactly what a POI mouseleave writes
+        await new Promise((r) => setTimeout(r, 0)); // flush the MutationObserver microtask
+        expect(canvas.style.cursor).toBe("crosshair");
+    });
+
+    it("stops enforcing once the tool is disarmed", async () => {
+        activateRect(map);
+        deactivateRect();
+        const canvas = map.getCanvas() as HTMLCanvasElement;
+        canvas.style.cursor = "pointer";
+        await new Promise((r) => setTimeout(r, 0));
+        expect(canvas.style.cursor).toBe("pointer");
+    });
+});

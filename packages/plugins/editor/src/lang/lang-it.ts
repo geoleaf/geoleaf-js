@@ -94,6 +94,8 @@ const lang_it: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Timeout di rete superato.",
     "editor.error.editionNotPermitted": "Questo livello non consente questa operazione.",
+    "editor.error.operationNotSupported":
+        "Il server non supporta questa operazione. Contatta l'amministratore.",
     "editor.error.server": "Errore del server. Riprova.",
     "editor.error.storageUnavailable":
         "Archiviazione offline non disponibile. Modifica non salvata.",

@@ -335,14 +335,14 @@ function _configureLinks(els: ModalElements, config: ConnectorConfig): void {
     }
 
     els.signupLink.addEventListener("click", (e) => {
-        const evt = new CustomEvent("connector:signup-requested", {
+        const evt = new CustomEvent("geoleaf:connector:signup-requested", {
             detail: { url: config.auth!.signupUrl! },
             cancelable: true,
         });
         if (!document.dispatchEvent(evt)) e.preventDefault();
     });
     els.forgotLink.addEventListener("click", (e) => {
-        const evt = new CustomEvent("connector:forgot-password-requested", {
+        const evt = new CustomEvent("geoleaf:connector:forgot-password-requested", {
             detail: { url: config.auth!.forgotPasswordUrl! },
             cancelable: true,
         });
@@ -445,7 +445,7 @@ function _wireSubmit(
             cleanup();
 
             document.dispatchEvent(
-                new CustomEvent("connector:authenticated", {
+                new CustomEvent("geoleaf:connector:authenticated", {
                     detail: { baseUrl: config.baseUrl },
                 })
             );

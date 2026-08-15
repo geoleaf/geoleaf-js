@@ -1,9 +1,32 @@
 # Tests E2E Playwright — variantes de déploiement
 
-Un seul projet Playwright (`chromium`). Chaque spec vise **une variante de déploiement**,
-désignée par son nom logique — jamais par un port. ⚠️ **Ni le nombre de tests ni le nombre de
-fichiers ne sont recopiés ici** : les deux divergent à chaque commit. `npx playwright test --list`
-les rend, et `ls e2e/*.spec.js | wc -l` compte les fichiers.
+**Deux projets Playwright** — `chromium` (souris, l'immense majorité) et `chromium-touch`
+(14/08/2026). Chaque spec vise **une variante de déploiement**, désignée par son nom logique —
+jamais par un port. ⚠️ **Ni le nombre de tests ni le nombre de fichiers ne sont recopiés ici** :
+les deux divergent à chaque commit. `npx playwright test --list` les rend, et
+`ls e2e/*.spec.js | wc -l` compte les fichiers.
+
+> 🛑 Cette ligne a dit « **un seul projet Playwright** » jusqu'au 14/08/2026, et c'était vrai —
+> c'est précisément ce qui a laissé passer deux défauts mobiles jusqu'à la démo publique. Aucun
+> `hasTouch`, aucun `page.tap()`, aucun `touchscreen` n'existait dans le dépôt : la classe entière
+> était hors de portée de l'instrument.
+
+### Le projet `chromium-touch`
+
+Il ne rejoue **pas** la suite au doigt : son `testMatch` le borne au suffixe `*.touch.spec.js`.
+Trois contraintes, chacune capable de le rendre silencieux si on l'oublie :
+
+- ⚠️ **Un `testIgnore` de projet ÉCRASE celui du niveau config**, il ne s'y ajoute pas. Le
+  `**/.claude/**` est donc **recopié** dans les deux projets — sans quoi les copies de worktree
+  reviennent et le chargeur casse.
+- ⚠️ **Les specs tactiles restent à plat dans `e2e/`.** `scripts/check-e2e-wait-signature.cjs` lit
+  le répertoire par un `readdirSync` **non récursif** : un `e2e/touch/` échapperait à la gate **en
+  silence**. C'est le motif du suffixe plutôt que d'un sous-répertoire.
+- ⚠️ **`page.touchscreen` n'expose que `tap(x, y)`** — ni drag, ni swipe. Le glissement passe par
+  `e2e/helpers/touch.js`, qui appelle CDP `Input.dispatchTouchEvent` : c'est littéralement le canal
+  que Playwright utilise lui-même pour `tap()`, donc des événements `isTrusted` dont le navigateur
+  dérive les `pointer*`. Un `new TouchEvent()` dispatché depuis la page n'en dérive **aucun**, et
+  ne peut donc pas éprouver un moteur de dessin qui n'écoute que les Pointer Events.
 
 > 🛑 Cette ligne a annoncé « **41 fichiers de specs** » jusqu'au 08/08/2026, dans la phrase même
 > qui refusait de recopier le décompte des tests — mesure du jour : **42**. Le 41 avait été posé le

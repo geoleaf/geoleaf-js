@@ -119,6 +119,34 @@ describe("createRestAdapter — error mapping", () => {
         });
     });
 
+    // 🛑 B-199 — un 501 n'est PAS une panne de réseau. Le serveur déclare ne pas connaître le
+    // verbe : c'est définitif, donc non réessayable, donc la file ne doit jamais le reprendre
+    // (voir `auto-adapter.test.ts`). Avant ce sprint il sortait en `"network"` par la branche
+    // fourre-tout, dans CE dialecte comme dans l'autre.
+    it("maps 501 to a 'capability' PersistenceError — jamais 'network'", async () => {
+        const adapter = createRestAdapter({
+            baseUrl: "https://api.test",
+            timeoutMs: 5000,
+            fetchImpl: vi.fn().mockResolvedValue(res(501)) as unknown as typeof fetch,
+        });
+        await expect(adapter.save(FEATURE, "L")).rejects.toMatchObject({
+            kind: "capability",
+            status: 501,
+        });
+    });
+
+    it("maps 500 to 'network' — le voisin transitoire reste réessayable", async () => {
+        const adapter = createRestAdapter({
+            baseUrl: "https://api.test",
+            timeoutMs: 5000,
+            fetchImpl: vi.fn().mockResolvedValue(res(500)) as unknown as typeof fetch,
+        });
+        await expect(adapter.save(FEATURE, "L")).rejects.toMatchObject({
+            kind: "network",
+            status: 500,
+        });
+    });
+
     it("maps 409 to a 'conflict' error, parses serverData and fires onConflict once", async () => {
         const onConflict = vi.fn();
         const serverBody = { id: "f1", version: 7 };

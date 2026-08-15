@@ -99,6 +99,8 @@ const lang_fr: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Délai d'attente réseau dépassé.",
     "editor.error.editionNotPermitted": "Cette couche n'autorise pas cette opération.",
+    "editor.error.operationNotSupported":
+        "Le serveur ne prend pas en charge cette opération. Contactez l'administrateur.",
     "editor.error.server": "Erreur serveur. Veuillez réessayer.",
     "editor.error.storageUnavailable":
         "Stockage hors ligne indisponible. Modification non enregistrée.",

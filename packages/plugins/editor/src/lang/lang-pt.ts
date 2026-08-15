@@ -95,6 +95,8 @@ const lang_pt: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Tempo limite de rede excedido.",
     "editor.error.editionNotPermitted": "Esta camada não permite esta operação.",
+    "editor.error.operationNotSupported":
+        "O servidor não suporta esta operação. Contacte o administrador.",
     "editor.error.server": "Erro do servidor. Tente novamente.",
     "editor.error.storageUnavailable":
         "Armazenamento offline indisponível. Alteração não guardada.",

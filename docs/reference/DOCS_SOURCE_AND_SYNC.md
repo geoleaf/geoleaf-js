@@ -46,6 +46,28 @@ Un tarball n'emporte plus que sa vitrine et son `dist/`. **Conséquence à ne pa
 consommateur npm — les écrire en URL absolue.** Aucune gate ne peut le voir : `check-dead-links`
 résout contre le disque du dépôt, où les fichiers sont toujours là.
 
+### 🛑 Un README de paquet PUBLIÉ n'écrit pas d'alerte GitHub — `npmjs.com` ne les rend pas
+
+Mesuré le 14/08/2026 sur la page de `@geoleaf/core` : les alertes GitHub (`> [!NOTE]`,
+`> [!WARNING]`, `> [!IMPORTANT]`, `> [!TIP]`, `> [!CAUTION]`) sont une **extension propre à
+GitHub**. Le moteur Markdown du registre les traite comme une citation ordinaire et affiche le
+marqueur en **texte littéral** — donc l'encadré promis devient une ligne de bruit AU-DESSUS de
+l'avertissement qu'il devait souligner. 18 alertes vivaient ainsi dans 6 des 14 README publiés.
+
+**Le geste : `> **Warning** — …`**, qui rend à l'identique des deux côtés. La correspondance est
+`[!NOTE]` → `**Note**`, et ainsi de suite. Quand le corps ouvrait déjà sur une phrase en gras, le
+label absorbe l'emphase (elle ne compensait que l'icône absente) : pas de double gras.
+
+⚠️ **La règle est INVERSE ailleurs, et l'élargir la rendrait fausse.** Le `README.md` racine
+(paquet `private`, jamais publié) et tout `docs/` sont lus sur **GitHub** et via **VitePress**, qui
+rendent les alertes correctement. Elles doivent y rester — 7 vivent à la racine, 1 dans
+`host-runtime`. C'est le contresens de relecture le plus probable : on convertit les paquets, on
+voit les alertes restantes à la racine, et on « finit le travail ».
+
+✅ **Gaté** par `scripts/verify-npm-readme-render.cjs` (`NPMDOC-01/02/03`), périmètre dérivé de
+`registry.publishable()` — donc un paquet qui cesse d'être `private` entre dans le périmètre le
+jour même.
+
 ### 🛑 Le site et le dépôt sont DEUX espaces de liens, et un lien qui les traverse doit être absolu
 
 Mesuré le 11/08/2026, en faisant échouer le build : VitePress a pour racine
@@ -133,6 +155,7 @@ qu'on cite, jamais le chiffre qu'il a rendu un jour.
 | Table `## Configuration` d'une fiche ↔ le `configSchema` | `doc-capability-config.guard.test.js`, **deux sens**   |
 | Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`     | `doc-plugin-manifest.guard.test.js`                    |
 | Liens morts du site                                      | `docs:build` (`ignoreDeadLinks: false`)                |
+| Alertes GitHub dans un README **publié** sur npm         | `NPM-README` (`verify-npm-readme-render.cjs`)          |
 
 ⚠️ **Le corpus des trois premières est `productDocsFiles()`** (`scripts/lib/tsdoc-examples.cjs`) :
 **un seul corpus, trois consommateurs**. L'élargir les élargit toutes les trois — c'est voulu, et

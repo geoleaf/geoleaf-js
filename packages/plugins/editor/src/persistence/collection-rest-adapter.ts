@@ -23,7 +23,7 @@ import {
     type EditorPersistenceAdapter,
     type SavedFeature,
 } from "./adapter-interface.js";
-import { restFetch, restHeaders, parseJson, toSaved } from "./rest-wire-mapping.js";
+import { restFetch, restHeaders, parseJson, toSaved, statusError } from "./rest-wire-mapping.js";
 
 /** Configuration for {@link createCollectionRestAdapter}. */
 interface CollectionRestAdapterOptions {
@@ -52,14 +52,8 @@ function _buildUrl(baseUrl: string, layerId: string): string {
 /** Maps a response to a parsed body or a typed error. */
 async function _handleResponse(res: Response): Promise<unknown> {
     if (res.ok) return parseJson(res);
-    if (res.status >= 400 && res.status < 500) {
-        throw new PersistenceError("client", _getLabel("editor.error.server"), {
-            status: res.status,
-        });
-    }
-    throw new PersistenceError("network", _getLabel("editor.error.server"), {
-        status: res.status,
-    });
+    // No 409 flow in this dialect: the whole status policy is the shared one.
+    throw statusError(res.status);
 }
 
 /** Throws the create-only milestone error (update/delete are not defined server-side yet). */

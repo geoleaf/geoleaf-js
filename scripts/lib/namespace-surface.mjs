@@ -94,7 +94,12 @@ export function walkNamespace(root, opts) {
             continue; // never .value, never d.get(), never descend
         }
         var v = d ? d.value : undefined;
-        kinds[k] = typeof v === "function" ? "function" : v && typeof v === "object" ? "object" : "primitive";
+        kinds[k] =
+            typeof v === "function"
+                ? "function"
+                : v && typeof v === "object"
+                  ? "object"
+                  : "primitive";
         if (descend.indexOf(k) !== -1 && v && (typeof v === "object" || typeof v === "function")) {
             members[k] = memberNames(v);
         }
@@ -514,7 +519,7 @@ export const DEPTH2_FACADES = [
  * of an intermittent test. An intermittent test ends up skipped.
  */
 export const EXPECTED_FACADE_MEMBERS = {
-    "Baselayers": [
+    Baselayers: [
         "destroy",
         "getActiveId",
         "getActiveKey",
@@ -527,7 +532,8 @@ export const EXPECTED_FACADE_MEMBERS = {
         "setActive",
         "setBaseLayer",
     ],
-    "Config": [
+    Config: [
+        "clearThemesCache",
         "get",
         "getActiveProfile",
         "getActiveProfileId",
@@ -543,29 +549,21 @@ export const EXPECTED_FACADE_MEMBERS = {
         "loadUrl",
         "set",
     ],
-    "Core": [
+    Core: [
         "destroy",
         "getAdapter",
         "getMap",
         "getTheme",
         "hasMap",
         "init",
+        "isAttached",
         "listMaps",
+        "reattach",
         "setTheme",
     ],
-    "Events": [
-        "off",
-        "on",
-        "once",
-    ],
-    "FeatureInfo": [
-        "close",
-        "getConfig",
-        "isEnabled",
-        "openPopup",
-        "openSidePanel",
-    ],
-    "Filter": [
+    Events: ["off", "on", "once"],
+    FeatureInfo: ["close", "getConfig", "isEnabled", "openPopup", "openSidePanel"],
+    Filter: [
         "applyFilter",
         "applyNow",
         "getActiveFilter",
@@ -575,7 +573,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "proximity",
         "reset",
     ],
-    "GeoJSON": [
+    GeoJSON: [
         "DEFAULT_STYLES",
         "STYLE_OPERATORS",
         "calculateBounds",
@@ -604,20 +602,15 @@ export const EXPECTED_FACADE_MEMBERS = {
         "validateFeature",
         "validateFeatureCollection",
     ],
-    "I18n": [
-        "getActiveLang",
-        "getLabel",
-        "registerDict",
-        "t",
-    ],
-    "Introspection": [
+    I18n: ["getActiveLang", "getLabel", "registerDict", "t"],
+    Introspection: [
         "getActiveModules",
         "getAllCapabilities",
         "getCapabilitySchema",
         "getCapabilityStatus",
         "getModuleSchema",
     ],
-    "Labels": [
+    Labels: [
         "areLabelsEnabled",
         "destroy",
         "disableLabels",
@@ -633,11 +626,8 @@ export const EXPECTED_FACADE_MEMBERS = {
     // ⚠️ 2 membres seulement, et c'est la mesure. Une façade courte est le cas où l'on est
     // tenté de conclure « la descente n'a rien lu » : la distinguer d'une descente vide est
     // exactement ce que la clé `LayerManager` de `DEPTH2_FACADES` rend vérifiable.
-    "LayerManager": [
-        "init",
-        "refresh",
-    ],
-    "Layers": [
+    LayerManager: ["init", "refresh"],
+    Layers: [
         "addFeature",
         "clear",
         "clearVisibleSubset",
@@ -654,7 +644,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "setVisibleSubset",
         "updateFeatureId",
     ],
-    "Legend": [
+    Legend: [
         "getAllLayers",
         "hideLegend",
         "hideLoadingOverlay",
@@ -666,7 +656,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "showLoadingOverlay",
         "toggleAccordion",
     ],
-    "Notifications": [
+    Notifications: [
         "clearAll",
         "dismiss",
         "error",
@@ -681,7 +671,7 @@ export const EXPECTED_FACADE_MEMBERS = {
     // PAS des doublons de relevé, ce sont bien six membres distincts sur la façade — les
     // formes capitalisées sont les constructeurs, les minuscules les instances. Les écrire
     // toutes est ce qui fait rougir le retrait de l'une des deux moitiés.
-    "Storage": [
+    Storage: [
         "Cache",
         "CacheManager",
         "DB",
@@ -708,12 +698,8 @@ export const EXPECTED_FACADE_MEMBERS = {
         "whenReady",
         "wireModules",
     ],
-    "Sync": [
-        "getHandler",
-        "getHandlers",
-        "registerHandler",
-    ],
-    "Taxonomy": [
+    Sync: ["getHandler", "getHandlers", "registerHandler"],
+    Taxonomy: [
         "ensureSprite",
         "getCategories",
         "getFieldMappings",
@@ -726,7 +712,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "resolvePoiIcon",
         "resolveTitleIcon",
     ],
-    "ThemeSelector": [
+    ThemeSelector: [
         "destroy",
         "getCurrentTheme",
         "getPrimaryThemes",
@@ -741,7 +727,7 @@ export const EXPECTED_FACADE_MEMBERS = {
     // ⚠️ `BUILD`, `VERSION` et `Notifications` sont des membres de `UI` au sens de la marche :
     // ce ne sont pas des méthodes, mais ils sont énumérables et leur disparition serait une
     // rupture pour qui les lit. La liste gèle une SURFACE, pas un ensemble d'appels.
-    "UI": [
+    UI: [
         "BUILD",
         "Notifications",
         "VERSION",
@@ -749,15 +735,18 @@ export const EXPECTED_FACADE_MEMBERS = {
         "applyTheme",
         "cleanup",
         "clearNotifications",
+        "closePanel",
         "destroyDesktopPanel",
         "getCurrentTheme",
         "getModuleStatus",
+        "getOpenPanel",
         "init",
         "initAutoTheme",
         "initDesktopPanel",
         "initMobileToolbar",
         "initThemeToggle",
         "notify",
+        "openPanel",
         "setTheme",
         "showError",
         "showInfo",
@@ -766,7 +755,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "showWarning",
         "toggleTheme",
     ],
-    "Utils": [
+    Utils: [
         "DOMSecurity",
         "ErrorLogger",
         "EventListenerManager",
@@ -801,21 +790,13 @@ export const EXPECTED_FACADE_MEMBERS = {
     ],
     // Seule façade `_` gelée en profondeur 2 — motif écrit sur `DEPTH2_FACADES` : l'aval
     // appelle `syncImmediate`, et c'est la seule chose qui justifie de descendre ici.
-    "_LabelButtonManager": [
-        "createButton",
-        "removeButtons",
-        "syncImmediate",
-    ],
+    _LabelButtonManager: ["createButton", "removeButtons", "syncImmediate"],
     // `events` et `Events` mesurent les 3 mêmes membres — c'est la même façade sous deux clés,
     // et les deux sont gelées parce que le manifeste aval appelle `events.on` / `events.off`
     // tandis que le contrat `GeoLeafHost` nomme `Events`. Geler une seule des deux laisserait
     // l'autre route se vider sans témoin.
-    "events": [
-        "off",
-        "on",
-        "once",
-    ],
-    "plugins": [
+    events: ["off", "on", "once"],
+    plugins: [
         "canActivate",
         "ensureLoadedForAction",
         "getAvailableModules",

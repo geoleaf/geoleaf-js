@@ -137,7 +137,19 @@ export interface ISidePanelRenderer {
 export interface FeatureInfoPublicApi {
     /** `true` when `modules.feature-info.enabled`. */
     readonly isEnabled: () => boolean;
-    /** Closes both the popup and the side-panel if open. */
+    /**
+     * Closes both the popup **and** the side-panel, whichever is open. A no-op when neither
+     * is — it is safe to call unconditionally, e.g. on a route change or a modal opening.
+     *
+     * ⚠️ **This method is deliberately NOT gated on `modules.feature-info.enabled`**, unlike
+     * the four others. Flipping the key to `false` while a surface is open must not strand a
+     * panel that no API can then close.
+     *
+     * @example
+     * ```ts
+     * GeoLeaf?.FeatureInfo?.close();
+     * ```
+     */
     readonly close: () => void;
     /**
      * Opens the popup at the click point. `layout` overrides the auto-resolved

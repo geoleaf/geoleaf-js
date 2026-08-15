@@ -24,6 +24,7 @@
 import { toClusterCirclePaint } from "./maplibre-style-converter.js";
 import { SYNC_PENDING } from "./maplibre-sync-badge.js";
 import { trackMapCleanup } from "./maplibre-event-subscriptions.js";
+import { isExclusiveMode } from "../../kernel/shared/map-cursor.js";
 import {
     MAPLIBRE_MAX_CLUSTER_ZOOM,
     DEFAULT_CLUSTER_MAX_ZOOM,
@@ -351,10 +352,15 @@ export function bindPoiEvents(map: MaplibreMap, id: string, handlers: PoiEventHa
     }
 
     // Cursor pointer on hover — unclustered points, their icons, and clusters.
+    // Both handlers stand down while a tool owns the interactions, exactly as
+    // `kernel/geojson/feature-interaction.ts` already did: without this guard, leaving a POI
+    // wrote `cursor = ""` and wiped an armed measure tool's crosshair for good.
     const setPointer = () => {
+        if (isExclusiveMode(map)) return;
         map.getCanvas().style.cursor = "pointer";
     };
     const clearPointer = () => {
+        if (isExclusiveMode(map)) return;
         map.getCanvas().style.cursor = "";
     };
     const hoverLayerIds = [

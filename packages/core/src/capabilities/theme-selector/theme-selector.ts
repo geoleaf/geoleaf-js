@@ -12,9 +12,15 @@
  * DEPENDENCIES:
  * - Native DOM events
  * - GeoLeaf.Log (optional)
- * - GeoLeaf._ThemeLoader
- * - GeoLeaf._ThemeApplier
- * - GeoLeaf.Core.getActiveProfile()
+ * - `ThemeLoader` / `ThemeApplierCore` — ESM imports through the `kernel/themes/` barrel.
+ *   ⚠️ NOT namespace keys: `GeoLeaf._ThemeLoader` and `GeoLeaf._ThemeApplier` were removed at
+ *   API S4.3 (see `globals/globals.ui.ts`, the B7 block). This header announced them for a
+ *   month after the fact — no gate reads a `DEPENDENCIES:` block, so nothing contradicted it.
+ * - `Config` (`kernel/config/config-primitives.js`), ESM too — and only its `ui` block, through
+ *   the `ConfigLike` narrowing below.
+ *   ⚠️ This header also claimed `GeoLeaf.Core.getActiveProfile()`, which is false TWICE: `Core`
+ *   has no such member, and **this file makes no such call at all**. The profile id is read by
+ *   `./lifecycle.ts`, off `GeoLeaf.Config.getActiveProfileId()`.
  *
  * EXPOSE:
  * - GeoLeaf.ThemeSelector

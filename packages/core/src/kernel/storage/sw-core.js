@@ -169,9 +169,7 @@ let _tileMaxEntries = null;
 let _tilePutsSinceCheck = TILE_CACHE_CHECK_EVERY;
 
 // Core assets to pre-cache — injected by build-deploy.cjs at build time
-const STATIC_ASSETS = [
-    /* __GEOLEAF_STATIC_ASSETS__ */
-];
+const STATIC_ASSETS = [/* __GEOLEAF_STATIC_ASSETS__ */];
 
 // URLs to never cache
 const CACHE_BLACKLIST = [/chrome-extension/, /\/__/];
@@ -344,6 +342,9 @@ async function routeRequest(request, url) {
             // nous est déployé avec nous et versionné avec nous ». On le généralise, on ne
             // l'introduit pas.
             if (url.origin === self.location.origin) {
+                // B-236 — EN PREMIER : ce qu'`install` a écrit dans `CACHE_STATIC` s'y relit,
+                // sans repasser par une seconde dérivation du périmètre.
+                if (isPrecachedAsset(url)) return cacheFirstStrategy(request, CACHE_STATIC);
                 if (isProfileResource(url)) {
                     return cacheFirstStrategy(request, getCacheNameForProfile(url));
                 }
@@ -379,6 +380,12 @@ async function routeRequest(request, url) {
  * @returns {Promise<Response>}
  */
 function legacyRoute(request, url) {
+    // B-236 — même geste que sur la route déclarée, et EN PREMIER pour la même raison. Les
+    // DEUX sites portaient le défaut ; n'en corriger qu'un l'aurait laissé vivant pour tout
+    // profil qui ne déclare pas ses origines, c'est-à-dire sur le chemin le plus courant.
+    if (isPrecachedAsset(url)) {
+        return cacheFirstStrategy(request, CACHE_STATIC);
+    }
     if (isProfileResource(url)) {
         return cacheFirstStrategy(request, getCacheNameForProfile(url));
     }
@@ -1180,8 +1187,73 @@ async function tileCacheStrategy(request) {
 // DETECTION HELPERS
 // ═══════════════════════════════════════════════
 
+/**
+ * La ressource appartient-elle à UN profil, c'est-à-dire vit-elle SOUS son répertoire ?
+ *
+ * 🛑 **Le `/` final n'est pas cosmétique, il est le correctif de B-236.** Cette fonction rendait
+ * `true` pour tout chemin CONTENANT `/profiles/`, donc aussi pour l'index `geoleaf.config.json`,
+ * qui est à la racine de `profiles/` et n'appartient à aucun profil. `getCacheNameForProfile`
+ * capturait alors le NOM DE FICHIER comme s'il était un nom de profil et dérivait un seau
+ * `…-profile-geoleaf.config.json` — que `cacheFirstStrategy` CRÉE en l'ouvrant, et que rien ne
+ * remplit jamais.
+ *
+ * Conséquence mesurée le 13/08/2026 : le fichier était correctement PRÉ-CACHÉ dans
+ * `CACHE_STATIC` (`lib/boot-assets.cjs` l'y inscrit délibérément) et **inatteignable** — la
+ * lecture était scopée à un seau vide. Hors ligne, `caches.match()` global le trouvait ;
+ * la route, non. L'application ne bootait pas au second chargement, faute de `map.bounds`.
+ *
+ * ⚠️ **Restreindre ici ne suffit PAS**, et c'est le piège de ce correctif : `isStaticAsset`
+ * n'accepte pas `json`, donc l'index retomberait en `networkFirstStrategy(CACHE_RUNTIME)` —
+ * autre seau, autre miss, même panne. Voir {@link isProfileShellConfig}, qui est l'autre moitié.
+ */
 function isProfileResource(url) {
-    return url.pathname.includes("/profiles/");
+    return /\/profiles\/[^/]+\//.test(url.pathname);
+}
+
+/**
+ * Clés de {@link STATIC_ASSETS}, résolues comme `install` les a écrites. `null` tant que
+ * la première requête ne l'a pas demandé — la liste est injectée au build, pas au chargement.
+ */
+let _precachedKeys = null;
+
+/**
+ * La ressource fait-elle partie du PRÉ-CACHE, tel qu'`install` l'a écrit ?
+ *
+ * 🛑 **L'AUTRE MOITIÉ DE B-236, ET LA PLUS IMPORTANTE : ce que `install` écrit, `fetch` doit
+ * savoir le lire.** Les deux moitiés du worker dérivaient leur périmètre séparément — `install`
+ * depuis `STATIC_ASSETS` (dérivée par `lib/boot-assets.cjs`), `fetch` depuis une LISTE
+ * D'EXTENSIONS (`isStaticAsset`) qui n'accepte pas `json`. Toute entrée pré-cachée dont
+ * l'extension manquait à cette liste était donc écrite dans `CACHE_STATIC` puis cherchée
+ * ailleurs — `networkFirstStrategy(CACHE_RUNTIME)` — et introuvable hors ligne.
+ *
+ * Mesuré le 13/08/2026 par la garde de classe de `e2e/31-offline-second-load.spec.js` :
+ * **DEUX** entrées sur 17, `profiles/geoleaf.config.json` et `manifest.json`. La première
+ * empêchait l'application de booter au second chargement, faute de `map.bounds`.
+ *
+ * ⚠️ **Le premier correctif écrit ne traitait que le config**, en restreignant
+ * `isProfileResource` et en routant la racine de `profiles/` vers `CACHE_STATIC`. Il aurait
+ * laissé `manifest.json` cassé — c'est la garde, et non la relecture, qui l'a dit. D'où cette
+ * forme-ci : au lieu de deviner le périmètre une seconde fois, on lit CELUI QUI A SERVI À
+ * ÉCRIRE. Une liste d'extensions et une liste d'assets ne peuvent pas diverger si l'une des
+ * deux n'existe plus.
+ *
+ * ⚠️ La base de résolution est `self.location.href`, et ce n'est pas indifférent : c'est
+ * exactement celle que `cache.addAll(STATIC_ASSETS)` emploie à l'installation. Résoudre ici
+ * depuis une autre base produirait des clés qui ne correspondraient à rien.
+ */
+function isPrecachedAsset(url) {
+    if (url.origin !== self.location.origin) {
+        return false;
+    }
+    if (_precachedKeys === null) {
+        _precachedKeys = new Set(
+            STATIC_ASSETS.map((entry) => {
+                const u = new URL(entry, self.location.href);
+                return u.pathname + u.search;
+            })
+        );
+    }
+    return _precachedKeys.has(url.pathname + url.search);
 }
 
 /**

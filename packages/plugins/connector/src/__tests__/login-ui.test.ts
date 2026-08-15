@@ -203,12 +203,12 @@ describe("showLoginModal (Sprint 2)", () => {
     });
 
     describe("cancelable link events", () => {
-        it("dispatches connector:signup-requested on signup link click", async () => {
+        it("dispatches geoleaf:connector:signup-requested on signup link click", async () => {
             promise = showLoginModal(CONFIG_WITH_LINKS);
             await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
 
             const handler = vi.fn();
-            document.addEventListener("connector:signup-requested", handler);
+            document.addEventListener("geoleaf:connector:signup-requested", handler);
 
             const signupLink = document.querySelector<HTMLAnchorElement>("#gc-link-signup")!;
             signupLink.click();
@@ -218,17 +218,17 @@ describe("showLoginModal (Sprint 2)", () => {
                 url: "https://app.example.com/signup",
             });
 
-            document.removeEventListener("connector:signup-requested", handler);
+            document.removeEventListener("geoleaf:connector:signup-requested", handler);
             document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
             await promise.catch(() => {});
         });
 
-        it("dispatches connector:forgot-password-requested on forgot link click", async () => {
+        it("dispatches geoleaf:connector:forgot-password-requested on forgot link click", async () => {
             promise = showLoginModal(CONFIG_WITH_LINKS);
             await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
 
             const handler = vi.fn();
-            document.addEventListener("connector:forgot-password-requested", handler);
+            document.addEventListener("geoleaf:connector:forgot-password-requested", handler);
 
             const forgotLink = document.querySelector<HTMLAnchorElement>("#gc-link-forgot")!;
             forgotLink.click();
@@ -238,7 +238,7 @@ describe("showLoginModal (Sprint 2)", () => {
                 url: "https://app.example.com/forgot",
             });
 
-            document.removeEventListener("connector:forgot-password-requested", handler);
+            document.removeEventListener("geoleaf:connector:forgot-password-requested", handler);
             document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
             await promise.catch(() => {});
         });
@@ -249,7 +249,7 @@ describe("showLoginModal (Sprint 2)", () => {
 
             // App listener that cancels the event
             const handler = (e: Event) => e.preventDefault();
-            document.addEventListener("connector:signup-requested", handler);
+            document.addEventListener("geoleaf:connector:signup-requested", handler);
 
             const signupLink = document.querySelector<HTMLAnchorElement>("#gc-link-signup")!;
             const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
@@ -258,7 +258,7 @@ describe("showLoginModal (Sprint 2)", () => {
             // The link click event should have been prevented
             expect(clickEvent.defaultPrevented).toBe(true);
 
-            document.removeEventListener("connector:signup-requested", handler);
+            document.removeEventListener("geoleaf:connector:signup-requested", handler);
             document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
             await promise.catch(() => {});
         });
@@ -324,7 +324,7 @@ describe("showLoginModal (Sprint 2)", () => {
             await promise;
         });
 
-        it("resolves the promise on successful login and dispatches connector:authenticated", async () => {
+        it("resolves the promise on successful login and dispatches geoleaf:connector:authenticated", async () => {
             const { AuthClient } = await import("../auth-client.js");
             (AuthClient.login as ReturnType<typeof vi.fn>).mockResolvedValue({
                 token: "tok.en.jwt",
@@ -332,7 +332,7 @@ describe("showLoginModal (Sprint 2)", () => {
             });
 
             const handler = vi.fn();
-            document.addEventListener("connector:authenticated", handler);
+            document.addEventListener("geoleaf:connector:authenticated", handler);
 
             promise = showLoginModal(BASE_CONFIG);
             await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
@@ -345,7 +345,7 @@ describe("showLoginModal (Sprint 2)", () => {
             expect(getOverlay()).toBeNull();
             expect(handler).toHaveBeenCalledTimes(1);
 
-            document.removeEventListener("connector:authenticated", handler);
+            document.removeEventListener("geoleaf:connector:authenticated", handler);
         });
 
         it("shows 'Identifiant ou mot de passe incorrect' on AuthError Invalid credentials", async () => {

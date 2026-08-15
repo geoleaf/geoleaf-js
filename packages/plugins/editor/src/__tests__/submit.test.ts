@@ -96,6 +96,22 @@ describe("submitFeature — error mapping", () => {
         expect(notify.error).toHaveBeenCalledWith("editor.error.networkTimeout");
     });
 
+    // 🛑 LA MOITIÉ VISIBLE DE B-199. Réparer la file sans cette branche laisserait la machine
+    // juste et l'utilisateur trompé : `editor.error.server` dit « Veuillez réessayer », la seule
+    // chose qui ne servira à rien face à un serveur qui ne connaît pas le verbe.
+    it("maps a 501 capability refusal to operationNotSupported, jamais à error.server", async () => {
+        const ctx = makeCtx({
+            save: vi
+                .fn()
+                .mockRejectedValue(new PersistenceError("capability", "x", { status: 501 })),
+        });
+        await expect(
+            submitFeature(ctx, { feature: FEATURE, layerId: "L", isUpdate: false })
+        ).rejects.toThrow();
+        expect(notify.error).toHaveBeenCalledWith("editor.error.operationNotSupported");
+        expect(notify.error).not.toHaveBeenCalledWith("editor.error.server");
+    });
+
     it("maps a 403 client error to permissionDenied", async () => {
         const ctx = makeCtx({
             save: vi.fn().mockRejectedValue(new PersistenceError("client", "x", { status: 403 })),

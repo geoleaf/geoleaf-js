@@ -19,11 +19,44 @@ export interface ConnectorConfig {
     baseUrl: string;
 
     /**
-     * Async or sync token provider callback.
-     * Return null to skip header injection for a given request.
-     * The plugin calls this function on every intercepted request — the caller is
-     * responsible for caching and refreshing the token.
-     * Mutually exclusive with `auth`.
+     * Async or sync token provider callback — **the supported way to inject a host token.**
+     *
+     * Return `null` to skip header injection for a given request. Mutually exclusive with
+     * `auth`.
+     *
+     * ## It is a PULL, and that is the security property
+     *
+     * The plugin calls this on **every intercepted request** (`fetch-interceptor.ts`,
+     * `_resolveToken`), and again when a 401 sends it through the retry path. The host
+     * therefore always returns the token that is current *at that instant*: it never has to
+     * predict expiry, and there is no stale copy of the token anywhere in the plugin.
+     * Caching and refreshing stay on the host side, which is where the credential lives.
+     *
+     * ## Why there is no `Connector.setToken` nor `onTokenExpiring`
+     *
+     * 🛑 **They will not be written** — this is an arbitrated refusal (decision ⑧ of
+     * `roadmap_contrat-inverse-api-publique.md`), not an omission, and re-opening it needs a
+     * new argument rather than a new request.
+     *
+     * `setToken` would be a **PUSH**: a credential handed to the global namespace, persisted,
+     * and replayed onto the `Authorization` header of every matching request until something
+     * replaces it. That inverts the direction of control — the plugin would hold a copy of a
+     * secret whose validity only the host knows. `onTokenExpiring` exists only to patch that
+     * inversion, by asking the host to predict what the PULL already reads at the right time.
+     *
+     * `getToken` covers both, under a form that is strictly more general and keeps the
+     * credential on one side of the boundary.
+     *
+     * @returns The current token, or `null` to leave the request unauthenticated.
+     *
+     * @example
+     * ```ts
+     * // Passé tel quel à `GeoLeaf.Connector.configure(...)`.
+     * const connectorConfig = {
+     *     baseUrl: "https://api.example.org",
+     *     getToken: () => sessionStorage.getItem("access_token"),
+     * };
+     * ```
      */
     getToken?: () => string | null | Promise<string | null>;
 

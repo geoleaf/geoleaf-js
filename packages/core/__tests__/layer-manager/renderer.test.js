@@ -99,6 +99,41 @@ describe("layer-manager/renderer (Phase 4.14)", () => {
         );
     });
 
+    // B-251 — le mode de rendu tient au SEUL `typeof collapsedByDefault === "boolean"`.
+    // Le cas positif était couvert, le négatif non : c'est pourtant lui qu'on observait
+    // en production (sections implicites sans le drapeau → titres plats, aucun accordéon).
+    describe("B-251 — collapsedByDefault décide seul de l'accordéon", () => {
+        const withItems = (extra) => [
+            {
+                id: "data-tourism",
+                label: "Données touristiques",
+                items: [{ id: "lyr1", label: "Layer 1", type: "fill", visible: true }],
+                ...extra,
+            },
+        ];
+
+        it("sans collapsedByDefault → titre plat, ni entête d'accordéon ni flèche", () => {
+            LMRenderer.renderSections(bodyEl, withItems({}));
+            expect(bodyEl.querySelector(".gl-layer-manager__section-title")).not.toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__accordion-header")).toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__accordion-arrow")).toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__section--accordion")).toBeNull();
+        });
+
+        it("collapsedByDefault:false → accordéon déplié (le drapeau suffit)", () => {
+            LMRenderer.renderSections(bodyEl, withItems({ collapsedByDefault: false }));
+            expect(bodyEl.querySelector(".gl-layer-manager__section--accordion")).not.toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__accordion-header")).not.toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__section--collapsed")).toBeNull();
+        });
+
+        it("collapsedByDefault:true → accordéon replié", () => {
+            LMRenderer.renderSections(bodyEl, withItems({ collapsedByDefault: true }));
+            expect(bodyEl.querySelector(".gl-layer-manager__section--accordion")).not.toBeNull();
+            expect(bodyEl.querySelector(".gl-layer-manager__section--collapsed")).not.toBeNull();
+        });
+    });
+
     describe("Phase 9.9 — coverage 60%", () => {
         it("renderSections with items and collapsible builds accordion", () => {
             LMRenderer.renderSections(bodyEl, [

@@ -12,15 +12,19 @@
 import { getLog } from "../../../../utils/general/di-accessors.js";
 import { getLabel } from "../../../../utils/i18n/i18n.js";
 import type { IMapAdapter } from "../../../../contracts/map-adapter.contract.js";
+import { disarmToolCursor } from "../../../../kernel/shared/index.js";
 import { ProximityState } from "./proximity-state.js";
 import { removeCircleAndMarker } from "./proximity-circle.js";
 
 /**
  * Clears the map-side elements: circle, marker, click handler and cursor.
  * Leaves the panel DOM untouched.
+ *
+ * Also releases exclusive mode, so the core's hover handlers resume owning the cursor —
+ * see `kernel/shared/map-cursor.ts`.
  */
 export function cleanupMapElements(map: IMapAdapter): void {
-    map.getContainer().style.cursor = "";
+    disarmToolCursor(map);
 
     if (ProximityState.clickHandler) {
         map.off("click", ProximityState.clickHandler);

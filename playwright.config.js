@@ -91,6 +91,50 @@ export default defineConfig({
         {
             name: "chromium",
             use: { ...devices["Desktop Chrome"] },
+            // 🛑 UN `testIgnore` DE PROJET ÉCRASE CELUI DU NIVEAU CONFIG — il ne s'y ajoute
+            // PAS (`playwright/lib/common/index.js`, `takeFirst`). Le `**/.claude/**` de la
+            // ligne 15 disparaît donc pour ce projet dès qu'on déclare la clé ici, et les
+            // copies de worktree reviennent avec le crash de double chargement que le
+            // commentaire ci-dessus décrit. Il est RECOPIÉ, ce n'est pas une redondance.
+            testIgnore: ["**/.claude/**", "e2e/**/*.touch.spec.js"],
+        },
+        {
+            // Deux défauts mobiles que la souris synthétique ne peut pas voir, par
+            // construction et non par accident :
+            //   · editor  — au 1er tap, Terra Draw pose une LineString [c, c] et RIEN
+            //     d'autre. Sur desktop le survol déplace le 2e sommet et masque le défaut ;
+            //     au doigt il n'y a pas de survol.
+            //   · measure — `createDragTool` filtre sur `originalEvent.button !== 0`, qu'un
+            //     TouchEvent ne peut pas satisfaire.
+            //
+            // ⚠️ Ce projet NE REJOUE PAS la suite au doigt : `testMatch` le borne aux seuls
+            // specs écrits pour lui. Un `grep:` par tag aurait CHARGÉ les 40+ fichiers pour
+            // n'en garder que deux.
+            //
+            // ⚠️ Les specs tactiles restent À PLAT dans `e2e/` — d'où le suffixe plutôt
+            // qu'un sous-répertoire. `scripts/check-e2e-wait-signature.cjs` lit `e2e/` par
+            // un `readdirSync` NON RÉCURSIF : un `e2e/touch/` échapperait à la gate EN
+            // SILENCE.
+            name: "chromium-touch",
+            testMatch: ["e2e/**/*.touch.spec.js"],
+            testIgnore: ["**/.claude/**"],
+            use: {
+                ...devices["Desktop Chrome"],
+                // Le créneau des deux plugins est mobile, et 390×844 est la valeur déjà
+                // retenue par `09-editor.spec.js`.
+                viewport: { width: 390, height: 844 },
+                hasTouch: true,
+                // Sûr ici, et vérifié plutôt que supposé : `isMobile` fait prendre en compte
+                // le `<meta name="viewport">`, que les deux variantes servies déclarent bien
+                // en `width=device-width`. Sans ce meta, Chromium retomberait à 980 px CSS et
+                // la mise en page mobile ne serait PAS exercée.
+                isMobile: true,
+                // ⚠️ NE PAS reprendre `devices["Pixel 7"]` en bloc : il emporte un
+                // `deviceScaleFactor: 2.625` — qui triple la surface à rastériser sous le
+                // SwiftShader logiciel des `launchOptions` — et un UA Android, or du code
+                // produit branche déjà sur l'UA (cf. `23-pwa-install-banner.spec.js`).
+                deviceScaleFactor: 1,
+            },
         },
     ],
 
@@ -108,7 +152,7 @@ export default defineConfig({
         : [
               {
                   command:
-                      "node node_modules/http-server/bin/http-server deploy/deploy-core -p 8766 -c-1 --cors",
+                      "node node_modules/http-server/bin/http-server deploy/deploy-core -p 8766 -c0 --cors",
                   url: "http://localhost:8766",
                   reuseExistingServer: !process.env.CI,
                   timeout: 60 * 1000,
@@ -119,7 +163,7 @@ export default defineConfig({
               // so a storage-only deploy tested nothing the others did not. Its 2 specs moved to 8768.
               {
                   command:
-                      "node node_modules/http-server/bin/http-server deploy/deploy-full -p 8768 -c-1 --cors",
+                      "node node_modules/http-server/bin/http-server deploy/deploy-full -p 8768 -c0 --cors",
                   url: "http://localhost:8768",
                   reuseExistingServer: !process.env.CI,
                   timeout: 60 * 1000,
@@ -128,7 +172,7 @@ export default defineConfig({
               },
               {
                   command:
-                      "node node_modules/http-server/bin/http-server deploy/deploy-coverage -p 8769 -c-1 --cors",
+                      "node node_modules/http-server/bin/http-server deploy/deploy-coverage -p 8769 -c0 --cors",
                   url: "http://localhost:8769",
                   reuseExistingServer: !process.env.CI,
                   timeout: 60 * 1000,

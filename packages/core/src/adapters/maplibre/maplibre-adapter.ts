@@ -559,6 +559,27 @@ export class MaplibreAdapter implements IMapAdapter {
         return this._requireMap().getContainer();
     }
 
+    /**
+     * Returns the WebGL drawing canvas.
+     *
+     * The element cursor changes must target — see the contract for why `getContainer()`
+     * is not a substitute.
+     */
+    getCanvas(): HTMLCanvasElement {
+        return this._requireMap().getCanvas();
+    }
+
+    /**
+     * Re-reads the container size and resizes the WebGL drawing buffer.
+     *
+     * The third of the three gestures `resize` needs: declaring it on the contract and
+     * calling it from `reattach()` is not enough — without an implementation the call
+     * lands on `undefined` and, the member being optional, does so in SILENCE.
+     */
+    resize(): void {
+        this._requireMap().resize();
+    }
+
     /** Escape hatch — returns the underlying `maplibregl.Map` instance. */
     getNativeMap(): MaplibreMap | null {
         return this._map;

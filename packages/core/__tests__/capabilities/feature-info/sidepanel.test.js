@@ -283,3 +283,115 @@ describe("openSidePanel() \u2014 content", () => {
         expect(body().textContent).not.toContain("Lac des Cygnes");
     });
 });
+
+/**
+ * Sprint 4, tâche 4.6 — `geoleaf:poi:panel:open` / `:close`.
+ *
+ * 🛑 **Ces deux clés étaient TYPÉES SANS ÉMETTEUR depuis l'origine** (B-16) : un intégrateur
+ * qui s'y abonnait écrivait du code qui compile et ne se déclenche jamais. Le sprint a tranché
+ * de brancher l'émetteur plutôt que de retirer la clé.
+ *
+ * ⚠️ **Aucune gate du dépôt ne peut voir ce lot.** Les clés étaient déjà typées, donc
+ * `EVENT-MAP` ne bouge pas d'un chiffre, et `CONSUMER-CONTRACT` ne pose aucun invariant
+ * « toute clé a un émetteur » — c'est justement le corps de B-16. Ces cas sont la SEULE
+ * preuve que l'émission existe, et leur absence serait indiscernable de leur succès.
+ */
+const TITLED = { sidepanel: [{ field: "name", type: "text", style: "title" }] };
+
+describe("geoleaf:poi:panel:open / :close — les clés fantômes de B-16, branchées", () => {
+    function record() {
+        const seen = [];
+        const onOpen = (e) => seen.push({ type: "open", ...e.detail });
+        const onClose = (e) => seen.push({ type: "close", ...e.detail });
+        document.addEventListener("geoleaf:poi:panel:open", onOpen);
+        document.addEventListener("geoleaf:poi:panel:close", onClose);
+        return {
+            seen,
+            stop: () => {
+                document.removeEventListener("geoleaf:poi:panel:open", onOpen);
+                document.removeEventListener("geoleaf:poi:panel:close", onClose);
+            },
+        };
+    }
+
+    it("ouvrir émet `open` avec l'id et le nom RÉSOLU du titre affiché", () => {
+        stubGeoLeaf(TITLED);
+        const rec = record();
+
+        openSidePanel(BASE);
+
+        expect(rec.seen).toEqual([{ type: "open", poiId: "f1", poiName: "Lac des Cygnes" }]);
+        rec.stop();
+    });
+
+    it("fermer émet `close` en nommant le MÊME poi", () => {
+        stubGeoLeaf(TITLED);
+        openSidePanel(BASE);
+        const rec = record();
+
+        closeSidePanel();
+
+        expect(rec.seen).toEqual([{ type: "close", poiId: "f1" }]);
+        rec.stop();
+    });
+
+    it("🛑 sans identifiant stable, on se TAIT — dans les deux sens", () => {
+        stubGeoLeaf(TITLED);
+        const rec = record();
+
+        openSidePanel({ ...BASE, featureId: null });
+        closeSidePanel();
+
+        // `poiId` est déclaré `string` dans une interface PUBLIÉE : forger un id
+        // (`""`, un index) rendrait deux POI sans id indiscernables chez l'abonné.
+        expect(rec.seen).toEqual([]);
+        rec.stop();
+    });
+
+    it("un titre absent donne un nom vide, il ne fait pas échouer l'ouverture", () => {
+        stubGeoLeaf({ sidepanel: [{ field: "name", type: "text" }] }); // pas de `style: title`
+        const rec = record();
+
+        openSidePanel(BASE);
+
+        expect(rec.seen).toEqual([{ type: "open", poiId: "f1", poiName: "" }]);
+        rec.stop();
+    });
+
+    it("fermer un panneau déjà fermé n'émet rien", () => {
+        stubGeoLeaf(TITLED);
+        const rec = record();
+
+        closeSidePanel();
+
+        expect(rec.seen).toEqual([]);
+        rec.stop();
+    });
+
+    it("🛑 `destroySidePanel` n'émet PAS de `close` — c'est un démontage, pas une fermeture", () => {
+        stubGeoLeaf(TITLED);
+        openSidePanel(BASE);
+        const rec = record();
+
+        destroySidePanel();
+
+        expect(rec.seen).toEqual([]);
+        rec.stop();
+    });
+
+    it("après un démontage, l'ouverture suivante ne rejoue pas l'ancien poi", () => {
+        stubGeoLeaf(TITLED);
+        openSidePanel(BASE);
+        destroySidePanel();
+        const rec = record();
+
+        openSidePanel({ ...BASE, featureId: "f2", properties: { name: "Étang neuf" } });
+        closeSidePanel();
+
+        expect(rec.seen).toEqual([
+            { type: "open", poiId: "f2", poiName: "Étang neuf" },
+            { type: "close", poiId: "f2" },
+        ]);
+        rec.stop();
+    });
+});

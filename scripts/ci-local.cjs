@@ -338,6 +338,21 @@ const STEPS = [
         name: "Docs examples (phantom APIs, stale package names)",
         run: ["npm", "run", "check:docs-examples"],
     },
+    // NPM-README (14/08/2026) — la page npm d'un paquet est sa vitrine, et personne ne la relit
+    // depuis ce dépôt. `npmjs.com` ne rend pas les alertes GitHub : `> [!WARNING]` s'affiche en
+    // TEXTE LITTÉRAL, donc le marqueur devient une ligne de bruit AU-DESSUS de l'avertissement
+    // qu'il devait souligner. Mesuré avant correctif : 18 alertes sur 6 des 14 README publiés,
+    // dont 5 dans `@geoleaf/core`.
+    // 🛑 Placée juste après `check:docs-examples` parce que les deux lisent LES MÊMES fichiers et
+    // se partagent le sujet : celle du dessus garde le CODE des blocs clôturés, celle-ci la PROSE
+    // qui les entoure. Elles ne peuvent PAS fusionner pour autant — le corpus de
+    // `check:docs-examples` est plus large (racine du dépôt + `docs/`), et la règle y serait
+    // FAUSSE : GitHub et VitePress rendent les alertes. Une gate qui rougirait sur les deux
+    // surfaces les plus lues du projet se ferait désactiver. Statique, sans build.
+    {
+        name: "Rendu npm des README publiés (NPM-README)",
+        run: ["npm", "run", "check:npm-readme"],
+    },
     // ARCHI S11 — the two halves of the commented tree, and they fail differently.
     // MOD-HEADERS gates the SOURCE (a new file may not arrive undocumented, and the
     // 318-file baseline may only shrink); DOCS-TREE gates the ARTEFACT (the committed
@@ -507,10 +522,12 @@ const STEPS = [
     },
     // API publique S3.4 — même patron de cliquet que MOD-HEADERS, sur un autre objet :
     // tout nom `geoleaf:*` relevé dans les sources doit exister dans `GeoLeafEventMap` ou
-    // `GeoLeafRawEventMap`. 23 typés sur 76 relevés au câblage ; les 53 restants sont en
-    // baseline et elle ne peut que rétrécir. Sans ce gate, le 54ᵉ événement non typé arrive
-    // sans que rien ne le dise — ce qui est exactement comment `geoleaf:toolbar:action`,
-    // le seam d'extension canonique, a pu rester hors typage pendant toute la vie du produit.
+    // `GeoLeafRawEventMap`, et la baseline des non-typés ne peut que rétrécir. Sans ce gate,
+    // le prochain événement non typé arrive sans que rien ne le dise — ce qui est exactement
+    // comment `geoleaf:toolbar:action`, le seam d'extension canonique, a pu rester hors
+    // typage pendant toute la vie du produit.
+    // ⚠️ Ce commentaire annonçait « 23 typés sur 76 relevés ; les 53 restants » — chiffres du
+    // câblage, jamais re-mesurés, et faux depuis. La gate imprime les siens à chaque run.
     {
         name: "Événements dispatchés typés (EVENT-MAP)",
         run: ["npm", "run", "check:event-map"],
@@ -798,6 +815,24 @@ const STEPS = [
  * `build-deploy.cjs`, `build-deploy-coverage.cjs` et la suite Playwright.
  */
 const E2E_STEPS = [
+    // B-235 — PRÉAMBULE, et il est en tête pour une raison de coût autant que de lisibilité.
+    // Sans navigateur, la suite met 1,2 min à rendre ~215 rouges IDENTIQUES, qui ressemblent à
+    // une régression catastrophique du produit et non à un répertoire absent. Cette étape
+    // refuse en 2 s, avec le diagnostic et la commande de remède.
+    // ⚠️ Elle sort en 2, pas en 1 : « la suite peut-elle être jouée » est un PRÉALABLE, pas un
+    // verdict. Placée avant les builds, elle évite aussi de payer 4 builds pour rien.
+    {
+        name: "Navigateurs Playwright présents (PW-BROWSERS)",
+        run: ["node", "scripts/verify-playwright-browsers.cjs"],
+    },
+    // Second préambule, même famille et même motif de placement : `Timed out waiting 60000ms
+    // from config.webServer` arrive APRÈS les builds, coûte une minute, et ne nomme aucun port.
+    // ⚠️ Il vérifie que chaque port est LIBRE ou RÉPOND — pas qu'il est libre : la config pose
+    // `reuseExistingServer` en local, donc un serveur déjà là est délibérément réutilisé.
+    {
+        name: "Ports du harnais E2E utilisables (E2E-PORTS)",
+        run: ["node", "scripts/verify-e2e-ports.cjs"],
+    },
     { name: "Build deploy variants", run: ["npm", "run", "build:deploy:all"] },
     // T6.7a — `build:coverage` renommé : il ne construit AUCUN rapport de couverture,
     // il construit une APPLICATION (deploy-core aux bundles instrumentés Istanbul).

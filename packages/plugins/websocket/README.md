@@ -11,8 +11,7 @@ real-time connection with automatic reconnection, offline buffering and built-in
 npm install @geoleaf-plugins/websocket
 ```
 
-> [!NOTE]
-> **Prerequisite:** `@geoleaf/core` must be loaded before this plugin.
+> **Note** — Prerequisite: `@geoleaf/core` must be loaded before this plugin.
 
 ---
 
@@ -243,8 +242,8 @@ document.addEventListener("geoleaf:ws:failed", (e) => {
 All events are dispatched through `document.dispatchEvent()` and consumed with
 `document.addEventListener()`.
 
-> [!NOTE]
-> These events are separate from the `GeoLeaf.Events` system — they do not travel through it.
+> **Note** — These events are separate from the `GeoLeaf.Events` system — they do not travel
+> through it.
 
 | Event                             | Payload                       | Fired when                                                 |
 | --------------------------------- | ----------------------------- | ---------------------------------------------------------- |
@@ -311,9 +310,8 @@ await GeoLeaf.Ws.init({
 });
 ```
 
-> [!IMPORTANT]
-> `registerTransport()` must be called **before** `GeoLeaf.Ws.init()`. An unknown key at `init()`
-> time raises an `INVALID_TRANSPORT` error.
+> **Important** — `registerTransport()` must be called **before** `GeoLeaf.Ws.init()`. An unknown
+> key at `init()` time raises an `INVALID_TRANSPORT` error.
 
 ---
 
@@ -322,11 +320,10 @@ await GeoLeaf.Ws.init({
 The package ships a `MockTransport` to make unit testing easier in projects that integrate the
 plugin.
 
-> [!WARNING]
-> **`./test-utils` is not a public subpath, so the import below does not resolve as written.** The
-> file does travel in the tarball (`files[]` carries `test-utils/`), but the `exports` map does not
-> declare it, so importing that path raises `ERR_PACKAGE_PATH_NOT_EXPORTED`. In the meantime, copy
-> `test-utils/mock-transport.ts` out of the tarball.
+> **Warning** — `./test-utils` is not a public subpath, so the import below does not resolve as
+> written. The file does travel in the tarball (`files[]` carries `test-utils/`), but the `exports`
+> map does not declare it, so importing that path raises `ERR_PACKAGE_PATH_NOT_EXPORTED`. In the
+> meantime, copy `test-utils/mock-transport.ts` out of the tarball.
 
 ```js
 import { MockTransport } from "@geoleaf-plugins/websocket/test-utils"; // see the warning above

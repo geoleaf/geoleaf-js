@@ -10,10 +10,9 @@ JSON profiles — GeoJSON layers, styles, themes, taxonomy — with no applicati
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.13-brightgreen)](https://nodejs.org/)
 
-> [!NOTE]
-> This file is a **shop window, not a reference**. It covers installation, a minimal example and
-> the entry points. Everything else lives on [geoleaf.dev/docs](https://www.geoleaf.dev/docs/),
-> and each fact is written in exactly one place.
+> **Note** — This file is a shop window, not a reference. It covers installation, a minimal example
+> and the entry points. Everything else lives on
+> [geoleaf.dev/docs](https://www.geoleaf.dev/docs/).
 
 ---
 
@@ -27,16 +26,10 @@ npm install @geoleaf/core maplibre-gl
 supply it. **ESM only** on both sides — no UMD, no CommonJS, for GeoLeaf as for MapLibre since its
 v6. Compilation target: **ES2022**.
 
-> [!NOTE]
-> Do not confuse this with the ready-made application shipped in the repository (`deploy/`), which
-> has no dependency to install: it **self-hosts** MapLibre under `vendor/maplibre-gl/`, copied from
-> `node_modules` at build time and pre-cached by its service worker. This package is the library —
-> it does not pick the engine version, it declares it.
-
 The package declares `engines.node`, so `npm install` warns on a Node version that is too old and
-fails under `engine-strict`. Read the exact range from the manifest rather than from this page:
-`npm view @geoleaf/core engines` for the published package, or
-`node -p "require('@geoleaf/core/package.json').engines.node"` for the one you installed.
+fails under `engine-strict`. The exact range: `npm view @geoleaf/core engines` for the published
+package, or `node -p "require('@geoleaf/core/package.json').engines.node"` for the one you
+installed.
 
 ```javascript
 import { Core } from "@geoleaf/core";
@@ -48,12 +41,12 @@ Core.init({
 });
 ```
 
-> [!WARNING]
-> **The stylesheet is imported through the declared `@geoleaf/core/style.css` subpath.** A
-> `@geoleaf/core/dist/…` specifier throws `ERR_PACKAGE_PATH_NOT_EXPORTED` — the `exports` map does
-> not open `dist/`. Served URLs, on the other hand, point at files rather than package subpaths.
+> **Warning** — The stylesheet is imported through the declared `@geoleaf/core/style.css` subpath.
+> A `@geoleaf/core/dist/…` specifier throws `ERR_PACKAGE_PATH_NOT_EXPORTED` — the `exports` map
+> does not open `dist/`. Served URLs, on the other hand, point at files rather than package
+> subpaths.
 
-**In the browser — self-hosted** (what the shipped application does):
+**In the browser — self-hosted:**
 
 GeoLeaf reads the engine from `globalThis.maplibregl`, which v6 no longer publishes. Two lines put
 it back, in a file placed next to the copied modules:
@@ -78,10 +71,10 @@ Copy **all four files** from `node_modules/maplibre-gl/dist/` — `maplibre-gl.m
 `maplibre-gl-shared.mjs`, `maplibre-gl-worker.mjs` and `maplibre-gl.css` — into a **flat**
 directory: the three modules reference each other by relative path.
 
-> [!WARNING]
-> **Your server must know the MIME type of `.mjs`.** Many configurations only list `js` and serve
-> the module as `application/octet-stream`, which makes the browser refuse to execute it. MapLibre
-> v6 is ESM-only and no longer publishes any classic bundle, so there is no non-module fallback.
+> **Warning** — Your server must know the MIME type of `.mjs`. Many configurations only list `js`
+> and serve the module as `application/octet-stream`, which makes the browser refuse to execute it.
+> MapLibre v6 is ESM-only and no longer publishes any classic bundle, so there is no non-module
+> fallback.
 
 CDN usage, and why `dist/chunks/` must be copied:
 [CDN / NPM usage](https://www.geoleaf.dev/docs/usage-cdn.html).
@@ -97,19 +90,14 @@ The named exports of the ESM entry point:
 `Permalink` · `Share` · `Notifications` · `PWA`, plus the API submodules (`APIController`,
 `PluginRegistry`, `CapabilityRegistry`, `BootInfo`, `showBootInfo`…).
 
-> [!IMPORTANT]
-> **`POI`, `Filters`, `Route` and `Table` are no longer exported.** A POI is now a feature of an
-> ordinary GeoJSON layer, read and written through `GeoLeaf.Layers.*`; `Table` moved out into its
-> own plugin.
+> **Important** — `POI`, `Filters`, `Route` and `Table` are no longer exported. A POI is now a
+> feature of an ordinary GeoJSON layer, read and written through `GeoLeaf.Layers.*`; `Table` moved
+> out into its own plugin.
 
-**The list is derived, not copied** — `npm run gen:api-surface` produces the surface manifest, and a
-freshness gate compares it against the code on every `ci:local` run. Full signatures live at
-[geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api/) (TypeDoc, regenerable locally with
-`npm run docs:api`).
+Full signatures live at [geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api/) (TypeDoc).
 
 The package also declares public subpaths — `./kernel`, `./globals`, `./helpers`, `./boot`,
-`./facades/*`, `./capabilities/*`, `./contracts/*`, `./presets/*`. They all resolve (guarded by
-`check:subpath-resolve`) and are documented in the
+`./facades/*`, `./capabilities/*`, `./contracts/*`, `./presets/*` — documented in the
 [Architecture Guide](https://www.geoleaf.dev/docs/ARCHITECTURE_GUIDE.html).
 
 ---
@@ -140,14 +128,11 @@ not shipped inside the npm tarball, which carries only `dist/`, this README and 
 
 ## Plugins
 
-The core is standalone and tree-shakeable: it **never** imports a plugin (a boundary guarded by
-`verify-core-standalone.cjs`). The `@geoleaf-plugins/*` packages are all MIT, each with its own
-version and its own documentation.
+The core is standalone and tree-shakeable: it **never** imports a plugin. The `@geoleaf-plugins/*`
+packages are all MIT, each with its own version and its own documentation.
 
-The list and current versions are printed by `npm run versions:check` rather than restated here —
-that is exactly the kind of table that drifts unnoticed. Note that `versions:check` measures **the
-repository**, while `npm view <package> version` measures **the registry**; the two are not
-guaranteed to agree.
+Browse the published list on npm:
+[`@geoleaf-plugins`](https://www.npmjs.com/search?q=%40geoleaf-plugins).
 
 To write your own: [Plugin Development](https://www.geoleaf.dev/docs/PLUGIN_DEVELOPMENT_GUIDE.html).
 

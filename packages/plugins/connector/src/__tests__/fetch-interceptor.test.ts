@@ -153,9 +153,9 @@ describe("401 retry behavior", () => {
     });
 });
 
-// ─── connector:auth-error dispatch ───────────────────────────────────────────
+// ─── geoleaf:connector:auth-error dispatch ───────────────────────────────────────────
 
-describe("connector:auth-error on failed retry", () => {
+describe("geoleaf:connector:auth-error on failed retry", () => {
     let interceptor: InterceptorModule;
 
     beforeEach(async () => {
@@ -171,12 +171,14 @@ describe("connector:auth-error on failed retry", () => {
         vi.unstubAllGlobals();
     });
 
-    it("dispatches connector:auth-error when no new token can be obtained after 401", async () => {
+    it("dispatches geoleaf:connector:auth-error when no new token can be obtained after 401", async () => {
         // getToken returns null → _handleUnauthorized cannot get a new token → emits auth-error
         interceptor.install({ baseUrl: BASE_URL, getToken: () => null });
 
         const events: CustomEvent[] = [];
-        document.addEventListener("connector:auth-error", (e) => events.push(e as CustomEvent));
+        document.addEventListener("geoleaf:connector:auth-error", (e) =>
+            events.push(e as CustomEvent)
+        );
 
         const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
         await new Promise((r) => setTimeout(r, 10));

@@ -191,3 +191,31 @@ describe("cumulative measurements", () => {
         expect(getEngineCollection().features).toHaveLength(2);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Cursor guard (MutationObserver)
+// ---------------------------------------------------------------------------
+//
+// The drag tools had NO guard until 14/08/2026, while the click tools have had one since
+// S5 — the whole difference between "the crosshair comes back" and "it is gone for good".
+// The core's POI and cluster hover handlers write `canvas.style.cursor` directly; the first
+// mouseleave over a POI wiped the crosshair and nothing put it back.
+
+describe("cursor guard", () => {
+    it("restores crosshair when the canvas style is changed externally", async () => {
+        activateCircle(map);
+        const canvas = map.getCanvas() as HTMLCanvasElement;
+        canvas.style.cursor = ""; // exactly what a POI mouseleave writes
+        await new Promise((r) => setTimeout(r, 0)); // flush the MutationObserver microtask
+        expect(canvas.style.cursor).toBe("crosshair");
+    });
+
+    it("stops enforcing once the tool is disarmed", async () => {
+        activateCircle(map);
+        deactivateCircle();
+        const canvas = map.getCanvas() as HTMLCanvasElement;
+        canvas.style.cursor = "pointer";
+        await new Promise((r) => setTimeout(r, 0));
+        expect(canvas.style.cursor).toBe("pointer");
+    });
+});

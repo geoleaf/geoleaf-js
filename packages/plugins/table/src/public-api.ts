@@ -32,7 +32,12 @@ export function buildPublicApi() {
         // GARANTIR un état ouvert obtient l'inverse une fois sur deux. Utiliser `show()` pour
         // cela. Le nom est conservé parce qu'il est dans la surface publiée ; le corriger
         // silencieusement changerait le comportement de l'action au clic.
+        // ✅ Depuis le 13/08/2026, `isOpen()` ci-dessous rend le contournement POSSIBLE :
+        // `if (!GeoLeaf.Table.isOpen()) GeoLeaf.Table.open()`. Avant elle, l'intégrateur ne
+        // pouvait pas tester avant d'appeler, donc pas contourner du tout.
         open: (): void => Table.toggle(),
+        /** Whether the table panel is currently shown — the test `open()` needs (B-71). */
+        isOpen: (): boolean => Table.isOpen(),
         /** Switches the active layer (pass `null`/`""` to clear). */
         setLayer: (layerId: string | null | undefined): void => Table.setLayer(layerId),
         /** Reloads the current layer's features into the table. */

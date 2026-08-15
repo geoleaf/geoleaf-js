@@ -229,44 +229,46 @@ export function createEmpriseSelector(
         _enableDrag();
     }
 
-    // --- Mouse events ---
-    function _onMouseDown(e: MouseEvent) {
-        if (e.button !== 0) return;
-        const t = e.target as HTMLElement;
+    // --- Pointer-agnostic primitives -------------------------------------------------
+    // Extraites des trois handlers souris pour que le chemin tactile les alimente au lieu
+    // de recopier leur corps — le bloc de redimensionnement fait à lui seul une vingtaine
+    // de lignes, et `jscpd` (seuil 3 %) le verrait passer. Elles prennent des `clientX/Y`
+    // bruts, comme `_beginDraw`/`_progressDraw` juste au-dessus : c'est l'idiome du fichier.
 
+    /** Ce qu'une pression déclenche, sans décider quoi que ce soit du `preventDefault`. */
+    type PressKind = "handle" | "ok" | "move" | "draw";
+
+    function _pressAt(t: HTMLElement, cx: number, cy: number): PressKind {
         if (phase === "drawn") {
-            // Corner handle drag
             for (const [id, h] of Object.entries(handles)) {
                 if (h === t || h.contains(t)) {
                     activeHandle = id;
-                    e.preventDefault();
-                    return;
+                    return "handle";
                 }
             }
-            // OK button — let click bubble
-            if (t === okBtn || okBtn.contains(t)) return;
-            // Interior move
+            // Bouton OK — on laisse le clic remonter jusqu'à lui.
+            if (t === okBtn || okBtn.contains(t)) return "ok";
             if (t === rectEl || rectEl.contains(t)) {
                 moving = true;
                 moveOrigin = { ...pxRect };
-                moveAnchorX = e.clientX;
-                moveAnchorY = e.clientY;
-                e.preventDefault();
-                return;
+                moveAnchorX = cx;
+                moveAnchorY = cy;
+                return "move";
             }
-            // Click outside drawn rect → restart drawing
+            // Pression hors du rectangle tracé → on repart sur un tracé.
         }
-        _beginDraw(e.clientX, e.clientY);
+        _beginDraw(cx, cy);
+        return "draw";
     }
 
-    function _onMouseMove(e: MouseEvent) {
+    function _dragTo(cx: number, cy: number) {
         if (phase === "drawing") {
-            _progressDraw(e.clientX, e.clientY);
+            _progressDraw(cx, cy);
             return;
         }
 
         if (activeHandle) {
-            const p = _toLocal(e.clientX, e.clientY);
+            const p = _toLocal(cx, cy);
             let { x, y, w, h } = pxRect;
             if (activeHandle === "tl") {
                 w += x - p.x;
@@ -290,8 +292,8 @@ export function createEmpriseSelector(
         }
 
         if (moving && moveOrigin) {
-            const dx = e.clientX - moveAnchorX,
-                dy = e.clientY - moveAnchorY;
+            const dx = cx - moveAnchorX,
+                dy = cy - moveAnchorY;
             _applyRect({
                 x: moveOrigin.x + dx,
                 y: moveOrigin.y + dy,
@@ -301,11 +303,30 @@ export function createEmpriseSelector(
         }
     }
 
-    function _onMouseUp() {
+    function _release() {
         if (phase === "drawing") _endDraw();
         activeHandle = null;
         moving = false;
         moveOrigin = null;
+    }
+
+    // --- Mouse events ---
+    function _onMouseDown(e: MouseEvent) {
+        if (e.button !== 0) return;
+        const kind = _pressAt(e.target as HTMLElement, e.clientX, e.clientY);
+        // ⚠️ NE PAS généraliser le `preventDefault` aux quatre cas : la branche `draw` n'en
+        // appelait pas, et `ok` ne doit surtout pas en appeler — le clic doit atteindre le
+        // bouton. Uniformiser ici changerait le comportement souris, c'est-à-dire
+        // exactement ce que cette extraction doit garantir de ne pas faire.
+        if (kind === "handle" || kind === "move") e.preventDefault();
+    }
+
+    function _onMouseMove(e: MouseEvent) {
+        _dragTo(e.clientX, e.clientY);
+    }
+
+    function _onMouseUp() {
+        _release();
     }
 
     function _onKeyDown(e: KeyboardEvent) {
@@ -318,20 +339,37 @@ export function createEmpriseSelector(
         }
     }
 
-    // --- Touch (best-effort) ---
+    // --- Touch ---
+    //
+    // ⚠️ Ces trois handlers ne couvraient que le TRACÉ : `phase !== "drawn"` au départ et
+    // `phase === "drawing"` au mouvement les rendaient INERTES dès que le rectangle
+    // existait. Au doigt, on pouvait donc dessiner une emprise et plus jamais la
+    // redimensionner ni la déplacer — seul le bouton OK répondait, par le `click`
+    // synthétisé. Ce sont ces deux conditions qui sautent, pas la logique, qui est
+    // désormais celle des primitives partagées.
+    //
+    // ⚠️ Garde mono-doigt conservée : un second doigt signifie pinch, et l'avaler ici
+    // casserait le zoom de la carte pour tracer un rectangle.
     function _onTouchStart(e: TouchEvent) {
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
-        if (t && phase !== "drawn") _beginDraw(t.clientX, t.clientY);
+        if (!t) return;
+        const kind = _pressAt(e.target as HTMLElement, t.clientX, t.clientY);
+        // Même règle que la souris : surtout pas sur `ok`, dont le `click` synthétisé doit
+        // atteindre le bouton.
+        if (kind === "handle" || kind === "move") e.preventDefault();
     }
     function _onTouchMove(e: TouchEvent) {
         if (e.touches.length !== 1) return;
+        // Inconditionnel, et volontairement avant le test d'état : c'est ce qui empêche le
+        // navigateur de défiler pendant le geste, quelle que soit la phase.
         e.preventDefault();
         const t = e.touches[0];
-        if (t && phase === "drawing") _progressDraw(t.clientX, t.clientY);
+        if (!t) return;
+        _dragTo(t.clientX, t.clientY);
     }
     function _onTouchEnd() {
-        if (phase === "drawing") _endDraw();
+        _release();
     }
 
     okBtn.addEventListener("click", _validate);
@@ -353,9 +391,18 @@ export function createEmpriseSelector(
         document.addEventListener("mousemove", _onMouseMove);
         document.addEventListener("mouseup", _onMouseUp);
         document.addEventListener("keydown", _onKeyDown);
-        overlay.addEventListener("touchstart", _onTouchStart, { passive: true });
+        // ⚠️ `{ passive: false }` sur `touchstart`, et ce n'est PAS un défaut qu'on rétablit :
+        // `touchstart` n'est passif d'office que sur `window` / `document` / `document.body`.
+        // Ici l'écouteur est sur `overlay`, donc `{ passive: true }` était un CHOIX — qui
+        // rendait le `preventDefault()` des branches poignée/déplacement inopérant, avec un
+        // avertissement Chrome par-dessus.
+        overlay.addEventListener("touchstart", _onTouchStart, { passive: false });
         overlay.addEventListener("touchmove", _onTouchMove, { passive: false });
         overlay.addEventListener("touchend", _onTouchEnd);
+        // Un geste confisqué (défilement revendiqué, interruption OS) n'émet jamais
+        // `touchend` : sans ceci, `activeHandle` et `moving` restaient posés indéfiniment et
+        // le `mousemove` document continuait de redimensionner sans bouton enfoncé.
+        overlay.addEventListener("touchcancel", _onTouchEnd);
         _disableDrag();
     }
 
@@ -369,6 +416,7 @@ export function createEmpriseSelector(
         overlay.removeEventListener("touchstart", _onTouchStart);
         overlay.removeEventListener("touchmove", _onTouchMove);
         overlay.removeEventListener("touchend", _onTouchEnd);
+        overlay.removeEventListener("touchcancel", _onTouchEnd);
         _enableDrag();
     }
 

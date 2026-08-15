@@ -279,7 +279,7 @@ describe("TokenStore", () => {
             expect(result).toBeNull();
         });
 
-        it("dispatches connector:auth-error when refresh function throws", async () => {
+        it("dispatches geoleaf:connector:auth-error when refresh function throws", async () => {
             TokenStore._setRefreshFn(async () => {
                 throw new Error("auth server unavailable");
             });
@@ -290,13 +290,13 @@ describe("TokenStore", () => {
             });
 
             const events: Event[] = [];
-            document.addEventListener("connector:auth-error", (e) => events.push(e));
+            document.addEventListener("geoleaf:connector:auth-error", (e) => events.push(e));
 
             await TokenStore.getTokenAsync(BASE_URL);
             await new Promise((r) => setTimeout(r, 20));
 
             const authErrorFired = events.some(
-                (e) => (e as CustomEvent).type === "connector:auth-error"
+                (e) => (e as CustomEvent).type === "geoleaf:connector:auth-error"
             );
             expect(authErrorFired).toBe(true);
         });

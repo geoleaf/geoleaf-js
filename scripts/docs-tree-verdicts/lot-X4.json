@@ -83,7 +83,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Types formels du bus d'événements DOM : 16 charges utiles detail (POI, couche, filtre, carte, plugin), la carte GeoLeafEventMap et l'interface IEventBus",
+            "description": "Types formels du bus d'événements DOM : les charges utiles `*Detail` (POI, couche, filtre, carte, plugin, seams editor et table), les cartes GeoLeafEventMap / GeoLeafRawEventMap et l'interface IEventBus. Le compte ne s'écrit pas ici — il disait 16 pour 24 réelles au 13/08/2026, et il bouge à chaque seam typé",
             "confidence": "haute",
             "rationale": "18 interfaces type-only, 2 importeurs (kernel/events/event-bus.ts et facade.ts) ; E1 non déclenché — le contrat est aussi la surface typée publique du bus"
         },

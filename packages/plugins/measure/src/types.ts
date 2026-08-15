@@ -7,6 +7,20 @@
 /** Supported measure tool identifiers. */
 export type MeasureType = "distance" | "rect" | "circle" | "polygon" | "gps" | "annotation-tooltip";
 
+/**
+ * A tool identifier as the arming path accepts it: one of the six built-ins, or the id of a
+ * tool registered through `registerMeasureType()`.
+ *
+ * The `string & Record<never, never>` half is what keeps editor autocompletion listing the six
+ * literals — a plain `MeasureType | string` collapses to `string` and the suggestions vanish.
+ *
+ * ⚠️ **Not the same set as `MeasureConfig.enabledTools`, and deliberately so.** That one stays
+ * `MeasureType[]`: it filters the BUTTONS of the floating menu, which are built from a static
+ * table carrying an icon and i18n keys. A custom tool has neither, so it has no button to
+ * filter — it is armed by `GeoLeaf.Measure.startMeasure(id)` from the integrator's own UI.
+ */
+export type MeasureToolId = MeasureType | (string & Record<never, never>);
+
 /** Supported distance units. */
 export type DistanceUnit = "m" | "km" | "auto";
 
@@ -78,10 +92,27 @@ export interface MeasureConfig {
     [key: string]: unknown;
 }
 
-/** Definition for a custom measure tool registered via registerMeasureType(). */
+/**
+ * Definition for a custom measure tool registered via `registerMeasureType()`.
+ *
+ * Every field is optional: a definition with none of them is still armable, it simply gets the
+ * default crosshair and does nothing of its own. The plugin owns the envelope around these
+ * callbacks — exclusive mode, cursor, and the cursor guard — because none of those three
+ * primitives is reachable from `onActivate`, and a tool that skipped them would have its
+ * cursor stolen by the core's hover handlers (B-253).
+ */
 export interface MeasureTypeDef {
+    /** CSS cursor shown while the tool is armed. Defaults to `"crosshair"`. */
     cursor?: string;
+    /**
+     * Called once the envelope is in place. Receives the native map — typed `unknown` because
+     * the engine handle is not part of this package's public surface.
+     */
     onActivate?: (map: unknown) => void;
+    /**
+     * Called before the envelope is torn down. Receives nothing: close over whatever the
+     * activation needed.
+     */
     onDeactivate?: () => void;
 }
 
@@ -124,6 +155,24 @@ export interface MeasureMapMouseEvent {
     preventDefault?(): void;
 }
 
+/**
+ * Map touch event surface (MapLibre `MapTouchEvent` subset), used by the drag tools.
+ *
+ * ⚠️ `lngLat` is valid on `touchend` too: MapLibre builds it from `changedTouches` for
+ * that type and from `touches` otherwise — so the end of a gesture still carries a
+ * position even though `touches` is empty by then.
+ *
+ * `points` is the per-finger list, and it is what the single-finger guard reads: a
+ * pinch must keep reaching MapLibre's own zoom/rotate handler rather than being eaten
+ * as a botched draw.
+ */
+export interface MeasureMapTouchEvent {
+    lngLat: MeasureLngLat;
+    points?: MeasurePoint[];
+    originalEvent?: TouchEvent;
+    preventDefault?(): void;
+}
+
 /** GeoJSON source handle (MapLibre `GeoJSONSource` subset). */
 export interface MeasureGeoJSONSource {
     setData(data: GeoJSON.FeatureCollection): void;
@@ -140,8 +189,13 @@ export interface MeasureMap {
     unproject(point: [number, number]): MeasureLngLat;
     getContainer(): HTMLElement;
     getCanvas(): HTMLCanvasElement;
+    // Overloads rather than a union parameter: `on("mousedown", …)` and `on("touchstart", …)`
+    // are the same MapLibre method, and the drag tools now use both. Every existing mouse
+    // call site keeps resolving to the first signature, so nothing needs a cast.
     on(type: string, listener: (e: MeasureMapMouseEvent) => void): void;
+    on(type: string, listener: (e: MeasureMapTouchEvent) => void): void;
     off(type: string, listener: (e: MeasureMapMouseEvent) => void): void;
+    off(type: string, listener: (e: MeasureMapTouchEvent) => void): void;
     getSource(id: string): MeasureGeoJSONSource | undefined;
     addSource(id: string, source: { type: "geojson"; data: GeoJSON.FeatureCollection }): void;
     getLayer(id: string): unknown;

@@ -214,12 +214,33 @@ dérive pas de son identifiant ; le savoir évite de la chercher là où elle n'
 
 ### Événements
 
-| Signal                  | Sens       | Rôle                                                  |
-| ----------------------- | ---------- | ----------------------------------------------------- |
-| `geoleaf:feature:click` | **écouté** | Ouvre la bulle. Écouteur **persistant**               |
-| `geoleaf:feature:hover` | **écouté** | Ouvre ou déplace l'infobulle. Écouteur **persistant** |
+| Signal                  | Sens       | Rôle                                                                                         |
+| ----------------------- | ---------- | -------------------------------------------------------------------------------------------- |
+| `geoleaf:feature:click` | **écouté** | Ouvre la bulle. Écouteur **persistant**. ⚠️ **Un geste = un événement** — voir sous la table |
+| `geoleaf:feature:hover` | **écouté** | Ouvre ou déplace l'infobulle. Écouteur **persistant**                                        |
 
 **Un seul signal émis** — `geoleaf:popup:action`, et uniquement sur un clic de bouton d'action.
+
+### ✅ Un geste = UN événement — garanti par le kernel depuis le 13/08/2026
+
+Le kernel garantit désormais qu'**un clic sur une entité émet exactement un
+`geoleaf:feature:click`**, quelle que soit la géométrie et quel que soit le nombre de
+sous-couches qui la rendent. Cette capacité peut donc traiter chaque événement comme un geste.
+
+⚠️ **Ce n'était pas vrai avant, et c'est cette capacité qui en portait le symptôme.** Le kernel
+liait le clic à **toutes** les sous-couches d'une couche, là où il ne liait le survol qu'à une
+seule. Comme les sous-couches s'empilent par géométrie et cumulativement, un seul clic émettait
+**2** événements sur un point à icône, **2** sur une ligne à casing, **3** sur un polygone à
+casing et **4** sur une tuile vectorielle. `surfaces/popup.ts` ferme puis rouvre la bulle à
+chaque événement : l'utilisateur la voyait **clignoter**, et le second rendu écrasait le premier
+pour la même entité.
+
+⚠️ **Ce que la garantie coûte, et qu'il faut connaître avant de s'en étonner** : le clic et le
+survol partagent maintenant la même précédence (`fill` → `circle` → `line` → toutes), donc la
+sous-couche `-symbol` d'un point à icône n'est plus liée. **Aucune entité ne devient
+inatteignable** — tout point porte inconditionnellement sa sous-couche `-circle` —, et rien
+n'est perdu sur les axes. Seul l'anneau diagonal de la boîte de collision de l'icône sort de la
+zone cliquable, dont l'essentiel est le `icon-padding` transparent.
 
 ### ✅ `geoleaf:popup:action` — promis longtemps, émis depuis le 29/07/2026
 
@@ -232,6 +253,42 @@ avertissement — **B-69**, soldée.
 `lngLat` ; le contexte de rendu ne portait que `layerId`. Les deux valeurs existaient pourtant dans
 le détail du clic — il ne manquait que le fil. C'est ce qui explique un abandon qu'aucune décision
 n'a jamais actée.
+
+🛑 **Et le fil n'a été tiré que sur UNE des deux surfaces, ce qui ne s'est vu que le 14/08/2026.**
+`surfaces/popup.ts` passait les trois champs ; `surfaces/sidepanel.ts` s'en tenait au `layerId`.
+Le widget `action` vivant dans la table de dispatch **partagée**, il rend sur les deux : une action
+cliquée dans le panneau a donc émis `featureId: null` et aucun `lngLat` pendant seize jours, sous
+un paragraphe qui déclarait le point réglé. **Une réparation asymétrique se lit comme une
+réparation** — et aucune gate ne distingue les deux, l'invariant « les deux surfaces reçoivent le
+même contexte » n'ayant jamais été posé. Comblé par le Sprint 5 du contrat inverse.
+
+#### Le detail depuis le Sprint 5 (14/08/2026) — il n'est plus sérialisable
+
+Trois membres s'ajoutent aux cinq champs de données : **`button`** (le nœud cliqué),
+**`setBusy(busy)`** (pose `disabled`, `aria-busy` et `gl-poi-popup__action--busy`) et
+**`close()`** (ferme la surface du bouton, **jamais les deux**). Ce sont les trois que
+`Popup.registerActionHandler` offrait avant qu'**ADR-07** ne le retire.
+
+Conséquences, dans l'ordre où elles mordent :
+
+- la clé vit dans **`GeoLeafRawEventMap`** et s'émet en `CustomEvent` nu — par le bus assaini,
+  `button` arriverait en `{}` et les deux fonctions en `undefined`, **sans erreur** ;
+- `JSON.stringify(e.detail)` **jette** désormais (référence circulaire), et `postMessage` rend un
+  `DataCloneError`. C'est la seule rupture observable, et elle est au CHANGELOG en `Changed` ;
+- **les abonnés typés ne bougent pas** : `Events.on/off/once` accepte les clés des deux cartes ;
+- `close()` arrive par **injection** (`RenderContext.onClose`), jamais par import : le graphe est
+  `surfaces/* → popup-content → widget-dispatch`, et c'est aussi la seule façon de fermer la
+  **bonne** surface. `FeatureInfo.close()` ne pouvait pas servir — il ferme les deux et émet un
+  `geoleaf:poi:panel:close` que personne n'a effectué ;
+- **élargissement de surface d'attaque, assumé** : n'importe quel script de la page peut désormais
+  appeler `close()` ou `setBusy()`. Acceptable — il peut déjà faire
+  `document.querySelector(".gl-poi-popup__action").click()` — mais **dit**.
+
+Deux demandes du CDC amont §4.1 sont **refusées** : `waitUntil` (il n'y a rien à prolonger —
+`setBusy` + `close` couvrent le besoin, et la sémantique dépendrait de MapLibre, le popup se
+fermant aussi sur clic carte et sur `Escape`) et `lngLat` en tuple `[number, number]` (le detail
+porte `{lat, lng}`, comme `geoleaf:feature:click` — changer la forme sous la même clé serait une
+rupture silencieuse).
 
 | Champ de configuration   | Effet                                                             |
 | ------------------------ | ----------------------------------------------------------------- |

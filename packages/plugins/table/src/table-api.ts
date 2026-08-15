@@ -138,7 +138,7 @@ const TableModule = {
         tableState._container.classList.add("gl-is-visible");
         tableState._isVisible = true;
         _syncTriggerButtons(true);
-        fireEvent("table:opened", {});
+        fireEvent("geoleaf:table:opened", {});
         Log.debug("[Table] Table shown");
     },
 
@@ -149,7 +149,7 @@ const TableModule = {
         tableState._container.classList.remove("gl-is-visible");
         tableState._isVisible = false;
         _syncTriggerButtons(false);
-        fireEvent("table:closed", {});
+        fireEvent("geoleaf:table:closed", {});
         Log.debug("[Table] Table hidden");
     },
 
@@ -159,6 +159,24 @@ const TableModule = {
         } else {
             this.show();
         }
+    },
+
+    /**
+     * Reports whether the table panel is currently shown.
+     *
+     * 🛑 **Sans elle, `GeoLeaf.Table.open()` est inutilisable de façon fiable** : `open` est un
+     * ALIAS de `toggle()` (B-71, documenté sur place dans `public-api.ts`), donc appeler
+     * « ouvrir » sur un panneau déjà ouvert le REFERME. L'intégrateur ne pouvait pas contourner
+     * le défaut faute de pouvoir tester l'état avant d'appeler — c'est ce trou que ceci ferme,
+     * sans changer le comportement de `open` (le changer serait une rupture).
+     *
+     * Lit l'état, ne le dérive pas du DOM : `_isVisible` est la source de vérité et `show`
+     * / `hide` l'écrivent — le panneau peut exister sans classe pendant une reconstruction.
+     *
+     * @returns `true` quand le panneau est visible.
+     */
+    isOpen(): boolean {
+        return tableState._isVisible;
     },
 
     setLayer(layerId: string | null | undefined) {
@@ -180,7 +198,7 @@ const TableModule = {
                     config: tableState._config,
                 });
             }
-            fireEvent("table:layerChanged", { layerId: null });
+            fireEvent("geoleaf:table:layerChanged", { layerId: null });
             Log.debug("[Table] Table cleared (no layer selected)");
             return;
         }
@@ -208,7 +226,7 @@ const TableModule = {
             tableState._sortState.direction = defaultSort.direction || defaultSort.order || "asc";
         }
         this.refresh();
-        fireEvent("table:layerChanged", { layerId });
+        fireEvent("geoleaf:table:layerChanged", { layerId });
         Log.debug("[Table] Layer changed:", layerId);
     },
 
@@ -247,7 +265,7 @@ const TableModule = {
     sortByField(field: string) {
         tableState._sortState = nextSortState(tableState._sortState, field);
         this.refresh();
-        fireEvent("table:sortChanged", tableState._sortState);
+        fireEvent("geoleaf:table:sortChanged", tableState._sortState);
     },
 
     setSelection: (ids: unknown[], add = false) => setSelection(ids, add),

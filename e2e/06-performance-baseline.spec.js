@@ -583,9 +583,11 @@ test.describe("6.2.4 — Heap memory", () => {
     test("measure JS heap after loading 10K features", async ({ page }) => {
         await waitForMap(page);
 
-        // CDP : disponible sans condition ici — `playwright.config.js` n'a qu'un projet,
-        // `chromium`. Sur un projet non-Chromium ceci jetterait, et c'est le bon
-        // comportement : un gate mémoire qui se saute en silence est le défaut soldé ici.
+        // CDP : disponible sans condition ici. ⚠️ Le motif a changé le 14/08/2026 — ce
+        // n'est plus « la config n'a qu'un projet » (elle en a deux depuis `chromium-touch`),
+        // c'est que **les deux projets sont Chromium**, seul canal de ce dépôt. Sur un projet
+        // non-Chromium ceci jetterait, et c'est le bon comportement : un gate mémoire qui se
+        // saute en silence est le défaut soldé ici.
         const client = await page.context().newCDPSession(page);
 
         const beforeBytes = await retainedHeapBytes(client, page);

@@ -5,14 +5,20 @@
  *
  * ## The gap this closes
  *
- * `GeoLeafEventMap` types 22 event names. A sweep of the shipped sources finds **79
- * distinct `geoleaf:*` DOM event names**. The 57 untyped ones are unreachable through
- * the `Events` facade: a consumer who wants them has to fall back to a raw
- * `document.addEventListener` with a hand-written `CustomEvent<{…}>` cast — which is
- * exactly how the repo ended up with FOUR divergent declarations of the
- * `geoleaf:toolbar:action` payload before S3 unified them.
+ * Un nom relevé et non typé est inatteignable par la façade `Events` : le consommateur qui
+ * le veut doit replier sur un `document.addEventListener` nu avec un `CustomEvent<{…}>`
+ * écrit à la main — c'est exactement ainsi que le dépôt s'est retrouvé avec QUATRE
+ * déclarations divergentes de la charge de `geoleaf:toolbar:action` avant que S3 ne les
+ * unifie. Rien n'empêche le suivant d'arriver. C'est à cela que sert cette gate.
  *
- * Nothing stops the 58th from arriving. That is what this gate is for.
+ * ⚠️ **Ce paragraphe portait trois chiffres en dur — « 22 typés », « 79 relevés », « les 57
+ * restants » — et les trois étaient faux.** Ils dataient du câblage (API publique S3.4) et
+ * n'ont jamais été re-mesurés, alors que la gate IMPRIME les siens à chaque run, deux lignes
+ * plus bas. Un exemple périmé dans le commentaire d'une gate d'événements est précisément le
+ * défaut que cette gate existe pour attraper (voir l'avertissement en fin de fichier, qui
+ * raconte la même chose à propos de `geoleaf:popup:action`) — et il a survécu pour la même
+ * raison : aucune règle ne lit les commentaires. **Les chiffres ne sont donc plus écrits
+ * ici** ; ils se lisent dans la sortie du run, ou par `npm run check:event-map`.
  *
  *   EM-01  An event name found in source, absent from the maps AND absent from the
  *          baseline → ERROR. A NEW event cannot arrive untyped.
@@ -244,12 +250,17 @@ if (failed) process.exit(1);
 // typée ? »
 //
 // ⚠️ Ce commentaire citait AUSSI `geoleaf:popup:action` comme « typée, jamais émise », et
-// c'était faux depuis onze jours au 09/08/2026 : B-69 l'a rendue émettrice le 29/07
-// (`capabilities/feature-info/render/widget-dispatch.ts:365`,
-// `dispatchGeoLeafEvent("geoleaf:popup:action", …)`). Un exemple périmé dans le commentaire
+// c'était faux depuis onze jours au 09/08/2026 : B-69 l'a rendue émettrice le 29/07, dans
+// `capabilities/feature-info/render/widget-dispatch.ts`. Un exemple périmé dans le commentaire
 // d'une gate d'événements est précisément le défaut que cette gate existe pour attraper —
 // et il a survécu parce qu'aucune règle ne lit les commentaires. Relever un exemple **dans**
 // le code, jamais de mémoire.
+//
+// ⚠️ La correction du 09/08 citait `widget-dispatch.ts:365` et
+// `dispatchGeoLeafEvent("geoleaf:popup:action", …)`. Les DEUX sont périmées depuis le
+// 14/08/2026 : la clé est passée dans `GeoLeafRawEventMap` et s'émet en `CustomEvent` nu, la
+// ligne ayant bougé au passage. Une citation de ligne posée POUR corriger une citation périmée
+// s'est périmée à son tour en cinq jours — d'où le nom de fichier seul ci-dessus.
 const typedInSource = inScope.filter((n) => typed.has(n)).length;
 const pct = ((typedInSource / inScope.length) * 100).toFixed(1);
 console.log(

@@ -158,6 +158,11 @@ function _handleMove(e: EditorMapMouseEvent): void {
     // Terra Draw owns the cursor when a drawing tool is armed — only pointer-hint in static/select.
     const activeTool = _adapter?.getActiveTool() ?? null;
     if (activeTool !== null && activeTool !== "select") return;
+    // …and so does ANY other plugin's armed tool (measure, proximity search): they announce it
+    // with `__geoleafExclusiveMode`. The check above only ever saw the editor's OWN tools, so a
+    // crosshair armed elsewhere was overwritten on every mousemove — this handler fires on move,
+    // not on enter/leave, so it wins any race a MutationObserver could put up. B-252.
+    if (map.__geoleafExclusiveMode) return;
 
     const features = map.queryRenderedFeatures(e.point);
     const editable = _getEditableLayerIds();

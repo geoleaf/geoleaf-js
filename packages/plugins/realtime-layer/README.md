@@ -13,10 +13,10 @@ over HTTP polling, WebSocket or SSE, with pluggable decoding and eviction of sta
 npm install @geoleaf-plugins/realtime-layer
 ```
 
-> [!NOTE]
-> **Prerequisite:** `@geoleaf/core` must be loaded before this plugin.
+> **Note** — Prerequisite: `@geoleaf/core` must be loaded before this plugin.
 >
-> **For `websocket` sources only:** [`@geoleaf-plugins/websocket`](../websocket/README.md) must be
+> For `websocket` sources only:
+> [`@geoleaf-plugins/websocket`](https://www.npmjs.com/package/@geoleaf-plugins/websocket) must be
 > loaded **before** this one. It is an _optional_ dependency, declared as such in the plugin
 > registry — `polling` and `sse` sources do not need it.
 
@@ -78,9 +78,8 @@ GeoLeaf.RealtimeLayer.stopAll();
 | `registerStaleAction(name, handler)` | Registers a stale-feature action — **before `GeoLeaf.boot()`**             |
 | `version`                            | Plugin version                                                             |
 
-> [!WARNING]
-> **`active: true` does not mean data is arriving.** A polling source whose endpoint is unreachable
-> stays active with a frozen `lastUpdateAt`. Read the two fields together.
+> **Warning** — `active: true` does not mean data is arriving. A polling source whose endpoint is
+> unreachable stays active with a frozen `lastUpdateAt`. Read the two fields together.
 >
 > **`registerDecoder` and `registerStaleAction` must be called before `GeoLeaf.boot()`**: the
 > profile scan resolves decoder names at startup, and a name registered afterwards is never seen.
@@ -128,10 +127,9 @@ carrying the configuration. Without `targetLayerId`, the two are the same.
 re-exports the types that describe them: `IDecoder` and `DecodedUpdate`, `StaleActionHandler`, plus
 `IRealtimeSource`.
 
-> [!NOTE]
-> **`IRealtimeSource` is exported without a registration point.** The three transports (`polling`,
-> `websocket`, `sse`) are wired into the plugin factory; the type is there to implement one in a
-> fork or a derived plugin, not to plug one in from a profile.
+> **Note** — `IRealtimeSource` is exported without a registration point. The three transports
+> (`polling`, `websocket`, `sse`) are wired into the plugin factory; the type is there to implement
+> one in a fork or a derived plugin, not to plug one in from a profile.
 
 ```js
 import "@geoleaf-plugins/realtime-layer";

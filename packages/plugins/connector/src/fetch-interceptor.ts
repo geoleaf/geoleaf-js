@@ -113,7 +113,7 @@ async function _handleUnauthorized(input: RequestInfo | URL, init: RequestInit):
     // Refresh failed — notify and return 401 without looping
     if (typeof document !== "undefined") {
         document.dispatchEvent(
-            new CustomEvent("connector:auth-error", {
+            new CustomEvent("geoleaf:connector:auth-error", {
                 detail: {
                     baseUrl: _config.baseUrl,
                     error: "Authentication failed — 401 after token refresh attempt.",

@@ -117,6 +117,34 @@ describe("createAutoAdapter — routing", () => {
         expect(queue.update).not.toHaveBeenCalled();
     });
 
+    // 🛑 LE PIÈGE QUE CE SPRINT REFERME (B-199, tâches 3.7/3.8). Le test voisin
+    // « transport failure → fallback » est sa PAIRE : sans lui, une suite qui n'observe jamais
+    // de repli passerait aussi sur un `_route` cassé. Les deux ensemble disent que la frontière
+    // est là et pas ailleurs.
+    //
+    // MUTATION QUI COMPTE : ajouter `"capability"` à `_isTransportError` rend ce test rouge sur
+    // DEUX axes — la promesse résout au lieu de rejeter, et `queue.save` est appelé. C'est ça
+    // qui garde l'invariant, pas le commentaire posé à côté de la fonction.
+    it("un refus de CAPACITÉ (501) NE retombe PAS dans la file — refus définitif", async () => {
+        const rest = stubAdapter("rest");
+        (rest.save as any).mockRejectedValueOnce(
+            new PersistenceError("capability", "501", { status: 501 })
+        );
+        const queue = stubAdapter("queue");
+        const adapter = createAutoAdapter({
+            rest,
+            queue,
+            baseUrl: "https://api.test",
+            fetchImpl: vi.fn().mockResolvedValue({ ok: true }) as unknown as typeof fetch,
+        });
+
+        await expect(adapter.save(FEATURE, "L")).rejects.toMatchObject({
+            kind: "capability",
+            status: 501,
+        });
+        expect(queue.save).not.toHaveBeenCalled();
+    });
+
     it("caches the reachability probe within the TTL (one ping for two writes)", async () => {
         const rest = stubAdapter("rest");
         const queue = stubAdapter("queue");

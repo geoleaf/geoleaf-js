@@ -23,13 +23,19 @@
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { buildPopupContent } from "../../../src/capabilities/feature-info/render/popup-content.js";
+import { buildSidePanelBody } from "../../../src/capabilities/feature-info/render/sidepanel-content.js";
 
 const CTX = { layerId: "poi", featureId: 42, lngLat: { lat: 1.5, lng: 2.5 } };
 const PROPS = { name: "Café", secret: "ne doit pas fuiter", tel: "0102030405" };
 
-function build(field) {
-    return buildPopupContent([field], PROPS, CTX, { hasSidepanel: false });
+function build(field, ctx = CTX) {
+    return buildPopupContent([field], PROPS, ctx, { hasSidepanel: false });
 }
+
+// ⚠️ `field: "name"` et non `"x"` : le panneau SAUTE un champ dont la valeur est vide
+// (`sidepanel-content.ts:98`, un `action` n'étant pas « required »), là où le popup rend le
+// bouton inconditionnellement. Un `field` sans valeur ne testerait donc qu'une surface sur deux.
+const ACTION = { field: "name", type: "action", actionId: "a", label: "R" };
 
 describe("B-69 — le champ `action` rend un bouton et émet", () => {
     let seen;
@@ -118,5 +124,73 @@ describe("B-69 — le champ `action` rend un bouton et émet", () => {
     it("ne rend rien sans `actionId` — un bouton sans identifiant n'a rien à émettre", () => {
         const root = build({ field: "x", type: "action", label: "R" });
         expect(root.querySelector("button.gl-poi-popup__action")).toBeNull();
+    });
+
+    // ── S5 — le canal d'action enrichi (contrat inverse, 14/08/2026) ──────────────
+    //
+    // ⚠️ MUTATION QUI COMPTE : rétablir `dispatchGeoLeafEvent` à la place du `CustomEvent`
+    // brut de `widget-dispatch.ts`. `button` redevient `{}` et `close`/`setBusy` `undefined`,
+    // en silence — les quatre cas ci-dessous tombent d'un coup. C'est la démonstration
+    // littérale de la raison d'être de `GeoLeafRawEventMap`, et elle a été jouée.
+
+    it("`button` est le bouton RÉEL, pas la coquille `{}` de la sanitisation", () => {
+        const root = build(ACTION);
+        const btn = root.querySelector("button.gl-poi-popup__action");
+        btn.click();
+        expect(seen[0].button).toBe(btn);
+        expect(seen[0].button).toBeInstanceOf(HTMLElement);
+    });
+
+    it("`setBusy` pose et retire les TROIS marques — `disabled`, `aria-busy`, la classe", () => {
+        const root = build(ACTION);
+        const btn = root.querySelector("button.gl-poi-popup__action");
+        btn.click();
+
+        seen[0].setBusy(true);
+        expect(btn.disabled).toBe(true);
+        expect(btn.getAttribute("aria-busy")).toBe("true");
+        expect(btn.classList.contains("gl-poi-popup__action--busy")).toBe(true);
+
+        seen[0].setBusy(false);
+        expect(btn.disabled).toBe(false);
+        expect(btn.getAttribute("aria-busy")).toBe("false");
+        expect(btn.classList.contains("gl-poi-popup__action--busy")).toBe(false);
+    });
+
+    it("`close()` ferme la surface du bouton, et RIEN d'autre — côté popup", () => {
+        const closed = [];
+        const root = build(ACTION, { ...CTX, onClose: () => closed.push("popup") });
+        root.querySelector("button.gl-poi-popup__action").click();
+        seen[0].close();
+        expect(closed).toEqual(["popup"]);
+    });
+
+    it("`close()` ferme la surface du bouton, et RIEN d'autre — côté panneau", () => {
+        const closed = [];
+        const body = buildSidePanelBody([ACTION], PROPS, {
+            ...CTX,
+            onClose: () => closed.push("sidepanel"),
+        });
+        body.querySelector("button.gl-poi-popup__action").click();
+        seen[0].close();
+        // Le popup n'est PAS fermé : chaque surface injecte SA fermeture. Un import de
+        // `FeatureInfo.close()` aurait rendu ["popup", "sidepanel"] depuis les deux.
+        expect(closed).toEqual(["sidepanel"]);
+    });
+
+    it("`close()` sans `onClose` au contexte est un no-op, jamais une exception", () => {
+        const root = build(ACTION, { layerId: "poi" });
+        root.querySelector("button.gl-poi-popup__action").click();
+        expect(() => seen[0].close()).not.toThrow();
+    });
+
+    it("une action émise DEPUIS LE PANNEAU porte `featureId` et `lngLat`", () => {
+        // Régression du 14/08/2026 : `surfaces/sidepanel.ts` ne passait que `layerId`, donc
+        // cette même émission rendait `featureId: null` et aucun `lngLat` — sous un TSDoc qui
+        // déclarait le point réglé depuis B-69. Il ne l'était que côté popup.
+        const body = buildSidePanelBody([ACTION], PROPS, CTX);
+        body.querySelector("button.gl-poi-popup__action").click();
+        expect(seen[0].featureId).toBe(42);
+        expect(seen[0].lngLat).toEqual({ lat: 1.5, lng: 2.5 });
     });
 });

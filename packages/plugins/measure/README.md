@@ -148,17 +148,42 @@ function getPrintableAnnotations(): PrintableAnnotation[];
 
 ### `registerMeasureType(type, def)`
 
-Registers a custom measure tool.
+Registers a custom measure tool, armable afterwards through `startMeasure(type)`.
 
 ```typescript
 interface MeasureTypeDef {
-    cursor?: string;
+    cursor?: string; // defaults to "crosshair"
     onActivate?: (map: unknown) => void;
     onDeactivate?: () => void;
 }
 
 function registerMeasureType(type: string, def: MeasureTypeDef): void;
 ```
+
+The plugin wraps your callbacks in the same envelope the built-in tools carry — exclusive
+interaction mode, cursor, and a guard that puts the cursor back if another handler overwrites
+it. Map listeners, drawing state and feature production stay yours.
+
+**No button appears in the floating menu.** Its buttons come from a static table carrying an
+icon and i18n keys, which `MeasureTypeDef` does not provide, and `enabledTools` only filters
+that table. Trigger your tool from your own UI:
+
+```js
+GeoLeaf.Measure.registerMeasureType("elevation", {
+    cursor: "cell",
+    onActivate: (map) => {
+        /* wire your own listeners */
+    },
+    onDeactivate: () => {
+        /* clean them up */
+    },
+});
+
+myButton.addEventListener("click", () => GeoLeaf.Measure.startMeasure("elevation"));
+```
+
+Calling `stopMeasure()`, `clearAll()`, closing the measure menu, or arming another tool all
+disarm it and call `onDeactivate`. An identifier that was never registered arms nothing.
 
 ---
 

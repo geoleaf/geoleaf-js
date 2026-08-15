@@ -146,7 +146,7 @@ async function _doRefresh(baseUrl: string): Promise<string | null> {
         // Propagate as domain event — fetch-interceptor also listens
         if (typeof document !== "undefined") {
             document.dispatchEvent(
-                new CustomEvent("connector:auth-error", {
+                new CustomEvent("geoleaf:connector:auth-error", {
                     detail: {
                         baseUrl,
                         error: err instanceof Error ? err.message : String(err),

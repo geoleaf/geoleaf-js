@@ -54,6 +54,8 @@ const mocks = vi.hoisted(() => ({
     deactivateGps: vi.fn(),
     activateAnnotationTooltip: vi.fn(),
     deactivateAnnotation: vi.fn(),
+    activateCustom: vi.fn(),
+    deactivateCustom: vi.fn(),
     // overlays
     initAnnotationOverlays: vi.fn(),
     createOverlayFromFeature: vi.fn(),
@@ -116,6 +118,10 @@ vi.mock("../tools/tool-annotation.js", () => ({
     activateAnnotationTooltip: mocks.activateAnnotationTooltip,
     deactivateAnnotation: mocks.deactivateAnnotation,
 }));
+vi.mock("../tools/tool-custom.js", () => ({
+    activateCustom: mocks.activateCustom,
+    deactivateCustom: mocks.deactivateCustom,
+}));
 vi.mock("../annotation-overlays.js", () => ({
     initAnnotationOverlays: mocks.initAnnotationOverlays,
     createOverlayFromFeature: mocks.createOverlayFromFeature,
@@ -154,8 +160,7 @@ describe("measure-api", () => {
         // setActiveTool() does not. This is exactly the distinction finding #1 turned on.
         mocks.selectTool.mockImplementation((type: unknown) => {
             const cbs = mocks.initMenu.mock.calls[0]?.[1] as
-                | { onToolSelect?: (t: unknown) => void }
-                | undefined;
+                { onToolSelect?: (t: unknown) => void } | undefined;
             cbs?.onToolSelect?.(type);
         });
     });
@@ -441,6 +446,91 @@ describe("measure-api", () => {
             expect(() =>
                 api.registerMeasureType("heat", { cursor: "crosshair" } as never)
             ).not.toThrow();
+        });
+    });
+
+    // ── Registered tools (B-253) ────────────────────────────────────────────
+    //
+    // ⚠️ The test above asserts a NON-THROW and nothing else — it passed unchanged while
+    // `registerMeasureType()` wrote to a registry no code ever read. It is kept as the
+    // signature check it always was; what follows asserts the effect it never did.
+
+    describe("registered tools", () => {
+        /**
+         * Registers on the SAME module instance that is then booted.
+         *
+         * `load()` calls `vi.resetModules()`, so registering before it drops the registry on
+         * the floor — the first draft of these tests did exactly that and failed for a reason
+         * that had nothing to do with the subject.
+         */
+        async function bootWithRegistry(
+            register?: (api: Api) => void
+        ): Promise<{ api: Api; cbs: Record<string, (a?: unknown) => void> }> {
+            const api = await load();
+            register?.(api);
+            api.startMeasure("distance"); // drives _ensureMenu(), which hands initMenu its callbacks
+            return { api, cbs: mocks.initMenu.mock.calls[0][1] };
+        }
+
+        it("arms a registered tool through the dispatch, definition included", async () => {
+            const def = { cursor: "cell", onActivate: vi.fn(), onDeactivate: vi.fn() };
+            const { cbs } = await bootWithRegistry((api) =>
+                api.registerMeasureType("denivele", def as never)
+            );
+            vi.clearAllMocks();
+
+            cbs.onToolSelect("denivele");
+
+            expect(mocks.activateCustom).toHaveBeenCalledWith(expect.anything(), "denivele", def);
+        });
+
+        it("still only deactivates for an id that was never registered", async () => {
+            const { cbs } = await bootWithRegistry();
+            vi.clearAllMocks();
+            cbs.onToolSelect("jamais-enregistre");
+            expect(mocks.deactivateCustom).toHaveBeenCalled();
+            expect(mocks.activateCustom).not.toHaveBeenCalled();
+        });
+
+        it("disarms the registered tool on every teardown path", async () => {
+            const { api, cbs } = await bootWithRegistry((a) =>
+                a.registerMeasureType("denivele", { onActivate: vi.fn() } as never)
+            );
+
+            // 1. switching to a built-in
+            vi.clearAllMocks();
+            cbs.onToolSelect("distance");
+            expect(mocks.deactivateCustom).toHaveBeenCalled();
+
+            // 2. closing the menu — floating-menu notifies with null
+            vi.clearAllMocks();
+            cbs.onToolSelect(null);
+            expect(mocks.deactivateCustom).toHaveBeenCalled();
+            expect(mocks.activateCustom).not.toHaveBeenCalled();
+
+            // 3. stopMeasure()
+            vi.clearAllMocks();
+            api.stopMeasure();
+            expect(mocks.deactivateCustom).toHaveBeenCalled();
+
+            // 4. clearAll()
+            vi.clearAllMocks();
+            api.clearAll();
+            expect(mocks.deactivateCustom).toHaveBeenCalled();
+        });
+
+        it("re-registering an id replaces the definition that gets armed", async () => {
+            const first = { onActivate: vi.fn() };
+            const second = { onActivate: vi.fn() };
+            const { cbs } = await bootWithRegistry((api) => {
+                api.registerMeasureType("dup", first as never);
+                api.registerMeasureType("dup", second as never);
+            });
+            vi.clearAllMocks();
+
+            cbs.onToolSelect("dup");
+
+            expect(mocks.activateCustom).toHaveBeenCalledWith(expect.anything(), "dup", second);
         });
     });
 });

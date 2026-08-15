@@ -1,6 +1,7 @@
 # @geoleaf-plugins/connector
 
-Plugin MIT pour GeoLeaf — Authentification transparente et injection d'en-têtes `Authorization` sur toutes les requêtes fetch GeoJSON / WFS / REST.
+MIT plugin for GeoLeaf — transparent authentication and `Authorization` header injection on every
+GeoJSON / WFS / REST fetch request.
 
 [![npm](https://img.shields.io/npm/v/@geoleaf-plugins/connector)](https://www.npmjs.com/package/@geoleaf-plugins/connector)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -13,13 +14,15 @@ Plugin MIT pour GeoLeaf — Authentification transparente et injection d'en-têt
 npm install @geoleaf-plugins/connector
 ```
 
-> **Prérequis** : `@geoleaf/core` ≥ 1.2.0 (peer dependency).
+> **Important** — Requires `@geoleaf/core` v3.x. The core is declared in **`dependencies`**, not in
+> `peerDependencies`. This means npm may install a **second copy** of the core rather than reusing
+> yours; deduplicate if your bundler reports two instances.
 
 ---
 
-## Utilisation rapide
+## Quick start
 
-### S6 — Token statique (dev / demo)
+Static token — scenario S6 in the table below, for development and public demos:
 
 ```html
 <script type="module" src="geoleaf-connector.plugin.js"></script>
@@ -31,20 +34,21 @@ npm install @geoleaf-plugins/connector
 </script>
 ```
 
-> Un `console.warn` est émis si le token ne contient pas `.` (non-JWT). C'est attendu en mode dev.
+> **Note** — A `console.warn` is emitted when the token contains no `.` (not a JWT). This is
+> expected in development mode.
 
 ---
 
-## Scénarios d'utilisation
+## Usage scenarios
 
-| Scénario | Config                                      | Cas d'usage                            |
-| -------- | ------------------------------------------- | -------------------------------------- |
-| S1       | `getToken: () => 'static'`                  | Dev / smoke test sans serveur          |
-| S2       | `auth: { endpoint, ui: true }`              | Login modal + JWT + refresh auto (IDB) |
-| S3       | `getToken: () => localStorage.getItem(...)` | SSO existant — token externe           |
-| S4       | `getToken: async () => await myAuth.get()`  | Provider async (Keycloak, Auth0, etc.) |
-| S5       | `auth: { endpoint, ui: false }`             | Token pré-chargé en IDB — silencieux   |
-| S6       | `getToken: () => 'STATIC_DEV_TOKEN'`        | Données non-sensibles, démo publique   |
+| Scenario | Config                                      | Use case                                  |
+| -------- | ------------------------------------------- | ----------------------------------------- |
+| S1       | `getToken: () => 'static'`                  | Development / smoke test without a server |
+| S2       | `auth: { endpoint, ui: true }`              | Login modal + JWT + auto refresh (IDB)    |
+| S3       | `getToken: () => localStorage.getItem(...)` | Existing SSO — external token             |
+| S4       | `getToken: async () => await myAuth.get()`  | Async provider (Keycloak, Auth0, etc.)    |
+| S5       | `auth: { endpoint, ui: false }`             | Token preloaded in IDB — silent           |
+| S6       | `getToken: () => 'STATIC_DEV_TOKEN'`        | Non-sensitive data, public demo           |
 
 ---
 
@@ -56,12 +60,12 @@ npm install @geoleaf-plugins/connector
 await GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
     getToken: () => "JWT_TOKEN",
-    // — OU —
+    // — OR —
     auth: {
         endpoint: "https://api.example.com/auth/login",
         ui: true, // Show login modal if no valid token found
-        signupUrl: "https://app.example.com/signup", // Lien "Créer un compte" (optionnel)
-        forgotPasswordUrl: "https://app.example.com/forgot", // Lien "Mot de passe oublié" (optionnel)
+        signupUrl: "https://app.example.com/signup", // "Create an account" link (optional)
+        forgotPasswordUrl: "https://app.example.com/forgot", // "Forgot password" link (optional)
         credentialButton: {
             enabled: true, // Auto-inject credential button in UI
             iconVariant: "lock", // "lock" (default) or "user"
@@ -70,9 +74,11 @@ await GeoLeaf.Connector.configure({
 });
 ```
 
+`getToken` and `auth` are mutually exclusive.
+
 ### `GeoLeaf.Connector.openLoginModal()`
 
-Ouvre la modal de connexion manuellement (requiert `configure()` préalable avec `auth`).
+Opens the login modal manually. Requires a prior `configure()` call carrying `auth`.
 
 ```javascript
 GeoLeaf.Connector.openLoginModal();
@@ -80,7 +86,7 @@ GeoLeaf.Connector.openLoginModal();
 
 ### `createConnector(config)` — ESM named export
 
-Pour les cas d'intégration avancés (suite-connector, tests unitaires) :
+For advanced integration cases and unit tests:
 
 ```typescript
 import { createConnector } from "@geoleaf-plugins/connector";
@@ -92,90 +98,46 @@ conn.destroy();
 
 ---
 
-## Événements DOM
+## DOM events
 
-| Événement                             | Détail                       | Déclencheur                        | Cancelable |
-| ------------------------------------- | ---------------------------- | ---------------------------------- | ---------- |
-| `connector:authenticated`             | `{ baseUrl }`                | Login modal réussi                 | Non        |
-| `connector:token-refreshed`           | `{ baseUrl }`                | Refresh automatique (JWT expirant) | Non        |
-| `connector:auth-error`                | `{ baseUrl, error }`         | 401 après tentative de refresh     | Non        |
-| `connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Clic sur le bouton credential      | Non        |
-| `connector:signup-requested`          | `{ url }`                    | Clic sur "Créer un compte"         | **Oui**    |
-| `connector:forgot-password-requested` | `{ url }`                    | Clic sur "Mot de passe oublié"     | **Oui**    |
+| Event                                         | Detail                       | Fired when                       | Cancelable |
+| --------------------------------------------- | ---------------------------- | -------------------------------- | ---------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded            | No         |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic refresh (JWT expiring) | No         |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | 401 after a refresh attempt      | No         |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked        | No         |
+| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked      | **Yes**    |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked        | **Yes**    |
 
-Les événements `cancelable` permettent à l'application hôte d'intercepter le comportement par défaut via `preventDefault()` :
+The `cancelable` events let the host application intercept the default behaviour through
+`preventDefault()`:
 
 ```javascript
-document.addEventListener("connector:signup-requested", (e) => {
-    e.preventDefault(); // Empêche l'ouverture du lien
-    myApp.showCustomSignup(); // Affiche une UI custom à la place
+document.addEventListener("geoleaf:connector:signup-requested", (e) => {
+    e.preventDefault(); // Prevents the link from opening
+    myApp.showCustomSignup(); // Show a custom UI instead
 });
 ```
 
 ```javascript
-document.addEventListener("connector:authenticated", (e) => {
-    console.log("Authentifié sur", e.detail.baseUrl);
+document.addEventListener("geoleaf:connector:authenticated", (e) => {
+    console.log("Authenticated on", e.detail.baseUrl);
 });
 ```
 
 ---
 
-## Sécurité
+## Security
 
-- Le token n'est **jamais** transmis en query string.
-- Les mots de passe sont effacés de la mémoire après utilisation (`OWASP A02`).
-- `baseUrl` doit utiliser HTTPS en production (erreur levée sinon).
-- La sanitisation XSS de la modal repose sur `textContent` — aucun `innerHTML` avec données utilisateur.
-- MVT / PMTiles : interceptés via `map.setTransformRequest()` (MapLibre bridge) — non via `window.fetch`.
-
----
-
-## Architecture
-
-```
-src/
-├── entry.ts              ← Point d'entrée — boot + GeoLeaf.Connector global
-├── config-schema.ts      ← Types + validation ConnectorConfig
-├── fetch-interceptor.ts  ← Monkey-patch window.fetch + Worker headers hook
-├── token-store.ts        ← IDB persistence + RAM cache + refresh
-├── auth-client.ts        ← HTTP login + refresh vers endpoint
-├── login-ui.ts           ← Modal de connexion accessible (close, overlay, liens externes)
-├── credential-button.ts  ← Auto-injection bouton credential (desktop + mobile)
-├── format-detector.ts    ← Détection format (GeoJSON, FGB, KML, CSV, PMTiles, MVT)
-└── maplibre-bridge.ts    ← Hook MapLibre transformRequest (MVT/PMTiles auth)
-```
+- The token is **never** passed in a query string.
+- Passwords are wiped from memory after use (`OWASP A02`).
+- `baseUrl` must use HTTPS in production (an error is raised otherwise).
+- The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
+- MVT / PMTiles are intercepted through `map.setTransformRequest()` (MapLibre bridge), not through
+  `window.fetch`.
 
 ---
 
-## Tests
+## License
 
-```bash
-# Tests unitaires (Vitest)
-npm test
-
-# Rapport de couverture
-npx vitest run --coverage
-# → rapport HTML dans packages/plugins/connector/coverage/
-
-# Smoke test visuel (nécessite un build préalable)
-npm run build
-# Ouvrir packages/plugins/connector/demo/smoke.html dans un navigateur
-```
-
----
-
-## Build
-
-```bash
-# Depuis la racine du monorepo
-npm run build:connector
-
-# Publier sur npmjs.org (accès public, MIT)
-npm run publish:connector
-```
-
----
-
-## Licence
-
-MIT — voir [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

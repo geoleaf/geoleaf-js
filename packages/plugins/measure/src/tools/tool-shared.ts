@@ -10,10 +10,20 @@
  * NOT: polygon resolves its cursor dynamically (`pointer` while snapping to the first
  * vertex, `crosshair` otherwise), so it is parameterised by a resolver rather than
  * lifted verbatim. Same treatment as `wireTouchDrag` at S1.
+ *
+ * 📌 Since 14/08/2026 the guard also arms inside `createDragTool`, so all five drawing tools
+ * carry it — not just the three click tools named above. Circle and rect were the only ones
+ * without it, and they were the only ones that lost their crosshair for good.
  * https://geoleaf.dev
  */
-import { clearPreview, disableDragPan, enableDragPan, setCursor } from "../draw-layers.js";
-import type { MeasureMap, MeasureMapMouseEvent } from "../types.js";
+import {
+    clearPreview,
+    disableDragPan,
+    enableDragPan,
+    setCursor,
+    updateVertices,
+} from "../draw-layers.js";
+import type { MeasureMap, MeasureMapMouseEvent, MeasureMapTouchEvent } from "../types.js";
 
 /**
  * Converts a DOM MouseEvent client position to a `[lng, lat]` pair.
@@ -50,9 +60,19 @@ interface CursorGuardOptions {
 /**
  * Keeps the map canvas showing the tool's cursor.
  *
- * MapLibre and the GeoLeaf feature-hover handlers both write `canvas.style.cursor`
- * directly, which would otherwise clobber a tool's crosshair as soon as the pointer
- * crosses a feature layer. A MutationObserver on the style attribute puts it back.
+ * A MutationObserver on the style attribute puts back any cursor written over the tool's.
+ *
+ * ⚠️ **This doc said "MapLibre and the GeoLeaf feature-hover handlers both write
+ * `canvas.style.cursor` directly", and the MapLibre half was false** — measured 14/08/2026,
+ * `style.cursor` appears ZERO times in `maplibre-gl.mjs` and `maplibre-gl-shared.mjs`.
+ * MapLibre drives the cursor entirely through CSS classes on `.maplibregl-canvas-container`,
+ * and never touches an inline style. Only GeoLeaf's own handlers write here.
+ *
+ * Those handlers are now guarded by `__geoleafExclusiveMode` on all three core sites
+ * (`feature-interaction`, `maplibre-poi-builders`, `maplibre-cluster-builders`), so this
+ * observer is a second line of defence rather than the primary mechanism. It stays because
+ * the flag is a convention no gate enforces on plugins — see B-252 for one editor handler
+ * that still ignores it.
  */
 export function startCursorGuard(canvas: HTMLCanvasElement, opts: CursorGuardOptions): CursorGuard {
     const observer = new MutationObserver(() => {
@@ -110,40 +130,124 @@ interface DragTool {
  * disarm. Only the state they accumulate and their validity threshold ever differed.
  *
  * The `mouseup` listener is bound to `document`, not the map: releasing outside the
- * canvas must still end the drag.
+ * canvas must still end the drag. Same reason for `touchend` / `touchcancel`.
+ *
+ * ## §TOUCH — pourquoi le chemin souris ne pouvait pas servir un doigt (14/08/2026)
+ *
+ * 🛑 Deux verrous cumulés, et un seul aurait suffi : un glissement du doigt n'émet AUCUN
+ * événement souris de compatibilité, et la garde `originalEvent?.button !== 0` rejetait de
+ * toute façon tout événement sans bouton (`undefined !== 0` est vrai). Cercle et rectangle
+ * étaient donc inutilisables sur téléphone — et le type le disait déjà, sans être lu ainsi.
+ *
+ * ⚠️ **`preventDefault()` sur le `MapTouchEvent` n'est PAS le levier**, contrairement à ce
+ * que suggère son TSDoc côté MapLibre : il ne couvre que la passe `touchstart` et cesse de
+ * tenir dès le premier `touchmove`. C'est `disableDragPan()` — que le chemin souris appelait
+ * déjà — qui tient sur toute la durée du geste. Le `preventDefault()` du `touchmove` ne sert
+ * qu'à bloquer le défilement du NAVIGATEUR (le listener DOM de MapLibre est en
+ * `{ passive: false }`, donc il est honoré plutôt que signalé).
+ *
+ * ⚠️ **Un seul doigt.** Un second signifie pinch, qui doit continuer d'atteindre le handler
+ * de zoom/rotation de MapLibre : l'avaler ici casserait la carte pour dessiner un cercle.
+ *
+ * Éprouvé en navigateur réel par `e2e/33-measure-drag.touch.spec.js` (projet
+ * `chromium-touch`), vu rouge avant correctif.
  */
 export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
     let map: MeasureMap | null = null;
     let active = false;
     let state: S | null = null;
+    let cursorGuard: CursorGuard | null = null;
 
-    function onMouseDown(e: MeasureMapMouseEvent): void {
-        // Left button only — a right-click drag pans, it does not draw.
-        if (!active || e.originalEvent?.button !== 0) return;
-        state = spec.start([e.lngLat.lng, e.lngLat.lat]);
+    /**
+     * Starts a drag at `coord`, whatever the input device.
+     *
+     * The anchor vertex is what answers "I cannot see where I pressed": neither tool draws
+     * anything until the gesture is already large — the circle needs a metre of radius
+     * (`tool-circle.ts`), the rect two distinct points (`updatePreview` is a no-op below
+     * two) — so without it the press produced no feedback at all. It was missing under the
+     * mouse too; touch only made it unbearable.
+     */
+    function begin(coord: [number, number]): void {
+        state = spec.start(coord);
+        updateVertices([coord]);
         disableDragPan();
-        map?.on("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp, { once: true });
     }
 
-    function onMouseMove(e: MeasureMapMouseEvent): void {
+    /** Folds a move into the state and keeps the anchor painted under the moving finger. */
+    function extend(coord: [number, number]): void {
         if (state === null) return;
-        state = spec.move(state, [e.lngLat.lng, e.lngLat.lat]);
+        state = spec.move(state, coord);
     }
 
-    function onMouseUp(): void {
+    /**
+     * Ends the gesture. Shared by the mouse and touch paths so they cannot drift apart —
+     * and so the body is not duplicated, which `jscpd` would rightly flag.
+     *
+     * @param commit Whether a valid gesture should produce a feature. `false` is the
+     *   abandon path: a `touchcancel` means the gesture was TAKEN AWAY (scroll claim,
+     *   incoming call), not completed, so it must undo the drag state without measuring
+     *   anything. Committing there would record a measure the user never released.
+     */
+    function finish(commit: boolean): void {
         map?.off("mousemove", onMouseMove);
+        map?.off("touchmove", onTouchMove);
         enableDragPan();
 
         const finished = state;
         state = null;
+        // ⚠️ `clearPreview()` only empties the PREVIEW source, never the vertices one, so
+        // the anchor has to be cleared explicitly or it survives the gesture that drew it.
+        updateVertices([]);
 
-        if (finished === null || !map || !spec.isValid(finished, map)) {
+        if (!commit || finished === null || !map || !spec.isValid(finished, map)) {
             clearPreview();
             return;
         }
         spec.commit(finished);
     }
+
+    function onMouseDown(e: MeasureMapMouseEvent): void {
+        // Left button only — a right-click drag pans, it does not draw.
+        if (!active || e.originalEvent?.button !== 0) return;
+        begin([e.lngLat.lng, e.lngLat.lat]);
+        map?.on("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp, { once: true });
+    }
+
+    function onMouseMove(e: MeasureMapMouseEvent): void {
+        extend([e.lngLat.lng, e.lngLat.lat]);
+    }
+
+    function onMouseUp(): void {
+        finish(true);
+    }
+
+    /** Touch counterpart of {@link onMouseDown} — single finger only (see §TOUCH above). */
+    function onTouchStart(e: MeasureMapTouchEvent): void {
+        if (!active) return;
+        if ((e.points?.length ?? 1) !== 1) return;
+        begin([e.lngLat.lng, e.lngLat.lat]);
+        map?.on("touchmove", onTouchMove);
+        document.addEventListener("touchend", onTouchEnd, { once: true });
+        document.addEventListener("touchcancel", onTouchCancel, { once: true });
+    }
+
+    function onTouchMove(e: MeasureMapTouchEvent): void {
+        if (state === null) return;
+        // Blocks the browser's own scroll only — map panning is held by `disableDragPan()`.
+        e.originalEvent?.preventDefault?.();
+        extend([e.lngLat.lng, e.lngLat.lat]);
+    }
+
+    /** Both endings share their teardown; only the commit decision differs. */
+    function _endTouch(commit: boolean): void {
+        document.removeEventListener("touchend", onTouchEnd);
+        document.removeEventListener("touchcancel", onTouchCancel);
+        finish(commit);
+    }
+
+    const onTouchEnd = (): void => _endTouch(true);
+    const onTouchCancel = (): void => _endTouch(false);
 
     return {
         activate(m: MeasureMap): void {
@@ -153,20 +257,35 @@ export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
             state = null;
             m.__geoleafExclusiveMode = true;
             setCursor("crosshair");
+            // Same guard the click tools have had since S5, and whose absence here was the
+            // whole difference: circle and rect lost their crosshair on the first POI
+            // mouseleave and never got it back, while distance and polygon recovered.
+            cursorGuard = startCursorGuard(m.getCanvas(), {
+                isActive: () => active,
+                cursor: () => "crosshair",
+            });
             m.on("mousedown", onMouseDown);
+            m.on("touchstart", onTouchStart);
         },
 
         deactivate(): void {
             if (!active) return;
             active = false;
+            cursorGuard?.stop();
+            cursorGuard = null;
             if (map) {
                 map.__geoleafExclusiveMode = false;
                 map.off("mousedown", onMouseDown);
                 map.off("mousemove", onMouseMove);
+                map.off("touchstart", onTouchStart);
+                map.off("touchmove", onTouchMove);
             }
             document.removeEventListener("mouseup", onMouseUp);
+            document.removeEventListener("touchend", onTouchEnd);
+            document.removeEventListener("touchcancel", onTouchCancel);
             enableDragPan();
             clearPreview();
+            updateVertices([]);
             setCursor("grab");
             state = null;
             map = null;

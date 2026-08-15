@@ -49,15 +49,8 @@ function attachResizeEvents(
     let startY = 0;
     let startHeight = 0;
     const events = _events;
-    const mouseDownHandler = (e: MouseEvent) => {
-        isResizing = true;
-        startY = e.clientY;
-        startHeight = container.offsetHeight;
-        document.body.style.cursor = "ns-resize";
-        document.body.style.userSelect = "none";
-        e.preventDefault();
-    };
-    const mouseMoveHandler = (e: MouseEvent) => {
+
+    const onPointerMove = (e: PointerEvent) => {
         if (!isResizing) return;
         const delta = startY - e.clientY;
         let newHeight = startHeight + delta;
@@ -67,39 +60,69 @@ function attachResizeEvents(
         newHeight = Math.max(minHeightPx, Math.min(maxHeightPx, newHeight));
         (container as HTMLElement).style.height = newHeight + "px";
     };
-    const mouseUpHandler = () => {
-        if (isResizing) {
-            isResizing = false;
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-        }
+
+    const onPointerEnd = () => {
+        if (!isResizing) return;
+        isResizing = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        handle.removeEventListener("pointermove", onPointerMove as EventListener);
+        handle.removeEventListener("pointerup", onPointerEnd);
+        handle.removeEventListener("pointercancel", onPointerEnd);
     };
+
+    const onPointerDown = (e: PointerEvent) => {
+        // Un seul geste à la fois, et bouton gauche seulement. ⚠️ Ne PAS garder sur
+        // `e.isPrimary` : happy-dom le laisse à `false` par défaut, donc la garde serait
+        // vraie sous test et fausse en navigateur — l'inverse de ce qu'on veut d'une garde.
+        if (isResizing || e.button !== 0) return;
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = container.offsetHeight;
+        document.body.style.cursor = "ns-resize";
+        document.body.style.userSelect = "none";
+        // Supprime la sélection de texte pendant le glissement. ⚠️ Ce n'est PAS ce qui
+        // empêche le défilement au doigt — c'est `touch-action: none` sur la poignée, côté
+        // CSS, et sans cette règle la conversion serait cosmétique.
+        e.preventDefault();
+        try {
+            handle.setPointerCapture(e.pointerId);
+        } catch {
+            /* not all envs support this */
+        }
+        // Posés ICI et non à l'inscription : avant, deux écouteurs `document` permanents
+        // vivaient toute la durée du panneau et se déclenchaient à chaque mouvement de
+        // souris de l'application, gardés par un simple `if (!isResizing) return`.
+        handle.addEventListener("pointermove", onPointerMove as EventListener);
+        handle.addEventListener("pointerup", onPointerEnd);
+        // Un geste tactile s'annule (revendication de défilement, interruption OS) ; un
+        // geste souris non. Sans ceci, `document.body` garderait `ns-resize` et
+        // `user-select: none` posés sur toute la page.
+        handle.addEventListener("pointercancel", onPointerEnd);
+    };
+    // 🛑 NE PAS « SIMPLIFIER » CE `if` EN LE SUPPRIMANT — mesuré le 14/08/2026, et
+    // l'apparence trompe dans le sens dangereux. `events` est un objet CONSTANT de module
+    // (`utils/events.ts`), donc en PRODUCTION la condition est toujours vraie et le repli
+    // ne sert jamais. Mais `table-panel.test.ts` fait
+    // `vi.mock("../utils/events.js", () => ({ events: null }))` : sous test, `events` EST
+    // nul et c'est le repli qui s'exécute.
+    //
+    // Conséquence à connaître avant de s'y fier : la branche jamais couverte est celle du
+    // HAUT, c'est-à-dire **celle que la production prend**. Retirer le repli fait tomber
+    // trois tests avec un `Cannot read properties of null`. Le sens inverse — retirer le
+    // mock — est un chantier de test, pas un geste de ce lot ; il est versé au backlog.
     if (events) {
         cleanups.push(
             events.on(
                 handle,
-                "mousedown",
-                mouseDownHandler as EventListener,
+                "pointerdown",
+                onPointerDown as EventListener,
                 false,
-                "TablePanel.resizeMouseDown"
+                "TablePanel.resizePointerDown"
             )
-        );
-        cleanups.push(
-            events.on(
-                document,
-                "mousemove",
-                mouseMoveHandler as EventListener,
-                false,
-                "TablePanel.resizeMouseMove"
-            )
-        );
-        cleanups.push(
-            events.on(document, "mouseup", mouseUpHandler, false, "TablePanel.resizeMouseUp")
         );
     } else {
-        handle.addEventListener("mousedown", mouseDownHandler);
-        document.addEventListener("mousemove", mouseMoveHandler);
-        document.addEventListener("mouseup", mouseUpHandler);
+        handle.addEventListener("pointerdown", onPointerDown as EventListener);
     }
 }
 

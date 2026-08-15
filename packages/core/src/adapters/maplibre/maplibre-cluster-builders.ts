@@ -14,6 +14,7 @@
 import { trackMapCleanup } from "./maplibre-event-subscriptions.js";
 import { toClusterCirclePaint } from "./maplibre-style-converter.js";
 import { toSubLayerId } from "./maplibre-layer-registry.js";
+import { isExclusiveMode } from "../../kernel/shared/map-cursor.js";
 import { buildZoomProps } from "./maplibre-primitives.js";
 import type {
     MaplibreMap,
@@ -105,11 +106,16 @@ export function bindGeoJSONClusterEvents(
                 map.flyTo({ center: e.lngLat, zoom: map.getZoom() + 2 });
             });
     };
-    // Cursor pointer on hover over clusters
+    // Cursor pointer on hover over clusters.
+    // Both handlers stand down while a tool owns the interactions, exactly as
+    // `kernel/geojson/feature-interaction.ts` already did: without this guard, leaving a
+    // cluster wrote `cursor = ""` and wiped an armed measure tool's crosshair for good.
     const setPointer = () => {
+        if (isExclusiveMode(map)) return;
         map.getCanvas().style.cursor = "pointer";
     };
     const clearPointer = () => {
+        if (isExclusiveMode(map)) return;
         map.getCanvas().style.cursor = "";
     };
     map.on("click", clustersLayerId, onClusterClick);

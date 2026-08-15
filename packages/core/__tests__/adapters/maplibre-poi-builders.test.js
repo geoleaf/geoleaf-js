@@ -269,6 +269,44 @@ describe("maplibre-poi-builders", () => {
             );
         });
 
+        // ── Cursor ownership ────────────────────────────────────────────────
+        // These two handlers used to write the cursor unconditionally, unlike
+        // `kernel/geojson/feature-interaction.ts` which has always honoured the flag. The
+        // consequence was invisible in unit tests and brutal in the browser: leaving a POI
+        // wrote `cursor = ""`, wiping the crosshair of whatever tool was armed.
+
+        /** Invokes the handler registered for `event` on `layerId`. */
+        const fire = (event, layerId) => {
+            const call = map.on.mock.calls.find((c) => c[0] === event && c[1] === layerId);
+            expect(call, `no ${event} handler on ${layerId}`).toBeDefined();
+            call[2]({});
+        };
+
+        it("hover writes the pointer cursor when no tool owns the map", () => {
+            bindPoiEvents(map, "events", {});
+            map.getCanvas().style.cursor = "";
+            fire("mouseenter", "gl-poi-events-unclustered");
+            expect(map.getCanvas().style.cursor).toBe("pointer");
+            fire("mouseleave", "gl-poi-events-unclustered");
+            expect(map.getCanvas().style.cursor).toBe("");
+        });
+
+        it("hover leaves the cursor alone while a tool owns the map", () => {
+            bindPoiEvents(map, "events", {});
+            map.__geoleafExclusiveMode = true;
+            map.getCanvas().style.cursor = "crosshair";
+
+            fire("mouseenter", "gl-poi-events-unclustered");
+            expect(map.getCanvas().style.cursor).toBe("crosshair");
+            fire("mouseleave", "gl-poi-events-unclustered");
+            expect(map.getCanvas().style.cursor).toBe("crosshair");
+
+            // The clusters layer shares the same pair of handlers.
+            fire("mouseenter", "gl-poi-events-clusters");
+            fire("mouseleave", "gl-poi-events-clusters");
+            expect(map.getCanvas().style.cursor).toBe("crosshair");
+        });
+
         it("registers click handler on clusters layer", () => {
             const onClusterClick = vi.fn();
             bindPoiEvents(map, "events", { onClusterClick });

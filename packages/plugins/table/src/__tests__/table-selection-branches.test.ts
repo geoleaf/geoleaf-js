@@ -90,7 +90,10 @@ describe("table/table-selection.ts — branch coverage", () => {
 
         it("fires selectionChanged event", () => {
             setSelection(["a"]);
-            expect(fireEvent).toHaveBeenCalledWith("table:selectionChanged", expect.any(Object));
+            expect(fireEvent).toHaveBeenCalledWith(
+                "geoleaf:table:selectionChanged",
+                expect.any(Object)
+            );
         });
 
         it("calls TableRenderer.updateSelection when available", () => {
@@ -116,7 +119,7 @@ describe("table/table-selection.ts — branch coverage", () => {
         it("fires selectionChanged event", () => {
             clearSelection();
             expect(fireEvent).toHaveBeenCalledWith(
-                "table:selectionChanged",
+                "geoleaf:table:selectionChanged",
                 expect.objectContaining({ selectedIds: [] })
             );
         });
@@ -150,7 +153,10 @@ describe("table/table-selection.ts — branch coverage", () => {
             ]);
             zoomToSelection();
             expect(tableState._map.fitBounds).toHaveBeenCalled();
-            expect(fireEvent).toHaveBeenCalledWith("table:zoomToSelection", expect.any(Object));
+            expect(fireEvent).toHaveBeenCalledWith(
+                "geoleaf:table:zoomToSelection",
+                expect.any(Object)
+            );
         });
 
         it("zooms to LineString geometry", () => {
@@ -290,7 +296,10 @@ describe("table/table-selection.ts — branch coverage", () => {
                 { geometry: { type: "Point", coordinates: [2.35, 48.85] } },
             ]);
             zoomToSelection();
-            expect(fireEvent).toHaveBeenCalledWith("table:zoomToSelection", expect.any(Object));
+            expect(fireEvent).toHaveBeenCalledWith(
+                "geoleaf:table:zoomToSelection",
+                expect.any(Object)
+            );
         });
     });
 
@@ -321,7 +330,10 @@ describe("table/table-selection.ts — branch coverage", () => {
                 "selection",
                 expect.any(Object)
             );
-            expect(fireEvent).toHaveBeenCalledWith("table:exportSelection", expect.any(Object));
+            expect(fireEvent).toHaveBeenCalledWith(
+                "geoleaf:table:exportSelection",
+                expect.any(Object)
+            );
         });
 
         it("uses empty string when currentLayerId is null", () => {
@@ -344,7 +356,10 @@ describe("table/table-selection.ts — branch coverage", () => {
             downloadFeatures.mockReturnValue(Promise.reject(new Error("fail")));
             // Should not throw synchronously
             expect(() => exportSelection()).not.toThrow();
-            expect(fireEvent).toHaveBeenCalledWith("table:exportSelection", expect.any(Object));
+            expect(fireEvent).toHaveBeenCalledWith(
+                "geoleaf:table:exportSelection",
+                expect.any(Object)
+            );
         });
     });
 });

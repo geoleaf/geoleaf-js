@@ -114,6 +114,97 @@ describe("config B3 — layerManagerConfig (layer-manager-helpers.ts)", () => {
         });
     });
 
+    // ── B-251 — sections pre-created by `_registerGeoJsonLayer` ───────────────
+    // The runtime order is: layers register FIRST (implicitly creating their
+    // section with the generic i18n label, order 10 and no collapsedByDefault),
+    // and only then does init() fold the config in. Every case above starts from
+    // empty options, i.e. the path that never happens in the app.
+    describe("existing section pre-created by _registerGeoJsonLayer", () => {
+        /** Shape `_registerGeoJsonLayer` pushes when the section id is unknown. */
+        const preCreated = (id) => ({
+            id,
+            label: "Couches GeoJSON",
+            order: 10,
+            items: [{ id: "layer-1", label: "Layer 1" }],
+        });
+
+        it("config label overrides the generic label already set", () => {
+            const options = { sections: [preCreated("data-tourism")] };
+            _applyLayerManagerConfig(
+                { sections: [{ id: "data-tourism", label: "Données touristiques", order: 1 }] },
+                options
+            );
+            expect(options.sections[0].label).toBe("Données touristiques");
+        });
+
+        it("config collapsedByDefault lands on the existing section (accordion flag)", () => {
+            const options = { sections: [preCreated("data-conservation")] };
+            _applyLayerManagerConfig(
+                {
+                    sections: [
+                        {
+                            id: "data-conservation",
+                            label: "Environnement",
+                            collapsedByDefault: true,
+                        },
+                    ],
+                },
+                options
+            );
+            // render-sections.ts keys the accordion off `typeof … === "boolean"`.
+            expect(typeof options.sections[0].collapsedByDefault).toBe("boolean");
+            expect(options.sections[0].collapsedByDefault).toBe(true);
+        });
+
+        it("collapsedByDefault:false is propagated too (open accordion, not absent)", () => {
+            const options = { sections: [preCreated("data-tourism")] };
+            _applyLayerManagerConfig(
+                { sections: [{ id: "data-tourism", collapsedByDefault: false }] },
+                options
+            );
+            expect(options.sections[0].collapsedByDefault).toBe(false);
+        });
+
+        it("config order replaces the hardcoded 10 and drives the final sort", () => {
+            const options = {
+                sections: [preCreated("data-conservation"), preCreated("data-tourism")],
+            };
+            _applyLayerManagerConfig(
+                {
+                    sections: [
+                        { id: "data-tourism", order: 1 },
+                        { id: "data-conservation", order: 3 },
+                    ],
+                },
+                options
+            );
+            expect(options.sections.map((s) => s.id)).toEqual([
+                "data-tourism",
+                "data-conservation",
+            ]);
+        });
+
+        it("already-registered items survive the merge", () => {
+            const options = { sections: [preCreated("data-tourism")] };
+            _applyLayerManagerConfig(
+                { sections: [{ id: "data-tourism", label: "Données touristiques", order: 1 }] },
+                options
+            );
+            expect(options.sections[0].items).toEqual([{ id: "layer-1", label: "Layer 1" }]);
+        });
+
+        it("a section absent from the config keeps its implicit defaults", () => {
+            const options = { sections: [preCreated("geojson-default")] };
+            _applyLayerManagerConfig(
+                { sections: [{ id: "data-tourism", label: "Données touristiques", order: 1 }] },
+                options
+            );
+            const orphan = options.sections.find((s) => s.id === "geojson-default");
+            expect(orphan.label).toBe("Couches GeoJSON");
+            expect(orphan.collapsedByDefault).toBeUndefined();
+        });
+    });
+
     // ── reference fixture resolves end-to-end ─────────────────────────────────
     it("reference fixture layerManagerConfig resolves end-to-end", () => {
         const options = {};

@@ -410,6 +410,38 @@ export interface IMapAdapter {
     getContainer(): HTMLElement;
 
     /**
+     * Returns the engine's drawing canvas — the element that actually paints the pointer.
+     *
+     * ⚠️ **Not interchangeable with {@link IMapAdapter.getContainer}.** MapLibre styles the
+     * cursor through CSS classes on `.maplibregl-canvas-container`, an element BETWEEN the
+     * root container and the canvas (`cursor: grab` on `.maplibregl-interactive`). A rule
+     * set on that descendant beats anything inherited from the root, so writing
+     * `getContainer().style.cursor` is silently overridden and never shows. Any code
+     * changing the map cursor must target the canvas.
+     *
+     * Optional, like {@link IMapAdapter.resize}: test doubles implement the contract
+     * without it, and making it required would turn every mock red for a capability none
+     * of them exercise. Call it as `adapter.getCanvas?.() ?? adapter.getContainer()` — the
+     * same fallback the editor plugin already uses.
+     */
+    getCanvas?(): HTMLCanvasElement;
+
+    /**
+     * Asks the engine to re-read its container size and resize its drawing buffer.
+     *
+     * Needed after the container is moved into a parent of different dimensions —
+     * `Core.reattach()` calls it — because the WebGL canvas keeps the size it was
+     * built with and would otherwise render at the old dimensions in the new slot.
+     *
+     * Optional, like {@link IMapAdapter.getNativeMap}: test doubles implement the
+     * contract without it, and making it required would turn every mock red for a
+     * capability none of them exercise. ⚠️ Optional means a caller can invoke it on
+     * `undefined` and never notice — call it as `adapter.resize?.()` and treat its
+     * absence as "the engine does not need telling", never as success.
+     */
+    resize?(): void;
+
+    /**
      * Returns the underlying native map instance (MapLibre GL `Map` object).
      *
      * Intended for low-level integrations that cannot be expressed through the

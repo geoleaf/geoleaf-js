@@ -131,6 +131,12 @@ function _notifyError(err: unknown): void {
         // peut aider), celui-ci porte la déclaration de la couche (l'opération est refusée à
         // tout le monde, il n'y a rien à tenter). Deux causes, deux gestes, deux libellés.
         else if (err.kind === "forbidden") key = "editor.error.editionNotPermitted";
+        // 🛑 LA MOITIÉ VISIBLE DE B-199 (tâches 3.5/3.6), sur le patron exact de la branche
+        // ci-dessus. Un 501 tombait lui aussi sur « Erreur serveur. Veuillez réessayer. » — la
+        // seule chose qui ne servira à rien, puisque le serveur ne connaît pas le verbe.
+        // Réparer la file SANS cette branche laisserait la machine juste et l'utilisateur
+        // trompé : c'est la moitié du défaut qui ne tient pas dans l'étiquette.
+        else if (err.kind === "capability") key = "editor.error.operationNotSupported";
         else if (err.kind === "client" && (err.status === 401 || err.status === 403)) {
             key = "editor.error.permissionDenied";
         }

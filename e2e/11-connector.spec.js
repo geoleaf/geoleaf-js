@@ -49,14 +49,14 @@ async function mockAuth(page) {
 /**
  * Fires configure({ auth: { ui: true } }) WITHOUT awaiting (it blocks on the modal
  * until login), then fills and submits the login modal, and waits for the
- * connector:authenticated event.
+ * geoleaf:connector:authenticated event.
  */
 async function configureAndLogin(page) {
     await page.evaluate(
         ({ baseUrl, endpoint }) => {
             const w = /** @type {any} */ (window);
             w.__authed = null;
-            document.addEventListener("connector:authenticated", (e) => {
+            document.addEventListener("geoleaf:connector:authenticated", (e) => {
                 w.__authed = /** @type {any} */ (e).detail?.baseUrl ?? true;
             });
             // Not awaited: with auth.ui:true and no token, configure() awaits the modal.
@@ -178,7 +178,7 @@ test.describe("11-connector", () => {
         await page.evaluate(() => {
             const w = /** @type {any} */ (window);
             w.__btnClicked = null;
-            document.addEventListener("connector:credential-button-clicked", (e) => {
+            document.addEventListener("geoleaf:connector:credential-button-clicked", (e) => {
                 w.__btnClicked = /** @type {any} */ (e).detail;
             });
         });
@@ -191,7 +191,7 @@ test.describe("11-connector", () => {
         expect(detail.authenticated).toBe(false);
     });
 
-    test("full auth flow: login -> connector:authenticated + token persisted in IDB (CDC §1.2/§6/§13)", async ({
+    test("full auth flow: login -> geoleaf:connector:authenticated + token persisted in IDB (CDC §1.2/§6/§13)", async ({
         page,
     }) => {
         const errors = [];
@@ -284,7 +284,7 @@ test.describe("11-connector", () => {
         expect(seen[0]).not.toBe(seen[1]); // token rotated on retry
     });
 
-    test("token mode: 401 clears token and emits connector:auth-error (CDC §15/§24)", async ({
+    test("token mode: 401 clears token and emits geoleaf:connector:auth-error (CDC §15/§24)", async ({
         page,
     }) => {
         await mockAuth(page);
@@ -294,7 +294,7 @@ test.describe("11-connector", () => {
         await page.evaluate(() => {
             const w = /** @type {any} */ (window);
             w.__authErr = null;
-            document.addEventListener("connector:auth-error", (e) => {
+            document.addEventListener("geoleaf:connector:auth-error", (e) => {
                 w.__authErr = /** @type {any} */ (e).detail;
             });
         });

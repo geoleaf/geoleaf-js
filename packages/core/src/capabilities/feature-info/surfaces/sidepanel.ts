@@ -12,8 +12,13 @@
  */
 import { buildSidePanelBody } from "../render/sidepanel-content.js";
 import type { RenderField } from "../render/dom.js";
+import { isTitleField } from "../render/dom.js";
+import { buildNormalizedModel, resolvePath } from "../resolve.js";
 import { hasFields, resolveSurfaceFields, toRenderFields } from "../convert.js";
 import { handleFocusTrap } from "../../../utils/controls/focus-trap.js";
+// Par le BARIL, pas par `events/event-bus.js` : la règle R.8 interdit à `capabilities/**`
+// d'importer profondément sous `kernel/**`. Le symbole y est déjà ré-exporté — rien à élargir.
+import { dispatchGeoLeafEvent } from "../../../kernel/events/index.js";
 import type { GeoLeafFeatureClickDetail, ISidePanelRenderer, SidePanelLayout } from "../types.js";
 
 interface GeoLeafHost {
@@ -30,6 +35,12 @@ let _content: HTMLDivElement | null = null;
 let _outsideHandler: ((e: Event) => void) | null = null;
 let _keyHandler: ((e: Event) => void) | null = null;
 let _isOpen = false;
+/**
+ * POI dont le panneau est ouvert — porté UNIQUEMENT pour que `geoleaf:poi:panel:close`
+ * puisse le nommer. `closeSidePanel()` ne reçoit aucun argument, et l'identité de ce qui se
+ * ferme n'est déductible de rien d'autre une fois le panneau vidé.
+ */
+let _openPoiId: string | null = null;
 
 /** Resolves the side-panel field list from a `layout` override or the layer binding. */
 function resolveFieldList(
@@ -121,7 +132,17 @@ export function openSidePanel(detail: GeoLeafFeatureClickDetail, layout?: SidePa
     const el = ensureContainer();
     const fields = resolveFieldList(detail, layout);
 
-    const body = buildSidePanelBody(fields, detail.properties, { layerId: detail.layerId });
+    // ⚠️ Ce contexte ne portait que `layerId` jusqu'au 14/08/2026, alors que le popup passait
+    // déjà les trois champs. Conséquence mesurée : un bouton `type: "action"` cliqué DANS LE
+    // PANNEAU émettait `featureId: null` et aucun `lngLat` — le widget est dans la table de
+    // dispatch partagée, donc il rend ici aussi. `render/dom.ts` et la fiche de la capacité
+    // déclaraient pourtant ce point réglé par B-69 : il ne l'était que côté popup.
+    const body = buildSidePanelBody(fields, detail.properties, {
+        layerId: detail.layerId,
+        featureId: detail.featureId,
+        lngLat: detail.lngLat,
+        onClose: closeSidePanel,
+    });
     if (_content) {
         _content.replaceChildren(body);
     }
@@ -140,6 +161,41 @@ export function openSidePanel(detail: GeoLeafFeatureClickDetail, layout?: SidePa
     document.body.classList.add("gl-poi-sidepanel-open");
     // Move focus to the close button on open (keyboard/screen-reader users land inside).
     el.querySelector<HTMLElement>("[data-action='close']")?.focus();
+    _emitPanelOpened(detail, fields);
+}
+
+/**
+ * Émet `geoleaf:poi:panel:open`, et rien d'autre — l'ouverture est déjà faite.
+ *
+ * 🛑 **Cette clé était TYPÉE SANS ÉMETTEUR depuis l'origine** (B-16) : un intégrateur qui s'y
+ * abonnait écrivait du code qui compile et ne se déclenche jamais. Le Sprint 4 du contrat
+ * inverse a tranché de **brancher l'émetteur** plutôt que de retirer la clé — retirer une
+ * interface publiée est un majeur, et ce document ajoute de la surface, il n'en enlève pas.
+ *
+ * ⚠️ **On n'émet PAS quand `featureId` est absent.** `poiId` est déclaré `string` dans une
+ * interface publiée : élargir sa forme serait précisément la rupture qu'on évite, et forger
+ * un identifiant (`""`, un index) serait pire que se taire — l'abonné ne pourrait pas
+ * distinguer deux POI sans id. Une couche sans identifiant stable n'émet donc pas.
+ *
+ * `poiName` se résout par le MÊME chemin que le titre affiché — champ marqué `title` par la
+ * liaison de couche, résolu contre le modèle normalisé. Le nom porté par l'événement est
+ * ainsi, par construction, celui que l'utilisateur lit.
+ */
+function _emitPanelOpened(detail: GeoLeafFeatureClickDetail, fields: readonly RenderField[]): void {
+    if (detail.featureId === null || detail.featureId === undefined) {
+        _openPoiId = null;
+        return;
+    }
+    const poiId = String(detail.featureId);
+    const titleField = fields.find((f) => isTitleField(f));
+    const rawName = titleField
+        ? resolvePath(buildNormalizedModel(detail.properties), titleField.field)
+        : undefined;
+    _openPoiId = poiId;
+    dispatchGeoLeafEvent("geoleaf:poi:panel:open", {
+        poiId,
+        poiName: rawName === undefined || rawName === null ? "" : String(rawName),
+    });
 }
 
 /** Closes the side-panel (slide-out). Does not remove it from the DOM. */
@@ -157,6 +213,15 @@ export function closeSidePanel(): void {
     document.body.classList.remove("gl-poi-sidepanel-open");
     _detachListeners();
     _isOpen = false;
+    // La garde `!_el || !_isOpen` en tête de fonction fait que ceci ne part JAMAIS sur une
+    // fermeture à vide — les quatre chemins (bouton, clic extérieur, Escape, `FeatureInfo
+    // .close()`) passent tous par elle. `_openPoiId` est nul quand l'ouverture n'avait pas
+    // d'identifiant : on se tait alors aussi, symétriquement.
+    if (_openPoiId !== null) {
+        const poiId = _openPoiId;
+        _openPoiId = null;
+        dispatchGeoLeafEvent("geoleaf:poi:panel:close", { poiId });
+    }
 }
 
 /** Returns `true` when the side-panel is currently open. */
@@ -164,7 +229,17 @@ export function isSidePanelOpen(): boolean {
     return _isOpen;
 }
 
-/** Removes the side-panel element from the DOM. Called on plugin destroy / reset. */
+/**
+ * Removes the side-panel element from the DOM. Called on plugin destroy / reset.
+ *
+ * ⚠️ **N'émet PAS `geoleaf:poi:panel:close`, et c'est délibéré.** C'est un DÉMONTAGE, pas une
+ * fermeture : personne n'a fermé le panneau, on retire la capacité sous lui. Émettre ici
+ * ferait croire à un geste utilisateur au milieu d'un `Core.destroy()`, et le ferait à un
+ * moment où les abonnés sont eux-mêmes en train d'être détachés. Ce que le cycle de vie doit
+ * annoncer à la destruction est une question distincte — elle appartient au Sprint 6.
+ * `_openPoiId` est quand même remis à zéro : le laisser survivre ferait émettre un `close`
+ * sur un POI périmé à la prochaine ouverture-fermeture.
+ */
 export function destroySidePanel(): void {
     _detachListeners();
     if (_el) {
@@ -173,6 +248,7 @@ export function destroySidePanel(): void {
         _content = null;
     }
     _isOpen = false;
+    _openPoiId = null;
     document.body.classList.remove("gl-poi-sidepanel-open");
 }
 

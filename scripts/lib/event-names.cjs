@@ -4,11 +4,16 @@
  *
  * ## Pourquoi ce module existe
  *
- * `check-event-map-coverage.cjs` (API publique S3.4) portait ce relevé et ses trois familles
- * d'exclusion. Au contrat inverse S1.7, `verify-consumer-contract.cjs` en a eu besoin des
- * QUATRE — son code CC-07 tient que tout `required.events` du manifeste aval est émis **en
- * littéral** dans les sources livrées **et** sur le bus DOM, ce qui est exactement ce que
- * `collectEventLiterals`, `MAP_BUS`, `DYNAMIC_PREFIXES` et `PERF_MARK_RE` décrivent ensemble.
+ * `check-event-map-coverage.cjs` (API publique S3.4) portait ce relevé et ses familles
+ * d'exclusion. Au contrat inverse S1.7, `verify-consumer-contract.cjs` en a eu besoin aussi —
+ * son code CC-07 tient que tout `required.events` du manifeste aval est émis **en littéral**
+ * dans les sources livrées **et** sur le bus DOM, ce qui est exactement ce que
+ * `collectEventLiterals`, `MAP_BUS` et `PERF_MARK_RE` décrivent ensemble.
+ *
+ * ⚠️ **Elles étaient TROIS familles jusqu'au 13/08/2026, et quatre exports au S1.7.** La
+ * troisième — `DYNAMIC_PREFIXES` / `isDynamic` — est retirée par le Sprint 4 du contrat
+ * inverse : son unique producteur, le `fireEvent` du plugin `table`, prend désormais le nom
+ * complet. Le motif complet est au corps du fichier, là où la famille vivait.
  *
  * **Un second lecteur déclenche l'extraction** : c'est la règle du dépôt, et elle a un motif
  * mesuré — `ts-decl-read.cjs` la formule ainsi, *« deux copies d'un lecteur dérivent, et la
@@ -88,34 +93,38 @@ const MAP_BUS = new Set([
     "geoleaf:filters:changed", // listened via map.on — plugins/table/src/table-layer.ts:129
 ]);
 
+// ── La troisième famille a DISPARU, et c'est le fait à connaître ─────────────────────
+//
+// `DYNAMIC_PREFIXES = ["geoleaf:table:"]` et son compagnon `isDynamic` vivaient ici. Ils
+// nommaient une cécité STRUCTURELLE : `fireEvent` (plugin `table`) composait ses noms à
+// l'exécution — `map.fire("geoleaf:" + eventName)` —, donc aucun littéral complet n'existait
+// en source, donc ce relevé ne pouvait rien voir de ses 9 noms et le disait plutôt que de
+// laisser croire à une couverture qu'il n'avait pas.
+//
+// ✅ **Retirés le 13/08/2026** (Sprint 4, tâches 4.2/4.3) : `fireEvent` prend désormais le nom
+// COMPLET, contraint par le type `TableEventName` (`plugins/table/src/table-state.ts`), et les
+// 9 noms sont typés dans `GeoLeafEventMap`. La cécité n'est pas contournée, elle n'a plus
+// d'objet — c'est ce que l'ancien commentaire annonçait comme la sortie (*« Refactoring
+// `fireEvent` to take full literals is on the backlog »*).
+//
+// ⚠️ **Deux lecteurs bougeaient ensemble, et c'était le piège.** `isExcluded` (ci-dessous) sert
+// EVENT-MAP ; `isDynamic` servait CC-06 dans `verify-consumer-contract.cjs`, avec une carte
+// `SCOPE_EXEMPT` dont l'entrée nommait ce sprint comme échéance. L'ORDRE de retrait comptait :
+// une fois `isDynamic` parti, la branche de CC-06 devient morte et une exemption périmée
+// deviendrait invisible pour toujours. Elle a donc été VUE rouge, puis retirée, avant celui-ci.
+//
+// 🛑 Ce que ce retrait laisse découvert est écrit là où quelqu'un le lira au bon moment :
+// bloc `SCOPE_EXEMPT` de `verify-consumer-contract.cjs`, avec sa commande de re-mesure.
+
 /**
- * `geoleaf:table:*` — the ONLY event names in the repo built by concatenation:
- * `table-state.ts:53-59` does `map.fire("geoleaf:" + eventName)` and
- * `document.dispatchEvent(new CustomEvent("geoleaf:" + eventName))`.
+ * Vrai si le nom n'est pas un événement DOM typable — les DEUX familles ci-dessus.
  *
- * The 9 names (`opened`, `closed`, `layerChanged`, `sortChanged`, `selectionChanged`,
- * `zoomToSelection`, `exportSelection`, `exportLayer`, `highlightSelection`) never appear
- * as `geoleaf:`-prefixed literals, so this gate is structurally blind to them and says so
- * rather than implying coverage it does not have. Refactoring `fireEvent` to take full
- * literals is on the backlog; until then the blind spot is named here, not silent.
- *
- * ⚠️ **C'est cette cécité, et non une rupture, qui a fait classer `geoleaf:table:opened` et
- * `:closed` en `broken_since_v3` dans le manifeste aval jusqu'à la v1.4.0.** Mesuré le
- * 10/08/2026 : ils sont émis (`plugins/table/src/table-api.ts:141` et `:152`, via `fireEvent`,
- * sur `document` ET sur la carte) et écoutés en aval. CC-07 doit donc traiter un préfixe
- * dynamique comme « hors de portée de la mesure » — **exit 2, jamais vert** —, sans quoi il
- * conclurait « absent » sur un événement bien présent, exactement comme le manifeste l'a fait.
+ * ⚠️ Elles étaient trois jusqu'au 13/08/2026. Ne pas retirer cette fonction en croyant retirer
+ * la famille disparue : elle porte encore les **18 marques `performance`** et les **3 noms du
+ * bus MapLibre**, que rien d'autre n'exclut. La supprimer ferait exiger le typage de 21 noms
+ * qui ne sont pas des événements DOM.
  */
-const DYNAMIC_PREFIXES = ["geoleaf:table:"];
-
-/** Vrai si le nom n'est pas un événement DOM typable — les trois familles ci-dessus. */
-const isExcluded = (name) =>
-    PERF_MARK_RE.test(name) ||
-    MAP_BUS.has(name) ||
-    DYNAMIC_PREFIXES.some((p) => name.startsWith(p));
-
-/** Vrai si le nom tombe sous un préfixe composé dynamiquement — donc hors de portée du relevé. */
-const isDynamic = (name) => DYNAMIC_PREFIXES.some((p) => name.startsWith(p));
+const isExcluded = (name) => PERF_MARK_RE.test(name) || MAP_BUS.has(name);
 
 // ── Corpus ───────────────────────────────────────────────────────────────────────────
 
@@ -199,9 +208,7 @@ module.exports = {
     EVENT_LITERAL_RE,
     PERF_MARK_RE,
     MAP_BUS,
-    DYNAMIC_PREFIXES,
     isExcluded,
-    isDynamic,
     collectSources,
     shippedSources,
     collectEventLiterals,

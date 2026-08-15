@@ -94,6 +94,8 @@ const lang_en: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Network request timed out.",
     "editor.error.editionNotPermitted": "This layer does not allow this operation.",
+    "editor.error.operationNotSupported":
+        "The server does not support this operation. Contact your administrator.",
     "editor.error.server": "Server error. Please try again.",
     "editor.error.storageUnavailable": "Offline storage unavailable. Change not saved.",
     "editor.error.permissionDenied": "Permission denied.",

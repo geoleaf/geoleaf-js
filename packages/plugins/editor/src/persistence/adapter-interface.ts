@@ -56,6 +56,23 @@ export interface SavedFeature {
  *
  * ⚠️ Distinct de `"client"`, qui porte un 4xx **du serveur**. `"forbidden"` est une décision
  * LOCALE, prise sur la déclaration de la couche, avant toute requête.
+ *
+ * 🛑 **`"capability"` est la MÊME décision prise sur l'autre bord — et le bandeau ci-dessus ne
+ * l'a pas empêchée** (tâches 3.5/3.6, **B-199**). Un `501` sortait en `"network"` par la branche
+ * fourre-tout des deux adaptateurs, donc **réessayable**, donc **mis en file** : le serveur dit
+ * « je ne connais pas ce verbe » et le client promettait de recommencer. Le cœur avait déjà
+ * tranché l'inverse pour sa propre file — le 501 y est délibérément EXCLU des statuts
+ * transitoires, part en quarantaine immédiate et ne consomme pas le budget de rejeu. L'éditeur
+ * s'y aligne ici ; il ne s'agit pas d'une politique neuve, mais de la fin d'une divergence.
+ *
+ * ⚠️ **Ne pas ranger `"capability"` parmi les transports**, exactement comme `"forbidden"` :
+ * `_isTransportError` décide du repli vers la file, et l'y ajouter remettrait en file l'écriture
+ * que ce cas existe pour en SORTIR. Ce n'est pas cette phrase qui le garde — celle du dessus
+ * portait déjà l'interdit et n'a pas empêché le défaut de vivre. C'est un test.
+ *
+ * ⚠️ Distinct de `"client"` (un 4xx : CETTE requête est refusée, une autre peut passer) et de
+ * `"forbidden"` (décision locale, avant requête). `"capability"` porte un refus du **serveur**,
+ * définitif, portant sur le **verbe** : il ne redeviendra vrai que si le serveur change.
  */
 type PersistenceErrorKind =
     | "network"
@@ -64,7 +81,16 @@ type PersistenceErrorKind =
     | "conflict"
     | "parse"
     | "forbidden"
+    | "capability"
     | "unknown";
+
+/**
+ * Le serveur déclare ne pas implémenter le verbe — HTTP 501.
+ *
+ * Domicile unique du statut, en regard du {@link PersistenceErrorKind} qu'il produit. Miroir de
+ * la constante homonyme du cœur, qui porte la même décision pour la file hors-ligne (B-199).
+ */
+export const NOT_IMPLEMENTED_STATUS = 501;
 
 /** Options accepted by the {@link PersistenceError} constructor. */
 interface PersistenceErrorOptions {

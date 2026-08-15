@@ -218,6 +218,13 @@ jobs:
             - name: Docs examples (phantom APIs, stale package names)
               run: npm run check:docs-examples
 
+            # NPM-README — `npmjs.com` ne rend pas les alertes GitHub (`> [!WARNING]` s'affiche
+            # en texte littéral). Périmètre `registry.publishable()` + le scaffold ; la règle est
+            # INVERSE sur le README racine et `docs/`, rendus par GitHub et VitePress.
+            # Keep in sync with ci-local.cjs.
+            - name: Rendu npm des README publiés (NPM-README)
+              run: npm run check:npm-readme
+
             # ⛔ Règle documentaire — `@param` ↔ signature, `@throws` adossé à un `throw`.
             # Baseline DÉCROISSANTE, à 0. Keep in sync with ci-local.cjs.
             - name: TSDoc conformity (@param ↔ signature)
@@ -250,8 +257,10 @@ jobs:
               run: npm run check:guides-paths
 
             # Tout nom d'événement `geoleaf:*` relevé dans les sources doit être typé dans
-            # `contracts/event-bus.contract.ts`. Baseline de 53, qui ne peut que rétrécir
-            # (EM-02). Keep in sync with ci-local.cjs.
+            # `contracts/event-bus.contract.ts`. La baseline des non-typés ne peut que
+            # rétrécir (EM-02). Keep in sync with ci-local.cjs.
+            # ⚠️ Ce commentaire annonçait « Baseline de 53 » — faux, et jamais re-mesuré : la
+            # gate imprime sa taille à chaque run. Ne pas y réécrire de nombre.
             - name: Événements typés (EVENT-MAP)
               run: npm run check:event-map
 

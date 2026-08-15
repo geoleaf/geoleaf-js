@@ -11,10 +11,17 @@
  *
  * DEPENDENCIES:
  * - GeoLeaf.Log (optional)
- * - GeoLeaf.Core.getActiveProfile()
+ * - GeoLeaf.Config.getActiveProfile()
  *
  * EXPOSE:
- * - GeoLeaf._ThemeLoader
+ * - `ThemeLoader`, ESM export only — consumed through `kernel/themes/index.js`.
+ *   ⚠️ NOT a namespace key. `GeoLeaf._ThemeLoader` was removed at API S4.3 (see
+ *   `globals/globals.ui.ts`, the B7 block) and this header kept announcing it for a
+ *   month: no gate reads an `EXPOSE:` block, so nothing could contradict it.
+ * - `GeoLeaf.Config.clearThemesCache` — the single public entry point onto this
+ *   module's cache, mounted by `setupUIKernel()` in `globals/globals.ui.ts`
+ *   (Sprint 2, task 2.6). ⚠️ There is no geoleaf.config façade file under `api/`: unlike
+ *   the other façades, `Config` is assigned directly by `globals/globals.config.ts`.
  *
  * @private
  */
@@ -164,9 +171,32 @@ function _doFetchThemesConfig(
 
 const _ThemeLoader = {
     /**
-     * Loads the file themes.json pour a profile
-     * @param {string} profileId - ID of the profile
-     * @returns {Promise<Object>} Configuration des themes
+     * Loads the theme configuration of a profile.
+     *
+     * ## The no-fetch path is a CONTRACT, not an optimisation
+     *
+     * When the active profile already carries a `themes` object — which is what the modular
+     * profile loader produces — this method resolves from it and **emits no HTTP request at
+     * all**. An integrator who declares `themes` inline in the profile therefore never needs
+     * to intercept `window.fetch` to serve `themes.json`, and never needs the loader's path
+     * convention to match their asset layout.
+     *
+     * ⚠️ **This guarantee is promoted to a contract by Sprint 2 (task 2.7) and must not be
+     * reverted silently.** Until then it was only an implementation comment, so it was
+     * revocable by any refactor — and the host-side workaround it replaces (patching
+     * `window.fetch`) is precisely the kind of coupling this project exists to remove.
+     * A change that reintroduces a request on this path is a BREAKING change.
+     *
+     * The three branches, in order:
+     * 1. cache hit → resolved value, no work;
+     * 2. load already in flight → the same promise, never a second request;
+     * 3. `Config.getActiveProfile().themes` present and matching `profileId` → **no fetch**;
+     * 4. otherwise only — `themes.json` is fetched over HTTP.
+     *
+     * @param profileId - ID of the profile whose themes are wanted.
+     * @returns The validated theme configuration.
+     *
+     * @see `GeoLeaf.Config.clearThemesCache` to drop what branch 1 returns.
      */
     loadThemesConfig(profileId: string): Promise<ValidatedThemesConfig> {
         if (Log) Log.debug("[ThemeLoader] loadThemesConfig called for:", profileId);
@@ -184,6 +214,9 @@ const _ThemeLoader = {
         // Modular profiles: the loader already resolved themes.json into the
         // active profile — read it directly (no HTTP round-trip, no path
         // assumption on the profile layout).
+        // 🛑 CONTRACT, not an optimisation — see this method's TSDoc and `CDC_kernel.md`
+        // §K-07. Reintroducing a request here is a BREAKING change: an integrator relies on
+        // this branch to avoid patching `window.fetch`.
         const activeProfile = asObject(getGeoLeaf()?.Config?.getActiveProfile?.()) as {
             id?: string;
             _profileId?: string;

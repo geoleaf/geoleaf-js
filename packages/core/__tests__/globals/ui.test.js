@@ -38,7 +38,9 @@ const mocks = vi.hoisted(() => {
 
     // B7 — themes
     const ThemeCache = { get: vi.fn() };
-    const ThemeLoader = { load: vi.fn() };
+    // `clearCache` : lu par `globals.ui.ts`, qui monte `GeoLeaf.Config.clearThemesCache`
+    // dessus (Sprint 2, tâche 2.6).
+    const ThemeLoader = { load: vi.fn(), clearCache: vi.fn() };
     const ThemeSelector = { select: vi.fn() };
     const ThemeApplierCore = { applyTheme: vi.fn(), setTheme: vi.fn() };
     const ThemeApplierDeferred = { deferApply: vi.fn() };
@@ -88,8 +90,14 @@ const mocks = vi.hoisted(() => {
     const initDesktopPanel = vi.fn();
     const activateDesktopPanel = vi.fn();
     const destroyDesktopPanel = vi.fn();
+    const openPanel = vi.fn();
+    const closePanel = vi.fn();
+    const getOpenPanel = vi.fn();
 
     return {
+        openPanel,
+        closePanel,
+        getOpenPanel,
         LabelButtonManager,
         LabelRenderer,
         Labels,
@@ -201,6 +209,10 @@ vi.mock("../../src/kernel/ui/desktop/desktop-panel.js", () => ({
     initDesktopPanel: mocks.initDesktopPanel,
     activateDesktopPanel: mocks.activateDesktopPanel,
     destroyDesktopPanel: mocks.destroyDesktopPanel,
+    // Sprint 2, tâche 2.4 — les trois entrées publiques du panneau.
+    openPanel: mocks.openPanel,
+    closePanel: mocks.closePanel,
+    getOpenPanel: mocks.getOpenPanel,
 }));
 
 // Side-effect import: triggers all B6+B7+B9 assignments

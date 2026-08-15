@@ -18,7 +18,7 @@ import {
     type SavedFeature,
     type UpdateOptions,
 } from "./adapter-interface.js";
-import { restFetch, restHeaders, parseJson, toSaved } from "./rest-wire-mapping.js";
+import { restFetch, restHeaders, parseJson, toSaved, statusError } from "./rest-wire-mapping.js";
 
 /** Configuration for {@link createRestAdapter}. */
 interface RestAdapterOptions {
@@ -65,15 +65,8 @@ async function _handleResponse(
         });
     }
 
-    if (res.status >= 400 && res.status < 500) {
-        throw new PersistenceError("client", _getLabel("editor.error.server"), {
-            status: res.status,
-        });
-    }
-
-    throw new PersistenceError("network", _getLabel("editor.error.server"), {
-        status: res.status,
-    });
+    // Everything past the 409 flow is the policy both dialects share — one home, one 501.
+    throw statusError(res.status);
 }
 
 /** A minimal placeholder feature for DELETE conflict mapping (only the id matters). */

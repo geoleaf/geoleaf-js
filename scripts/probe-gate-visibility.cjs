@@ -1054,6 +1054,70 @@ try {
         2
     );
 
+    // 4 et 5. LE CLIQUET DE DÉPRÉCIATION — un chemin qui QUITTE `required.public`.
+    //
+    // 🛑 **Les trois fixtures ci-dessus ne peuvent PAS atteindre CC-10, et une quatrième
+    // écrite naïvement serait sortie VERTE en n'ayant rien exercé.** CC-10 compare le
+    // manifeste à la baseline `positives`, qui est indexée PAR CONSOMMATEUR : avec le
+    // `consumer: "sonde-gate-probe"` du gabarit, il n'y a rien à comparer et le code tombe
+    // sur sa note « aucune liste positive en baseline ». La fixture doit donc emprunter
+    // l'identité ET les chemins de la baseline réelle.
+    //
+    // ⚠️ **Elle les LIT au lieu de les recopier.** Une sonde qui inscrirait 45 chemins en dur
+    // deviendrait une cinquième description concurrente de la même surface — le mode d'échec
+    // que ce dépôt paie le plus cher, et qu'une garde contre les listes tenues à la main ne
+    // doit pas reproduire en étant elle-même une liste tenue à la main.
+    //
+    // Les DEUX assertions sont indissociables : sans la contre-épreuve, un rouge ne prouve
+    // qu'une chose — que la gate rougit toujours.
+    {
+        const baselineCC10 = JSON.parse(
+            fs.readFileSync(path.join(ROOT, "scripts/.baselines/consumer-contract.json"), "utf8")
+        );
+        const posCC10 = (baselineCC10.positives ?? {})[baselineCC10._consumer];
+        const RETIRE = "Config.clearThemesCache";
+
+        // Le gabarit commun : la fixture EST le consommateur de la baseline, moins (ou non)
+        // l'entrée témoin. `provider` est repris de la baseline — le défauter en `core` ferait
+        // rougir `Ws` et `Measure.*` en CC-01, donc rougir la sonde pour un motif étranger.
+        const commeLaBaseline = (retirer) => (b) => ({
+            ...b,
+            consumer: baselineCC10._consumer,
+            required: {
+                ...b.required,
+                public: posCC10.public
+                    .filter((e) => !retirer || e.path !== RETIRE)
+                    .map((e) => ({ path: e.path, provider: e.provider, usedBy: ["sonde"] })),
+                events: posCC10.events.map((e) => ({ name: e.path, listenedBy: ["sonde"] })),
+            },
+        });
+
+        if (!posCC10 || !posCC10.public.some((e) => e.path === RETIRE)) {
+            // Le témoin a disparu de la baseline : l'assertion ne pourrait plus rien montrer,
+            // et une sonde qui ne peut plus prouver doit le DIRE, jamais verdir en silence.
+            assertThat("consumer-contract : le témoin de CC-10 existe encore en baseline", () => ({
+                ok: false,
+                detail:
+                    `\`${RETIRE}\` n'est plus dans la baseline positive de ` +
+                    `\`${baselineCC10._consumer}\` — les deux assertions CC-10 ne mordent plus. ` +
+                    "Choisir un autre témoin `provider: core` et le nommer ici.",
+            }));
+        } else {
+            consumerFixture(
+                "un chemin QUITTE required.public sans dépréciation (cliquet CC-10)",
+                commeLaBaseline(true),
+                RETIRE, // l'aiguille est le CHEMIN, pas « CC-10 » : un code générique se fait
+                1 //      satisfaire par une autre catégorie d'erreur portant le même code
+            );
+            consumerFixture(
+                "la même fixture, entrée NON retirée : CC-10 se tait (contre-épreuve)",
+                commeLaBaseline(false),
+                "engagement(s) du contrat inverse",
+                0
+            );
+        }
+    }
+
     // T5.7 — les motifs de jetables, sur témoins à réponse connue.
     //
     // Pourquoi une assertion STRUCTURELLE et non une fixture, alors que tout le reste de

@@ -26,11 +26,9 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 npm install @geoleaf/core @geoleaf-plugins/offline-ui
 ```
 
-> [!IMPORTANT]
-> **Requires `@geoleaf/core` v3.x.** The core is declared in **`dependencies`**, not in
+> **Important** — Requires `@geoleaf/core` v3.x. The core is declared in **`dependencies`**, not in
 > `peerDependencies` — as it is for the other plugins. This means npm may install a **second copy**
-> of the core rather than reusing yours; deduplicate if your bundler reports two instances. Current
-> versions: `npm run versions:check`.
+> of the core rather than reusing yours; deduplicate if your bundler reports two instances.
 
 ---
 
@@ -121,9 +119,8 @@ download known to be too large is not attempted. Progress is available through t
 
 Removes the whole cache and empties the `preferences` and `metadata` tables.
 
-> [!NOTE]
-> It clears neither `features` nor `outbox`: field data captured offline is never destroyed by this
-> call. To remove one specific profile, use
+> **Note** — It clears neither `features` nor `outbox`: field data captured offline is never
+> destroyed by this call. To remove one specific profile, use
 > `GeoLeaf.Storage.CacheManager.clearProfile(profileId)`.
 
 ---

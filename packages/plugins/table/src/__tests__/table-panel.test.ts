@@ -119,10 +119,80 @@ describe("modules/table/panel (Phase 4.11)", () => {
         handle.querySelector(".gl-table-panel__resize-bar");
         (result as any).getBoundingClientRect = () => ({ height: 400 });
         Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
-        handle.dispatchEvent(new MouseEvent("mousedown", { clientY: 500, bubbles: true }));
-        document.dispatchEvent(new MouseEvent("mousemove", { clientY: 300, bubbles: true }));
-        document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-        expect(result.style.height).toBeDefined();
+        // ⚠️ Les écouteurs de mouvement/relâchement vivent désormais sur la POIGNÉE, posés
+        // au `pointerdown` et retirés à la fin — plus sur `document` en permanence.
+        handle.dispatchEvent(
+            new PointerEvent("pointerdown", { clientY: 500, button: 0, bubbles: true })
+        );
+        handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
+        handle.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        // ⚠️ C'était `expect(result.style.height).toBeDefined()` — une assertion TOUJOURS
+        // vraie (`style.height` rend `""` quand rien n'est posé, et `""` est defined). Elle
+        // serait passée sur un handler qui ne fait rien du tout. La valeur est calculable :
+        // hauteur de départ 400, curseur de 500 à 300 → delta 200 → 600, dans les bornes
+        // [300px, 80 % du viewport].
+        expect(result.style.height).toBe("600px");
+    });
+
+    it("🛑 un second pointeur n'ouvre pas un second geste", () => {
+        const result = TablePanel.create(
+            {} as any,
+            { defaultHeight: "40%", resizable: true, minHeight: "300px", maxHeight: "80%" } as any
+        );
+        const handle = result.querySelector(".gl-table-panel__resize-handle") as HTMLElement;
+        Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
+
+        handle.dispatchEvent(
+            new PointerEvent("pointerdown", { clientY: 500, button: 0, bubbles: true })
+        );
+        // Deuxième doigt : s'il réarmait le geste, `startY` repartirait de 400 et le
+        // mouvement suivant rendrait une hauteur fausse.
+        handle.dispatchEvent(
+            new PointerEvent("pointerdown", { clientY: 400, button: 0, bubbles: true })
+        );
+        handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
+        handle.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+
+        expect(result.style.height).toBe("600px");
+    });
+
+    it("un clic droit ne redimensionne pas", () => {
+        const result = TablePanel.create(
+            {} as any,
+            { defaultHeight: "40%", resizable: true, minHeight: "300px", maxHeight: "80%" } as any
+        );
+        const handle = result.querySelector(".gl-table-panel__resize-handle") as HTMLElement;
+        Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
+        // Le panneau naît avec `defaultHeight` posé : l'assertion porte sur l'ABSENCE de
+        // changement, pas sur une valeur vide.
+        const before = result.style.height;
+
+        handle.dispatchEvent(
+            new PointerEvent("pointerdown", { clientY: 500, button: 2, bubbles: true })
+        );
+        handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
+
+        expect(result.style.height).toBe(before);
+    });
+
+    it("🛑 `pointercancel` relâche le curseur et la sélection posés sur TOUT le document", () => {
+        const result = TablePanel.create(
+            {} as any,
+            { defaultHeight: "40%", resizable: true, minHeight: "300px", maxHeight: "80%" } as any
+        );
+        const handle = result.querySelector(".gl-table-panel__resize-handle") as HTMLElement;
+        Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
+
+        handle.dispatchEvent(
+            new PointerEvent("pointerdown", { clientY: 500, button: 0, bubbles: true })
+        );
+        expect(document.body.style.cursor).toBe("ns-resize");
+
+        // Un geste tactile peut être confisqué ; un geste souris, non. Sans cette branche,
+        // `ns-resize` et `user-select: none` restaient sur la page entière.
+        handle.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+        expect(document.body.style.cursor).toBe("");
+        expect(document.body.style.userSelect).toBe("");
     });
 
     it("create with enableExportButton true adds export button", () => {

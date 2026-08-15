@@ -335,4 +335,102 @@ describe("delete button", () => {
         // was hardcoded French, so a non-French UI showed "Supprimer".
         expect(delBtn.getAttribute("aria-label")).toBe("measure.aria.deleteAnnotation");
     });
+
+    // -----------------------------------------------------------------------
+    // Reachability with a finger — the × used to be revealed by `mouseenter` ALONE,
+    // so on a touch screen it was simply unreachable while dragging and editing the
+    // same annotation worked. Visibility is now `hovered || editing`.
+    // -----------------------------------------------------------------------
+
+    /** Commits any edit opened by `createOverlay`, leaving a settled overlay. */
+    function settle(): HTMLElement {
+        vi.runAllTimers();
+        document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        return container.querySelector(".gl-measure-annot-tooltip") as HTMLElement;
+    }
+
+    it("🛑 a tap reveals the × WITHOUT any hover — the only path a finger has", () => {
+        createOverlay(LNGLAT);
+        const el = settle();
+        const delBtn = el.querySelector("button") as HTMLButtonElement;
+        expect(delBtn.style.display).toBe("none");
+
+        // Tap: pointerdown + pointerup under the 3 px threshold → edit mode.
+        el.dispatchEvent(
+            new PointerEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true })
+        );
+        el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+
+        // No `mouseenter` was ever dispatched — that is the whole point.
+        expect(delBtn.style.display).toBe("flex");
+    });
+
+    it("hides the × again once the edit is committed and the pointer is elsewhere", () => {
+        createOverlay(LNGLAT);
+        const el = settle();
+        const delBtn = el.querySelector("button") as HTMLButtonElement;
+
+        el.dispatchEvent(
+            new PointerEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true })
+        );
+        el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        expect(delBtn.style.display).toBe("flex");
+
+        vi.runAllTimers();
+        document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        expect(delBtn.style.display).toBe("none");
+    });
+
+    it("🛑 but KEEPS it visible after commit when the cursor is still over the bubble", () => {
+        createOverlay(LNGLAT);
+        const el = settle();
+        const delBtn = el.querySelector("button") as HTMLButtonElement;
+
+        // The mouse is on the bubble and stays there across the whole edit cycle. A plain
+        // `display:none` on commit would make the button vanish under the cursor — the
+        // regression the `hovered || editing` disjunction exists to prevent.
+        el.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+        el.dispatchEvent(
+            new PointerEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true })
+        );
+        el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+        vi.runAllTimers();
+        document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+
+        expect(delBtn.style.display).toBe("flex");
+    });
+});
+
+describe("pointercancel", () => {
+    it("🛑 restores map panning — otherwise the map stays undraggable for good", () => {
+        createOverlay(LNGLAT);
+        vi.runAllTimers();
+        document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        const el = container.querySelector(".gl-measure-annot-tooltip") as HTMLElement;
+        map.dragPan.enable.mockReset();
+
+        el.dispatchEvent(
+            new PointerEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true })
+        );
+        expect(map.dragPan.disable).toHaveBeenCalled();
+
+        el.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+        expect(map.dragPan.enable).toHaveBeenCalled();
+    });
+
+    it("does NOT open edit mode — a gesture taken away is not a tap", () => {
+        createOverlay(LNGLAT);
+        vi.runAllTimers();
+        document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        const el = container.querySelector(".gl-measure-annot-tooltip") as HTMLElement;
+        expect(el.querySelector("textarea")).toBeNull();
+
+        // Same event sequence a tap would produce, only the ending differs.
+        el.dispatchEvent(
+            new PointerEvent("pointerdown", { clientX: 50, clientY: 50, bubbles: true })
+        );
+        el.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
+
+        expect(el.querySelector("textarea")).toBeNull();
+    });
 });

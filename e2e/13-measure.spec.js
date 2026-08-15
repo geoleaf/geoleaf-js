@@ -22,9 +22,14 @@
 //               geoloc control) → a fake watchPosition drives it
 // The drag-based surface tools (rect, circle) rely on MapLibre's own map mouse
 // events (mousedown/mousemove/mouseup), which are NOT raised by Playwright's
-// synthetic mouse input in headless — they are covered by unit tests
+// synthetic mouse input in headless — their MOUSE path is covered by unit tests
 // (tool-rect.test.ts / tool-circle.test.ts); the e2e proves a surface measure via
 // the polygon tool (DOM-capture), like distance. See CDC §Validation S7 (finding).
+// ⚠️ « They are covered by unit tests » a valu pour les DEUX chemins jusqu'au
+// 14/08/2026, où ces outils ont reçu un chemin tactile : celui-là est éprouvé en
+// navigateur réel par `e2e/33-measure-drag.touch.spec.js` (projet `chromium-touch`,
+// glissement via CDP `Input.dispatchTouchEvent`). La limite de Playwright porte sur
+// sa souris synthétique, pas sur son entrée tactile.
 // The public API `startMeasure()` only sets the active-button state; the drawing
 // handlers are wired by the menu's onToolSelect (a tool-button click) — so this
 // spec drives tools through the menu buttons (see CDC §Validation S7, finding).

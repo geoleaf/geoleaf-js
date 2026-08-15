@@ -1,7 +1,7 @@
 {
     "_comment": "API publique S3.4 — GeoLeaf DOM event names present in source and absent from GeoLeafEventMap / GeoLeafRawEventMap. This list may only SHRINK (EM-02): type an event in contracts/event-bus.contract.ts, then remove its line. Never add to it by hand — a new event must be born typed (EM-01).",
     "_generated": "node scripts/check-event-map-coverage.cjs --update-baseline",
-    "count": 38,
+    "count": 37,
     "events": [
         "geoleaf:boot:aborted",
         "geoleaf:cache:cancelled",
@@ -15,7 +15,6 @@
         "geoleaf:desktop-panel:tabs-ready",
         "geoleaf:fitbounds:complete",
         "geoleaf:geocoding:result",
-        "geoleaf:geojson:visibility-changed",
         "geoleaf:layer-item:controls",
         "geoleaf:layers:initial-loaded",
         "geoleaf:offline",

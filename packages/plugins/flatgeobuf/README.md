@@ -59,10 +59,8 @@ When `data.bbox` is set, the plugin uses the FGB spatial index and HTTP Range re
 
 ### Example 1 — zones_desserte (bbox + auto-refresh)
 
-Profile (chemin d'ILLUSTRATION — `france-rail` n'est pas un profil de ce dépôt ; le dépôt livre
-`tourism`, plus la fixture `_reference`, que `build-deploy.cjs` écarte comme tout répertoire
-préfixé `_`. La liste fait foi à la commande : `ls profiles/`) :
-`profiles/<votre-profil>/layers/zones_desserte/zones_desserte_config.json`
+Profile — the path below is an illustration; substitute your own profile name:
+`profiles/<your-profile>/layers/zones_desserte/zones_desserte_config.json`
 
 ```json
 {
@@ -125,10 +123,9 @@ your own layers:
 ls -l <layer>/data/*.geojson <layer>/data/*.fgb
 ```
 
-> [!IMPORTANT]
-> Compare **equivalent geometry**. A `.fgb` generated before its GeoJSON source was simplified will
-> be larger than the source, and the comparison then measures the simplification rather than the
-> format.
+> **Important** — Compare **equivalent geometry**. A `.fgb` generated before its GeoJSON source was
+> simplified will be larger than the source, and the comparison then measures the simplification
+> rather than the format.
 
 The FlatGeobuf gain is real on large polygon datasets at equivalent geometry, but the genuine
 benefit is the spatial index plus HTTP Range requests: they transfer only the features intersecting
@@ -250,13 +247,12 @@ interface FgbLoadResult {
 
 ## Converting GeoJSON to FlatGeobuf
 
-> [!IMPORTANT]
-> **Spatial index required for bbox / HTTP Range mode.** Bbox filtering (`loadBbox`,
-> `loadBboxAsLayer`, declarative `data.bbox`, `autoRefresh`) needs the file's R-tree spatial
-> index. **The `flatgeobuf` npm `serialize()` does NOT write an index** (it sets
-> `indexNodeSize = 0`) — files produced that way support full-file `load()` only, and bbox
-> mode throws _"No index found, cannot read features filtered by bbox"_. To produce an
-> **indexed** `.fgb`, use **GDAL** (the FlatGeobuf driver writes the index by default):
+> **Important** — Spatial index required for bbox / HTTP Range mode. Bbox filtering (`loadBbox`,
+> `loadBboxAsLayer`, declarative `data.bbox`, `autoRefresh`) needs the file's R-tree spatial index.
+> **The `flatgeobuf` npm `serialize()` does NOT write an index** (it sets `indexNodeSize = 0`) —
+> files produced that way support full-file `load()` only, and bbox mode throws _"No index found,
+> cannot read features filtered by bbox"_. To produce an **indexed** `.fgb`, use **GDAL** (the
+> FlatGeobuf driver writes the index by default):
 
 ```bash
 # Recommended — produces an indexed .fgb usable for bbox / HTTP Range filtering

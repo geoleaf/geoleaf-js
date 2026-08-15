@@ -136,7 +136,16 @@ export interface LMGlobalLike {
 
 /**
  * Merges a layerManagerConfig object into the module options.
- * Adds/updates sections based on configuration, sorted by order.
+ *
+ * A section declared in the config is inserted when absent, and otherwise
+ * **overwrites** the `label`, `order` and `collapsedByDefault` of the section
+ * already present — the config is authoritative. This matters because layers
+ * register before `init()` folds the config in, so the sections they created
+ * implicitly (generic i18n label, order 10, no accordion flag) are exactly the
+ * ones the config has to correct. `items` is never touched.
+ *
+ * Sections absent from the config keep whatever they were created with.
+ * The whole set is sorted by ascending `order` on the way out.
  * @internal
  */
 export function _applyLayerManagerConfig(lmConfig: LMConfig, options: LMOptions): void {
@@ -168,8 +177,19 @@ export function _applyLayerManagerConfig(lmConfig: LMConfig, options: LMOptions)
         const existingSection = options.sections!.find((s) => s.id === configSection.id);
         if (!existingSection) {
             options.sections!.push(configSection);
-        } else if (configSection.label && !existingSection.label) {
-            existingSection.label = configSection.label;
+            return;
+        }
+        // B-251 — the config is authoritative over a section that
+        // `_registerGeoJsonLayer` created implicitly (generic i18n label, hardcoded
+        // order 10, no accordion flag) because layers register before init() folds
+        // the config in. Guarding on `!existingSection.label` used to make this a
+        // no-op, and `order`/`collapsedByDefault` were copied by no branch at all —
+        // dropping the configured titles, the ordering, and every accordion.
+        // `items` is never touched: layers already registered stay in place.
+        if (configSection.label !== undefined) existingSection.label = configSection.label;
+        if (configSection.order !== undefined) existingSection.order = configSection.order;
+        if (configSection.collapsedByDefault !== undefined) {
+            existingSection.collapsedByDefault = configSection.collapsedByDefault;
         }
     });
 

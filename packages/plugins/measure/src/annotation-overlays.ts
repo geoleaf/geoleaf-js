@@ -20,6 +20,17 @@ interface OverlayEntry {
     editing: boolean;
     /** ResizeObserver active while the tooltip is in edit mode. */
     _ro?: ResizeObserver;
+    /**
+     * Re-applies the delete button's visibility from the current state. Installed by
+     * `_attachInteraction`, called by `_enterEditMode` / `_commitEdit`.
+     *
+     * 🛑 Why the button needs this at all: it used to be revealed by `mouseenter` ALONE,
+     * so on a touch screen — where no hover exists — deleting an annotation was simply
+     * unreachable, while dragging and editing the same annotation worked (they are on
+     * Pointer Events). The tap already opens edit mode; binding the button to that state
+     * gives the finger a two-tap path without touching the drag threshold.
+     */
+    _syncDel?: () => void;
 }
 
 /** Callbacks wired by public-api.ts to keep the engine collection in sync. */
@@ -109,6 +120,9 @@ function _enterEditMode(id: string): void {
     if (!entry || entry.editing) return;
     entry.editing = true;
     entry.el.classList.add("is-editing");
+    // Reveals the delete button: on touch this is the only path to it, since the tap that
+    // got us here is also the only "selection" gesture a finger has.
+    entry._syncDel?.();
 
     entry.el.style.width = `${(entry.feature.properties.widthPx as number | undefined) ?? 160}px`;
     entry.el.style.height = `${(entry.feature.properties.heightPx as number | undefined) ?? 80}px`;
@@ -153,6 +167,7 @@ function _commitEdit(id: string): void {
     if (!entry || !entry.editing) return;
     entry.editing = false;
     entry.el.classList.remove("is-editing");
+    entry._syncDel?.();
 
     if (entry._ro) {
         entry._ro.disconnect();
@@ -183,20 +198,35 @@ function _attachInteraction(id: string): void {
     const entry = _overlays.get(id);
     if (!entry) return;
 
-    // Small × delete button (shown on hover)
+    // Small × delete button. Everything static about it lives in the stylesheet
+    // (`.gl-measure-annot-del`); only the dynamic `display` is written here.
+    //
+    // ⚠️ THE SPLIT IS TECHNICAL, NOT COSMETIC. `applyCssText` writes through
+    // `style.setProperty`, i.e. INLINE style, which beats any non-`!important` rule. While
+    // `display:none` lived in that string, no media query could ever enlarge or reveal the
+    // button — which is why the coarse-pointer sizing had to wait for this move.
     const delBtn = _el("button", "gl-measure-annot-del");
     delBtn.textContent = "×";
     delBtn.setAttribute("aria-label", _getLabel("measure.aria.deleteAnnotation"));
-    applyCssText(
-        delBtn,
-        "position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:12px;line-height:1;padding:0;display:none;align-items:center;justify-content:center;z-index:1;"
-    );
     entry.el.appendChild(delBtn);
+
+    // Visibility is a DISJUNCTION, and that is what keeps the mouse behaviour intact: after
+    // committing an edit with the cursor still over the bubble, the button must stay
+    // visible. Writing `display:none` on commit would have made it vanish under the mouse.
+    let hovered = false;
+    const syncDel = (): void => {
+        delBtn.style.display = hovered || entry.editing ? "flex" : "none";
+    };
+    entry._syncDel = syncDel;
+    syncDel();
+
     entry.el.addEventListener("mouseenter", () => {
-        delBtn.style.display = "flex";
+        hovered = true;
+        syncDel();
     });
     entry.el.addEventListener("mouseleave", () => {
-        delBtn.style.display = "none";
+        hovered = false;
+        syncDel();
     });
     delBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -232,10 +262,13 @@ function _attachInteraction(id: string): void {
             _position(entry);
         };
 
-        const onUp = () => {
+        /** Common teardown; `completed` says whether the gesture reached its own end. */
+        const _end = (completed: boolean) => {
             _map?.dragPan?.enable?.();
             entry.el.removeEventListener("pointermove", onMove);
             entry.el.removeEventListener("pointerup", onUp);
+            entry.el.removeEventListener("pointercancel", onCancel);
+            if (!completed) return;
             if (!_dragged) {
                 _enterEditMode(id);
             } else {
@@ -243,8 +276,18 @@ function _attachInteraction(id: string): void {
             }
         };
 
+        const onUp = () => _end(true);
+
+        // 🛑 REAL DEFECT, not a touch nicety: only `pointerup` was bound. A gesture the
+        // browser or the OS takes over fires `pointercancel` and NEVER `pointerup`, so
+        // `dragPan.enable()` was never replayed — the map stayed undraggable for good, with
+        // two leaked listeners. Cancelling must NOT open edit mode: the gesture was taken
+        // away, not completed, and a tap the user never finished is not a tap.
+        const onCancel = () => _end(false);
+
         entry.el.addEventListener("pointermove", onMove);
         entry.el.addEventListener("pointerup", onUp);
+        entry.el.addEventListener("pointercancel", onCancel);
     });
 }
 

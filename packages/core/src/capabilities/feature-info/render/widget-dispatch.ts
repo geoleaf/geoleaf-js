@@ -53,7 +53,7 @@ import {
     type RenderField,
     type RenderSurface,
 } from "./dom.js";
-import { dispatchGeoLeafEvent } from "../../../kernel/events/index.js";
+import type { GeoLeafPopupActionDetail } from "../../../contracts/event-bus.contract.js";
 import { getLabel as _getLabel } from "../../../utils/i18n/i18n.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import {
@@ -294,6 +294,27 @@ export function formatFieldTextEscaped(field: RenderField, value: unknown): stri
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Applies (or clears) the pending state of an action button.
+ *
+ * Three marks, and none is decorative: `disabled` stops a double submit, `aria-busy` is what a
+ * screen reader announces, and the BEM modifier is what CSS can hook. The repo had no single
+ * pattern to copy — `capabilities/legend/legend-overlay.ts:91` puts `aria-busy` on a *container*,
+ * and `libs/field-renderer/.../responsive-modal.ts` toggles `disabled` + a modifier *without*
+ * `aria-busy`. This is deliberately the union of the two, decided on 14/08/2026.
+ *
+ * Writes to a detached node when the surface has already closed. That is inert, and it is why
+ * `setBusy` needs no liveness guard on the caller's side.
+ *
+ * @param btn - The action button.
+ * @param busy - `true` to enter the pending state, `false` to leave it.
+ */
+function _setActionBusy(btn: HTMLButtonElement, busy: boolean): void {
+    btn.disabled = busy;
+    btn.setAttribute("aria-busy", String(busy));
+    btn.classList.toggle("gl-poi-popup__action--busy", busy);
+}
+
+/**
  * Renders an action button emitting `geoleaf:popup:action` on click.
  *
  * Four option keys are honoured, and each is read from the descriptor rather than
@@ -308,8 +329,14 @@ export function formatFieldTextEscaped(field: RenderField, value: unknown): stri
  *   it, NO property is joined**: the default goes to confidentiality, not
  *   convenience, because this is a document event any script on the page can hear.
  *
+ * ⚠️ Since 14/08/2026 the detail also carries `button`, `setBusy()` and `close()` — a live node
+ * and two closures — so the event is dispatched as a **raw `CustomEvent`** and its key lives in
+ * `GeoLeafRawEventMap`. `close()` goes through `ctx.onClose`, never through an import of a
+ * surface: the graph is `surfaces/* → popup-content → here`, and this widget renders on **both**
+ * surfaces, so only the injected closure knows which one to close.
+ *
  * @param field - Field descriptor.
- * @param ctx - Render context; carries the identity the event payload promises.
+ * @param ctx - Render context; carries the identity the event payload promises, and `onClose`.
  * @param rawProperties - Raw feature property bag, filtered by `payloadFields`.
  * @returns The button element, or `null` when it must not render.
  */
@@ -362,13 +389,22 @@ function renderActionButton(
             properties[key] = rawProperties[key];
         }
 
-        dispatchGeoLeafEvent("geoleaf:popup:action", {
+        // ⚠️ Émission en `CustomEvent` BRUT, pas par `dispatchGeoLeafEvent` — patron de
+        // `kernel/ui/toolbar-dispatch.ts:27-34`. Le bus assaini fait
+        // `JSON.parse(JSON.stringify(detail))` : `button` y arriverait en `{}` et les deux
+        // fonctions en `undefined`, SANS erreur. Mesuré sur ce chemin avant le geste, pas déduit.
+        // `bubbles: false` comme tous les seams bruts — les abonnés écoutent `document`.
+        const detail: GeoLeafPopupActionDetail = {
             actionId,
             layerId: ctx.layerId ?? "",
             featureId: ctx.featureId ?? null,
             properties,
             ...(ctx.lngLat ? { lngLat: { lat: ctx.lngLat.lat, lng: ctx.lngLat.lng } } : {}),
-        });
+            button: btn,
+            setBusy: (busy: boolean) => _setActionBusy(btn, busy),
+            close: () => ctx.onClose?.(),
+        };
+        document.dispatchEvent(new CustomEvent("geoleaf:popup:action", { detail, bubbles: false }));
     });
 
     return btn;

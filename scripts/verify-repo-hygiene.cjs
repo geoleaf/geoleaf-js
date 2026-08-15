@@ -193,10 +193,23 @@ const SCRIPTS_ALLOWLIST = new Set([
     // spec sur 36 la produit). Enveloppe `report:e2e` d'un plancher de témoin, parce que
     // `nyc report` est vert sur une donnée vide. Déclarée dans le commit qui la crée.
     "verify-e2e-coverage.cjs",
+    // B-235 — préambule de `--e2e` : les navigateurs de Playwright sont-ils réellement là ?
+    // Une montée de version DÉLIBÉRÉE change la révision requise, et rien en local ne les
+    // réinstalle (`ci.yml` le fait, lui, avant chaque run). Sans ce préambule la suite met
+    // 1,2 min à rendre ~215 rouges identiques, indiscernables d'une régression du produit.
+    "verify-playwright-browsers.cjs",
+    // Second préambule de `--e2e` : un port TENU mais MUET fait attendre Playwright 60 s puis
+    // rendre un message qui ne nomme aucun port. Cause fréquente : un run tué laisse ses
+    // `http-server` orphelins. Lit les URL dans `playwright.config.js`, jamais une liste à part.
+    "verify-e2e-ports.cjs",
     "simplify-geojson.cjs",
     "smoke-test.cjs",
     "validate-docs-examples.cjs",
     "typecheck-docs-examples.cjs", // B.20 — compile les exemples ts de la doc (arité, exports fantômes)
+    // NPM-README — npmjs.com ne rend pas les alertes GitHub : `> [!WARNING]` s'affiche en texte
+    // littéral sur la page du paquet. Périmètre `registry.publishable()` + le scaffold ; la règle
+    // est INVERSE sur le README racine et `docs/`, que GitHub et VitePress rendent. CI + ci-local.
+    "verify-npm-readme-render.cjs",
     "validate-profiles.cjs",
     // TPL-CFG (7.1b) — refuse un `_config.json` pour une couche produite par
     // `layerTemplates` : son `inlineConfig` « skips the fetch entirely », donc le fichier

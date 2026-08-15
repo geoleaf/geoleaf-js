@@ -259,7 +259,13 @@ const LayerManagerModule = {
         }
     },
     /**
-     * Registers a GeoJSON layer in the legend
+     * Registers a GeoJSON layer into its LayerManager section.
+     *
+     * Not the `legend` capability: this fills the COUCHES panel (`.gl-layer-manager`),
+     * not `.gl-map-legend`. The section named by `layerManagerId` is created on the fly
+     * when unknown, with a generic label and no accordion flag — those placeholder
+     * values are meant to be overwritten by {@link _applyLayerManagerConfig}, which
+     * runs later (at `init()`), since registration happens first.
      * @param {string} layerId - The layer id
      * @param {Object} options - Layer options
      */

@@ -15,6 +15,7 @@
  */
 
 import { getLabel } from "../../../utils/i18n/i18n.js";
+import { dispatchGeoLeafEvent } from "../../events/event-bus.js";
 import {
     buildThemeToggleBtn as _buildThemeToggleBtn,
     appendThemeToggleToTabs as _appendThemeToggleToTabs,
@@ -22,6 +23,7 @@ import {
 import { emitDesktopTabsReady } from "./desktop-tabs-seam.js";
 import { appendRegistryTabButtons as _appendRegistryTabButtons } from "./desktop-panel-slots.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
+import { registerLifecycleTeardown } from "../../shared/lifecycle.js";
 
 interface DesktopPanelOptions {
     glMain: HTMLElement;
@@ -194,7 +196,26 @@ function _refreshFilterTabIndicator(): void {
     filterTab.classList.toggle("has-filters", active);
 }
 
+/**
+ * Closes every tab, and emits `geoleaf:panel:closed` **only if one was actually open**.
+ *
+ * 🛑 C'est ICI que l'émission vit, et pas dans `closePanel()` — parce que ce n'est pas le
+ * seul chemin de fermeture. Les trois appelants sont `closePanel()`, le re-clic sur l'onglet
+ * actif (`handleTabClick`) et **`_activateTab` lui-même**, qui ferme avant d'ouvrir. Émettre
+ * depuis `closePanel()` seul n'aurait décrit qu'un tiers des fermetures réelles.
+ *
+ * ⚠️ Et c'est pour la même raison que la garde est nécessaire : `openPanel()` passe par
+ * `_activateTab`, donc par ici. Sans le test « un onglet était-il ouvert ? », tout
+ * `openPanel()` programmatique commencerait par annoncer une fermeture qui n'a pas eu lieu.
+ *
+ * L'identifiant se lit AVANT le nettoyage : l'état d'ouverture n'a pas de variable dédiée,
+ * il vit dans le DOM (cf. `getOpenPanel`), donc la classe retirée il est irrécupérable.
+ */
 function _closeAllTabs(panel: HTMLElement): void {
+    const closingTabId =
+        panel
+            .querySelector<HTMLElement>(".gl-rp-tab.gl-is-active")
+            ?.getAttribute("data-gl-rp-tab") ?? null;
     const allTabs = Array.from(panel.querySelectorAll<HTMLElement>(".gl-rp-tab"));
     allTabs.forEach((t) => {
         t.classList.remove("gl-is-active");
@@ -207,20 +228,51 @@ function _closeAllTabs(panel: HTMLElement): void {
         .querySelectorAll<HTMLElement>(".gl-rp-pane")
         .forEach((p) => p.classList.remove("gl-is-active"));
     panel.classList.remove("gl-has-active");
+    if (closingTabId !== null) {
+        dispatchGeoLeafEvent("geoleaf:panel:closed", { tabId: closingTabId });
+    }
 }
 
-function handleTabClick(panel: HTMLElement, tabId: string): void {
+/**
+ * Activates one tab, unconditionally — it never toggles.
+ *
+ * Extracted from `handleTabClick` so that the public `openPanel()` can reuse the activation
+ * without inheriting the toggle. ⚠️ **Do not fold the toggle back in here**: an integrator
+ * calling `openPanel(id)` twice must find the panel open both times, and a toggling
+ * "open" is defect B-71 reproduced on a public surface.
+ *
+ * @param panel - The side-panel root.
+ * @param tabId - Tab to activate.
+ * @returns `true` when the tab and its pane were found and activated, `false` otherwise.
+ */
+function _activateTab(panel: HTMLElement, tabId: string): boolean {
     const targetTab = panel.querySelector<HTMLElement>("[data-gl-rp-tab='" + tabId + "']");
     const targetPane = document.getElementById("gl-rp-pane-" + tabId);
-    if (!targetTab || !targetPane) return;
-    const isAlreadyActive = targetTab.classList.contains("gl-is-active");
+    if (!targetTab || !targetPane) return false;
     _closeAllTabs(panel);
-    if (isAlreadyActive) return;
     targetTab.classList.add("gl-is-active");
     targetTab.setAttribute("aria-selected", "true");
     targetTab.setAttribute("tabindex", "0"); // B4: active tab in tab order
     targetPane.classList.add("gl-is-active");
     panel.classList.add("gl-has-active");
+    // Après `_closeAllTabs` ci-dessus : un changement d'onglet rend donc `closed(ancien)`
+    // PUIS `opened(nouveau)`, dans cet ordre, et une ouverture depuis rien ne rend qu'`opened`.
+    dispatchGeoLeafEvent("geoleaf:panel:opened", { tabId });
+    return true;
+}
+
+/**
+ * Click handler for a tab button — this one DOES toggle, by design: clicking the open tab
+ * closes it. That behaviour belongs to the pointer interaction, not to the public API.
+ */
+function handleTabClick(panel: HTMLElement, tabId: string): void {
+    const targetTab = panel.querySelector<HTMLElement>("[data-gl-rp-tab='" + tabId + "']");
+    if (!targetTab || !document.getElementById("gl-rp-pane-" + tabId)) return;
+    if (targetTab.classList.contains("gl-is-active")) {
+        _closeAllTabs(panel);
+        return;
+    }
+    _activateTab(panel, tabId);
 }
 
 // Move / Restore
@@ -390,6 +442,62 @@ export function activateDesktopPanel(): void {
 }
 
 /**
+ * Opens a side-panel tab by id, **without toggling**.
+ *
+ * Calling it twice with the same id leaves the panel open — that is exactly what separates it
+ * from a click on the tab, which closes an already-open tab. Use it to drive the panel from
+ * host code (a menu entry, a deep link, a workflow step).
+ *
+ * @param tabId - Tab to open: `"filters"`, `"layers"` or `"legend"`, depending on what the
+ *   profile enabled at `initDesktopPanel()`.
+ * @returns `true` if the tab exists and is now open, `false` if the panel is not built, the
+ *   desktop breakpoint is not active, or no such tab was declared.
+ *
+ * @example
+ * ```js
+ * GeoLeaf?.UI?.openPanel("layers"); // true
+ * GeoLeaf?.UI?.openPanel("layers"); // true — toujours ouvert, jamais bascule
+ * ```
+ */
+export function openPanel(tabId: string): boolean {
+    if (!_panel || !_isActive) return false;
+    return _activateTab(_panel, tabId);
+}
+
+/**
+ * Closes whichever side-panel tab is open. A no-op when none is.
+ *
+ * @example
+ * ```js
+ * GeoLeaf?.UI?.closePanel();
+ * GeoLeaf?.UI?.getOpenPanel(); // null
+ * ```
+ */
+export function closePanel(): void {
+    if (!_panel) return;
+    _closeAllTabs(_panel);
+}
+
+/**
+ * The id of the currently open tab, or `null` when the panel is closed or not built.
+ *
+ * ⚠️ The open state has no dedicated variable: it lives in the DOM, as the `gl-is-active`
+ * class on the tab button. This reads it back rather than shadowing it, so the value cannot
+ * drift from what the user sees.
+ *
+ * @example
+ * ```js
+ * GeoLeaf?.UI?.openPanel("legend");
+ * GeoLeaf?.UI?.getOpenPanel(); // "legend"
+ * ```
+ */
+export function getOpenPanel(): string | null {
+    if (!_panel) return null;
+    const active = _panel.querySelector<HTMLElement>(".gl-rp-tab.gl-is-active");
+    return active?.getAttribute("data-gl-rp-tab") ?? null;
+}
+
+/**
  * Destroys the side panel and restores the elements to their original place.
  */
 
@@ -407,3 +515,19 @@ export function destroyDesktopPanel(): void {
     _restoreEntries = [];
     _mobileThemeToggle = null;
 }
+
+// Self-register the teardown so `Core.destroy()` actually tears the panel down. Mirrors
+// `basemap-selector.ts` and `shared.ts`.
+//
+// 🛑 Le défaut n'était PAS dans `destroyDesktopPanel` — elle déconnecte bien ses trois
+// `MutationObserver` et restaure les nœuds déplacés. Il était que **personne ne l'appelait** :
+// elle est montée sur `GeoLeaf.UI` depuis toujours, et aucun des inscrits de
+// `kernel/shared/lifecycle.ts` ne la déclenchait. Après `Core.destroy()`, `#gl-right-panel`
+// restait dans le DOM, `_mql` gardait son écouteur, et les trois observers continuaient
+// d'observer `document.body` — un cycle create/destroy de plus en laissait trois de plus.
+//
+// ⚠️ Un test qui appelle `destroyDesktopPanel()` en direct sort VERT sans rien prouver : il
+// éprouve la fonction, pas son appelant. La preuve est
+// `__tests__/app/desktop-panel-teardown.test.js`, qui passe par `Core.destroy()` — vu rouge
+// 4/4 avant cette ligne.
+registerLifecycleTeardown(destroyDesktopPanel);

@@ -62,6 +62,16 @@ export interface IAPIManagerRecord {
         setTheme(theme: string, getModule: IModuleAccessFn): unknown;
     };
     factory?: {
+        /**
+         * Wires module access into the factory.
+         *
+         * ⚠️ Declared here since S6.3 because the controller now CALLS it. It existed on
+         * `APIFactoryManager` from the start and nobody ever invoked it, so the factory
+         * ran with `getModule === null` for its whole life — invisible while its only
+         * job was to fill a map of its own, fatal the moment its accessors had to reach
+         * `Core`.
+         */
+        init(getModule: IModuleAccessFn): boolean;
         createMap(targetId: string, options: unknown, getModule: IModuleAccessFn): unknown;
     };
 }

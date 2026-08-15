@@ -59,10 +59,27 @@ function matchId(f: StoreFeature, id: string | number): boolean {
  * `GeoJSONCore.updateLayerData`). Single funnel for every base-dataset mutation;
  * `patchFeature` (silent) bypasses it on purpose.
  *
- * NOTE: a `geoleaf:layer:updated` broadcast is deliberately deferred — it will be
- * added (typed into `GeoLeafEventMap`) when a consumer needs it (filter/search
- * D3, addpoi D4), rather than shipping a speculative public event with zero
- * listeners in D1.
+ * 🛑 REFUS MAINTENU — `geoleaf:layer:updated` n'est PAS émis, et ce n'est pas un oubli.
+ * Un événement public sans auditeur est une promesse qu'on ne peut plus reprendre : il entre
+ * dans le contrat, il se type, il se documente, et il faut le maintenir pour personne.
+ *
+ * ⚠️ **CONDITION DE RÉOUVERTURE, vérifiable — c'est elle qui rend ce refus falsifiable plutôt
+ * que définitif** : un abonné existe en source, dans ce dépôt OU dans un manifeste lu par
+ * `scripts/verify-consumer-contract.cjs`. Le jour où c'est vrai, la gate du contrat inverse le
+ * dira d'elle-même ; d'ici là, la mesure est `grep -rn "layer:updated"`, qui ne rend
+ * aujourd'hui que ce commentaire.
+ *
+ * ⚠️ Ce refus citait « filter/search D3, **addpoi** D4 » comme consommateurs à venir.
+ * `addpoi` **n'existe plus** — fusionné dans `editor` au Sprint 5. Une note de refus qui nomme
+ * un consommateur disparu se périme sans jamais rougir : quiconque la relit conclut soit que
+ * l'auditeur va arriver, soit que le refus est caduc, et les deux sont faux. D'où la
+ * réécriture en condition mesurable plutôt qu'en liste de noms. Suivi au backlog **B.7** de
+ * `roadmap_contrat-inverse-api-publique.md` comme refus CONDITIONNÉ.
+ *
+ * ⚠️ Et il restera à dire QUAND il part, ce que la question « faut-il l'écrire ? » masque :
+ * par `setData` ? par `patchFeature`, qui contourne délibérément cet entonnoir ? les deux ?
+ * avec quelle granularité ? Un événement dont le déclencheur n'est pas tranché est pire
+ * qu'aucun événement.
  */
 function writeBase(layerId: string, features: StoreFeature[]): void {
     GeoJSONCore.updateLayerData(layerId, { type: "FeatureCollection", features });

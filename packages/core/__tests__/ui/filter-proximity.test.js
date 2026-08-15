@@ -182,11 +182,23 @@ describe("ui/filter-panel/proximity", () => {
         expect(btn.textContent).toBe("Activer");
     });
 
-    it("activateManualMode sets crosshair and attaches click handler", () => {
-        const containerStyle = {};
+    // ⚠️ This test used to assert the cursor on `getContainer()`, and it PASSED while the
+    // feature was broken: `.maplibregl-canvas-container` carries an explicit `cursor: grab`
+    // that beats anything inherited from `.maplibregl-map`, so the crosshair reached the DOM
+    // and was never painted. Measured in a real browser on 14/08/2026. The mock must expose
+    // BOTH elements — with only `getContainer`, `cursorTarget()` falls back to it and the
+    // assertion goes green again on the wrong target.
+    it("activateManualMode arms the crosshair on the CANVAS, never on the root container", () => {
+        // Stable objects: the real `getCanvas()` always returns the same element, and the
+        // saved-cursor bookkeeping is keyed by identity.
+        const canvas = { style: {} };
+        const rootContainer = { style: {} };
+        const native = {};
         let clickHandler;
         const map = withAdapterMethods({
-            getContainer: vi.fn(() => ({ style: containerStyle })),
+            getCanvas: vi.fn(() => canvas),
+            getContainer: vi.fn(() => rootContainer),
+            getNativeMap: vi.fn(() => native),
             on: vi.fn((ev, fn) => {
                 clickHandler = fn;
             }),
@@ -201,13 +213,19 @@ describe("ui/filter-panel/proximity", () => {
         const wrapper = document.createElement("div");
         wrapper.setAttribute("data-gl-filter-id", "proximity");
         container.closest = () => wrapper;
+
         FilterPanelProximity.activateManualMode(container, map);
-        expect(containerStyle.cursor).toBe("crosshair");
+        expect(canvas.style.cursor).toBe("crosshair");
+        expect(rootContainer.style.cursor).toBeUndefined();
+        // Exclusive mode keeps the core's POI/cluster hover handlers off the cursor.
+        expect(native.__geoleafExclusiveMode).toBe(true);
         expect(map.on).toHaveBeenCalledWith("click", expect.any(Function));
+
         clickHandler({ latlng: { lat: 48.5, lng: 2.1 } });
         // In MapLibre mode, circle drawn via adapter, not L.circle
         expect(map.addGeoJSONLayer).toHaveBeenCalled();
-        expect(containerStyle.cursor).toBe("");
+        expect(canvas.style.cursor).toBe("");
+        expect(native.__geoleafExclusiveMode).toBe(false);
     });
 
     it("destroy when _proximityMap set removes layers", () => {
@@ -505,9 +523,8 @@ describe("ui/filter-panel/proximity (events null fallback)", () => {
         const prev = _eventsRef;
         _eventsRef = null;
         vi.resetModules();
-        const { FilterPanelProximity: P } = await import(
-            "../../src/capabilities/filter/panel/proximity/proximity.js"
-        );
+        const { FilterPanelProximity: P } =
+            await import("../../src/capabilities/filter/panel/proximity/proximity.js");
         const map = withAdapterMethods({
             getContainer: () => ({ style: {} }),
             on: vi.fn(),

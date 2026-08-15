@@ -51,11 +51,28 @@ function _pointMode(c: ThemeColors): EditorMode {
     return new TerraDrawPointMode({ modeName: MODE_POINT, styles: buildPointStyles(c) });
 }
 
+// 🛑 `showCoordinatePoints: true` ON THE THREE ACCUMULATING MODES IS LOAD-BEARING, NOT DECOR.
+//
+// Terra Draw seeds a line with the SAME coordinate twice (`createLine` → `[c, c]`) and a
+// polygon with four; the second one is the "live" vertex a hover drags. Both are degenerate
+// — zero length, zero area — so MapLibre paints NOTHING, and the closing point that would be
+// painted is only created on the second click. On a desktop the defect is invisible: a
+// `pointermove` immediately moves the live vertex and the rubber band shows where the first
+// point landed. A finger emits no `pointermove` between two taps, so on mobile the first tap
+// drew strictly nothing and the geometry appeared out of nowhere on the second.
+//
+// Turning these on is what makes each committed vertex a real painted circle from the first
+// tap. The `coordinatePoint*` styles it needs were already written in `styles.ts` and had
+// never had any effect — this activates a half-laid wiring rather than adding one.
+// Guarded by `e2e/32-editor-vertex.touch.spec.js` (touch project), which was seen red on the
+// three modes before this line existed. Not on `point` (already a painted circle) nor on
+// `select` (no such option).
 function _lineMode(c: ThemeColors): EditorMode {
     return new TerraDrawLineStringMode({
         modeName: MODE_LINE,
         styles: buildLineStyles(c),
         finishOnNthCoordinate: 2,
+        showCoordinatePoints: true,
         keyEvents: { finish: "Enter", cancel: "Escape" },
     });
 }
@@ -64,6 +81,7 @@ function _polylineMode(c: ThemeColors): EditorMode {
     return new TerraDrawLineStringMode({
         modeName: MODE_POLYLINE,
         styles: buildLineStyles(c),
+        showCoordinatePoints: true,
         keyEvents: { finish: "Enter", cancel: "Escape" },
     });
 }
@@ -78,6 +96,7 @@ function _polygonMode(
         styles: buildPolygonStyles(c),
         snapping: snap,
         pointerDistance: pxDist,
+        showCoordinatePoints: true,
         keyEvents: { finish: "Enter", cancel: "Escape" },
     });
 }

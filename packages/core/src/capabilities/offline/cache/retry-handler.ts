@@ -31,9 +31,12 @@ interface RetryConfig {
     /** Total attempts allowed, initial try included. Values below 1 are floored to 1. */
     maxAttempts?: number;
     /**
-     * @deprecated Misnomer kept so existing profile configs keep working — it never
-     * meant "retries". Use {@link RetryConfig.maxAttempts}; this is normalised into it
-     * by {@link RetryHandler.init} and never stored.
+     * Kept alias for {@link RetryConfig.maxAttempts}, normalised into it by
+     * {@link RetryHandler.init} and never stored.
+     *
+     * A misnomer — it never meant "retries" — kept so existing profile configs keep
+     * working. It is **not deprecated**: nothing schedules its removal. See the
+     * Deprecation section of `VERSIONING_POLICY.md` for what that tag marks.
      */
     maxRetries?: number;
     initialDelay?: number;
@@ -48,7 +51,7 @@ interface RetryOptions {
     signal?: AbortSignal;
     /** Per-call override of the total attempt budget. Values below 1 are floored to 1. */
     maxAttempts?: number;
-    /** @deprecated Use {@link RetryOptions.maxAttempts}. */
+    /** Kept alias for {@link RetryOptions.maxAttempts}. Not deprecated — see `RetryConfig.maxRetries`. */
     maxRetries?: number;
     resourceName?: string;
 }

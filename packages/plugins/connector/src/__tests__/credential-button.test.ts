@@ -194,12 +194,12 @@ describe("credential-button", () => {
     });
 
     describe("click behavior", () => {
-        it("dispatches connector:credential-button-clicked event", async () => {
+        it("dispatches geoleaf:connector:credential-button-clicked event", async () => {
             createDesktopTabs();
             installCredentialButton(BASE_CONFIG);
 
             const handler = vi.fn();
-            document.addEventListener("connector:credential-button-clicked", handler);
+            document.addEventListener("geoleaf:connector:credential-button-clicked", handler);
 
             const btn = document.querySelector<HTMLButtonElement>(".gc-credential-btn")!;
             btn.click();
@@ -212,7 +212,7 @@ describe("credential-button", () => {
                 authenticated: false,
             });
 
-            document.removeEventListener("connector:credential-button-clicked", handler);
+            document.removeEventListener("geoleaf:connector:credential-button-clicked", handler);
         });
 
         it("opens login modal when not authenticated", async () => {
@@ -233,7 +233,7 @@ describe("credential-button", () => {
             installCredentialButton(BASE_CONFIG);
 
             const handler = vi.fn();
-            document.addEventListener("connector:credential-button-clicked", handler);
+            document.addEventListener("geoleaf:connector:credential-button-clicked", handler);
 
             const btn = document.querySelector<HTMLButtonElement>(".gc-credential-btn")!;
             btn.click();
@@ -243,7 +243,7 @@ describe("credential-button", () => {
             expect(handler.mock.calls[0][0].detail.authenticated).toBe(true);
             expect(showLoginModal).not.toHaveBeenCalled();
 
-            document.removeEventListener("connector:credential-button-clicked", handler);
+            document.removeEventListener("geoleaf:connector:credential-button-clicked", handler);
         });
     });
 
@@ -267,7 +267,7 @@ describe("credential-button", () => {
             installCredentialButton(UI_ONLY_CONFIG);
 
             const handler = vi.fn();
-            document.addEventListener("connector:credential-button-clicked", handler);
+            document.addEventListener("geoleaf:connector:credential-button-clicked", handler);
 
             const btn = document.querySelector<HTMLButtonElement>(".gc-credential-btn")!;
             btn.click();
@@ -283,7 +283,7 @@ describe("credential-button", () => {
             // No endpoint → skip the token store, go straight to the modal.
             expect(TokenStore.getTokenAsync).not.toHaveBeenCalled();
 
-            document.removeEventListener("connector:credential-button-clicked", handler);
+            document.removeEventListener("geoleaf:connector:credential-button-clicked", handler);
         });
     });
 

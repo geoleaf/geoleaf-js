@@ -207,6 +207,19 @@ describe("_handleMove — le curseur", () => {
         expect(map._canvas.style.cursor).toBe("crosshair");
     });
 
+    // B-252 — la garde ci-dessus ne voyait que les outils Terra Draw de l'éditeur LUI-MÊME.
+    // Un outil d'un autre plugin (measure, recherche par proximité) annonce sa prise de contrôle
+    // par `__geoleafExclusiveMode`, et se faisait écraser la croix à chaque mousemove.
+    it("ne touche pas au curseur quand un AUTRE plugin a pris la main (mode exclusif)", () => {
+        const a = adapter({ getActiveTool: vi.fn((): EditorTool | null => null) });
+        const map = mapCapture([feat()]);
+        initLayerPicker(a, map as never);
+        (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode = true;
+        map._canvas.style.cursor = "crosshair";
+        map.move();
+        expect(map._canvas.style.cursor).toBe("crosshair");
+    });
+
     it("une feature Terra Draw ne compte pas comme survol éditable", () => {
         const a = adapter({ getActiveTool: vi.fn((): EditorTool | null => "select") });
         const map = mapCapture([feat({ layer: { id: "td-abc" } })]);

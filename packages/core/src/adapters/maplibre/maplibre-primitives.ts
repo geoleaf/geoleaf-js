@@ -366,8 +366,10 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
  * The expensive part is not the shape, it is everything wired onto the circle paint
  * below and which a second path would silently lose: `styleRules` expressions,
  * {@link applyTaxonomyMarkerPaint} and {@link applyPendingBadgePaint}. Plus
- * `feature-interaction.ts` selects clickable sub-layers by the `-circle` suffix, so a
- * square sub-layer would not be clickable until declared there.
+ * `kernel/geojson/feature-interaction.ts` selects the sub-layers that carry **both**
+ * interaction gestures — click and hover — through `_interactionSubLayerIds`, whose
+ * precedence reaches points by the `-circle` suffix; a square sub-layer would receive
+ * neither gesture until declared there.
  *
  * Treat it as a feature with its own CDC, not as a style option to slot in.
  */

@@ -33,7 +33,21 @@ interface AutoAdapterOptions {
     pingTimeoutMs?: number;
 }
 
-/** Whether a failure is a transport error (→ fall back to the queue). */
+/**
+ * Whether a failure is a transport error (→ fall back to the queue).
+ *
+ * 🛑 **CETTE LISTE EST FERMÉE, ET SA FERMETURE EST LA DÉCISION.** N'y ajouter ni `"forbidden"`
+ * (B-139) ni `"capability"` (B-199) : ce sont des refus **définitifs**. Les y mettre remettrait
+ * en file une écriture qu'aucun rejeu ne fera passer — c'est le défaut même dont ces deux cas
+ * ont été extraits de `"network"`.
+ *
+ * ⚠️ **Ce commentaire ne garde rien, et il faut le savoir.** Le bandeau de `PersistenceErrorKind`
+ * portait déjà cet interdit depuis B-139, et il n'a pas empêché un `501` de sortir en
+ * `"network"` pendant tout ce temps. Ce qui garde l'invariant est le test « un refus de capacité
+ * ne retombe pas dans la file » (`__tests__/auto-adapter.test.ts`) : y ajouter `"capability"`
+ * ci-dessous le rend rouge sur deux axes — la promesse résout au lieu de rejeter, et
+ * `queue.save` est appelé.
+ */
 function _isTransportError(err: unknown): boolean {
     return err instanceof PersistenceError && (err.kind === "network" || err.kind === "timeout");
 }

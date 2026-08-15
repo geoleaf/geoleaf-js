@@ -29,10 +29,30 @@ interface InteractionFeature {
 }
 
 /**
- * Returns the sub-layer IDs best suited for hover events. Prefers `fill`
- * sub-layers (cover the whole polygon surface) over `line` (border only);
- * falls back circle → line → all. Mirrors the legacy popup binder selection so
- * the pointer/tooltip fires anywhere inside a polygon, not only on its border.
+ * Returns the sub-layer IDs that carry **interaction** events — click AND hover, which share
+ * this selector so a single gesture cannot be reported twice. Prefers `fill` sub-layers (cover
+ * the whole polygon surface) over `line` (border only); falls back circle → line → all. Mirrors
+ * the legacy popup binder selection so the pointer/tooltip fires anywhere inside a polygon, not
+ * only on its border.
+ *
+ * 🛑 **Why one sub-layer and not all of them.** `_addSubLayers` stacks sub-layers per geometry
+ * and cumulatively — a polygon gets `_addPolygonSubLayers` *then* `_addLineSubLayers`. Binding
+ * all of them made MapLibre run one delegated listener per touched sub-layer, so a single click
+ * emitted 2 events on an icon point, 2 on a cased line, 3 on a cased polygon and 4 on a vector
+ * tile. Downstream, `feature-info` closes and reopens its popup on every event, so the user saw
+ * it flicker.
+ *
+ * ⚠️ **What the precedence costs, measured.** `-symbol` is never selected, so on an icon point
+ * the clickable area becomes the circle instead of the icon's collision box (the 12 px glyph
+ * padded by `icon-padding`, default 2 px ⇒ a 16 px box). Measured against the five layers that
+ * actually set `showIconsOnMap`: **nothing is lost on the axes** — every capture radius
+ * (`radius + weight`) is at least equal to the box half-side. Only the diagonal ring is lost:
+ * ~0.2 % of the box at radius 11, ~2.8 % at radius 10, ~21.5 % at radius 8 — and most of that
+ * is the transparent padding, where a click arguably should never have registered.
+ * Adding `-symbol` here is NOT the fix for that ring: it would bind both sub-layers again and
+ * restore the double event this selector exists to prevent. The only other option is to bind
+ * wide and deduplicate per gesture on `originalEvent`, which costs shared state — not worth it
+ * for a diagonal sliver.
  */
 function _interactionSubLayerIds(subLayerIds: string[]): string[] {
     const fills = subLayerIds.filter((id) => id.endsWith("-fill"));
@@ -77,7 +97,11 @@ export function bindFeatureInteractionEvents(
     const zIndex = typeof def.zIndex === "number" ? def.zIndex : 0;
 
     // ── Click → geoleaf:feature:click ──
-    for (const subId of subLayerIds) {
+    // Same selector as hover below: a gesture on ONE feature must emit ONE event, however many
+    // sub-layers render it. Binding every sub-layer emitted 2 events on an icon point, 2 on a
+    // cased line, 3 on a cased polygon and 4 on a vector tile — see `_interactionSubLayerIds`.
+    const clickIds = _interactionSubLayerIds(subLayerIds);
+    for (const subId of clickIds) {
         if (!nativeMap.getLayer(subId)) continue;
         const onClick = (e: MapInteractionEvent) => {
             const hit = e.features?.[0];

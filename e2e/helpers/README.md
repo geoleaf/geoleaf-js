@@ -203,6 +203,34 @@ Mesure **LCP / INP / CLS** dans la spec 06 via la librairie [`web-vitals`](https
 
 > **Budget sourcemaps (`npm run size`, hors e2e).** En parallèle du Sprint 4, `scripts/check-bundle-size.cjs` suit désormais la taille des `.map` du core (entry + `dist/chunks/*.map`) — **warn soft uniquement** (publiées npm mais non chargées au boot), jamais de hard-fail. Détail dans l'en-tête du script.
 
+### `touch.js` — gestes tactiles (14/08/2026)
+
+Réservé au projet **`chromium-touch`** de `playwright.config.js` : le renderer n'accepte l'entrée
+tactile qu'après le `Emulation.setTouchEmulationEnabled` que Playwright émet sous `hasTouch: true`.
+
+| Fonction                                    | Rôle                                                                                                |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `touchDrag(page, from, to, {steps})`        | Presse, glisse en `steps` points (12 par défaut), relâche. Coordonnées en px CSS du viewport.       |
+| `touchDragInspect(page, from, to, inspect)` | Idem, mais exécute `inspect()` **avant le relâchement** — pour ce qui n'existe qu'en cours de geste |
+
+> 🛑 **Pourquoi CDP et pas `page.dispatchEvent` / `new TouchEvent()`.** Ces deux-là construisent
+> l'événement _dans la page_ : `isTrusted: false`, et surtout le navigateur n'en dérive **aucun**
+> `pointer*`. Un moteur de dessin qui n'écoute que les Pointer Events — Terra Draw, par exemple —
+> ne les voit pas du tout : on testerait sa propre dispatch, pas l'interaction.
+> `Input.dispatchTouchEvent` n'est pas un contournement, c'est **l'appel que Playwright fait
+> lui-même** pour `touchscreen.tap()` ; un glissement, c'est le même appel avec des `touchMove` au
+> milieu, donc l'entrée traverse le vrai pipeline (hit-testing, reconnaissance de geste, événements
+> dérivés).
+
+> ⚠️ **`page.touchscreen` n'a que `tap(x, y)`** — pas de drag, pas de swipe. C'est une limite de
+> l'API, pas un oubli : son propre docblock renvoie à la dispatch manuelle pour les autres gestes.
+
+Deux détails qui décident du résultat : le **même `id` de point** sur `touchStart` et tous les
+`touchMove` (sinon Chromium y voit des pressions distinctes au lieu d'une source tactile), et un
+`touchEnd` **sans aucun point** (le protocole l'exige). Un tick `requestAnimationFrame` sépare les
+moves — MapLibre agrège l'entrée par frame, et empiler douze `send()` d'affilée charge un thread
+principal qui est déjà le goulot de cette suite.
+
 ### Coût de rebuild au changement de fond (bloc 6.2.8, F-RENDER-1) — RETIRÉ
 
 Bloc supprimé par **RM-P1b(c)** : le rebuild instrumenté qu'il mesurait n'existe plus. Le switch de fond passe désormais par `transformStyle` (MapLibre v5), qui préserve nativement les sources/couches GeoLeaf — plus de teardown `map.setStyle()`, plus de mesure `geoleaf:basemap-rebuild`. La décision GO/NO-GO F-RENDER-1 (gain perf marginal) est close ; le levier retenu est la **correction / anti-fuite**, pas la perf.

@@ -177,18 +177,18 @@ conn.destroy(); // Retire les intercepteurs fetch
 
 ## Événements DOM
 
-| Événement                   | Détail               | Déclenché quand                |
-| --------------------------- | -------------------- | ------------------------------ |
-| `connector:authenticated`   | `{ baseUrl }`        | Login modal réussi             |
-| `connector:token-refreshed` | `{ baseUrl }`        | Refresh automatique JWT        |
-| `connector:auth-error`      | `{ baseUrl, error }` | 401 après tentative de refresh |
+| Événement                           | Détail               | Déclenché quand                |
+| ----------------------------------- | -------------------- | ------------------------------ |
+| `geoleaf:connector:authenticated`   | `{ baseUrl }`        | Login modal réussi             |
+| `geoleaf:connector:token-refreshed` | `{ baseUrl }`        | Refresh automatique JWT        |
+| `geoleaf:connector:auth-error`      | `{ baseUrl, error }` | 401 après tentative de refresh |
 
 ```js
-document.addEventListener("connector:authenticated", (e) => {
+document.addEventListener("geoleaf:connector:authenticated", (e) => {
     console.log("Authentifié sur", e.detail.baseUrl);
 });
 
-document.addEventListener("connector:auth-error", (e) => {
+document.addEventListener("geoleaf:connector:auth-error", (e) => {
     console.error("Échec auth", e.detail.error);
     // Rediriger vers la page de connexion
 });

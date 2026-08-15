@@ -107,7 +107,15 @@ export function handleClick(detail: GeoLeafFeatureClickDetail, layout?: SidePane
     const node = buildPopupContent(
         fields,
         detail.properties,
-        { layerId: detail.layerId, featureId: detail.featureId, lngLat: detail.lngLat },
+        {
+            layerId: detail.layerId,
+            featureId: detail.featureId,
+            lngLat: detail.lngLat,
+            // Closes THIS surface, not both — `FeatureInfo.close()` would also close the side
+            // panel and emit a `geoleaf:poi:panel:close` nobody performed. Passed as a value
+            // rather than imported by the renderer, which would close a cycle.
+            onClose: closePopup,
+        },
         {
             hasSidepanel,
         }

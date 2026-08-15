@@ -427,6 +427,46 @@
     user-select: none;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
     box-sizing: border-box;
+    /* ⚠️ Sans ceci, un glissement vertical au doigt est revendiqué par le navigateur comme
+       un défilement, qui ANNULE le geste (`pointercancel`) au lieu de déplacer la bulle.
+       MapLibre ne pose `touch-action` que sur `.maplibregl-canvas-container` ; ces overlays
+       vivent sur `.maplibregl-map`, qui n'en a aucun. */
+    touch-action: none;
+}
+
+/* Bouton × de suppression. Le statique vit ICI, et pas dans un `cssText` en ligne : le
+   style en ligne bat toute règle non-`!important`, donc tant que `display:none` y était,
+   AUCUNE media query ne pouvait agir. Seul le `display` reste écrit en JS. */
+.gl-measure-annot-del {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--gl-color-border-soft, #ccc);
+    background: var(--gl-color-bg-surface, #fff);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+/* 18×18 px est sous toute recommandation de cible tactile. Au doigt, la suppression
+   s'atteint par un tap (qui ouvre l'édition et révèle le bouton) puis un tap dessus —
+   encore faut-il pouvoir le viser. */
+@media (hover: none), (pointer: coarse) {
+    .gl-measure-annot-del {
+        width: 28px;
+        height: 28px;
+        top: -14px;
+        right: -14px;
+        font-size: 16px;
+    }
 }
 
 .gl-measure-annot-tooltip.is-editing {

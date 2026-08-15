@@ -352,8 +352,17 @@ const IDENTIFIER_RE = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 // échelle, le trou que ce gate est censé fermer.
 //
 // `storage-contract.ts` et `geoleaf:popup:action` ne sont PAS ici : le scope
-// repo-wide les trouve vivants via les plugins. Les y ajouter à l'aveugle
-// masquerait une vraie régression.
+// repo-wide les trouve vivants. Les y ajouter à l'aveugle masquerait une vraie
+// régression.
+//
+// ⚠️ Ce commentaire disait « vivants via les PLUGINS », et c'était faux pour la
+// seconde depuis sa naissance : l'unique émetteur de `geoleaf:popup:action` est
+// dans le CORE (`capabilities/feature-info/render/widget-dispatch.ts`), posé par
+// B-69 le 29/07/2026 — aucun plugin ne l'émet ni ne l'écoute. Le backlog notait
+// la contradiction comme « prémisse à re-mesurer » ; mesurée le 14/08/2026, c'est
+// le commentaire qui avait tort. La CONCLUSION (ne pas exempter) reste juste, et
+// c'est précisément ce qui l'a fait survivre : un motif faux sous une décision
+// juste ne se fait jamais contredire par une gate.
 const ALLOWLIST = {
     // ── Un seam de GATE : exporté pour être confronté, pas pour être appelé ────
     //

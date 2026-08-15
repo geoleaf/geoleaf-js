@@ -87,9 +87,9 @@ The form is a **projection** of `attributes.fields[]`: a field is captured when 
 capture and display genuinely differ — a `badge` read as a coloured pill but captured as a
 `dropdown`, say.
 
-> [!IMPORTANT]
-> Declaring `edit` on any field obliges the layer to declare both `edition.update: true` and a
-> `write` target — rule A14, enforced by `npm run validate:profiles`.
+> **Important** — Declaring `edit` on any field obliges the layer to declare both
+> `edition.update: true` and a `write` target. This is rule A14 of profile validation: a profile
+> that declares one without the others is rejected.
 
 ---
 
@@ -231,10 +231,9 @@ Six languages bundled (FR/EN/ES/PT/IT/DE) via `GeoLeaf.I18n`. Unknown locales fa
 | `modules.addpoi.defaultPosition`          | `modules.editor.poiAddDefaultPosition`    |
 | `ui.showPoiExport`                        | `modules.editor.showExport`               |
 
-> [!WARNING]
-> The two `ui.showPoi*` flags are **not** carried over under those names: neither was declared in
-> any profile schema, and `ui.schema.json` is `additionalProperties: false`, so writing them fails
-> profile validation. Their replacements live under `modules.editor.*` and are declared.
+> **Warning** — The two `ui.showPoi*` flags are **not** carried over under those names: neither was
+> declared in any profile schema, and `ui.schema.json` is `additionalProperties: false`, so writing
+> them fails profile validation. Their replacements live under `modules.editor.*` and are declared.
 >
 > `ui.showAddPoi` was read by the **core**, which drew the button itself. It now belongs to the
 > plugin: the button is a lazy toolbar slot, declared by the host app before the bundle loads.
@@ -248,8 +247,9 @@ The plugin renders user data via `textContent` / DOM APIs (no `innerHTML` with u
 - Re-validate uploaded file MIME type, size and content (reject polyglot/EXIF-injected files; prevent path traversal).
 - Serve the host page with a Content-Security-Policy, e.g. `default-src 'self'; script-src 'self'; img-src 'self' data: https:;`.
 
-Further security guidance: [`@geoleaf/core` → `docs/SECURITY.md`](../../core/docs/SECURITY.md), and
-the repository policy in [`.github/SECURITY.md`](../../../.github/SECURITY.md).
+Further security guidance: [Security](https://www.geoleaf.dev/docs/SECURITY.html), and the
+repository policy in
+[`.github/SECURITY.md`](https://github.com/geoleaf/geoleaf-js/blob/main/.github/SECURITY.md).
 
 ---
 

@@ -293,6 +293,49 @@ describe("layer-manager", () => {
 
         // ── _mergeSection — collapsedByDefault ───────────────────────────────
 
+        // B-251 — l'ordre RÉEL du runtime : les couches s'enregistrent (créant leur
+        // section implicite) AVANT que init() ne replie la config. Les tests de
+        // `_applyLayerManagerConfig` partent tous d'options vides, soit le chemin
+        // qui ne se produit jamais dans l'app — c'est ce trou qui a laissé passer
+        // la perte des libellés, de l'ordre et des accordéons.
+        it("B-251 — une section créée par _registerGeoJsonLayer adopte libellé/ordre/accordéon de la config", () => {
+            setupL();
+            const LM = getLM();
+            LM._options = { sections: [] };
+            LM._updateContent = vi.fn();
+            LM._registerGeoJsonLayer("lyr-1", {
+                layerManagerId: "data-tourism",
+                label: "Couche 1",
+            });
+            const implicit = LM._options.sections.find((s) => s.id === "data-tourism");
+            expect(implicit.collapsedByDefault).toBeUndefined(); // pas encore un accordéon
+            expect(implicit.order).toBe(10); // ordre en dur de la création implicite
+
+            globalThis.GeoLeaf.Config = {
+                get: vi.fn((k) =>
+                    k === "layerManagerConfig"
+                        ? {
+                              sections: [
+                                  {
+                                      id: "data-tourism",
+                                      label: "Données touristiques",
+                                      order: 1,
+                                      collapsedByDefault: false,
+                                  },
+                              ],
+                          }
+                        : null
+                ),
+            };
+            LM._loadConfigSections();
+
+            const merged = LM._options.sections.find((s) => s.id === "data-tourism");
+            expect(merged.label).toBe("Données touristiques");
+            expect(merged.order).toBe(1);
+            expect(merged.collapsedByDefault).toBe(false);
+            expect(merged.items).toHaveLength(1); // la couche enregistrée survit
+        });
+
         // ── toggleCollapse ───────────────────────────────────────────────────
 
         // ── _updateContent ───────────────────────────────────────────────────

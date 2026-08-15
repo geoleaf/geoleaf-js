@@ -67,6 +67,27 @@ class APIController {
                 throw new Error("Module access setup failed");
             }
 
+            // Hand module access to the factory. It has to happen HERE and not in
+            // `_initializeManagers()`: `moduleAccessFn` does not exist until
+            // `_setupModuleAccess()` has run. Without this call the factory keeps
+            // `getModule === null` — which is what it did until S6.3, so its accessors
+            // now read `Core` through a function nobody had ever given it.
+            //
+            // Guarded, and not out of politeness: the manager classes are resolved by
+            // NAME off `GeoLeaf.API` (`_getManagerClass`), so what lands here is
+            // whatever the namespace holds. A factory predating this call must not take
+            // the whole controller — hence the whole public API — down with it.
+            const access = this.moduleAccessFn;
+            if (access && typeof this.managers.factory?.init === "function") {
+                this.managers.factory.init(access);
+            } else if (this.managers.factory) {
+                if (Log)
+                    Log.warn(
+                        "[APIController] factory manager has no init() — it will run without " +
+                            "module access, and GeoLeaf.getMap/getAllMaps will read nothing"
+                    );
+            }
+
             // Validate the final state
             this._validateInitialization();
 
@@ -133,8 +154,7 @@ class APIController {
 
         const className = classNames[type];
         const api = getGeoLeaf()?.API as
-            | Record<string, (new () => unknown) | undefined>
-            | undefined;
+            Record<string, (new () => unknown) | undefined> | undefined;
         return api && api[className] ? (api[className] as new () => unknown) : null;
     }
 

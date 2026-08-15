@@ -31,7 +31,7 @@ export function setSelection(ids: unknown[], add = false): void {
         tableState._selectedIds.clear();
     }
     ids.forEach((id: unknown) => tableState._selectedIds.add(String(id)));
-    fireEvent("table:selectionChanged", {
+    fireEvent("geoleaf:table:selectionChanged", {
         layerId: tableState._currentLayerId,
         selectedIds: Array.from(tableState._selectedIds),
     });
@@ -44,7 +44,7 @@ export function setSelection(ids: unknown[], add = false): void {
 /** Clears the entire selection. */
 export function clearSelection(): void {
     tableState._selectedIds.clear();
-    fireEvent("table:selectionChanged", {
+    fireEvent("geoleaf:table:selectionChanged", {
         layerId: tableState._currentLayerId,
         selectedIds: [],
     });
@@ -87,7 +87,7 @@ export function zoomToSelection(): void {
         if (map && typeof map.fitBounds === "function") {
             map.fitBounds({ north, south, east, west }, { padding: { x: 50, y: 50 } });
         }
-        fireEvent("table:zoomToSelection", {
+        fireEvent("geoleaf:table:zoomToSelection", {
             layerId: tableState._currentLayerId,
             selectedIds: Array.from(tableState._selectedIds),
         });
@@ -150,7 +150,7 @@ export function exportSelection(format: ExportFormat = "geojson", options?: Expo
         Log.error("[Table] Error during export:", e);
     });
     Log.info("[Table] Export (" + format + "):", selectedFeatures.length, "entities");
-    fireEvent("table:exportSelection", {
+    fireEvent("geoleaf:table:exportSelection", {
         layerId,
         format,
         selectedIds: Array.from(tableState._selectedIds),
@@ -174,5 +174,5 @@ export function exportLayerAll(format: ExportFormat = "geojson", options?: Expor
         Log.error("[Table] Error during layer export:", e);
     });
     Log.info("[Table] Layer export (" + format + "):", features.length, "features");
-    fireEvent("table:exportLayer", { layerId, format, count: features.length });
+    fireEvent("geoleaf:table:exportLayer", { layerId, format, count: features.length });
 }

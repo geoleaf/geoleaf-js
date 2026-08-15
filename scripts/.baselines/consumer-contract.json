@@ -1,13 +1,15 @@
 {
-    "_comment": "Contrat inverse S1.8 — les TROIS listes NÉGATIVES du manifeste de consommation. Elles ne peuvent que RÉTRÉCIR (CC-04 entrant, CC-05 sortant). Ajouter une entrée à la main ici est le geste qui désarme la gate : une entrée n'en sort que quand le défaut qu'elle nomme est réparé. Régénérer AVEC --update-baseline, et jamais pour faire passer un rouge.",
+    "_comment": "Contrat inverse — S1.8 pour les TROIS listes NÉGATIVES (`lists`, cliquets CC-04 entrant / CC-05 sortant : elles ne peuvent que RÉTRÉCIR) et S7.4 pour les DEUX listes POSITIVES (`positives`, cliquet CC-10 : `required.public` et `required.events` ne peuvent pas rétrécir sans annonce). ⚠️ Les deux moitiés se désarment DIFFÉREMMENT. Une négative se désarme en ajoutant une ligne à la main — une entrée n'en sort que quand le défaut qu'elle nomme est réparé. Une positive se désarme en RÉGÉNÉRANT après un retrait, ce qui fait passer une disparition pour un état de fait. C'est pourquoi `--update-baseline` REFUSE (exit 2 / CC-10) d'enregistrer une sortie que rien ne justifie : sur cette moitié-là, l'avertissement n'est plus en prose.",
     "_generated": "GEOLEAF_CONSUMERS=<dir> node scripts/verify-consumer-contract.cjs --update-baseline",
     "_consumer": "odoo-geoleaf",
-    "_manifest_version": "1.4.0",
+    "_manifest_version": "1.10.0",
+    "_manifest_sha": "dde4397b8edc",
     "lists": {
         "private_tolerated": [
             "_GeoJSONLayerConfig",
             "_GeoJSONLayerManager",
             "_GeoJSONLoader._loadSingleLayer",
+            "_GeoJSONLoader.loadAllLayersConfigsForLayerManager",
             "_LabelButtonManager.syncImmediate",
             "_LayerVisibilityManager",
             "_app.initApp"
@@ -15,23 +17,246 @@
         "requested": [
             "Capabilities.declareUnavailable",
             "Capabilities.onUnavailable",
-            "Core.isAttached",
-            "Core.reattach",
-            "Layers.setPopupBinding",
-            "UI.closePanel",
-            "UI.dispatchToolbarAction",
-            "UI.getOpenPanel",
-            "UI.openPanel"
+            "Layers.setPopupBinding"
         ],
         "broken_since_v3": [
             "GeoJSON.addData",
+            "POI.Config.init",
+            "POI.Markers.ensureProfileSpriteInjectedSync",
             "POI.showPoiDetails",
             "Popup.registerActionHandler",
-            "ThemeSelector.getActiveTheme",
+            "Popup.unregisterActionHandler",
             "_ConfigTaxonomy",
             "_GeoJSONPopupTooltip",
             "_GeoJSONShared",
-            "_ThemeLoader"
+            "_GeoJSONShared.state",
+            "_ThemeLoader",
+            "_ThemeLoader._validateConfig",
+            "_ThemeLoader.loadThemesConfig"
         ]
+    },
+    "positives": {
+        "odoo-geoleaf": {
+            "public": [
+                {
+                    "path": "Baselayers.getActiveKey",
+                    "provider": "core"
+                },
+                {
+                    "path": "Baselayers.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "Baselayers.setBaseLayer",
+                    "provider": "core"
+                },
+                {
+                    "path": "Config.clearThemesCache",
+                    "provider": "core"
+                },
+                {
+                    "path": "Config.getActiveProfile",
+                    "provider": "core"
+                },
+                {
+                    "path": "Config.getActiveProfileId",
+                    "provider": "core"
+                },
+                {
+                    "path": "Config.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "Core.getMap",
+                    "provider": "core"
+                },
+                {
+                    "path": "Core.isAttached",
+                    "provider": "core"
+                },
+                {
+                    "path": "Core.reattach",
+                    "provider": "core"
+                },
+                {
+                    "path": "FeatureInfo.openSidePanel",
+                    "provider": "core"
+                },
+                {
+                    "path": "GeoJSON.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "GeoJSON.removeLayer",
+                    "provider": "core"
+                },
+                {
+                    "path": "GeoJSON.updateLayerData",
+                    "provider": "core"
+                },
+                {
+                    "path": "Introspection.getCapabilityStatus",
+                    "provider": "core"
+                },
+                {
+                    "path": "Labels.areLabelsEnabled",
+                    "provider": "core"
+                },
+                {
+                    "path": "Labels.initializeLayerLabels",
+                    "provider": "core"
+                },
+                {
+                    "path": "Labels.refreshLabels",
+                    "provider": "core"
+                },
+                {
+                    "path": "Labels.toggleLabels",
+                    "provider": "core"
+                },
+                {
+                    "path": "LayerManager.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.hasLayer",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.listLayerIds",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.mergeFeatures",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.patchFeature",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.setData",
+                    "provider": "core"
+                },
+                {
+                    "path": "Layers.setVisibleSubset",
+                    "provider": "core"
+                },
+                {
+                    "path": "Legend.getAllLayers",
+                    "provider": "core"
+                },
+                {
+                    "path": "Legend.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "Measure.getPrintableAnnotations",
+                    "provider": "plugin:measure"
+                },
+                {
+                    "path": "Storage",
+                    "provider": "core"
+                },
+                {
+                    "path": "ThemeSelector.getCurrentTheme",
+                    "provider": "core"
+                },
+                {
+                    "path": "ThemeSelector.init",
+                    "provider": "core"
+                },
+                {
+                    "path": "ThemeSelector.setTheme",
+                    "provider": "core"
+                },
+                {
+                    "path": "UI.closePanel",
+                    "provider": "core"
+                },
+                {
+                    "path": "UI.getOpenPanel",
+                    "provider": "core"
+                },
+                {
+                    "path": "UI.openPanel",
+                    "provider": "core"
+                },
+                {
+                    "path": "Utils.validateUrl",
+                    "provider": "core"
+                },
+                {
+                    "path": "Ws",
+                    "provider": "plugin:websocket"
+                },
+                {
+                    "path": "boot",
+                    "provider": "core"
+                },
+                {
+                    "path": "events.off",
+                    "provider": "core"
+                },
+                {
+                    "path": "events.on",
+                    "provider": "core"
+                },
+                {
+                    "path": "init",
+                    "provider": "core"
+                },
+                {
+                    "path": "loadConfig",
+                    "provider": "core"
+                },
+                {
+                    "path": "plugins.isLoaded",
+                    "provider": "core"
+                },
+                {
+                    "path": "plugins.register",
+                    "provider": "core"
+                }
+            ],
+            "events": [
+                {
+                    "path": "geoleaf:app:ready",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:basemap:change",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:geojson:visibility-changed",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:map:ready",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:popup:action",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:table:closed",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:table:opened",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:theme:applied",
+                    "provider": "core"
+                },
+                {
+                    "path": "geoleaf:toolbar:action",
+                    "provider": "core"
+                }
+            ]
+        }
     }
 }

@@ -39,6 +39,8 @@ function createMockMap() {
     const _layers = {};
     const _controls = [];
     const _images = {};
+    /** The map's one and only canvas — see `getCanvas` below for why it must be stable. */
+    const _canvas = { style: { cursor: "" } };
 
     const map = {
         // View / Navigation
@@ -135,9 +137,11 @@ function createMockMap() {
 
         // Container
         getContainer: vi.fn(() => document.createElement("div")),
-        getCanvas: vi.fn(() => ({
-            style: { cursor: "" },
-        })),
+        // ⚠️ STABLE, like the real one. This used to build a fresh object on every call, which
+        // made the whole "someone overwrote the cursor" class of defects structurally
+        // invisible: each reader saw its own pristine object, so no test could ever observe a
+        // clobber. `getCanvas()` returns the same canvas for a map's whole lifetime.
+        getCanvas: vi.fn(() => _canvas),
 
         // Images (sprite icons)
         addImage: vi.fn((name, image) => {

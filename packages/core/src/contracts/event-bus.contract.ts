@@ -32,6 +32,21 @@ export interface GeoLeafPoiPanelCloseDetail {
     poiId: string;
 }
 
+/**
+ * Detail payload for `geoleaf:panel:opened` and `geoleaf:panel:closed`.
+ *
+ * 🛑 **Ce n'est PAS le même panneau que `geoleaf:poi:panel:*` ci-dessus, et les deux paires
+ * se ressemblent assez pour être confondues.** Celle-ci décrit le **panneau latéral à
+ * onglets** du bureau (`kernel/ui/desktop/desktop-panel.ts` — couches, filtres, thèmes) ;
+ * celle-là décrit le panneau d'**information d'une entité**, ouvert par un clic sur un POI.
+ * L'une est identifiée par un onglet, l'autre par un POI — d'où deux charges distinctes
+ * plutôt qu'une charge commune qui aurait rendu l'amalgame indolore.
+ */
+export interface GeoLeafPanelToggleDetail {
+    /** Identifiant de l'onglet — `"layers"`, `"filter"`, `"themes"`… selon le profil. */
+    tabId: string;
+}
+
 /** Detail payload for `geoleaf:layer:toggle` */
 export interface GeoLeafLayerToggleDetail {
     layerId: string;
@@ -336,8 +351,39 @@ export interface GeoLeafCacheEvictedDetail {
 /**
  * Detail payload for `geoleaf:popup:action`.
  *
- * Dispatched (fire-and-forget) when a user clicks a popup action button
- * (`type: "action"` in `popup.fields`). Listen via `GeoLeaf.events.on("geoleaf:popup:action", …)`.
+ * Dispatched when a user clicks a popup or side-panel action button (`type: "action"` in
+ * `popup.fields`). Listen via `GeoLeaf.events.on("geoleaf:popup:action", …)`.
+ *
+ * ## The payload is NOT JSON — and that is the point
+ *
+ * Five fields are plain data; `button`, `setBusy` and `close` are a live DOM node and two
+ * closures. The key therefore lives in {@link GeoLeafRawEventMap}, not in the sanitising bus,
+ * which would have delivered them as `{}` and `undefined` **without any error**.
+ *
+ * ⚠️ **Consequence for subscribers, and it is the only breaking part of this change:**
+ * `JSON.stringify(e.detail)` now **throws** (circular DOM reference), and passing the detail to
+ * `postMessage` / a `Worker` throws `DataCloneError`. Copy the fields you need instead:
+ * `const { actionId, layerId, featureId, properties } = e.detail;`
+ *
+ * ## Attack surface, stated rather than implied
+ *
+ * This is a `document` event: any script on the page can hear it, and therefore any script can
+ * now call `close()` or `setBusy()` on the popup. That is a real widening — and an acceptable
+ * one, because the same script can already do
+ * `document.querySelector(".gl-poi-popup__action").click()`. The confidentiality rule on
+ * `properties` below is what actually guards this channel, and it is unchanged.
+ *
+ * @example Handle an action, showing progress and closing on success. Subscribe with
+ * `GeoLeaf.Events.on("geoleaf:popup:action", (e) => onPopupAction(e.detail))`.
+ * ```ts
+ * function onPopupAction(d: GeoLeafPopupActionDetail): void {
+ *     if (d.actionId !== "odoo:create-request") return;
+ *     d.setBusy(true);
+ *     void createRequest(d.featureId)
+ *         .then(() => d.close())
+ *         .finally(() => d.setBusy(false));
+ * }
+ * ```
  */
 export interface GeoLeafPopupActionDetail {
     /** Opaque action identifier from the button config. */
@@ -346,10 +392,189 @@ export interface GeoLeafPopupActionDetail {
     layerId: string;
     /** Feature/POI identifier (null when the source has no stable id). */
     featureId: string | number | null;
-    /** Whitelisted subset of feature properties (per `payloadFields`). */
+    /**
+     * Whitelisted subset of feature properties, per the `payloadFields` option of the button.
+     *
+     * ⚠️ **Without `payloadFields`, this is `{}`** — the default goes to confidentiality, not
+     * convenience, because this is a document event any script on the page can hear. There is
+     * no "send everything" mode, and adding one is not a configuration gap.
+     */
     properties: Record<string, unknown>;
     /** Geographic position of the popup, when available. */
     lngLat?: { lat: number; lng: number };
+    /**
+     * The button that was clicked, for host-owned visual state.
+     *
+     * Live node, not a copy: mutating it mutates what the user sees. Prefer {@link setBusy} for
+     * the pending state — it keeps the busy convention in one place.
+     */
+    button: HTMLElement;
+    /**
+     * Toggles the button's pending state: `disabled`, `aria-busy`, and the
+     * `gl-poi-popup__action--busy` modifier.
+     *
+     * Safe to call after the surface has closed — it writes to a detached node, which is inert.
+     * That is why a `.finally(() => d.setBusy(false))` needs no guard.
+     *
+     * @param busy - `true` to enter the pending state, `false` to leave it.
+     */
+    setBusy(busy: boolean): void;
+    /**
+     * Closes the surface the button was rendered in — the popup **or** the side panel, never
+     * both.
+     *
+     * ⚠️ This is deliberately narrower than `GeoLeaf.FeatureInfo.close()`, which closes both
+     * surfaces unconditionally and emits `geoleaf:poi:panel:close` as it goes. A popup button
+     * calling that would have closed an unrelated side panel and announced a panel close nobody
+     * performed.
+     *
+     * Idempotent: closing an already-closed surface does nothing.
+     */
+    close(): void;
+}
+
+// ── Table seam (plugin-emitted, Sprint 4 du contrat inverse) ─────────────────
+//
+// Même arbitrage d'export que le seam éditeur ci-dessus : ces formes ne sont PAS exportées.
+// Le plugin les atteint par `GeoLeafEventMap[K]` — son `fireEvent` est générique sur la map,
+// donc chaque site d'émission est vérifié contre elle — et un intégrateur en fait autant.
+//
+// 🛑 **Ces neuf noms sont un cas à part dans ce fichier, et il faut le savoir pour les lire.**
+// Jusqu'au 13/08/2026 ils étaient INVISIBLES à toutes les gates d'événements du dépôt :
+// `fireEvent` composait le nom à l'exécution (`map.fire("geoleaf:" + eventName)`), donc aucun
+// littéral complet n'existait en source, donc `EVENT-MAP` ne pouvait rien exiger et
+// `CONSUMER-CONTRACT` devait les déclarer hors de portée de la mesure. Deux d'entre eux
+// (`opened`, `closed`) ont même été classés « cassés » dans le manifeste aval sur la foi de
+// cette cécité, alors qu'ils étaient émis ET écoutés. Le typage ci-dessous n'est donc pas
+// l'objet du geste : il en est la CONSÉQUENCE. L'objet était de rendre la gate voyante.
+//
+// ⚠️ **Les neuf partent sur les DEUX bus** — `document.dispatchEvent` ET `map.fire`
+// (`plugins/table/src/table-state.ts`). Un abonné doit en choisir un ; s'abonner aux deux
+// livre chaque événement en double. C'est écrit sur chaque clé, parce que c'est le piège que
+// l'intégrateur rencontrera, pas celui que le mainteneur rencontre.
+
+/** Vue structurelle minimale d'une entité telle que le plugin `table` la transporte. */
+interface GeoLeafTableFeature {
+    id?: string | number;
+    properties?: Record<string, unknown>;
+    [key: string]: unknown;
+}
+
+/**
+ * Formats d'export du plugin `table`.
+ *
+ * ⚠️ Miroir structurel de son `ExportFormat` (`plugins/table/src/export.ts`), pas un import :
+ * `packages/core/src/` ne référence jamais `@geoleaf-plugins/*`. Le miroir ne peut pas dériver
+ * en silence — le plugin émet contre `GeoLeafEventMap[K]`, donc un format ajouté là-bas sans
+ * l'être ici ne compile pas.
+ */
+type GeoLeafTableExportFormat = "geojson" | "csv" | "kml" | "gpx" | "excel";
+
+/** Detail payload for `geoleaf:table:layerChanged`. `null` = plus aucune couche affichée. */
+interface GeoLeafTableLayerChangedDetail {
+    layerId: string | null;
+}
+
+/**
+ * Detail payload for `geoleaf:table:sortChanged`.
+ *
+ * ⚠️ `direction` est `string | null` et non `"asc" | "desc" | null` : le `SortState` du plugin
+ * la déclare ainsi, et la charge est émise telle quelle. Resserrer ici mentirait sur ce qui
+ * arrive réellement à l'abonné — `defaultSort.order` d'un profil y verse une valeur non
+ * validée. Le resserrement est un geste de plugin, à faire là-bas d'abord.
+ */
+interface GeoLeafTableSortChangedDetail {
+    field: string | null;
+    direction: string | null;
+}
+
+/** Detail payload for `geoleaf:table:selectionChanged` et `geoleaf:table:zoomToSelection`. */
+interface GeoLeafTableSelectionDetail {
+    layerId: string | null;
+    selectedIds: string[];
+}
+
+/** Detail payload for `geoleaf:table:highlightSelection`. */
+interface GeoLeafTableHighlightDetail {
+    layerId: string | null;
+    selectedIds: string[];
+    /** `false` = la surbrillance vient d'être retirée. */
+    active: boolean;
+}
+
+/** Detail payload for `geoleaf:table:exportSelection`. */
+interface GeoLeafTableExportSelectionDetail {
+    /** `""` quand aucune couche n'est courante — le plugin replie sur la chaîne vide. */
+    layerId: string;
+    format: GeoLeafTableExportFormat;
+    selectedIds: string[];
+    /** Les entités exportées, telles qu'elles partent au téléchargement. */
+    rows: GeoLeafTableFeature[];
+}
+
+/** Detail payload for `geoleaf:table:exportLayer`. */
+interface GeoLeafTableExportLayerDetail {
+    layerId: string;
+    format: GeoLeafTableExportFormat;
+    /** Nombre d'entités exportées — la couche entière, pas la sélection. */
+    count: number;
+}
+
+// ── Connector seam (plugin-emitted, Sprint 4 du contrat inverse) ─────────────
+//
+// Même arbitrage d'export que les seams `editor` et `table` : formes non exportées, atteintes
+// par `GeoLeafEventMap[K]`.
+//
+// 🛑 **Ces six noms ont vécu HORS du domaine de nommage jusqu'au 13/08/2026** — ils
+// s'appelaient `connector:*`, sans le préfixe `geoleaf:`. Le relevé d'événements du dépôt est
+// ancré sur `^geoleaf:`, donc les six étaient **structurellement invisibles** à EM-01 : pas
+// une exemption qu'on aurait accordée, une cécité que personne n'avait choisie (B-207). Les
+// préfixer les a fait entrer dans le champ de mesure, et EM-01 les a réclamés tous les six du
+// même coup — ce qui est la seule démonstration possible que la cécité était réelle.
+//
+// ⚠️ **Ils ne transitent PAS par `dispatchGeoLeafEvent`**, et deux d'entre eux ne le peuvent
+// pas : `signup-requested` et `forgot-password-requested` sont `cancelable`, leurs émetteurs
+// lisent le retour de `dispatchEvent` pour appeler `preventDefault()` sur le lien. Le bus
+// assaini construit ses événements sans `cancelable` et rend `void` — les y faire passer
+// tuerait l'annulation en silence. Ils gardent donc un `CustomEvent` brut, et ce contrat les
+// type sans prétendre les porter (cf. l'avertissement de `GeoLeafEventMap` : ce qui décide de
+// l'appartenance est la CHARGE, pas le transporteur).
+//
+// ⚠️ **Le namespace `geoleaf:connector:*` est désormais PARTAGÉ.** Le consommateur aval
+// maintient un plugin propriétaire qui émet six autres noms sous ce même préfixe (`ready`,
+// `bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`, `auth-required`). Vérifié le
+// 13/08/2026 : aucun recouvrement avec les six ci-dessous. Mais rien, d'aucun côté, n'empêche
+// une collision future — un nom ajouté ici doit être confronté à cette liste.
+
+/** Detail payload for `geoleaf:connector:token-refreshed` et `:authenticated`. */
+interface GeoLeafConnectorBaseUrlDetail {
+    /** Racine du backend concerné — plusieurs connecteurs peuvent coexister. */
+    baseUrl: string;
+}
+
+/** Detail payload for `geoleaf:connector:auth-error`. */
+interface GeoLeafConnectorAuthErrorDetail {
+    baseUrl: string;
+    /** Message d'erreur, déjà aplati en chaîne par l'émetteur. */
+    error: string;
+}
+
+/** Detail payload for `geoleaf:connector:credential-button-clicked`. */
+interface GeoLeafConnectorCredentialClickDetail {
+    baseUrl: string;
+    /** État au moment du clic — `true` = un jeton valide était déjà présent. */
+    authenticated: boolean;
+}
+
+/**
+ * Detail payload for `geoleaf:connector:signup-requested` et `:forgot-password-requested`.
+ *
+ * ⚠️ Ces deux événements sont **annulables** : `preventDefault()` sur eux empêche la
+ * navigation vers `url`, ce qui est le moyen prévu pour qu'un hôte ouvre sa propre page.
+ */
+interface GeoLeafConnectorLinkRequestDetail {
+    /** Cible configurée (`auth.signupUrl` / `auth.forgotPasswordUrl`). */
+    url: string;
 }
 
 // ── Event map ────────────────────────────────────────────────────────────────
@@ -394,7 +619,11 @@ export interface GeoLeafEventMap {
     "geoleaf:poi:click": GeoLeafPoiClickDetail;
     "geoleaf:poi:panel:open": GeoLeafPoiPanelOpenDetail;
     "geoleaf:poi:panel:close": GeoLeafPoiPanelCloseDetail;
-    "geoleaf:popup:action": GeoLeafPopupActionDetail;
+    // ⚠️ `geoleaf:popup:action` vivait ICI jusqu'au 14/08/2026. Il est passé dans
+    // {@link GeoLeafRawEventMap} quand son detail a reçu `button` / `setBusy` / `close` : la
+    // sanitisation les aurait rendus, respectivement, `{}` et `undefined`. Les ABONNÉS ne
+    // voient pas la différence (la façade `Events` accepte les clés des deux maps) ; ce qui
+    // change est que l'émettre par `dispatchGeoLeafEvent` est désormais type-illégal.
     "geoleaf:layer:toggle": GeoLeafLayerToggleDetail;
     "geoleaf:layer:added": GeoLeafLayerAddedDetail;
     "geoleaf:feature:click": GeoLeafFeatureClickDetail;
@@ -403,6 +632,42 @@ export interface GeoLeafEventMap {
     "geoleaf:filter:reset": GeoLeafFilterResetDetail;
     "geoleaf:map:move": GeoLeafMapMoveDetail;
     "geoleaf:map:zoom": GeoLeafMapZoomDetail;
+    /**
+     * Une couche a changé de visibilité — **forme HISTORIQUE**.
+     *
+     * ⚠️ **`geoleaf:layer:toggle` est l'événement CANONIQUE**, et il porte la même charge.
+     * Celui-ci lui préexiste, il a des abonnés internes (`permalink-sync.ts`, le plugin
+     * `table`) et un consommateur aval déclaré — il est donc typé pour ce qu'il est, pas
+     * promu. Un intégrateur qui écrit du neuf prend `geoleaf:layer:toggle`.
+     *
+     * 🛑 **Les deux bus ne portent pas la même chose, et c'est mesuré, pas supposé.**
+     * `visibility-manager.ts` émet sur la carte à CHAQUE changement, mais ne le redispatche
+     * sur `document` que si `source !== "zoom"` — filtre délibéré, pour ne pas noyer les
+     * abonnés pendant un recalcul de zoom. Un abonné via `Events.on` (donc `document`) ne
+     * verra donc **jamais** `source: "zoom"`, là où `map.on` le voit.
+     *
+     * Le type garde quand même l'union complète : elle est exacte sur la carte, et seulement
+     * trop large sur le document. L'inverse — resserrer à trois valeurs — deviendrait FAUX au
+     * premier assouplissement du filtre, et le ferait silencieusement, un `switch` exhaustif
+     * de l'intégrateur cessant de couvrir un cas qu'il reçoit.
+     */
+    "geoleaf:geojson:visibility-changed": GeoLeafLayerToggleDetail;
+    /**
+     * Le panneau latéral à onglets vient d'ouvrir un onglet.
+     *
+     * Émis par les DEUX chemins — le clic sur un onglet et l'appel programmatique
+     * `GeoLeaf.UI.openPanel(tabId)` —, parce qu'un événement qui ne décrirait que la voie
+     * programmatique serait un demi-contrat : l'utilisateur ouvre à la souris.
+     */
+    "geoleaf:panel:opened": GeoLeafPanelToggleDetail;
+    /**
+     * Le panneau latéral à onglets vient de fermer un onglet.
+     *
+     * ⚠️ **Un changement d'onglet rend `closed` PUIS `opened`**, dans cet ordre : l'ancien
+     * est bien fermé. Une ouverture alors que rien n'était ouvert ne rend qu'`opened` — il
+     * n'y a pas de `closed` à vide.
+     */
+    "geoleaf:panel:closed": GeoLeafPanelToggleDetail;
     // Filters (applied state change, no structured payload)
     "geoleaf:filters:applied": Record<string, never>;
     // Service worker
@@ -432,6 +697,31 @@ export interface GeoLeafEventMap {
     "geoleaf:editor:vertex-deleted": GeoLeafEditorVertexChangedDetail;
     "geoleaf:editor:feature-sync-queued": GeoLeafEditorSyncQueuedDetail;
     "geoleaf:editor:feature-sync-flushed": GeoLeafEditorSyncFlushedDetail;
+    // Table seam (Sprint 4 du contrat inverse) — les neuf noms que la composition à
+    // l'exécution rendait invisibles à toutes les gates. Voir le bloc de formes ci-dessus
+    // pour ce que le typage a coûté et ce qu'il a découvert.
+    //
+    // ⚠️ Les neuf sont émis sur `document` ET sur le bus MapLibre — ne pas s'abonner deux fois.
+    "geoleaf:table:opened": Record<string, never>;
+    "geoleaf:table:closed": Record<string, never>;
+    "geoleaf:table:layerChanged": GeoLeafTableLayerChangedDetail;
+    "geoleaf:table:sortChanged": GeoLeafTableSortChangedDetail;
+    "geoleaf:table:selectionChanged": GeoLeafTableSelectionDetail;
+    "geoleaf:table:zoomToSelection": GeoLeafTableSelectionDetail;
+    "geoleaf:table:highlightSelection": GeoLeafTableHighlightDetail;
+    "geoleaf:table:exportSelection": GeoLeafTableExportSelectionDetail;
+    "geoleaf:table:exportLayer": GeoLeafTableExportLayerDetail;
+    // Connector seam (Sprint 4 du contrat inverse) — six noms qui vivaient hors du préfixe
+    // `geoleaf:`, donc hors du champ de mesure d'EM-01. Voir le bloc de formes ci-dessus :
+    // ils sont émis en `CustomEvent` BRUT, et deux d'entre eux ne peuvent pas faire autrement.
+    "geoleaf:connector:token-refreshed": GeoLeafConnectorBaseUrlDetail;
+    "geoleaf:connector:authenticated": GeoLeafConnectorBaseUrlDetail;
+    "geoleaf:connector:auth-error": GeoLeafConnectorAuthErrorDetail;
+    "geoleaf:connector:credential-button-clicked": GeoLeafConnectorCredentialClickDetail;
+    /** ⚠️ **Annulable** — `preventDefault()` empêche la navigation vers `url`. */
+    "geoleaf:connector:signup-requested": GeoLeafConnectorLinkRequestDetail;
+    /** ⚠️ **Annulable** — `preventDefault()` empêche la navigation vers `url`. */
+    "geoleaf:connector:forgot-password-requested": GeoLeafConnectorLinkRequestDetail;
 }
 
 // ── Raw event map (DOM-carrying seams) ───────────────────────────────────────
@@ -453,8 +743,15 @@ export interface GeoLeafEventMap {
  * Splitting the map keeps both halves honest: listening is typed for everyone (the `Events`
  * facade accepts keys of both maps), and emission stays impossible to get wrong.
  *
- * ⚠ Adding a key here is a statement that the payload **cannot** be JSON-cloned. If it can,
- * it belongs in {@link GeoLeafEventMap}, where it also gets a typed emitter.
+ * ⚠ Adding a key here is a statement that **at least one field** of the payload cannot survive
+ * `JSON.parse(JSON.stringify(…))`. If every field can, it belongs in {@link GeoLeafEventMap},
+ * where it also gets a typed emitter.
+ *
+ * ⚠️ This sentence read "the payload **cannot** be JSON-cloned" until 14/08/2026, and
+ * `geoleaf:popup:action` is the first key that makes the difference matter: five of its eight
+ * fields are plain JSON, three are not (`button`, `setBusy`, `close`). The all-or-nothing wording
+ * would have argued for splitting one event into two — a JSON half and a DOM half — which is
+ * exactly the shape the CDC asked us not to build. **The criterion is the field, not the payload.**
  *
  * @see GeoLeafEventMap — the sanitised bus.
  */
@@ -499,6 +796,23 @@ export interface GeoLeafRawEventMap {
      * neither is optional here even though several listeners historically declared them so.
      */
     "geoleaf:toolbar:action": { action: string; element: HTMLElement };
+    /**
+     * The popup/side-panel action seam. Emitted by
+     * `capabilities/feature-info/render/widget-dispatch.ts` when a user clicks a button
+     * declared as `type: "action"` in `popup.fields[]`.
+     *
+     * **Moved here from {@link GeoLeafEventMap} on 14/08/2026**, when the detail gained
+     * `button`, `setBusy()` and `close()` — the three members `GeoLeaf.Popup.registerActionHandler`
+     * used to provide before ADR-07 removed it. Through the sanitising bus, `button` arrived as
+     * `{}` and the two functions as `undefined`, silently: measured on the real path before the
+     * move, not reasoned about.
+     *
+     * ⚠️ **Subscribers are unaffected** — the `Events` facade accepts keys of both maps. What the
+     * move buys is that `dispatchGeoLeafEvent("geoleaf:popup:action", …)` no longer compiles.
+     *
+     * @see GeoLeafPopupActionDetail — the payload, and the confidentiality rule on `properties`.
+     */
+    "geoleaf:popup:action": GeoLeafPopupActionDetail;
 }
 
 /*

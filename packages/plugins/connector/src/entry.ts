@@ -65,8 +65,7 @@ function _readUiShowCredentialButtonFlag(): boolean {
     const g = globalThis as Record<string, unknown>;
     const gl = g["GeoLeaf"] as Record<string, unknown> | undefined;
     const Config = gl?.["Config"] as
-        | { getActiveProfile?: () => Record<string, unknown> | null }
-        | undefined;
+        { getActiveProfile?: () => Record<string, unknown> | null } | undefined;
     const profile = Config?.getActiveProfile?.();
     const ui = (profile?.["ui"] ?? undefined) as Record<string, unknown> | undefined;
     return ui?.["showCredentialButton"] === true;

@@ -96,6 +96,8 @@ const lang_de: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Netzwerk-Zeitüberschreitung.",
     "editor.error.editionNotPermitted": "Diese Ebene erlaubt diesen Vorgang nicht.",
+    "editor.error.operationNotSupported":
+        "Der Server unterstützt diesen Vorgang nicht. Wenden Sie sich an Ihren Administrator.",
     "editor.error.server": "Serverfehler. Bitte versuchen Sie es erneut.",
     "editor.error.storageUnavailable":
         "Offline-Speicher nicht verfügbar. Änderung nicht gespeichert.",

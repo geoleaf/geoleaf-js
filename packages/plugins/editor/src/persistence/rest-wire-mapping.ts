@@ -11,9 +11,14 @@
  * a domain wrapper from a fork.
  * Wire-level primitives are shared by the two online adapters: the
  * `/features`-envelope {@link createRestAdapter} and the flat
- * `{ ...properties, geom }` {@link createCollectionRestAdapter}. URL building and
- * HTTP status mapping (e.g. the 409 conflict flow) stay per-adapter — the two
- * dialects genuinely diverge there.
+ * `{ ...properties, geom }` {@link createCollectionRestAdapter}. URL building stays
+ * per-adapter, and so does the `409` conflict flow — it needs request context the
+ * collection dialect does not have.
+ * ⚠️ This banner read "HTTP status mapping … stays per-adapter — the two dialects
+ * genuinely diverge there" until 2026-08-13, and it was true of `409` only. The
+ * `4xx`/`5xx` tail was byte-identical in both files — a clone jscpd had already
+ * measured — and that is precisely how a `501` came to be classified `"network"` on
+ * both paths at once. That tail now lives here, in {@link statusError}.
  * https://geoleaf.dev
  */
 import {
@@ -23,7 +28,12 @@ import {
     HttpFetchError,
 } from "@geoleaf/host-runtime";
 import { _getLabel } from "../internal.js";
-import { PersistenceError, type EditorFeature, type SavedFeature } from "./adapter-interface.js";
+import {
+    PersistenceError,
+    NOT_IMPLEMENTED_STATUS,
+    type EditorFeature,
+    type SavedFeature,
+} from "./adapter-interface.js";
 
 /**
  * Builds JSON request headers.
@@ -87,4 +97,37 @@ export function toSaved(body: unknown, feature: EditorFeature, layerId: string):
         ...(b.version !== undefined && { version: b.version }),
         raw: body,
     };
+}
+
+/**
+ * Maps a non-`ok` HTTP status onto a typed {@link PersistenceError}.
+ *
+ * 🛑 **Single home of the status policy that the two dialects SHARE.** `rest-adapter` and
+ * `collection-rest-adapter` carried this tail byte-for-byte — a clone jscpd already measured —
+ * and that is exactly how a `501` came to be classified `"network"` on *both* paths at once.
+ * B-138 is the registry line for "the fix was true on one path out of two"; keeping one home
+ * is what makes that impossible here.
+ *
+ * ⚠️ **What deliberately stays per-adapter**: the `409` conflict flow. It needs the request
+ * context (`feature`, `layerId`) and fires `onConflict`, which the collection dialect does not
+ * have at all. Callers handle `409` BEFORE delegating here.
+ *
+ * ⚠️ **`501` is tested first for READABILITY, not out of necessity** — `501 >= 500`, so it could
+ * never fall into the `4xx` branch. The order of the code follows the order of the decision:
+ * statuses that carry a verdict of their own, then classes. Writing "before, otherwise it would
+ * fall into the 4xx" would be false, and that is the very class of comment this sprint removes.
+ *
+ * @param status - HTTP status of a response whose `ok` is `false`.
+ * @returns The typed error to throw.
+ */
+export function statusError(status: number): PersistenceError {
+    if (status === NOT_IMPLEMENTED_STATUS) {
+        return new PersistenceError("capability", _getLabel("editor.error.operationNotSupported"), {
+            status,
+        });
+    }
+    if (status >= 400 && status < 500) {
+        return new PersistenceError("client", _getLabel("editor.error.server"), { status });
+    }
+    return new PersistenceError("network", _getLabel("editor.error.server"), { status });
 }

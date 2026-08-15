@@ -163,9 +163,9 @@ function destroy(): void;
 
 ```typescript
 document.addEventListener("geoleaf:geocoding:result", (e) => {
-    // `geoleaf:geocoding:result` n'est pas dans `GeoLeafEventMap` : le listener reçoit un
-    // `Event`, d'où le transtypage. Même forme que le TSDoc de `public-api.ts`.
-    const { label, lat, lng, bounds } = (e as CustomEvent).detail; // bounds null si point précis
+    // `geoleaf:geocoding:result` is not in `GeoLeafEventMap`, so the listener receives an
+    // `Event` — hence the cast. Same shape as the TSDoc of `public-api.ts`.
+    const { label, lat, lng, bounds } = (e as CustomEvent).detail; // bounds is null for a point
 });
 ```
 

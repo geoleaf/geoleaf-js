@@ -7,7 +7,7 @@
  *   icon-only tool/action buttons; onToggle callback for pill active state.
  * https://geoleaf.dev
  */
-import type { MeasureConfig, MeasureMap, MeasureType, Units } from "./types.js";
+import type { MeasureConfig, MeasureMap, MeasureType, MeasureToolId, Units } from "./types.js";
 import { getMeasureConfig } from "./config.js";
 import { _getNativeMap, _el, _getLabel } from "./internal.js";
 import { wireDrag, wireTooltips, wireTouchDrag, positionMenuNear } from "@geoleaf/host-runtime";
@@ -20,7 +20,7 @@ import { initRecapBox, setRecapMenuOpen, destroyRecapBox } from "./recap-box.js"
 let _root: HTMLElement | null = null;
 let _menuEl: HTMLElement | null = null;
 let _isOpen = false;
-let _activeTool: MeasureType | null = null;
+let _activeTool: MeasureToolId | null = null;
 let _units: Units = { distance: "auto", area: "auto" };
 let _cfg: MeasureConfig | null = null;
 let _distUnitBtn: HTMLButtonElement | null = null;
@@ -31,7 +31,7 @@ let _navDown: HTMLElement | null = null;
 let _resizeObserver: ResizeObserver | null = null;
 let _tooltipEl: HTMLDivElement | null = null;
 let _onToggle: ((open: boolean) => void) | undefined;
-let _onToolSelect: ((type: MeasureType | null) => void) | undefined;
+let _onToolSelect: ((type: MeasureToolId | null) => void) | undefined;
 let _onUnitsChange: ((u: Partial<Units>) => void) | undefined;
 let _onClearAll: (() => void) | undefined;
 let _onExport: (() => void) | undefined;
@@ -41,7 +41,7 @@ let _submenuOpenListener: ((e: Event) => void) | null = null;
 interface MenuCallbacks {
     /** Called when the menu opens (true) or closes (false). */
     onToggle?: (open: boolean) => void;
-    onToolSelect?: (type: MeasureType | null) => void;
+    onToolSelect?: (type: MeasureToolId | null) => void;
     onUnitsChange?: (u: Partial<Units>) => void;
     onClearAll?: () => void;
     onExport?: () => void;
@@ -167,7 +167,7 @@ export function toggleMeasureMenu(): void {
  * completion callback), where notifying would run `_deactivateAll()` a second time —
  * re-entrantly, in the GPS case.
  */
-export function setActiveTool(type: MeasureType | null): void {
+export function setActiveTool(type: MeasureToolId | null): void {
     _activeTool = type;
     _syncActiveButton();
 }
@@ -180,14 +180,14 @@ export function setActiveTool(type: MeasureType | null): void {
  * (CDC finding #1). The two intents had drifted into two code paths — a click went
  * through `_onToolSelect`, the API did not.
  */
-export function selectTool(type: MeasureType | null): void {
+export function selectTool(type: MeasureToolId | null): void {
     _activeTool = type;
     _syncActiveButton();
     _onToolSelect?.(type);
 }
 
 /** Returns the currently armed tool, or null if none. */
-export function getCurrentTool(): MeasureType | null {
+export function getCurrentTool(): MeasureToolId | null {
     return _activeTool;
 }
 

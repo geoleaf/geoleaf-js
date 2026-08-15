@@ -94,6 +94,8 @@ const lang_es: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Se ha superado el tiempo de espera de la red.",
     "editor.error.editionNotPermitted": "Esta capa no permite esta operación.",
+    "editor.error.operationNotSupported":
+        "El servidor no admite esta operación. Contacte con el administrador.",
     "editor.error.server": "Error del servidor. Vuelve a intentarlo.",
     "editor.error.storageUnavailable":
         "Almacenamiento sin conexión no disponible. Cambio no guardado.",

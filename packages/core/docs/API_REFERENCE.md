@@ -185,8 +185,8 @@ The top-level GeoLeaf API. Available as `GeoLeaf` (CDN/global) or `GeoLeafAPI` (
 | `loadConfig`   | `(input: string \| object) => Promise<void>`       | Load config from URL or inline object                                                        |
 | `setTheme`     | `(theme: string) => void`                          | Apply a visual theme                                                                         |
 | `createMap`    | `(id: string, options?: object) => object \| null` | Create a new managed map instance                                                            |
-| `getMap`       | `(id: string) => object \| null`                   | Get a map instance by container id                                                           |
-| `getAllMaps`   | `() => object[]`                                   | Get all active map instances                                                                 |
+| `getMap`       | `(id: string) => object \| null`                   | Get a map instance by container id — same registry as `Core.getMap()` since v3.1.0           |
+| `getAllMaps`   | `() => object[]`                                   | Get all active map instances — same registry as `Core.listMaps()` since v3.1.0               |
 | `removeMap`    | —                                                  | **Removed, not deprecated** — the method does not exist. Use **`Core.destroy(id)`** instead. |
 | `getModule`    | `(name: string) => object \| null`                 | Get a registered module by name                                                              |
 | `hasModule`    | `(name: string) => boolean`                        | Check if a module is registered                                                              |
@@ -223,6 +223,8 @@ Since **v3.0.0**, `Core` manages a **keyed registry** of map adapters (`Map<mapI
 | `destroy`    | `(mapId: string) => boolean`               | Destroy the instance (`map.remove()` + free the slot). `true` if found. Call on consumer unmount.                                               |
 | `hasMap`     | `(mapId: string) => boolean`               | Whether an instance is registered under `mapId`.                                                                                                |
 | `listMaps`   | `() => string[]`                           | Ids of all active map instances.                                                                                                                |
+| `isAttached` | `(mapId: string) => boolean`               | Registered **and** its container is still in the document. Stronger than `hasMap` — see below. `false` after `destroy()`, never throws.         |
+| `reattach`   | `(mapId, parent: HTMLElement) => boolean`  | Move a live map into another parent, without destroying it. The **whole container** moves. ⚠️ The panels do not follow — see below.             |
 | `setTheme`   | `(theme: string) => void`                  | Apply a theme to the map container.                                                                                                             |
 | `getTheme`   | `() => string`                             | Get the current theme name.                                                                                                                     |
 
@@ -249,6 +251,20 @@ GeoLeaf.Core.listMaps(); // ["map-1", "map-2"]
 // On unmount:
 GeoLeaf.Core.destroy("map-1");
 ```
+
+**Moving a map instead of rebuilding it** — a full-screen toggle, a tab switch, a panel that re-mounts:
+
+```ts
+const Core = GeoLeaf?.Core;
+if (Core && !Core.isAttached("main")) {
+    Core.reattach("main", document.getElementById("fullscreen-slot")!);
+}
+```
+
+- `hasMap()` says the **registry** holds an entry; `isAttached()` says that entry is still wired into the page. They diverge where it matters: a host that removes the map's subtree without calling `destroy()` leaves a registered map that renders nowhere, and `hasMap()` still returns `true`.
+- `reattach()` re-parents the **whole container**, never its children one by one. MapLibre memorises the element it was constructed with, so moving the children would leave `map.getContainer()` pointing at the old node. It calls the adapter's optional `resize()` afterwards, so the WebGL canvas picks up the new container size.
+
+> ⚠️ **The panels do not follow the map.** `#gl-right-panel` and its siblings live in the shell, not inside the map container, so `reattach()` leaves them where they are. Rebuilding them at the new location is the host's call: `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`, all three already public. Making the panels follow would tie this API to the shell's DOM — exactly the coupling it exists to remove.
 
 ---
 
@@ -756,7 +772,9 @@ if (toast) Notifications.dismiss(toast);
 
 ## Popup — popup action buttons
 
-Popup action buttons (popup field renderer `type: "action"` in `popup.fields[]`, rendered by `@geoleaf-plugins/feature-info`) dispatch the `geoleaf:popup:action` DOM event on click — a fire-and-forget, JSON-only payload. Listen via `GeoLeaf.Events.on("geoleaf:popup:action", …)` (see `EVENTS_API.md`). There is no handler-registry facade — the core stays backend-agnostic and `actionId` semantics are entirely the host's.
+Action buttons (field renderer `type: "action"` in `popup.fields[]`, rendered by the in-core `feature-info` capability on the popup **and** the side panel) dispatch the `geoleaf:popup:action` DOM event on click. Listen via `GeoLeaf.Events.on("geoleaf:popup:action", …)` (see `EVENTS_API.md`). There is no handler-registry facade — the core stays backend-agnostic and `actionId` semantics are entirely the host's.
+
+Since 14/08/2026 the payload is **no longer JSON-only**: alongside the data fields it carries `button` (the clicked node), `setBusy(busy)` and `close()`. `JSON.stringify(e.detail)` therefore throws — copy the fields you need. And `properties` is **empty unless the button declares `payloadFields`**; both points are detailed in `EVENTS_API.md`.
 
 ```ts
 // Example — open an Odoo form when a popup action button is clicked

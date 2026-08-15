@@ -239,6 +239,28 @@ Passée à l'appel de `configure()`, **jamais lue dans un profil** — à une ex
 ⚠️ **`getToken` est appelé à chaque requête interceptée**, et la mise en cache est à la charge de
 l'appelant. C'est écrit dans le type ; le plugin ne s'en occupe **que** dans le mode `auth`.
 
+#### `getToken` est LA surface supportée — et `setToken` ne sera pas écrit
+
+Promu le 13/08/2026, sur une demande aval de `Connector.setToken` **et** `onTokenExpiring`.
+**Les deux sont refusés, et le refus est arbitré** (décision ⑧ du contrat inverse) : le rouvrir
+demande un argument neuf, pas une demande de plus.
+
+**Le motif est une propriété de sécurité, pas une préférence d'API.** `getToken` est un **PULL** :
+le plugin le rappelle à chaque requête interceptée (`fetch-interceptor.ts`, `_resolveToken`) et
+de nouveau sur le chemin de reprise après un 401. L'hôte rend donc toujours le jeton courant **à
+cet instant** — il n'a jamais à prévoir la péremption, et **aucune copie du secret ne réside dans
+le plugin**.
+
+`setToken` serait le **PUSH symétrique** : un jeton confié au namespace global, persisté, puis
+rejoué sur l'en-tête `Authorization` de toutes les requêtes correspondantes jusqu'à remplacement.
+La direction du contrôle s'inverse — le plugin détiendrait une copie d'un secret dont seul l'hôte
+connaît la validité. Et `onTokenExpiring` n'existerait que pour rattraper cette inversion, en
+demandant à l'hôte de **prédire** ce que le PULL lit déjà au bon moment.
+
+⚠️ À rapprocher du corollaire général du dépôt : **un jeton que le navigateur doit présenter
+s'obtient à l'exécution, ou ne transite jamais par le client** — un `.env` injecté au build finit
+dans un fichier servi.
+
 ⚠️ **Aucune de ces clés n'est gatée** par le test-garde de cette fiche, qui ne couvre que le
 manifeste. Elles se relisent contre `config.ts` — part humaine de la règle documentaire du dépôt.
 
@@ -288,22 +310,37 @@ appartiennent à la désinstallation du singleton.
 documenté pour l'intégrateur et publié par les types du paquet. Le retirer serait une **purge d'API
 publique**, et le commentaire de `entry.ts` le dit sur place.
 
-### Événements — six, tous hors du préfixe `geoleaf:`
+### Événements — six, tous préfixés `geoleaf:connector:` depuis le 13/08/2026
 
-| Événement                             | Émis par                        | Détail                       | Particularité                          |
-| ------------------------------------- | ------------------------------- | ---------------------------- | -------------------------------------- |
-| `connector:authenticated`             | Fenêtre de connexion            | `{ baseUrl }`                | —                                      |
-| `connector:token-refreshed`           | Délégué de renouvellement       | `{ baseUrl }`                | —                                      |
-| `connector:credential-button-clicked` | Bouton d'accès                  | `{ baseUrl, authenticated }` | Le seul signal du mode interface seule |
-| `connector:auth-error`                | Intercepteur, stockage de jeton | `{ baseUrl, error }`         | —                                      |
-| `connector:signup-requested`          | Fenêtre de connexion            | `{ url }`                    | **Annulable**                          |
-| `connector:forgot-password-requested` | Fenêtre de connexion            | `{ url }`                    | **Annulable**                          |
+| Événement                                     | Émis par                        | Détail                       | Particularité                          |
+| --------------------------------------------- | ------------------------------- | ---------------------------- | -------------------------------------- |
+| `geoleaf:connector:authenticated`             | Fenêtre de connexion            | `{ baseUrl }`                | —                                      |
+| `geoleaf:connector:token-refreshed`           | Délégué de renouvellement       | `{ baseUrl }`                | —                                      |
+| `geoleaf:connector:credential-button-clicked` | Bouton d'accès                  | `{ baseUrl, authenticated }` | Le seul signal du mode interface seule |
+| `geoleaf:connector:auth-error`                | Intercepteur, stockage de jeton | `{ baseUrl, error }`         | —                                      |
+| `geoleaf:connector:signup-requested`          | Fenêtre de connexion            | `{ url }`                    | **Annulable**                          |
+| `geoleaf:connector:forgot-password-requested` | Fenêtre de connexion            | `{ url }`                    | **Annulable**                          |
 
-⚠️ **Ce plugin est le seul à ne pas préfixer ses événements par `geoleaf:`.** Conséquence directe :
-ils sont **invisibles** à la carte d'événements du dépôt, qui ne scanne que ce préfixe — ils ne sont
-donc ni typés, ni en liste de référence, ni comptés. Ce n'est pas un défaut de plus : c'est le même
-angle mort que **B-14** décrit pour les noms calculés, sous
-une autre forme.
+✅ **Les six sont typés** dans `contracts/event-bus.contract.ts` du core (seam `connector`).
+
+⚠️ **Cette section disait « six, tous hors du préfixe `geoleaf:` » et en tirait la bonne
+conclusion** : ils étaient **invisibles** à la carte d'événements du dépôt, qui n'est ancrée que
+sur ce préfixe — ni typés, ni en liste de référence, ni comptés. Ce n'était pas une exemption
+accordée mais une **cécité que personne n'avait choisie** (B-207). Le Sprint 4 du contrat inverse
+les a préfixés : EM-01 en a réclamé **six d'un coup** dans la seconde qui a suivi, ce qui est la
+seule démonstration possible que la cécité était réelle et non supposée.
+
+🛑 **Ils restent émis en `CustomEvent` BRUT, et deux d'entre eux ne peuvent pas faire
+autrement.** `signup-requested` et `forgot-password-requested` sont `cancelable`, et leurs
+émetteurs lisent le retour de `dispatchEvent` pour appeler `preventDefault()` sur le lien. Le bus
+assaini du core construit ses événements sans `cancelable` et rend `void` : les y faire passer
+**tuerait l'annulation en silence** — mesuré, le test qui garde ce contrat rougit sur cette seule
+mutation. Le typage porte sur la charge, pas sur le transporteur.
+
+⚠️ **Le namespace `geoleaf:connector:*` est PARTAGÉ avec un plugin propriétaire aval**, maintenu
+côté consommateur, qui émet `ready`, `bbox-loading`, `bbox-loaded`, `data-version-changed`,
+`error` et `auth-required`. Vérifié le 13/08/2026 : aucun recouvrement. Un nom ajouté ici se
+confronte à cette liste — rien, d'aucun côté, n'empêche mécaniquement la collision.
 
 ⚠️ **Les deux événements annulables sont un contrat réel** : une application hôte qui préfère ouvrir
 sa propre page d'inscription annule l'événement et empêche la navigation.

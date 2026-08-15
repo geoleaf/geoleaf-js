@@ -21,10 +21,16 @@
  * reference.
  *
  * Kept separate from `event-bus.ts` rather than merged into it: dispatch and
- * subscription have disjoint audiences. `dispatchGeoLeafEvent` has 16 internal callers
+ * subscription have disjoint audiences. `dispatchGeoLeafEvent` has internal callers only
  * and no integrator-facing surface; `on`/`off`/`once` have zero internal callers and
- * exist only for integrators. Merging would make 16 internal modules import the public
- * surface just to reach the dispatcher.
+ * exist only for integrators. Merging would make every one of those internal modules
+ * import the public surface just to reach the dispatcher.
+ *
+ * ⚠️ Ce paragraphe annonçait « 16 internal callers », deux fois. Le compte valait **20** au
+ * 13/08/2026 sans que rien ne l'ait signalé, et le Sprint 4 du contrat inverse l'a encore
+ * fait monter. L'argument ne dépend pas du nombre — il dépend du fait qu'il y en a beaucoup
+ * d'un côté et zéro de l'autre. Le nombre est donc retiré plutôt que rafraîchi ; il se
+ * mesure : `grep -rn "dispatchGeoLeafEvent(" packages/core/src --include=*.ts`.
  *
  * ⚠️ Unlike the storage facade, this module has **no top-level side effect**. The global
  * mount belongs to `globals/globals.api.ts` (single owner, frozen by the boot golden
@@ -76,6 +82,8 @@
  * | `geoleaf:poi:click`           | POI marker clicked                      | `poiId`, `layerId`, `source`              |
  * | `geoleaf:poi:panel:open`      | Side panel opened for a POI             | `poiId`, `poiName`                        |
  * | `geoleaf:poi:panel:close`     | Side panel closed                       | `poiId`                                   |
+ * | `geoleaf:panel:opened`        | Desktop tab panel opened a tab          | `tabId`                                   |
+ * | `geoleaf:panel:closed`        | Desktop tab panel closed a tab          | `tabId`                                   |
  * | `geoleaf:layer:toggle`        | Layer shown or hidden                   | `layerId`, `visible`, `source`            |
  * | `geoleaf:filter:apply`        | Filter predicate applied to features    | `layerIds`, `geometryType`, `activeCount` |
  * | `geoleaf:filter:reset`        | Feature filter cleared (all visible)    | `layerIds`                                |

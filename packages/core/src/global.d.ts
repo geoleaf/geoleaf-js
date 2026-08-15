@@ -220,14 +220,51 @@ declare global {
             success?: (msg: string, opts?: number | Record<string, unknown>) => unknown;
             dismiss?: (id: HTMLElement) => unknown;
         };
-        /** Mounts the mobile toolbar. Set by `globals/globals.ui.ts:207`. */
+        // ⚠️ Les six entrées ci-dessous citaient `globals/globals.ui.ts:207` à `:210`. Les
+        // numéros ont été retirés le 13/08/2026 : la tâche 2.4 a inséré des lignes dans ce
+        // fichier et les quatre citations sont devenues fausses d'un coup, sans qu'aucune
+        // gate ne puisse le voir. Le nom de la fonction, lui, ne dérive pas.
+        /** Mounts the mobile toolbar. Set by `setupUIKernel()` in `globals/globals.ui.ts`. */
         initMobileToolbar?: typeof import("./kernel/ui/mobile/mobile-toolbar.js").initMobileToolbar;
-        /** Mounts the desktop side-panel. Set by `globals/globals.ui.ts:208`. */
+        /** Mounts the desktop side-panel. Set by `setupUIKernel()`. */
         initDesktopPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").initDesktopPanel;
-        /** Reveals the desktop side-panel. Set by `globals/globals.ui.ts:209`. */
+        /** Reveals the desktop side-panel. Set by `setupUIKernel()`. */
         activateDesktopPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").activateDesktopPanel;
-        /** Tears the desktop side-panel down. Set by `globals/globals.ui.ts:210`. */
+        /** Tears the desktop side-panel down. Set by `setupUIKernel()`. */
         destroyDesktopPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").destroyDesktopPanel;
+        /**
+         * Opens a side-panel tab by id, **without toggling** — calling it twice with the same
+         * id leaves the panel open.
+         *
+         * ⚠️ This is what separates it from a click on the tab, which closes an already-open
+         * tab. Set by `setupUIKernel()`.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.openPanel("layers"); // true
+         * GeoLeaf?.UI?.openPanel("layers"); // true — pas une bascule
+         * ```
+         */
+        openPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").openPanel;
+        /**
+         * Closes whichever side-panel tab is open. A no-op when none is.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.closePanel();
+         * ```
+         */
+        closePanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").closePanel;
+        /**
+         * The id of the open side-panel tab, or `null` when closed or not built.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.openPanel("legend");
+         * GeoLeaf?.UI?.getOpenPanel(); // "legend"
+         * ```
+         */
+        getOpenPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").getOpenPanel;
         /**
          * Offline cache button — mounted by the `offline-ui` PLUGIN
          * (`ui/cache-button.ts:43`), read by `app/boot-modules/ui.module.ts:119`.
@@ -364,6 +401,26 @@ declare global {
              * mesuré en navigateur (tâche 4.1). Passer par `getActiveProfile()`.
              */
             getActiveProfile?(): unknown;
+            /**
+             * Drops the cached `themes.json` of a profile, so the next theme read goes back
+             * to its source.
+             *
+             * Clears **one** profile when `profileId` is given, **all** of them otherwise —
+             * and in both cases the in-flight loading promises too, so a reload started
+             * before the call cannot repopulate the cache behind it.
+             *
+             * ⚠️ This is the cache of the theme **configuration**, not the IndexedDB cache of
+             * layer data — that one is `GeoLeaf.ThemeCache`, a trap homonym.
+             *
+             * @param profileId - Profile to clear. Omit to clear every profile.
+             *
+             * @example
+             * ```js
+             * GeoLeaf?.Config?.clearThemesCache("reunion-eclairage");
+             * GeoLeaf?.Config?.clearThemesCache(); // tous les profils
+             * ```
+             */
+            clearThemesCache(profileId?: string): void;
             [key: string]: unknown;
         };
         Utils?: {
@@ -784,6 +841,24 @@ declare global {
             hasMap(mapId: string): boolean;
             /** Les identifiants de toutes les instances actives. */
             listMaps(): string[];
+            /**
+             * Si une instance est enregistrée **et** que son conteneur est encore dans le
+             * document. Plus fort que {@link hasMap}, qui ne répond que de l'enregistrement :
+             * un hôte qui retire le sous-arbre sans appeler `destroy()` laisse une carte
+             * enregistrée qui ne s'affiche nulle part. Rend `false` après `destroy()`.
+             */
+            isAttached(mapId: string): boolean;
+            /**
+             * Déplace une carte vivante dans un autre parent, sans la détruire ni la
+             * reconstruire. Le conteneur ENTIER est re-parenté — MapLibre mémorise
+             * l'élément de construction, donc déplacer ses enfants laisserait
+             * `getContainer()` pointer l'ancien nœud.
+             *
+             * ⚠️ **Les panneaux ne suivent pas** : ils vivent dans `glMain`, pas dans le
+             * conteneur de carte. Les remonter est du ressort de l'hôte —
+             * `UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`.
+             */
+            reattach(mapId: string, parent: HTMLElement): boolean;
             /**
              * Applique un thème au conteneur de la carte.
              *

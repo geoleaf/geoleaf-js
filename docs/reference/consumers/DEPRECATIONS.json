@@ -1,0 +1,13 @@
+{
+    "$comment": "Le registre des dépréciations ANNONCÉES par l'amont — ce que `@geoleaf/core` et ses plugins s'autorisent à retirer, et quand. Pendant complémentaire des manifestes de consommation `*.consumer.json`, qui sont écrits par l'AVAL et déclarent ce dont il dépend. Les deux fichiers ne sont pas écrits par la même main, et c'est ce qui rend la séparation d'autorité réelle. PUBLIC parce qu'il nomme des SYMBOLES et jamais un client.",
+    "$policy": "packages/core/docs/VERSIONING_POLICY.md §Deprecation — la règle. Ce fichier en est l'application, pas une seconde description.",
+    "$verifier": "CC-10 de scripts/verify-consumer-contract.cjs. Un chemin ne peut quitter `required.public` / `required.events` d'un manifeste de consommation que s'il figure ici avec ses quatre champs ET porte un `@deprecated` réel sur son symbole.",
+    "$fields": {
+        "since": "La version qui a EXPÉDIÉ la balise pour la première fois. Dans la ligne majeure courante.",
+        "removeIn": "La version qui retire le symbole. Un MAJEUR `x.0.0` STRICTEMENT supérieur au courant — une annonce datée du présent n'est pas une annonce.",
+        "replacement": "Ce qu'il faut utiliser à la place. DOIT résoudre sur la surface publiée : on ne déprécie pas vers rien. Trois formes — un chemin du cœur (`Config.get`), un événement `geoleaf:*` émis ET typé, ou `plugin:<paquet>/<chemin>`.",
+        "symbol": "Où vit la balise, en `chemin/relatif.ts#Propriétaire.membre`. JAMAIS `fichier:ligne` : les lignes dérivent, et deux interfaces d'un même fichier peuvent porter un membre homonyme — `retry-handler.ts` en est le cas mesuré."
+    },
+    "$empty": "VIDE au 14/08/2026, et ce n'est PAS un défaut : un registre vide ne rend pas CC-10 creux, il le rend MAXIMALEMENT STRICT — aucun retrait n'est autorisé, quel qu'il soit. Ne pas le peupler pour lui donner l'air rempli. Le Sprint 7 qui l'a posé n'annonce aucune dépréciation : il pose la règle et le cliquet, et l'unique `@deprecated` vivant du dépôt (`TableConfig.pageSize`, B-71) n'a pas sa place ici — une clé sans effet n'a aucun remplaçant, donc ce n'est pas une dépréciation au sens de la politique mais une option à réparer ou à retirer. Elle est exemptée NOMMÉMENT dans CC-10, avec son motif.",
+    "deprecations": {}
+}

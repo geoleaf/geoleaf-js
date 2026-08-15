@@ -97,7 +97,7 @@ export function highlightSelection(active: boolean): void {
 
     if (!active) {
         Log.debug("[Table] Highlight disabled");
-        fireEvent("table:highlightSelection", {
+        fireEvent("geoleaf:table:highlightSelection", {
             layerId: tableState._currentLayerId,
             selectedIds: Array.from(tableState._selectedIds),
             active: false,
@@ -123,7 +123,7 @@ export function highlightSelection(active: boolean): void {
 
     _addHighlightOverlay(selectedFeatures);
 
-    fireEvent("table:highlightSelection", {
+    fireEvent("geoleaf:table:highlightSelection", {
         layerId: tableState._currentLayerId,
         selectedIds: Array.from(tableState._selectedIds),
         active: true,

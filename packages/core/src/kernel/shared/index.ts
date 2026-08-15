@@ -43,3 +43,13 @@ export { getAllLayerConfigs } from "./layer-configs-state.js";
 // `kernel/storage/facade.ts`, du même côté de la frontière, qui importe le module directement.
 // L'exposer n'aurait aucun consommateur de capacité — knip aurait raison de le signaler.
 export { grantsEdition, profileLayerConfig, profileLayers } from "./edition-permissions.js";
+
+// Curseur d'outil (14/08/2026) — ré-exporté parce que R.8 l'exige : `capabilities/filter/`
+// arme le curseur de la recherche par proximité et ne peut pas importer profondément sous
+// `kernel/**`. Encore le geste que la règle DÉSIGNE.
+//
+// ⚠️ `isExclusiveMode` et `cursorTarget` ne sont PAS ici, et c'est délibéré : leurs seuls
+// appelants (`adapters/maplibre/maplibre-{poi,cluster}-builders.ts`) sont hors
+// `capabilities/`, donc R.8 ne s'applique pas à eux — ils importent le module directement.
+// Les exposer ici n'aurait aucun consommateur de capacité, et knip aurait raison de le dire.
+export { armToolCursor, disarmToolCursor } from "./map-cursor.js";

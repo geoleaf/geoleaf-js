@@ -13,7 +13,7 @@
  * the same path a button click takes, so the drawing handlers are actually wired.
  * https://geoleaf.dev
  */
-import type { MeasureType, MeasureTypeDef, Units, PrintableAnnotation } from "./types.js";
+import type { MeasureToolId, MeasureTypeDef, Units, PrintableAnnotation } from "./types.js";
 import { getMeasureConfig } from "./config.js";
 import { _warnNoCore, _getNativeMap } from "./internal.js";
 import {
@@ -48,6 +48,7 @@ import {
     getPrintableAnnotations as _getPrintableAnnotations,
 } from "./annotation-overlays.js";
 import { activateAnnotationTooltip, deactivateAnnotation } from "./tools/tool-annotation.js";
+import { activateCustom, deactivateCustom } from "./tools/tool-custom.js";
 import { initPersistence, scheduleSave, clearStorage } from "./persistence.js";
 import { exportGeoJSON as _exportGeoJSON } from "./geojson-export.js";
 
@@ -72,6 +73,10 @@ function _deactivateAll(): void {
     deactivatePolygon();
     deactivateGps();
     deactivateAnnotation();
+    // A registered tool is disarmed by the same sweep as the built-ins — otherwise
+    // `stopMeasure()`, `clearAll()` and closing the menu would each leave a third-party tool
+    // armed, holding exclusive mode and the cursor.
+    deactivateCustom();
 }
 
 /** Lazily initialises the floating menu, layers, engine, overlays, and restores localStorage. */
@@ -126,6 +131,15 @@ function _ensureMenu(): void {
             else if (type === "polygon") activatePolygon(map);
             else if (type === "gps") activateGps(map, () => setActiveTool(null));
             else if (type === "annotation-tooltip") activateAnnotationTooltip(map);
+            else if (type !== null) {
+                // Registered tools (B-253). The lookup is what makes `registerMeasureType()`
+                // more than a write to a map nobody read.
+                // ⚠️ An id that is NOT registered must keep falling through to "deactivate
+                // only" — that behaviour is asserted, and it is what makes a typo silent-safe
+                // rather than half-arming something.
+                const def = _customTools.get(type);
+                if (def) activateCustom(map, type, def);
+            }
         },
         onUnitsChange: (u) => {
             setCurrentUnits(u);
@@ -168,8 +182,14 @@ export function openMeasureMenu(btn?: Element): void {
  * It used to call `setActiveTool`, which only lights the button up: the tool appeared
  * armed and no drawing handler was ever wired, so nothing happened when the user
  * clicked the map. That was CDC finding #1 (MAJEUR) — fixed.
+ *
+ * Accepts one of the six built-in identifiers, or any id passed to
+ * {@link registerMeasureType} beforehand. An id that matches neither disarms whatever was
+ * armed and does nothing else — deliberately, so a typo cannot half-arm a tool.
+ *
+ * @param type - Tool identifier.
  */
-export function startMeasure(type: MeasureType): void {
+export function startMeasure(type: MeasureToolId): void {
     if (_warnNoCore("startMeasure")) return;
     _ensureMenu();
     selectTool(type);
@@ -233,9 +253,30 @@ export function getPrintableAnnotations(): PrintableAnnotation[] {
 }
 
 /**
- * Registers a custom measure tool.
- * @param type - Unique identifier for the custom tool.
- * @param def - Tool definition (cursor, activate/deactivate callbacks).
+ * Registers a custom measure tool, armable afterwards through {@link startMeasure}.
+ *
+ * The plugin wraps the definition's callbacks in the same envelope the built-in tools carry —
+ * exclusive mode, cursor, cursor guard — so a registered tool behaves as a peer of the six.
+ * Map listeners, drawing state and feature production stay the caller's.
+ *
+ * ⚠️ **No button appears in the floating menu.** Its buttons come from a static table carrying
+ * an icon and i18n keys, which {@link MeasureTypeDef} does not provide; `enabledTools` filters
+ * that table and ignores registered ids. Trigger a custom tool from your own UI:
+ *
+ * ```js
+ * GeoLeaf.Measure.registerMeasureType("denivele", {
+ *     cursor: "cell",
+ *     onActivate: (map) => { ... },
+ *     onDeactivate: () => { ... },
+ * });
+ * myButton.addEventListener("click", () => GeoLeaf.Measure.startMeasure("denivele"));
+ * ```
+ *
+ * ⚠️ **This did nothing at all until 14/08/2026** — it wrote to a registry no code read, while
+ * the spec advertised extensibility (B-253).
+ *
+ * @param type - Unique identifier. Re-registering an id replaces its definition.
+ * @param def - Tool definition (cursor, activate/deactivate callbacks). All fields optional.
  */
 export function registerMeasureType(type: string, def: MeasureTypeDef): void {
     _customTools.set(type, def);

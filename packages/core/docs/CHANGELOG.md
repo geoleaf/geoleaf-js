@@ -11,6 +11,238 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added — a deprecation policy, and the gate that makes it verifiable
+
+`VERSIONING_POLICY.md` gains a **Deprecation** section. Until now the file said a breaking
+change lands in a MAJOR without saying how one gets there — so nothing described what an
+announcement is, how long it must stand, or what counts as one. Three removals had already
+happened under that silence, each leaving a trace in a different form, none of them machine
+readable, and two of them broke an external consumer without warning.
+
+The policy names three artifacts, all required: the `@deprecated` TSDoc tag on the symbol,
+an entry here, and an entry in `docs/reference/consumers/DEPRECATIONS.json`. Only the first
+travels inside the npm tarball — it rides in the emitted `.d.ts` — which is why it is
+required rather than recommended.
+
+The rule on timing: **the announcement must survive at least one published `minor`, and
+`removeIn` is the next MAJOR.** A release that both announces and removes announces nothing.
+
+This is enforced rather than declared. `CC-10` of `scripts/verify-consumer-contract.cjs`
+refuses a path that leaves the consumed public surface without a register entry and a real
+tag on its symbol.
+
+### Changed — three `maxRetries` aliases are no longer tagged `@deprecated`
+
+`CacheManagerConfig.maxRetries`, `RetryConfig.maxRetries` and `RetryOptions.maxRetries` are
+**kept aliases**, not deprecations: they are normalised into `maxAttempts` on read, and
+nothing schedules their removal. They carried a `@deprecated` tag, which struck the key
+through in editors and promised a removal that was never planned.
+
+The 3.0.0 entry below describes `maxRetries` as "a deprecated, normalised alias". The
+normalisation is unchanged and no configuration behaves differently; what changes is that
+the tag no longer claims a removal. Under the new policy, `@deprecated` marks a symbol that
+is going away — a kept alias is a different statement, and conflating the two makes the tag
+lie to autocompletion.
+
+### Added — `Core.isAttached()` and `Core.reattach()`
+
+`GeoLeaf.Core` gains two members for hosts that move a map around their layout instead of
+destroying and rebuilding it — a full-screen toggle, a tab switch, a panel that re-mounts.
+
+```ts
+const Core = GeoLeaf?.Core;
+if (Core && !Core.isAttached("main")) {
+    Core.reattach("main", document.getElementById("fullscreen-slot")!);
+}
+```
+
+- **`isAttached(mapId): boolean`** — the map is registered **and** its container is still in the
+  document. Deliberately distinct from `hasMap()`, which only answers the first half: a host that
+  removes the map's subtree without calling `destroy()` leaves a registered map that renders
+  nowhere, and `hasMap()` still says `true`. Returns `false` after `destroy()`, never throws.
+- **`reattach(mapId, parent): boolean`** — moves the live map into another parent. The **whole
+  container** is re-parented; its children are not moved individually. That is imposed by the
+  engine: MapLibre memorises the element it was constructed with, so moving the children leaves
+  `map.getContainer()` pointing at the old node and every subsequent measurement wrong.
+
+⚠️ **The panels do not follow the map.** `#gl-right-panel` and its siblings live in the shell,
+not inside the map container, so they stay where they are. Rebuilding them at the new location is
+the host's call, through three already-public exports:
+`GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`. Making them
+follow would tie this API to the shell's DOM — the coupling it exists to remove.
+
+The map adapter contract gains an optional **`resize?(): void`**, which `reattach()` calls after
+the move so the WebGL drawing buffer picks up the new container size. Optional, like
+`getNativeMap?()`, so test doubles stay conformant. Custom adapters that do not implement it are
+accepted; their canvas will keep its pre-move dimensions.
+
+### Changed — `GeoLeaf.getMap()` and `GeoLeaf.getAllMaps()` return the live map
+
+The top-level shortcuts read the same registry as `GeoLeaf.Core`. **They previously returned
+`null` and `[]` for every live map**, whatever the application did: they read a mirror registry
+that only `GeoLeaf.createMap()` ever filled, and the boot path does not go through it. The mirror
+is gone.
+
+```ts
+GeoLeaf?.getMap?.("main") === GeoLeaf?.Core?.getMap("main"); // true — was null === adapter
+GeoLeaf?.getAllMaps?.().length === GeoLeaf?.Core?.listMaps().length; // true — was 0
+```
+
+**Integrator impact.** This is a widening: code that received `null` now receives an adapter.
+A fallback written against the old behaviour — `GeoLeaf.getMap(id) ?? somethingElse` — stops
+taking its second branch. Nothing that worked before stops working.
+
+`APIFactoryManager.removeMapInstance()` changes with it: it used to drop the mirror entry and
+leave the real map running, and now destroys the map, as its name always claimed.
+
+### Changed — `geoleaf:popup:action` carries `button`, `setBusy()` and `close()`, and is no longer JSON
+
+The detail of `geoleaf:popup:action` gains the three members that
+`GeoLeaf.Popup.registerActionHandler` provided before ADR-07 removed it: **`button`** (the clicked
+node), **`setBusy(busy)`** (toggles `disabled`, `aria-busy` and `gl-poi-popup__action--busy`) and
+**`close()`** (closes the surface the button was rendered in — the popup **or** the side panel,
+never both). A host action can finally show a pending state, close on success, and report a
+failure in place.
+
+```ts
+GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
+    const d = e.detail;
+    if (d.actionId !== "odoo:create-request") return;
+    d.setBusy(true);
+    void createRequest(d.featureId)
+        .then(() => d.close())
+        .finally(() => d.setBusy(false));
+});
+```
+
+**Integrator impact — the payload is no longer serialisable.** `JSON.stringify(e.detail)` now
+**throws** (circular DOM reference), and passing the detail to `postMessage` or a `Worker` throws
+`DataCloneError`. If you log, forward or persist the detail, copy the fields you need first:
+`const { actionId, layerId, featureId, properties } = e.detail;`. **Subscribing is unaffected** —
+`GeoLeaf.Events.on/off/once` accepts this key exactly as before, with the same type inference.
+
+The event is dispatched as a raw `CustomEvent` and its key moved to `GeoLeafRawEventMap`, joining
+`geoleaf:toolbar:action` and `geoleaf:layer-manager:panel`. Routing it through the sanitising bus
+would have delivered `button` as `{}` and the two functions as `undefined` **without any error** —
+which is why the map is split rather than the payload.
+
+⚠️ **Two corrections to previously published documentation, both of which were wrong before this
+release:**
+
+- `EVENTS_API.md` announced that `properties` defaults to `id`, `name`, `title`, `label`. It never
+  did: **without `payloadFields`, `properties` is `{}`**, and has been since the feature shipped
+  on 2026-07-29. The default goes to confidentiality — this is a `document` event any script on
+  the page can hear. If you relied on the documented default, declare `payloadFields` explicitly.
+- Action buttons were attributed to a plugin named `@geoleaf-plugins/feature-info`. **No such
+  package exists**; `feature-info` is a capability built into `@geoleaf/core`.
+
+**Fixed at the same time:** an action button clicked in the **side panel** emitted `featureId:
+null` and no `lngLat`, because that surface passed only `layerId` to the render context. Both
+surfaces now pass the full context. The popup was unaffected.
+
+⚠️ **Widened attack surface, stated rather than implied.** The detail now carries a function that
+closes the popup, on a `document` event. Any script on the page can call it — as it could already
+call `document.querySelector(".gl-poi-popup__action").click()`. The confidentiality rule on
+`properties` is what guards this channel, and it is unchanged.
+
+### Changed — the six `@geoleaf-plugins/connector` events are now prefixed `geoleaf:connector:`
+
+`connector:authenticated`, `connector:token-refreshed`, `connector:auth-error`,
+`connector:credential-button-clicked`, `connector:signup-requested` and
+`connector:forgot-password-requested` become `geoleaf:connector:…`. They were the only public
+events in the product outside the `geoleaf:` naming domain.
+
+This was not cosmetic. The repository's event coverage gate is anchored on `^geoleaf:`, so all
+six were **structurally invisible** to it — never typed, never listed, never counted. Prefixing
+them made the gate demand all six in the same run, and they are now typed in `GeoLeafEventMap`
+alongside every other public event.
+
+**Integrator impact — this breaks listeners.** Any `document.addEventListener("connector:…")`
+must be renamed; the old names are no longer emitted. The payloads are unchanged, and the two
+cancelable events (`signup-requested`, `forgot-password-requested`) keep their contract:
+`preventDefault()` still blocks the link navigation.
+
+⚠️ If you also run the downstream Odoo connector plugin, note that `geoleaf:connector:*` is now
+a shared namespace. The six names above do not collide with the six it emits (`ready`,
+`bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`, `auth-required`), but nothing
+prevents a future clash — check both lists before adding a name.
+
+### Added — `geoleaf:panel:opened` / `geoleaf:panel:closed`, and two POI panel events that finally fire
+
+The desktop tab panel (layers / filters / legend) now reports both directions, with `{ tabId }`.
+Switching tab emits `closed` then `opened`, in that order; opening from a closed panel emits
+`opened` alone, and closing an already-closed panel emits nothing. Both the pointer path and
+`GeoLeaf.UI.openPanel()` are covered — an event describing only the programmatic path would be
+half a contract.
+
+`geoleaf:poi:panel:open` and `geoleaf:poi:panel:close` were **declared in the published types
+since v1 and never emitted**: a listener compiled and never ran. They are now emitted by the
+feature-information side panel. `poiName` resolves through the same path as the displayed title,
+so the event carries what the user reads.
+
+⚠️ A feature without a stable id emits nothing rather than a forged `poiId` — two anonymous
+features would otherwise be indistinguishable to a listener.
+
+⚠️ **Two `panel` families, and they are different panels**: `geoleaf:poi:panel:*` is the feature
+drawer, keyed by `poiId`; `geoleaf:panel:*` is the desktop tab strip, keyed by `tabId`.
+
+### Added — nine `geoleaf:table:*` events and `geoleaf:geojson:visibility-changed` are typed
+
+The table plugin's nine events (`opened`, `closed`, `layerChanged`, `sortChanged`,
+`selectionChanged`, `zoomToSelection`, `exportSelection`, `exportLayer`, `highlightSelection`)
+now appear in `GeoLeafEventMap` with their payloads. They were emitted all along, but their
+names were assembled at runtime, so no tooling could see them.
+
+**No behaviour changed and no name changed** — only the declarations. Each of the nine is
+emitted on both `document` and the MapLibre bus: subscribe to one, never both.
+
+`geoleaf:geojson:visibility-changed` is typed too. Prefer `geoleaf:layer:toggle` for new work:
+it carries the same payload and fires for every source, whereas `visibility-changed` is not
+re-dispatched on `document` when the change comes from a zoom recalculation.
+
+### Fixed — a click on a feature now emits **one** `geoleaf:feature:click`, whatever its geometry
+
+The kernel bound the click handler to **every** sub-layer of a layer, while it bound hover to a
+single one. Sub-layers are stacked per geometry and cumulatively, so a single click emitted **2**
+events on an icon point, **2** on a cased line, **3** on a cased polygon and **4** on a vector
+tile. Downstream, `feature-info` closes and reopens its popup on each event, so the popup
+flickered and the second render replaced the first for the same feature.
+
+Click and hover now share one selection (`fill` → `circle` → `line` → all), so a gesture cannot
+be reported twice. **Integrator impact**: a listener on `geoleaf:feature:click` that de-duplicated
+events itself can drop that workaround; one that counted events will now count fewer.
+
+⚠️ On an icon point the clickable area becomes the circle rather than the icon's collision box.
+Nothing becomes unreachable — every point renders a `-circle` sub-layer unconditionally — and
+nothing is lost on the axes; only the diagonal ring of the icon's padding is.
+
+### Fixed — pre-cached assets are served offline again (PWA second load)
+
+The service worker wrote its pre-cache into one bucket and looked for it in another: `install`
+derived its scope from the injected asset list, while `fetch` decided from a **file-extension
+list** that does not accept `json`. Two pre-cached entries — `manifest.json` and the root profile
+config — were therefore stored and never found, and the application could not boot offline on a
+second load for want of its configuration.
+
+The router now resolves membership against the pre-cache itself, so what `install` writes is
+what `fetch` reads. **No configuration change is required.**
+
+### Changed — an HTTP `501` from the editor backend is no longer treated as a network failure
+
+`@geoleaf-plugins/editor` classified every non-4xx response as `"network"`, which
+`auto-adapter` treats as retryable — so a `501` (the server does not implement the verb) was
+**queued for retry** and the user was told to try again. It never would have succeeded.
+
+A `501` now raises `PersistenceError` with the new kind **`"capability"`**, is never queued, and
+surfaces a dedicated message (`editor.error.operationNotSupported`, added in all six locales).
+This aligns the editor with the decision the core already applies to its own offline queue.
+**Integrator impact**: code branching on `err.kind === "network"` to detect a `501` must branch on
+`"capability"` instead.
+
+---
+
 ## [3.0.0] - 2026-08-12
 
 > **Major release v3.0.0.** It consolidates the whole v3 effort: dissolution of the POI subsystem into generic point layers, taxonomy v3 (the point symbol), extraction of the optional modules into in-core capabilities and MIT plugins, multi-instance rework, security hardening (strict `style-src` CSP) and **hard removal of all legacy** (deprecated API aliases, re-export shims, format fallbacks, legacy configuration keys).
