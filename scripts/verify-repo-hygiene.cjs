@@ -136,6 +136,12 @@ const SCRIPTS_ALLOWLIST = new Set([
     // passe 21 a justement retiré trois chiffres de la roadmap pour ce motif, elle ne peut
     // pas en écrire quatre nouveaux du même régime. N'écrit rien dans le dépôt.
     "probe-typedoc-surface.mjs",
+    // Publie UN workspace nommé, en sautant ce que le registre porte déjà (15/08/2026).
+    // ⚠️ Existe parce que les étapes `@geoleaf/core` et `@geoleaf/field-renderer` de
+    // `publish.yml` étaient des `npm publish` NUS : sur une version déjà publiée npm rend
+    // `E403` et le workflow mourait AVANT d'atteindre les 12 plugins. DÉLIBÉRÉMENT hors
+    // ci:local — il parle au registre et publie, ce qu'aucune gate ne doit faire.
+    "publish-one.cjs",
     "publish-plugins.cjs",
     // Portage de l'atelier vers le dépôt public `geoleaf/geoleaf-js` (passage public, S10.A).
     // DÉLIBÉRÉMENT hors ci:local : il parle au réseau et écrit sur un dépôt distant, ce
@@ -159,6 +165,10 @@ const SCRIPTS_ALLOWLIST = new Set([
     "purgecss-config.cjs", // scripts/lib/ — shared purgecss config (audit + CI gate)
     "side-effect-modules.cjs", // scripts/lib/ — derived side-effect truth (S6), shared by 2 gates
     "packages.cjs", // scripts/lib/ — derived package registry (ARCHI S9.4), shared by the gates that enumerate packages
+    // scripts/lib/ — « ce paquet@version est-il DÉJÀ au registre ? », en un seul endroit
+    // pour ses deux appelants (`publish-plugins.cjs`, `publish-one.cjs`). ⚠️ Le recopier
+    // ferait diverger deux définitions de « déjà publié » dans un geste irréversible.
+    "npm-registry.cjs",
     // lib/ — LA forme canonique du bandeau de licence (passage public S3), et son unique
     // domicile : le générateur `--write`, la gate LIC-01/02/04 et la bannière de sortie des
     // bundles (`build-config/rollup.mjs`) la lisent tous les trois ici. Une gate et son
