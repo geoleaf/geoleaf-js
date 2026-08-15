@@ -1,0 +1,42 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "NAM",
+        "font": {
+            "family": "Segoe UI",
+            "sizePt": 7,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#323232",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "scaleConfig": {
+        "minScale": 35000000,
+        "maxScale": 500000
+    },
+    "labelScale": {
+        "minScale": 35000000,
+        "maxScale": 2000000
+    },
+    "style": {
+        "fillOpacity": 0,
+        "color": "#000000",
+        "opacity": 1,
+        "weight": 0.98,
+        "dashArray": "18.898 7.559 3.78 3.78 3.78 7.559"
+    },
+    "legend": {
+        "label": "Provinces"
+    }
+}

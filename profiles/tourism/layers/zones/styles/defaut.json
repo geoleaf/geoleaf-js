@@ -1,0 +1,34 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "nom",
+        "font": {
+            "family": "Segoe UI",
+            "sizePt": 8,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#7c2d12",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "style": {
+        "fillColor": "#f97316",
+        "fillOpacity": 0.25,
+        "color": "#c2410c",
+        "opacity": 1,
+        "weight": 2
+    },
+    "legend": {
+        "label": "Zones (démo édition)"
+    }
+}

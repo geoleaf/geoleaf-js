@@ -1,0 +1,282 @@
+{
+    "layers": [
+        {
+            "id": "sites_rosario",
+            "configFile": "layers/sites_rosario/sites_rosario_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "id": "parcours",
+            "configFile": "layers/parcours/parcours_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "id": "zones",
+            "configFile": "layers/zones/zones_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "id": "eco_regions",
+            "configFile": "layers/eco_regions/eco_regions_config.json",
+            "layerManagerId": "data-conservation"
+        },
+        {
+            "id": "eco_regions_fgb",
+            "configFile": "layers/eco_regions_fgb/eco_regions_fgb_config.json",
+            "layerManagerId": "data-conservation"
+        },
+        {
+            "id": "aires_protegees_nationales_sib",
+            "configFile": "layers/aires_protegees_nationales_sib/aires_protegees_nationales_sib_config.json",
+            "layerManagerId": "data-conservation"
+        },
+        {
+            "id": "villes_principales",
+            "configFile": "layers/villes_principales/villes_principales_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "cultures",
+            "configFile": "layers/cultures/cultures_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "id": "departements",
+            "configFile": "layers/departements/departements_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "hebergements",
+            "configFile": "layers/hebergements/hebergements_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "id": "pays",
+            "configFile": "layers/pays/pays_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "provinces",
+            "configFile": "layers/provinces/provinces_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "reseau_ferroviaire",
+            "configFile": "layers/reseau_ferroviaire/reseau_ferroviaire_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "routes_principales",
+            "configFile": "layers/routes_principales/routes_principales_config.json",
+            "layerManagerId": "data-administration"
+        },
+        {
+            "id": "sites_de_conservation_wdpa",
+            "configFile": "layers/sites_de_conservation_wdpa/sites_de_conservation_wdpa_config.json",
+            "layerManagerId": "data-conservation"
+        },
+        {
+            "id": "zones_de_conservation_wdpa",
+            "configFile": "layers/zones_de_conservation_wdpa/zones_de_conservation_wdpa_config.json",
+            "layerManagerId": "data-conservation"
+        },
+        {
+            "_comment": "Couche temps réel USGS — migrée depuis le profil de démonstration world-disasters le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du plugin realtime-layer sur le chemin polling + snapshot de repli : sans elle, e2e/08-realtime perd cette vérification. Cohérente ici — l Amérique du Sud est l une des zones les plus sismiques, et tourism est le profil complet de test.",
+            "id": "epicentres_seismes",
+            "configFile": "layers/epicentres_seismes/epicentres_seismes_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
+            "_comment": "Couche GBIF — migrée depuis le profil de démonstration guyane-biodiversite le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du pipeline de mapping runtime (famille B6 : data.mapping + itemsPath). Cohérente ici : tourism porte déjà eco_regions, pays et pluviometrie, et le bloc gbif normalise l Occurrence API vers des POI.",
+            "id": "observations_gbif",
+            "configFile": "layers/observations_gbif/observations_gbif_config.json",
+            "layerManagerId": "data-tourism"
+        }
+    ],
+    "layerTemplates": [
+        {
+            "templateId": "pluviometrie",
+            "layerManagerId": "data-climate",
+            "template": {
+                "zIndex": 93,
+                "geometry": "polygon",
+                "data": {
+                    "directory": "data"
+                },
+                "styles": {
+                    "directory": "styles",
+                    "default": "defaut.json",
+                    "available": [
+                        {
+                            "id": "defaut",
+                            "label": "défaut",
+                            "file": "defaut.json"
+                        }
+                    ]
+                },
+                "table": {
+                    "enabled": false
+                },
+                "clustering": {
+                    "enabled": false,
+                    "maxClusterRadius": 80,
+                    "disableClusteringAtZoom": 12
+                }
+            },
+            "instances": [
+                {
+                    "id": "pluviometrie_janvier",
+                    "label": "Pluviométrie - Janvier",
+                    "dataFile": "pluviometrie_janvier.geojson"
+                },
+                {
+                    "id": "pluviometrie_fevrier",
+                    "label": "Pluviométrie - Février",
+                    "dataFile": "pluviometrie_fevrier.geojson"
+                },
+                {
+                    "id": "pluviometrie_mars",
+                    "label": "Pluviométrie - Mars",
+                    "dataFile": "pluviometrie_mars.geojson"
+                },
+                {
+                    "id": "pluviometrie_avril",
+                    "label": "Pluviométrie - Avril",
+                    "dataFile": "pluviometrie_avril.geojson"
+                },
+                {
+                    "id": "pluviometrie_mai",
+                    "label": "Pluviométrie - Mai",
+                    "dataFile": "pluviometrie_mai.geojson"
+                },
+                {
+                    "id": "pluviometrie_juin",
+                    "label": "Pluviométrie - Juin",
+                    "dataFile": "pluviometrie_juin.geojson"
+                },
+                {
+                    "id": "pluviometrie_juillet",
+                    "label": "Pluviométrie - Juillet",
+                    "dataFile": "pluviometrie_juillet.geojson"
+                },
+                {
+                    "id": "pluviometrie_aout",
+                    "label": "Pluviométrie - Août",
+                    "dataFile": "pluviometrie_aout.geojson"
+                },
+                {
+                    "id": "pluviometrie_septembre",
+                    "label": "Pluviométrie - Septembre",
+                    "dataFile": "pluviometrie_septembre.geojson"
+                },
+                {
+                    "id": "pluviometrie_octobre",
+                    "label": "Pluviométrie - Octobre",
+                    "dataFile": "pluviometrie_octobre.geojson"
+                },
+                {
+                    "id": "pluviometrie_novembre",
+                    "label": "Pluviométrie - Novembre",
+                    "dataFile": "pluviometrie_novembre.geojson"
+                },
+                {
+                    "id": "pluviometrie_decembre",
+                    "label": "Pluviométrie - Décembre",
+                    "dataFile": "pluviometrie_decembre.geojson"
+                }
+            ]
+        },
+        {
+            "templateId": "temperature",
+            "layerManagerId": "data-climate",
+            "template": {
+                "zIndex": 74,
+                "geometry": "polygon",
+                "data": {
+                    "directory": "data"
+                },
+                "styles": {
+                    "directory": "styles",
+                    "default": "defaut.json",
+                    "available": [
+                        {
+                            "id": "defaut",
+                            "label": "défaut",
+                            "file": "defaut.json"
+                        }
+                    ]
+                },
+                "table": {
+                    "enabled": false
+                },
+                "clustering": {
+                    "enabled": false,
+                    "maxClusterRadius": 80,
+                    "disableClusteringAtZoom": 12
+                }
+            },
+            "instances": [
+                {
+                    "id": "temperature_janvier",
+                    "label": "Température - Janvier",
+                    "dataFile": "temperature_janvier.geojson"
+                },
+                {
+                    "id": "temperature_fevrier",
+                    "label": "Température - Février",
+                    "dataFile": "temperature_fevrier.geojson"
+                },
+                {
+                    "id": "temperature_mars",
+                    "label": "Température - Mars",
+                    "dataFile": "temperature_mars.geojson"
+                },
+                {
+                    "id": "temperature_avril",
+                    "label": "Température - Avril",
+                    "dataFile": "temperature_avril.geojson"
+                },
+                {
+                    "id": "temperature_mai",
+                    "label": "Température - Mai",
+                    "dataFile": "temperature_mai.geojson"
+                },
+                {
+                    "id": "temperature_juin",
+                    "label": "Température - Juin",
+                    "dataFile": "temperature_juin.geojson"
+                },
+                {
+                    "id": "temperature_juillet",
+                    "label": "Température - Juillet",
+                    "dataFile": "temperature_juillet.geojson"
+                },
+                {
+                    "id": "temperature_aout",
+                    "label": "Température - Août",
+                    "dataFile": "temperature_aout.geojson"
+                },
+                {
+                    "id": "temperature_septembre",
+                    "label": "Température - Septembre",
+                    "dataFile": "temperature_septembre.geojson"
+                },
+                {
+                    "id": "temperature_octobre",
+                    "label": "Température - Octobre",
+                    "dataFile": "temperature_octobre.geojson"
+                },
+                {
+                    "id": "temperature_novembre",
+                    "label": "Température - Novembre",
+                    "dataFile": "temperature_novembre.geojson"
+                },
+                {
+                    "id": "temperature_decembre",
+                    "label": "Température - Décembre",
+                    "dataFile": "temperature_decembre.geojson"
+                }
+            ]
+        }
+    ]
+}

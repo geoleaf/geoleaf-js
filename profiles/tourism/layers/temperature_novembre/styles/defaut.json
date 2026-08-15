@@ -1,0 +1,132 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "fillColor": "#2b83ba",
+        "fillOpacity": 1,
+        "color": "#232323",
+        "opacity": 1,
+        "weight": 0.98
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 1
+            },
+            "style": {
+                "extends": "base"
+            },
+            "legend": {
+                "label": "< -5°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 2
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#74b6ad"
+            },
+            "legend": {
+                "label": "-5 à 0°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 3
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#b7e2a8"
+            },
+            "legend": {
+                "label": "0 à 5°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 4
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#e7f5b7"
+            },
+            "legend": {
+                "label": "5 à 10°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 5
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#fee8a4"
+            },
+            "legend": {
+                "label": "10 à 15°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 6
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#fdba6e"
+            },
+            "legend": {
+                "label": "15 à 20°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 7
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#ed6e43"
+            },
+            "legend": {
+                "label": "20 à 25°C"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": null
+            },
+            "style": {
+                "extends": "base",
+                "fillColor": "#d7191c"
+            },
+            "legend": {
+                "label": "> 25°C"
+            }
+        }
+    ],
+    "legend": {
+        "label": "Température Novembre"
+    }
+}

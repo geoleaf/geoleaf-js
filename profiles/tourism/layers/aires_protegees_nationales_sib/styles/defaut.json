@@ -1,0 +1,161 @@
+{
+    "id": "defaut",
+    "description": "",
+    "scaleConfig": {
+        "minScale": 20000000,
+        "maxScale": 0
+    },
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "Name",
+        "font": {
+            "family": "Open Sans",
+            "sizePt": 8,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#ffffff",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#22734d",
+            "opacity": 1,
+            "sizePx": 3.02,
+            "noFill": false
+        }
+    },
+    "labelScale": {
+        "minScale": 3000000,
+        "maxScale": 0
+    },
+    "style": {
+        "fillColor": "#4523c9",
+        "fillOpacity": 0.7,
+        "color": "#232323",
+        "opacity": 0.7,
+        "weight": 0.98
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "ÁREAS MARINAS PROTEGIDAS"
+            },
+            "style": {
+                "fillColor": "#4523c9",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "ÁREAS MARINAS PROTEGIDAS"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "ÁREAS PROTEGIDAS CENTRO ESTE"
+            },
+            "style": {
+                "fillColor": "#e28940",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "ÁREAS PROTEGIDAS CENTRO ESTE"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "DIRECCION REGIONAL CENTRO"
+            },
+            "style": {
+                "fillColor": "#e9c036",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "DIRECCION REGIONAL CENTRO"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "DIRECCIÓN REGIONAL NEA"
+            },
+            "style": {
+                "fillColor": "#0b8135",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "DIRECCIÓN REGIONAL NEA"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "DIRECCIÓN REGIONAL NOA"
+            },
+            "style": {
+                "fillColor": "#9e5332",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "DIRECCIÓN REGIONAL NOA"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "DIRECCIÓN REGIONAL PATAGONIA AUSTRAL"
+            },
+            "style": {
+                "fillColor": "#2687b4",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "DIRECCIÓN REGIONAL PATAGONIA AUSTRAL"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.region",
+                "operator": "==",
+                "value": "DIRECCIÓN REGIONAL PATAGONIA NORTE"
+            },
+            "style": {
+                "fillColor": "#69dead",
+                "fillOpacity": 0.7,
+                "color": "#232323",
+                "opacity": 0.7,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "DIRECCIÓN REGIONAL PATAGONIA NORTE"
+            }
+        }
+    ]
+}

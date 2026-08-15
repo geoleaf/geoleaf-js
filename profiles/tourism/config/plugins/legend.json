@@ -1,0 +1,7 @@
+{
+    "_comment": "S10/F2 — modules.legend (capacité in-core capabilities/legend). Migré depuis ui.showLegend + legendConfig. enabled = gate opt-out ; title/position/collapsedByDefault désormais actifs (config réveillée — décision option B).",
+    "enabled": true,
+    "title": "Légende",
+    "collapsedByDefault": true,
+    "position": "bottomleft"
+}

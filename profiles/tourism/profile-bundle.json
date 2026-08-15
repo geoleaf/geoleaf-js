@@ -1,0 +1,3151 @@
+{
+  "_bundleVersion": "1.0",
+  "_profileId": "tourism",
+  "themes": {
+    "defaultTheme": "environnement",
+    "config": {
+      "defautTheme": "environnement",
+      "primaryThemes": {
+        "enabled": true,
+        "position": "top-map"
+      },
+      "secondaryThemes": {
+        "enabled": true,
+        "placeholder": "Météo mensuelle..",
+        "showNavigationButtons": true,
+        "position": "top-layermanager"
+      }
+    },
+    "themes": [
+      {
+        "id": "defaut",
+        "label": "Administratif",
+        "type": "primary",
+        "description": "Affiche les données environnementales et les villes",
+        "icon": "🗺️",
+        "layers": [
+          {
+            "id": "pays",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "departements",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "routes_principales",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "provinces",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "reseau_ferroviaire",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "environnement",
+        "label": "Environnement",
+        "type": "primary",
+        "description": "Affiche les données environnementales et les villes",
+        "icon": "🌍",
+        "layers": [
+          {
+            "id": "aires_protegees_nationales_sib",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "zones_de_conservation_wdpa",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "sites_de_conservation_wdpa",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "provinces",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "routes_principales",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "epicentres_seismes",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "observations_gbif",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "paysage",
+        "label": "Paysage",
+        "type": "primary",
+        "description": "Affiche les données paysagères et les villes",
+        "icon": "🌄",
+        "layers": [
+          {
+            "id": "eco_regions",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "provinces",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "tourisme",
+        "label": "Tourisme",
+        "type": "primary",
+        "description": "Affiche les données touristiques et les villes",
+        "icon": "✈️",
+        "layers": [
+          {
+            "id": "cultures",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "hebergements",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_janvier",
+        "label": "Climat - Janvier",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de janvier",
+        "icon": "❄️",
+        "layers": [
+          {
+            "id": "pluviometrie_janvier",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_janvier",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_février",
+        "label": "Climat - Février",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de février",
+        "icon": "🌨️",
+        "layers": [
+          {
+            "id": "pluviometrie_fevrier",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_fevrier",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_mars",
+        "label": "Climat - Mars",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de mars",
+        "icon": "🌸",
+        "layers": [
+          {
+            "id": "pluviometrie_mars",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_mars",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_avril",
+        "label": "Climat - Avril",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois d'avril",
+        "icon": "🌷",
+        "layers": [
+          {
+            "id": "pluviometrie_avril",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_avril",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_mai",
+        "label": "Climat - Mai",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de mai",
+        "icon": "🌺",
+        "layers": [
+          {
+            "id": "pluviometrie_mai",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_mai",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_juin",
+        "label": "Climat - Juin",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de juin",
+        "icon": "☀️",
+        "layers": [
+          {
+            "id": "pluviometrie_juin",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_juin",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_juillet",
+        "label": "Climat - Juillet",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de juillet",
+        "icon": "🌞",
+        "layers": [
+          {
+            "id": "pluviometrie_juillet",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_juillet",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_aout",
+        "label": "Climat - Août",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois d'août",
+        "icon": "🏖️",
+        "layers": [
+          {
+            "id": "pluviometrie_aout",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_aout",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_septembre",
+        "label": "Climat - Septembre",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de septembre",
+        "icon": "🍂",
+        "layers": [
+          {
+            "id": "pluviometrie_septembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_septembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_octobre",
+        "label": "Climat - Octobre",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois d'octobre",
+        "icon": "🍁",
+        "layers": [
+          {
+            "id": "pluviometrie_octobre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_octobre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_novembre",
+        "label": "Climat - Novembre",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de novembre",
+        "icon": "🌧️",
+        "layers": [
+          {
+            "id": "pluviometrie_novembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_novembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "climat_décembre",
+        "label": "Climat - Décembre",
+        "type": "secondary",
+        "description": "Données climatiques pour le mois de décembre",
+        "icon": "⛄",
+        "layers": [
+          {
+            "id": "pluviometrie_decembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "temperature_decembre",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "villes_principales",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      }
+    ]
+  },
+  "basemaps": {
+    "basemaps": {
+      "street": {
+        "id": "street",
+        "label": "Street",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, TomTom",
+        "minZoom": 3,
+        "maxZoom": 16,
+        "offline": false
+      },
+      "satellite": {
+        "id": "satellite",
+        "label": "Satellite",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+        "minZoom": 5,
+        "maxZoom": 18,
+        "offline": false
+      },
+      "topo": {
+        "id": "topo",
+        "label": "Topographique",
+        "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "attribution": "Map data: &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, <a href='http://viewfinderpanoramas.org'>SRTM</a> | Map style: &copy; <a href='https://opentopomap.org'>OpenTopoMap</a> (<a href='https://creativecommons.org/licenses/by-sa/3.0/'>CC-BY-SA</a>)",
+        "minZoom": 5,
+        "maxZoom": 17,
+        "offline": false
+      },
+      "positron": {
+        "id": "positron",
+        "label": "Clair",
+        "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "subdomains": "abcd",
+        "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+        "minZoom": 3,
+        "maxZoom": 19,
+        "offline": false
+      },
+      "dark-matter": {
+        "id": "dark-matter",
+        "label": "Sombre",
+        "url": "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "subdomains": "abcd",
+        "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+        "minZoom": 3,
+        "maxZoom": 19,
+        "offline": false
+      },
+      "voyager": {
+        "id": "voyager",
+        "label": "Lite",
+        "url": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "subdomains": "abcd",
+        "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+        "minZoom": 3,
+        "maxZoom": 19,
+        "offline": false
+      },
+      "terrain-terrarium": {
+        "id": "terrain-terrarium",
+        "label": "Relief 3D",
+        "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "attribution": "Map data: &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, <a href='http://viewfinderpanoramas.org'>SRTM</a> | Map style: &copy; <a href='https://opentopomap.org'>OpenTopoMap</a> (<a href='https://creativecommons.org/licenses/by-sa/3.0/'>CC-BY-SA</a>)",
+        "minZoom": 5,
+        "maxZoom": 17,
+        "defaultBasemap": true,
+        "offline": false,
+        "terrain": {
+          "enabled": true,
+          "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+          "demEncoding": "terrarium",
+          "exaggeration": 1.5,
+          "default3D": true,
+          "pitch": 60,
+          "bearing": 0
+        }
+      },
+      "satellite-3d": {
+        "id": "satellite-3d",
+        "label": "Satellite 3D",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles &copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics",
+        "minZoom": 5,
+        "maxZoom": 18,
+        "offline": false,
+        "terrain": {
+          "enabled": true,
+          "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+          "demEncoding": "terrarium",
+          "exaggeration": 1.5,
+          "default3D": true,
+          "pitch": 60,
+          "bearing": 0
+        }
+      }
+    }
+  },
+  "ui": {
+    "ui": {
+      "theme": "light",
+      "language": "fr",
+      "showBaseLayerControls": false,
+      "showLayerManager": true,
+      "showCacheButton": true,
+      "showCredentialButton": true
+    },
+    "layerManagerConfig": {
+      "title": "Couches",
+      "collapsedByDefault": true,
+      "sections": [
+        {
+          "id": "data-tourism",
+          "label": "Données touristiques",
+          "order": 1,
+          "collapsedByDefault": false
+        },
+        {
+          "id": "data-climate",
+          "label": "Données climatiques",
+          "order": 2,
+          "collapsedByDefault": true
+        },
+        {
+          "id": "data-conservation",
+          "label": "Environnement",
+          "order": 3,
+          "collapsedByDefault": true
+        },
+        {
+          "id": "data-administration",
+          "label": "Découpage administratif",
+          "order": 4,
+          "collapsedByDefault": true
+        },
+        {
+          "id": "basemap",
+          "label": "Fonds de carte",
+          "order": 5,
+          "collapsedByDefault": true
+        }
+      ]
+    }
+  },
+  "features": {
+    "mapOptions": {
+      "preserveDrawingBuffer": true
+    }
+  },
+  "mapping": {
+    "gbif": {
+      "description": "Normalisation des données GBIF Occurrence API vers le format GeoLeaf POI (forme plate per-source — contrat mapping ANO-083).",
+      "source": "https://api.gbif.org/v1/occurrence/search",
+      "mapping": {
+        "id": "key",
+        "title": "vernacularName",
+        "description": "scientificName",
+        "category": "kingdom",
+        "subcategory": "class",
+        "location.lat": "decimalLatitude",
+        "location.lng": "decimalLongitude",
+        "attributes.species": "species",
+        "attributes.vernacularName": "vernacularName",
+        "attributes.scientificName": "scientificName",
+        "attributes.kingdom": "kingdom",
+        "attributes.phylum": "phylum",
+        "attributes.class": "class",
+        "attributes.order": "order",
+        "attributes.family": "family",
+        "attributes.genus": "genus",
+        "attributes.basisOfRecord": "basisOfRecord",
+        "attributes.country": "country",
+        "attributes.eventDate": "eventDate",
+        "attributes.institutionCode": "institutionCode",
+        "attributes.datasetName": "datasetName"
+      }
+    }
+  },
+  "modules": {
+    "offline": {
+      "enabled": true,
+      "cache": {
+        "enableProfileCache": true,
+        "enableTileCache": false
+      }
+    },
+    "geocoding": {
+      "enabled": true,
+      "provider": "nominatim",
+      "countrycodes": "ar"
+    },
+    "table": {
+      "enabled": true,
+      "showButton": true,
+      "defaultVisible": false,
+      "pageSize": 50,
+      "maxRowsPerLayer": 10000,
+      "enableExportButton": true,
+      "virtualScrolling": true,
+      "defaultHeight": "40%",
+      "minHeight": "20%",
+      "maxHeight": "60%",
+      "resizable": true
+    },
+    "theme-selector": {
+      "_comment": "S8/F3 — modules.theme-selector (in-core capability capabilities/theme-selector). Capability gate only (opt-out) ; migrated from ui.showThemeSelector.",
+      "enabled": true
+    },
+    "legend": {
+      "_comment": "S10/F2 — modules.legend (capacité in-core capabilities/legend). Migré depuis ui.showLegend + legendConfig. enabled = gate opt-out ; title/position/collapsedByDefault désormais actifs (config réveillée — décision option B).",
+      "enabled": true,
+      "title": "Légende",
+      "collapsedByDefault": true,
+      "position": "bottomleft"
+    },
+    "taxonomy": {
+      "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Geometry colour stays with each layer's styleRules, and so does point SIZE (no marker.radius: a marker is declared per CATEGORY, but one category serves layers with different radii — cultures 8, sites_rosario 9 — so a radius here would flatten them). Palette: five clearly distinct hues, readability over convention (activites is orange, not a third green). Each category ALSO carries its own iconColor — a light shade of its own disc, so the glyphs are told apart at a glance instead of all being white. The three sub-categories that declare a marker of their own get a lighter tint still (override); the others declare none and inherit their category's (inheritance). Note `nature.parc` and `Environnement.PARC` case-fold to the same label — the paint expression nests by category first, so each keeps its parent's colour.",
+      "enabled": true,
+      "icons": {
+        "spriteUrl": "profiles/tourism/icons/sprite_tourism.svg",
+        "symbolPrefix": "tourism-poi-cat-"
+      },
+      "render": {
+        "popup": {
+          "showIconCategory": true,
+          "showIconSubcategory": true,
+          "colorBadges": true
+        },
+        "tooltip": {
+          "showIconCategory": true,
+          "showIconSubcategory": false
+        },
+        "sidepanel": {
+          "showIconCategory": true,
+          "showIconSubcategory": true,
+          "colorBadges": true
+        }
+      },
+      "layers": {
+        "hebergements": {
+          "use": "poi-cat"
+        },
+        "cultures": {
+          "use": "poi-cat"
+        },
+        "sites_rosario": {
+          "use": "poi-cat"
+        },
+        "villes_principales": {
+          "use": "poi-cat"
+        },
+        "sites_de_conservation_wdpa": {
+          "use": "poi-cat"
+        },
+        "aires_protegees_nationales_sib": {
+          "use": "poi-cat"
+        }
+      },
+      "taxonomies": {
+        "poi-cat": {
+          "categoryField": "categoryId",
+          "subCategoryField": "subcategoryId",
+          "categories": {
+            "activites": {
+              "svgId": "activity-generic",
+              "iconColor": "#ffe0b2",
+              "marker": {
+                "fill": "#e65100",
+                "stroke": "#bf360c",
+                "strokeWidth": 2
+              },
+              "label": "Activités",
+              "subcategories": {
+                "randonnee": {
+                  "svgId": "activity-mountain",
+                  "label": "Randonnée"
+                },
+                "velo": {
+                  "svgId": "activity-vehicle",
+                  "label": "Vélo"
+                },
+                "balade": {
+                  "svgId": "activity-generic",
+                  "label": "Balade"
+                }
+              }
+            },
+            "CULTURES": {
+              "svgId": "culture-building",
+              "iconColor": "#e1bee7",
+              "marker": {
+                "fill": "#6a1b9a",
+                "stroke": "#38006b",
+                "strokeWidth": 2
+              },
+              "label": "Culture",
+              "subcategories": {
+                "SITE ARCHEOLOGIQUE": {
+                  "svgId": "culture-building",
+                  "label": "Site archéologique"
+                },
+                "MUSEE": {
+                  "svgId": "culture-building",
+                  "iconColor": "#f3e5f5",
+                  "marker": {
+                    "fill": "#8e24aa",
+                    "stroke": "#38006b",
+                    "strokeWidth": 2
+                  },
+                  "label": "Musée"
+                }
+              }
+            },
+            "nature": {
+              "svgId": "nature-mountain",
+              "iconColor": "#b2dfdb",
+              "marker": {
+                "fill": "#00695c",
+                "stroke": "#003d33",
+                "strokeWidth": 2
+              },
+              "label": "Nature",
+              "subcategories": {
+                "parc": {
+                  "svgId": "nature-mountain",
+                  "label": "Parc"
+                },
+                "reserve": {
+                  "svgId": "nature-protected",
+                  "iconColor": "#e0f2f1",
+                  "marker": {
+                    "fill": "#00897b",
+                    "stroke": "#003d33",
+                    "strokeWidth": 2
+                  },
+                  "label": "Réserve"
+                },
+                "viewpoint": {
+                  "svgId": "nature-mountain",
+                  "label": "Point de vue"
+                },
+                "jardin": {
+                  "svgId": "nature-forest",
+                  "label": "Jardin"
+                },
+                "lac": {
+                  "svgId": "nature-water",
+                  "label": "Lac"
+                },
+                "foret": {
+                  "svgId": "nature-forest",
+                  "label": "Forêt"
+                }
+              }
+            },
+            "HEBERGEMENT": {
+              "svgId": "lodging-hotel",
+              "iconColor": "#bbdefb",
+              "marker": {
+                "fill": "#1565c0",
+                "stroke": "#0d47a1",
+                "strokeWidth": 2
+              },
+              "label": "Hébergements",
+              "subcategories": {
+                "CAMPING": {
+                  "svgId": "lodging-camping",
+                  "iconColor": "#e3f2fd",
+                  "marker": {
+                    "fill": "#1e88e5",
+                    "stroke": "#0d47a1",
+                    "strokeWidth": 2
+                  },
+                  "label": "Camping"
+                },
+                "HOTEL": {
+                  "svgId": "lodging-hotel",
+                  "label": "Hôtel"
+                }
+              }
+            },
+            "Environnement": {
+              "svgId": "nature-protected",
+              "iconColor": "#c8e6c9",
+              "marker": {
+                "fill": "#2e7d32",
+                "stroke": "#1b5e20",
+                "strokeWidth": 2
+              },
+              "label": "Environnement",
+              "subcategories": {
+                "PARC": {
+                  "svgId": "nature-mountain",
+                  "label": "Parc national"
+                }
+              }
+            }
+          },
+          "fieldMappings": {
+            "fclass": {
+              "archaeological": {
+                "categoryId": "CULTURES",
+                "subCategoryId": "SITE ARCHEOLOGIQUE"
+              },
+              "museum": {
+                "categoryId": "CULTURES",
+                "subCategoryId": "MUSEE"
+              },
+              "camp_site": {
+                "categoryId": "HEBERGEMENT",
+                "subCategoryId": "CAMPING"
+              },
+              "hotel": {
+                "categoryId": "HEBERGEMENT",
+                "subCategoryId": "HOTEL"
+              }
+            }
+          }
+        }
+      }
+    },
+    "feature-info": {
+      "_comment": "S2 capacités-extraction — modules.feature-info (plugin @geoleaf-plugins/feature-info). Attribute-rendering capacity: tooltip (hover), popup (click), side-panel (selection) for GeoJSON/VT layers. Per-layer bindings live in layers/<id>/{id}_config.json under capabilities.feature-info. POI rendering stack delegated to this plugin since S2b (see CDC_plugin-feature-info.md).",
+      "enabled": true
+    },
+    "cluster": {
+      "_comment": "S3 capacités-extraction — modules.cluster (migré depuis poiConfig.cluster*). Clustering natif MapLibre, capacité in-core opt-out.",
+      "clustering": true,
+      "clusterStrategy": "unified",
+      "clusterRadius": 80,
+      "disableClusteringAtZoom": 12
+    },
+    "filter": {
+      "_comment": "S5 F4.2 — modules.filter (capacité in-core filter). Migration cassante de searchConfig + ui.showFilterPanel. Pilote tourism : categories inférées de la taxonomie core (categoryId/subcategoryId, 2 niveaux) portée aux couches POI.",
+      "enabled": true,
+      "title": "Filtrer",
+      "fields": [
+        {
+          "id": "searchText",
+          "kind": "text",
+          "label": "Recherche textuelle",
+          "placeholder": "Rechercher un POI…",
+          "searchFields": [
+            "title",
+            "properties.name",
+            "description",
+            "attributes.description_long",
+            "properties.description_long"
+          ]
+        },
+        {
+          "id": "proximity",
+          "kind": "proximity",
+          "label": "Recherche par proximité",
+          "radiusMin": 1,
+          "radiusMax": 200,
+          "radiusStep": 1,
+          "radiusDefault": 10,
+          "buttonLabel": "Activer",
+          "instructionText": "Cliquez sur la carte pour définir le point central"
+        },
+        {
+          "id": "categories",
+          "kind": "taxonomy",
+          "taxonomyRef": "poi-cat",
+          "label": "Catégories",
+          "field": "categoryId",
+          "subField": "subcategoryId",
+          "layers": [
+            "hebergements",
+            "cultures",
+            "sites_rosario"
+          ]
+        },
+        {
+          "id": "tags",
+          "kind": "tag",
+          "label": "Tags",
+          "field": "attributes.tags",
+          "options": "auto"
+        }
+      ],
+      "actions": {
+        "applyLabel": "Appliquer",
+        "resetLabel": "Réinitialiser"
+      }
+    },
+    "route": {
+      "_comment": "S11 capacités-extraction — modules.route (in-core route capability). Endpoint decorator: derives start/end markers from the line features of a bound layer. Opt-in PER LAYER (config.layers only — never all polylines). Bound to the trail layer `parcours` (Randonnée/Vélo) where a départ/arrivée makes sense; NOT to `routes_principales` (road network, where per-segment endpoints are meaningless). The line itself is rendered by the generic GeoJSON engine; the capability only styles the endpoints.",
+      "enabled": true,
+      "layers": {
+        "parcours": {
+          "start": {
+            "fillColor": "#2b7cff",
+            "color": "#ffffff",
+            "radius": 6,
+            "weight": 2
+          },
+          "end": {
+            "fillColor": "#ff7b32",
+            "color": "#ffffff",
+            "radius": 6,
+            "weight": 2
+          }
+        }
+      }
+    }
+  },
+  "layersFile": {
+    "layers": [
+      {
+        "id": "sites_rosario",
+        "configFile": "layers/sites_rosario/sites_rosario_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "id": "parcours",
+        "configFile": "layers/parcours/parcours_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "id": "zones",
+        "configFile": "layers/zones/zones_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "id": "eco_regions",
+        "configFile": "layers/eco_regions/eco_regions_config.json",
+        "layerManagerId": "data-conservation"
+      },
+      {
+        "id": "eco_regions_fgb",
+        "configFile": "layers/eco_regions_fgb/eco_regions_fgb_config.json",
+        "layerManagerId": "data-conservation"
+      },
+      {
+        "id": "aires_protegees_nationales_sib",
+        "configFile": "layers/aires_protegees_nationales_sib/aires_protegees_nationales_sib_config.json",
+        "layerManagerId": "data-conservation"
+      },
+      {
+        "id": "villes_principales",
+        "configFile": "layers/villes_principales/villes_principales_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "cultures",
+        "configFile": "layers/cultures/cultures_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "id": "departements",
+        "configFile": "layers/departements/departements_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "hebergements",
+        "configFile": "layers/hebergements/hebergements_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "id": "pays",
+        "configFile": "layers/pays/pays_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "provinces",
+        "configFile": "layers/provinces/provinces_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "reseau_ferroviaire",
+        "configFile": "layers/reseau_ferroviaire/reseau_ferroviaire_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "routes_principales",
+        "configFile": "layers/routes_principales/routes_principales_config.json",
+        "layerManagerId": "data-administration"
+      },
+      {
+        "id": "sites_de_conservation_wdpa",
+        "configFile": "layers/sites_de_conservation_wdpa/sites_de_conservation_wdpa_config.json",
+        "layerManagerId": "data-conservation"
+      },
+      {
+        "id": "zones_de_conservation_wdpa",
+        "configFile": "layers/zones_de_conservation_wdpa/zones_de_conservation_wdpa_config.json",
+        "layerManagerId": "data-conservation"
+      },
+      {
+        "_comment": "Couche temps réel USGS — migrée depuis le profil de démonstration world-disasters le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du plugin realtime-layer sur le chemin polling + snapshot de repli : sans elle, e2e/08-realtime perd cette vérification. Cohérente ici — l Amérique du Sud est l une des zones les plus sismiques, et tourism est le profil complet de test.",
+        "id": "epicentres_seismes",
+        "configFile": "layers/epicentres_seismes/epicentres_seismes_config.json",
+        "layerManagerId": "data-tourism"
+      },
+      {
+        "_comment": "Couche GBIF — migrée depuis le profil de démonstration guyane-biodiversite le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du pipeline de mapping runtime (famille B6 : data.mapping + itemsPath). Cohérente ici : tourism porte déjà eco_regions, pays et pluviometrie, et le bloc gbif normalise l Occurrence API vers des POI.",
+        "id": "observations_gbif",
+        "configFile": "layers/observations_gbif/observations_gbif_config.json",
+        "layerManagerId": "data-tourism"
+      }
+    ],
+    "layerTemplates": [
+      {
+        "templateId": "pluviometrie",
+        "layerManagerId": "data-climate",
+        "template": {
+          "zIndex": 93,
+          "geometry": "polygon",
+          "data": {
+            "directory": "data"
+          },
+          "styles": {
+            "directory": "styles",
+            "default": "defaut.json",
+            "available": [
+              {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+              }
+            ]
+          },
+          "table": {
+            "enabled": false
+          },
+          "clustering": {
+            "enabled": false,
+            "maxClusterRadius": 80,
+            "disableClusteringAtZoom": 12
+          }
+        },
+        "instances": [
+          {
+            "id": "pluviometrie_janvier",
+            "label": "Pluviométrie - Janvier",
+            "dataFile": "pluviometrie_janvier.geojson"
+          },
+          {
+            "id": "pluviometrie_fevrier",
+            "label": "Pluviométrie - Février",
+            "dataFile": "pluviometrie_fevrier.geojson"
+          },
+          {
+            "id": "pluviometrie_mars",
+            "label": "Pluviométrie - Mars",
+            "dataFile": "pluviometrie_mars.geojson"
+          },
+          {
+            "id": "pluviometrie_avril",
+            "label": "Pluviométrie - Avril",
+            "dataFile": "pluviometrie_avril.geojson"
+          },
+          {
+            "id": "pluviometrie_mai",
+            "label": "Pluviométrie - Mai",
+            "dataFile": "pluviometrie_mai.geojson"
+          },
+          {
+            "id": "pluviometrie_juin",
+            "label": "Pluviométrie - Juin",
+            "dataFile": "pluviometrie_juin.geojson"
+          },
+          {
+            "id": "pluviometrie_juillet",
+            "label": "Pluviométrie - Juillet",
+            "dataFile": "pluviometrie_juillet.geojson"
+          },
+          {
+            "id": "pluviometrie_aout",
+            "label": "Pluviométrie - Août",
+            "dataFile": "pluviometrie_aout.geojson"
+          },
+          {
+            "id": "pluviometrie_septembre",
+            "label": "Pluviométrie - Septembre",
+            "dataFile": "pluviometrie_septembre.geojson"
+          },
+          {
+            "id": "pluviometrie_octobre",
+            "label": "Pluviométrie - Octobre",
+            "dataFile": "pluviometrie_octobre.geojson"
+          },
+          {
+            "id": "pluviometrie_novembre",
+            "label": "Pluviométrie - Novembre",
+            "dataFile": "pluviometrie_novembre.geojson"
+          },
+          {
+            "id": "pluviometrie_decembre",
+            "label": "Pluviométrie - Décembre",
+            "dataFile": "pluviometrie_decembre.geojson"
+          }
+        ]
+      },
+      {
+        "templateId": "temperature",
+        "layerManagerId": "data-climate",
+        "template": {
+          "zIndex": 74,
+          "geometry": "polygon",
+          "data": {
+            "directory": "data"
+          },
+          "styles": {
+            "directory": "styles",
+            "default": "defaut.json",
+            "available": [
+              {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+              }
+            ]
+          },
+          "table": {
+            "enabled": false
+          },
+          "clustering": {
+            "enabled": false,
+            "maxClusterRadius": 80,
+            "disableClusteringAtZoom": 12
+          }
+        },
+        "instances": [
+          {
+            "id": "temperature_janvier",
+            "label": "Température - Janvier",
+            "dataFile": "temperature_janvier.geojson"
+          },
+          {
+            "id": "temperature_fevrier",
+            "label": "Température - Février",
+            "dataFile": "temperature_fevrier.geojson"
+          },
+          {
+            "id": "temperature_mars",
+            "label": "Température - Mars",
+            "dataFile": "temperature_mars.geojson"
+          },
+          {
+            "id": "temperature_avril",
+            "label": "Température - Avril",
+            "dataFile": "temperature_avril.geojson"
+          },
+          {
+            "id": "temperature_mai",
+            "label": "Température - Mai",
+            "dataFile": "temperature_mai.geojson"
+          },
+          {
+            "id": "temperature_juin",
+            "label": "Température - Juin",
+            "dataFile": "temperature_juin.geojson"
+          },
+          {
+            "id": "temperature_juillet",
+            "label": "Température - Juillet",
+            "dataFile": "temperature_juillet.geojson"
+          },
+          {
+            "id": "temperature_aout",
+            "label": "Température - Août",
+            "dataFile": "temperature_aout.geojson"
+          },
+          {
+            "id": "temperature_septembre",
+            "label": "Température - Septembre",
+            "dataFile": "temperature_septembre.geojson"
+          },
+          {
+            "id": "temperature_octobre",
+            "label": "Température - Octobre",
+            "dataFile": "temperature_octobre.geojson"
+          },
+          {
+            "id": "temperature_novembre",
+            "label": "Température - Novembre",
+            "dataFile": "temperature_novembre.geojson"
+          },
+          {
+            "id": "temperature_decembre",
+            "label": "Température - Décembre",
+            "dataFile": "temperature_decembre.geojson"
+          }
+        ]
+      }
+    ]
+  },
+  "layerConfigs": {
+    "sites_rosario": {
+      "id": "sites_rosario",
+      "label": "Sites touristiques – Rosario",
+      "zIndex": 97,
+      "geometry": "point",
+      "geometryType": "point",
+      "edition": {
+        "create": true,
+        "update": true,
+        "delete": true
+      },
+      "editableGeometryTypes": [
+        "Point"
+      ],
+      "_comment_offline": "PREMIÈRE couche du dépôt à déclarer une lecture hors-ligne (tâche 4.3), et la première à déclarer une SOURCE DE RAPATRIEMENT (tâche 4.1). `enabled: true` fait lire au chargeur les entités du store `features` au lieu de refetcher ; `source` dit à `GeoLeaf.Storage.pullLayer()` où aller les chercher. ⚠️ Déclare une LECTURE et rien d'autre — invariant S6 : le rapatriement ne confère JAMAIS l'éditabilité, décidée par le bloc `edition` seul. Sûr à déclarer avant le premier rapatriement : un store vide retombe sur le réseau, parce que `getLayerFeatureCollection` rend `null` et non une collection vide. ⚠️ Une fois le rapatriement fait, c'est le store qui sert cette couche — `data.file` ci-dessous devient le repli, pas la source.",
+      "_comment_offline_source": "🛑 La source de pull n'est PAS `data.ogcApi`, et c'est mesuré : l'early-exit `data.ogcApi` du chargeur rend la main AVANT la branche de lecture locale de 4.3, ce qui court-circuiterait en silence le store que ce pull remplit. `data.*` est la source d'AFFICHAGE, `offline.source` la source de RAPATRIEMENT. `collectionId` est omis : il vaut l'identifiant de couche par défaut. Backend de preuve : docker/backend/README.md.",
+      "offline": {
+        "enabled": true,
+        "maxFeatures": 5000
+      },
+      "_comment_write": "Première couche du dépôt à renseigner ce bloc — il était lu par addpoi (paquet supprimé au Sprint 5 ; lecteur vivant : core push-engine.ts) en quatre sites et posé par 0 couche sur 48 (point 7 du contrat de synchronisation). Cible le backend de preuve monté par la tâche 4.H. `collection` = POST {endpoint} avec un corps PLAT {...properties, geom}, ce que sert PostgREST. `properties` est une liste blanche : ce qui n'y figure pas n'est jamais envoyé, et les colonnes que personne ne capture (id, local_id, updated_at) appartiennent au serveur. ⚠️ Cette phrase disait « les colonnes hors formSchema » jusqu'à la tâche 7.2 : `formSchema` n'existe plus, et la liste des champs capturés se lit désormais sur `attributes.fields[].edit` — même ensemble, autre déclaration. Les 11 entrées ci-dessous en sont l'image exacte, et la garde `write-capture-parity.guard.test.js` du core le vérifie dans les DEUX sens plutôt que de le promettre.",
+      "write": {
+        "enabled": false,
+        "dialect": "collection",
+        "auth": "bearer",
+        "geometryProperty": "geom",
+        "properties": [
+          "title",
+          "description",
+          "description_longue",
+          "adresse",
+          "statut",
+          "mots_cles",
+          "services",
+          "horaires",
+          "site_web",
+          "photo_principale",
+          "galerie"
+        ]
+      },
+      "interactiveShape": true,
+      "showIconsOnMap": true,
+      "data": {
+        "directory": "data",
+        "file": "sites_rosario.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.title",
+        "fields": [
+          {
+            "field": "properties.title",
+            "label": "title",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            },
+            "edit": {
+              "required": true
+            }
+          },
+          {
+            "field": "properties.adresse",
+            "label": "Adresse",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "_comment": "🛑 Le SEUL champ du dépôt dont les deux projections divergent, et le cas qui a motivé l'ouverture d'`edit` à sa propre paire (widget, options) à la tâche 7.2. En lecture, `badge` rend une pastille dont la couleur vient du seam taxonomie (`resolveBadgeStyle`). En saisie, le composant `badge` de field-renderer ÉMET `{label, color}` — un objet — qui partirait à plat dans `write.properties` vers une colonne scalaire. La valeur est bien un scalaire (`\"Ouvert\"`). La règle A17 exige donc que ce champ NOMME son widget de capture : sans elle, `edit` sans `widget` héritait de `badge` et personne ne l'aurait vu.",
+            "field": "properties.statut",
+            "label": "Statut",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            },
+            "edit": {
+              "widget": "dropdown",
+              "options": {
+                "options": [
+                  {
+                    "value": "Ouvert",
+                    "label": "Ouvert"
+                  },
+                  {
+                    "value": "Fermé",
+                    "label": "Fermé"
+                  },
+                  {
+                    "value": "Temporairement fermé",
+                    "label": "Temporairement fermé"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "_comment": "Champ CAPTURE SEULE — il n'a pas de bloc `display`, et c'est légal : le schéma exige `display` OU `edit`, pas les deux. Il n'existait que dans `formSchema` avant 7.2 et n'était affiché nulle part ; le migrer en lui inventant une surface de lecture aurait ajouté un rendu que personne n'avait demandé.",
+            "field": "properties.description",
+            "label": "Description courte",
+            "primitive": "string",
+            "widget": "longtext",
+            "options": {
+              "rows": 3
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.description_longue",
+            "label": "Description détaillée",
+            "primitive": "string",
+            "widget": "longtext",
+            "options": {
+              "rows": 6
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.services",
+            "label": "Services disponibles",
+            "primitive": "string[]",
+            "widget": "list",
+            "options": {
+              "maxItems": 12
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.mots_cles",
+            "label": "Mots-clés",
+            "primitive": "string[]",
+            "widget": "tags",
+            "options": {
+              "options": [
+                {
+                  "value": "patrimoine",
+                  "label": "Patrimoine"
+                },
+                {
+                  "value": "histoire",
+                  "label": "Histoire"
+                },
+                {
+                  "value": "nature",
+                  "label": "Nature"
+                },
+                {
+                  "value": "culture",
+                  "label": "Culture"
+                },
+                {
+                  "value": "gratuit",
+                  "label": "Gratuit"
+                },
+                {
+                  "value": "enfants",
+                  "label": "Enfants"
+                }
+              ]
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.horaires",
+            "label": "Horaires d'ouverture",
+            "primitive": "object[]",
+            "widget": "table",
+            "options": {
+              "columns": [
+                {
+                  "key": "jour",
+                  "label": "Jour"
+                },
+                {
+                  "key": "horaire",
+                  "label": "Horaire"
+                }
+              ]
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "_comment": "⚠️ Ce champ portait `widget: \"link\"` avant 7.2, et le passage à `url` est ISO-COMPORTEMENT en lecture — mesuré, pas supposé : `widget-dispatch.ts` route `link` ET `url` vers le MÊME `renderSchemeLink(field, value, \"\")` et leur donne le même `textOfLink`. Ce que le changement gagne est côté capture : `link` saisit `{href, label?}`, un objet, alors que la donnée est une chaîne et que `write.properties` l'expédie à plat. Le champ ne portait aucune option, donc le rétrécissement `LinkOptions` → `PlaceholderOnlyOptions` ne perd rien.",
+            "field": "properties.site_web",
+            "label": "Site web",
+            "primitive": "string",
+            "widget": "url",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.photo_principale",
+            "label": "Photo principale",
+            "primitive": "string",
+            "widget": "image",
+            "options": {
+              "maxSizeMb": 5
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          },
+          {
+            "field": "properties.galerie",
+            "label": "Galerie photos",
+            "primitive": "string[]",
+            "widget": "gallery",
+            "options": {
+              "maxCount": 8,
+              "maxSizeMb": 5
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            },
+            "edit": {}
+          }
+        ]
+      }
+    },
+    "parcours": {
+      "id": "parcours",
+      "label": "Parcours (démo édition)",
+      "zIndex": 96,
+      "geometry": "polyline",
+      "geometryType": "polyline",
+      "interactiveShape": true,
+      "data": {
+        "directory": "data",
+        "file": "parcours.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+          {
+            "field": "properties.nom",
+            "label": "nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.type_parcours",
+            "label": "Type",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.distance_km",
+            "label": "Distance (km)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.difficulte",
+            "label": "Difficulté",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.description",
+            "label": "Description",
+            "primitive": "string",
+            "widget": "longtext",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "zones": {
+      "id": "zones",
+      "label": "Zones (démo édition)",
+      "zIndex": 42,
+      "geometry": "polygon",
+      "geometryType": "polygon",
+      "interactiveShape": true,
+      "data": {
+        "directory": "data",
+        "file": "zones.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+          {
+            "field": "properties.nom",
+            "label": "nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.categorie",
+            "label": "Catégorie",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.surface_ha",
+            "label": "Surface (ha)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.description",
+            "label": "Description",
+            "primitive": "string",
+            "widget": "longtext",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "eco_regions": {
+      "id": "eco_regions",
+      "label": "Eco régions",
+      "zIndex": 50,
+      "interactiveShape": false,
+      "geometry": "polygon",
+      "data": {
+        "directory": "data",
+        "file": "eco_regions.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "eco_regions",
+          "minZoom": 0,
+          "maxNativeZoom": 14,
+          "maxZoom": 18,
+          "interactive": true
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.ecorregion",
+        "fields": [
+          {
+            "field": "properties.ecorregion",
+            "label": "ecorregion",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "eco_regions_fgb": {
+      "id": "eco_regions_fgb",
+      "label": "Éco-régions (FlatGeobuf)",
+      "plugin": "flatgeobuf",
+      "zIndex": 51,
+      "geometry": "polygon",
+      "data": {
+        "url": "layers/eco_regions_fgb/data/eco_regions.fgb",
+        "limit": 50000,
+        "autoRefresh": false
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.ecorregion",
+        "fields": [
+          {
+            "field": "properties.ecorregion",
+            "label": "ecorregion",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "aires_protegees_nationales_sib": {
+      "id": "aires_protegees_nationales_sib",
+      "label": "Parcs nationaux – Aires protégées",
+      "type": "geojson",
+      "geometry": "polygon",
+      "zIndex": 53,
+      "interactiveShape": true,
+      "data": {
+        "directory": "data",
+        "file": "aires_protegees_nationales_sib.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.Name",
+            "label": "Nom",
+            "sortable": true,
+            "width": "60%"
+          },
+          {
+            "field": "properties.categoryId",
+            "label": "Catégorie",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.subCategoryId",
+            "label": "Sous-catégorie",
+            "sortable": true,
+            "width": "20%"
+          }
+        ],
+        "defaultSort": {
+          "field": "properties.Name",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": false
+      },
+      "attributes": {
+        "titleField": "properties.Name",
+        "fields": [
+          {
+            "field": "properties.Name",
+            "label": "Nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "attributes.photo",
+            "label": "Image principale",
+            "primitive": "string",
+            "widget": "image",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "hero": true
+              }
+            }
+          },
+          {
+            "field": "attributes.short_desc",
+            "label": "Résumé",
+            "primitive": "string",
+            "widget": "longtext",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true,
+                "defaultOpen": true
+              }
+            }
+          },
+          {
+            "field": "attributes.categoryId",
+            "label": "Catégorie",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "category"
+              }
+            }
+          },
+          {
+            "field": "attributes.subCategoryId",
+            "label": "Sous-catégorie",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "subcategory"
+              }
+            }
+          },
+          {
+            "field": "attributes.informations",
+            "label": "Informations",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.highlights",
+            "label": "Points forts",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.gallery",
+            "label": "Galerie photos",
+            "primitive": "string[]",
+            "widget": "gallery",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.link_official",
+            "label": "Site officiel",
+            "primitive": "string",
+            "widget": "link",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "attributes.link_wikipedia",
+            "label": "Wikipedia",
+            "primitive": "string",
+            "widget": "link",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "attributes.tags",
+            "label": "Tags",
+            "primitive": "string[]",
+            "widget": "tags",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "villes_principales": {
+      "id": "villes_principales",
+      "label": "villes principales",
+      "zIndex": 94,
+      "geometry": "point",
+      "_comment_offline": "Déclaration de lecture hors-ligne (tâche 4.3). Couche NON éditable — et c'est délibéré : elle démontre l'invariant S6 dans le sens qui compte, une couche rapatriable en lecture seule. Le rapatriement ne confère JAMAIS l'éditabilité. Elle est aussi chargée par le thème par défaut, ce qui rend la lecture locale OBSERVABLE au boot — `sites_rosario` ne l'est pas, et une preuve prise sur une couche non chargée ne prouve rien.",
+      "offline": {
+        "enabled": true,
+        "maxFeatures": 5000
+      },
+      "data": {
+        "directory": "data",
+        "file": "villes_principales.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          },
+          {
+            "id": "population",
+            "label": "population",
+            "file": "population.json"
+          }
+        ]
+      },
+      "interactiveShape": false,
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.ville",
+        "fields": [
+          {
+            "field": "properties.ville",
+            "label": "ville",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "cultures": {
+      "id": "cultures",
+      "label": "Cultures",
+      "zIndex": 99,
+      "geometry": "point",
+      "interactiveShape": true,
+      "showIconsOnMap": true,
+      "data": {
+        "directory": "data",
+        "file": "cultures.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.name",
+            "label": "Nom",
+            "sortable": true,
+            "width": "40%"
+          },
+          {
+            "field": "properties.fclass",
+            "label": "Type",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.categoryId",
+            "label": "Catégorie",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.subcategoryId",
+            "label": "Sous-catégorie",
+            "sortable": true,
+            "width": "20%"
+          }
+        ],
+        "searchFields": [
+          "properties.name"
+        ],
+        "defaultSort": {
+          "field": "properties.name",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.name",
+        "fields": [
+          {
+            "field": "properties.NAME",
+            "label": "NAME",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip"
+              ]
+            }
+          },
+          {
+            "field": "properties.name",
+            "label": "Nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.fclass",
+            "label": "Type",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup"
+              ]
+            }
+          },
+          {
+            "field": "properties.categoryId",
+            "label": "Catégorie",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "category"
+              }
+            }
+          },
+          {
+            "field": "properties.subcategoryId",
+            "label": "Sous-catégorie",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "subcategory"
+              }
+            }
+          },
+          {
+            "field": "attributes.reviews.rating",
+            "label": "Note globale",
+            "primitive": "number",
+            "widget": "rating",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "attributes.photo",
+            "label": "Image principale",
+            "primitive": "string",
+            "widget": "image",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "hero": true
+              }
+            }
+          },
+          {
+            "field": "properties.short_desc",
+            "label": "Résumé",
+            "primitive": "string",
+            "widget": "longtext",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true,
+                "defaultOpen": true
+              }
+            }
+          },
+          {
+            "field": "properties.informations",
+            "label": "Informations",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "properties.highlights",
+            "label": "Points forts",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.gallery",
+            "label": "Galerie photos",
+            "primitive": "string[]",
+            "widget": "gallery",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "properties.link_official",
+            "label": "Site officiel",
+            "primitive": "string",
+            "widget": "link",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.link_wikipedia",
+            "label": "Wikipedia",
+            "primitive": "string",
+            "widget": "link",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.tags",
+            "label": "Tags",
+            "primitive": "string[]",
+            "widget": "tags",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "attributes.reviews.recent",
+            "label": "Avis récents",
+            "primitive": "object[]",
+            "widget": "reviews",
+            "options": {
+              "maxCount": 5
+            },
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    "departements": {
+      "id": "departements",
+      "label": "Départements",
+      "zIndex": 42,
+      "interactiveShape": false,
+      "geometry": "polygon",
+      "data": {
+        "directory": "data",
+        "file": "departements.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "departements",
+          "minZoom": 0,
+          "maxNativeZoom": 14,
+          "maxZoom": 18,
+          "interactive": true
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.NAM",
+            "label": "Nom",
+            "sortable": true,
+            "width": "50%"
+          },
+          {
+            "field": "properties.GNA",
+            "label": "Type",
+            "sortable": true,
+            "width": "30%"
+          },
+          {
+            "field": "properties.IN1",
+            "label": "Code",
+            "sortable": true,
+            "width": "20%"
+          }
+        ],
+        "searchFields": [
+          "properties.NAM"
+        ],
+        "defaultSort": {
+          "field": "properties.NAM",
+          "order": "asc"
+        }
+      }
+    },
+    "hebergements": {
+      "id": "hebergements",
+      "label": "Hébergements",
+      "zIndex": 96,
+      "geometry": "point",
+      "geometryType": "point",
+      "interactiveShape": true,
+      "showIconsOnMap": true,
+      "data": {
+        "directory": "data",
+        "file": "hebergements.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.name",
+            "label": "Nom",
+            "sortable": true,
+            "width": "40%"
+          },
+          {
+            "field": "properties.fclass",
+            "label": "Type",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.categoryId",
+            "label": "Catégorie",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.subcategoryId",
+            "label": "Sous-catégorie",
+            "sortable": true,
+            "width": "20%"
+          }
+        ],
+        "searchFields": [
+          "properties.name"
+        ],
+        "defaultSort": {
+          "field": "properties.name",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.name",
+        "fields": [
+          {
+            "field": "properties.name",
+            "label": "Nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.fclass",
+            "label": "Type",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.categoryId",
+            "label": "Catégorie",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.subcategoryId",
+            "label": "Sous-catégorie",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "pays": {
+      "id": "pays",
+      "label": "Pays",
+      "zIndex": 40,
+      "interactiveShape": false,
+      "geometry": "polyline",
+      "data": {
+        "directory": "data",
+        "file": "pays.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "pays",
+          "minZoom": 0,
+          "maxNativeZoom": 12,
+          "maxZoom": 18,
+          "interactive": true
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      }
+    },
+    "provinces": {
+      "id": "provinces",
+      "label": "Provinces",
+      "zIndex": 43,
+      "interactiveShape": false,
+      "geometry": "polygon",
+      "data": {
+        "directory": "data",
+        "file": "provinces.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "provinces",
+          "minZoom": 0,
+          "maxNativeZoom": 14,
+          "maxZoom": 18,
+          "interactive": false
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          },
+          {
+            "id": "par_population",
+            "label": "par population",
+            "file": "par_population.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.NAM",
+            "label": "Nom",
+            "sortable": true,
+            "width": "40%"
+          },
+          {
+            "field": "properties.GNA",
+            "label": "Type",
+            "sortable": true,
+            "width": "30%"
+          },
+          {
+            "field": "properties.argentina_population_2022",
+            "label": "Population",
+            "sortable": true,
+            "width": "30%"
+          }
+        ],
+        "searchFields": [
+          "properties.NAM"
+        ],
+        "defaultSort": {
+          "field": "properties.NAM",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      }
+    },
+    "reseau_ferroviaire": {
+      "id": "reseau_ferroviaire",
+      "label": "Réseau ferroviaire",
+      "zIndex": 45,
+      "interactiveShape": false,
+      "geometry": "polyline",
+      "data": {
+        "directory": "data",
+        "file": "reseau_ferroviaire.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "reseau_ferroviaire",
+          "minZoom": 0,
+          "maxNativeZoom": 14,
+          "maxZoom": 18,
+          "interactive": false
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      }
+    },
+    "routes_principales": {
+      "id": "routes_principales",
+      "label": "Routes principales",
+      "zIndex": 47,
+      "interactiveShape": false,
+      "geometry": "polyline",
+      "data": {
+        "directory": "data",
+        "file": "routes_principales.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      }
+    },
+    "sites_de_conservation_wdpa": {
+      "id": "sites_de_conservation_wdpa",
+      "label": "Sites de conservation WDPA",
+      "type": "geojson",
+      "geometry": "point",
+      "zIndex": 54,
+      "interactiveShape": false,
+      "showIconsOnMap": false,
+      "data": {
+        "directory": "data",
+        "file": "sites_de_conservation_wdpa.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.NAME",
+            "label": "Nom du site",
+            "sortable": true,
+            "width": "30%"
+          },
+          {
+            "field": "properties.DESIG",
+            "label": "Désignation",
+            "sortable": true,
+            "width": "25%"
+          },
+          {
+            "field": "properties.IUCN_CAT",
+            "label": "Catégorie UICN",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.REP_AREA",
+            "label": "Surface (km²)",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.STATUS_YR",
+            "label": "Année",
+            "sortable": true,
+            "width": "10%"
+          }
+        ],
+        "searchFields": [
+          "properties.NAME",
+          "properties.NAME_ENG"
+        ],
+        "defaultSort": {
+          "field": "properties.NAME",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.NAME",
+        "fields": [
+          {
+            "field": "properties.NAME",
+            "label": "Nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.DESIG",
+            "label": "Désignation",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.IUCN_CAT",
+            "label": "Catégorie IUCN",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.STATUS",
+            "label": "Statut",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.STATUS_YR",
+            "label": "Année de désignation",
+            "primitive": "number",
+            "widget": "number",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.REP_AREA",
+            "label": "Superficie",
+            "primitive": "number",
+            "widget": "metric",
+            "options": {
+              "suffix": " km²"
+            },
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "zones_de_conservation_wdpa": {
+      "id": "zones_de_conservation_wdpa",
+      "label": "Zones de conservation WDPA",
+      "zIndex": 51,
+      "geometry": "polygon",
+      "interactiveShape": false,
+      "data": {
+        "directory": "data",
+        "file": "zones_de_conservation_wdpa.geojson",
+        "vectorTiles": {
+          "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+          "enabled": false,
+          "tilesDirectory": "tiles",
+          "layerName": "zones_de_conservation_wdpa",
+          "minZoom": 0,
+          "maxNativeZoom": 14,
+          "maxZoom": 18,
+          "interactive": true
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": false
+      },
+      "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+      },
+      "attributes": {
+        "titleField": "properties.NAME",
+        "fields": [
+          {
+            "field": "properties.NAME",
+            "label": "NAME",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "epicentres_seismes": {
+      "id": "epicentres_seismes",
+      "label": "Épicentres séismes (7 jours)",
+      "zIndex": 80,
+      "geometry": "point",
+      "data": {
+        "_comment": "⚠️ B-56 (28/07/2026) — la source de BOOT est le snapshot local, pas le flux USGS. Elle a pointé le flux du 27 au 28/07/2026 : `GeoJSONModule.init()` attend la phase 1, donc cet appel tiers était dans le chemin de démarrage des 3 variantes livrées. Le flux USGS reste la source du DIRECT, dans `realtime.url` ci-dessous — le polling démarre APRÈS le boot et ne bloque rien. Le snapshot a été déplacé de `profiles/tourism/data/` vers le dossier de la couche, là où vit la donnée de toutes les autres : `data.directory` est TOUJOURS préfixé au `file` (profile-loader.ts `_buildEnrichedProfile`), donc viser la racine du profil demandait un `../` que la résolution ne voyait plus. `realtime.fallbackUrl` suit — lui se résout depuis la racine du profil (url-resolver.ts du plugin), d'où les deux écritures différentes du MÊME fichier.",
+        "directory": "data",
+        "file": "epicentres_seismes_snapshot.geojson",
+        "licence": "Domaine public — USGS Earthquake Hazards Program (earthquake.usgs.gov)",
+        "realtime": {
+          "_comment": "Sprint 2 roadmap catalogue-demos v1.0.0. Polling 60 s sur le flux USGS 2.5+ magnitude past 7 days (GeoJSON natif). idField = id natif des Features USGS. Fallback snapshot figé si panne.",
+          "enabled": true,
+          "source": "polling",
+          "url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson",
+          "intervalMs": 60000,
+          "decoder": "json",
+          "updateMode": "upsert",
+          "idField": "id",
+          "fallbackUrl": "layers/epicentres_seismes/data/epicentres_seismes_snapshot.geojson"
+        }
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Par magnitude",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.place",
+            "label": "Lieu",
+            "sortable": true,
+            "width": "40%"
+          },
+          {
+            "field": "properties.mag",
+            "label": "Magnitude",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.depth",
+            "label": "Profondeur (km)",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.time",
+            "label": "Date",
+            "sortable": true,
+            "width": "30%"
+          }
+        ],
+        "searchFields": [
+          "properties.place"
+        ],
+        "defaultSort": {
+          "field": "properties.mag",
+          "order": "desc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 50,
+        "disableClusteringAtZoom": 6
+      },
+      "attributes": {
+        "titleField": "properties.place",
+        "fields": [
+          {
+            "field": "properties.place",
+            "label": "Lieu",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.mag",
+            "label": "Magnitude",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.time",
+            "label": "Date",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "observations_gbif": {
+      "id": "observations_gbif",
+      "label": "Observations GBIF",
+      "zIndex": 75,
+      "geometry": "point",
+      "data": {
+        "_comment": "⚠️ B-56 (28/07/2026) — la source de BOOT est locale, délibérément. Elle a été `https://api.gbif.org/v1/occurrence/search?country=GF&hasCoordinate=true&limit=300` du 27 au 28/07/2026 : `data.mapping` force le fetch sur le fil principal (le worker détruit l'enveloppe `{results}`), et `GeoJSONModule.init()` ATTEND la phase 1, donc cet appel tiers non borné bloquait la chaîne d'init des modules dans les 3 variantes livrées. Le fichier local a la même FORME, donc `mapping` + `itemsPath` restent exercés à l'identique. Repointer vers l'API n'est pas interdit — mais pas dans le thème par défaut, et pas sans borne (`AbortController`).",
+        "directory": "data",
+        "file": "observations_gbif.json",
+        "licence": "Jeu de démonstration à la forme GBIF — schéma © GBIF (api.gbif.org), données fictives",
+        "mapping": "gbif",
+        "itemsPath": "results"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Par règne",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.species",
+            "label": "Espèce",
+            "sortable": true,
+            "width": "25%"
+          },
+          {
+            "field": "properties.vernacularName",
+            "label": "Nom",
+            "sortable": true,
+            "width": "20%"
+          },
+          {
+            "field": "properties.kingdom",
+            "label": "Règne",
+            "sortable": true,
+            "width": "10%"
+          },
+          {
+            "field": "properties.class",
+            "label": "Classe",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.family",
+            "label": "Famille",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.eventDate",
+            "label": "Date",
+            "sortable": true,
+            "width": "15%"
+          }
+        ],
+        "searchFields": [
+          "properties.species",
+          "properties.vernacularName",
+          "properties.family"
+        ],
+        "defaultSort": {
+          "field": "properties.species",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 50,
+        "disableClusteringAtZoom": 10
+      },
+      "attributes": {
+        "titleField": "properties.species",
+        "fields": [
+          {
+            "field": "properties.species",
+            "label": "Espèce",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.vernacularName",
+            "label": "Nom vernaculaire",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.kingdom",
+            "label": "Règne",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.eventDate",
+            "label": "Date",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

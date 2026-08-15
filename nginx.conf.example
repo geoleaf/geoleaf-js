@@ -1,0 +1,84 @@
+# ── GeoLeaf — recette nginx ───────────────────────────────────────────────────
+#
+# À recopier dans votre configuration. Les deux premières directives sont les seules
+# sans lesquelles l'application NE DÉMARRE PAS. Détail et symptômes : SERVEUR.md.
+#
+# ⚠️ nginx N'HÉRITE PAS `add_header` : un bloc qui déclare le sien perd tous ceux du
+# parent. Si vous ajoutez un `location` avec un `add_header`, il faut y REPOSER les
+# trois en-têtes de sécurité ci-dessous.
+
+# 🛑 SANS CETTE LIGNE, RIEN NE BOOTE.
+#
+# La table `mime.types` de nginx ne connaît que `js`. Le moteur cartographique
+# (MapLibre GL JS 6) est ESM-only et entièrement livré en `.mjs` : servi en
+# `application/octet-stream`, le navigateur REFUSE de l'exécuter — « Strict MIME type
+# checking is enforced for module scripts ». Symptôme : spinner infini.
+#
+# À placer au niveau `http` (s'applique à tous les vhosts) ou dans le `server`.
+#
+# Vérification :
+#   curl -sI https://VOTRE-HOTE/vendor/maplibre-gl/global.mjs | grep -i content-type
+#   → attendu : content-type: text/javascript
+types {
+    text/javascript mjs;
+}
+
+# Sert les jumeaux `.gz` déjà présents à côté de chaque artefact texte. Sans cette
+# directive ils existent et ne sont JAMAIS servis : l'original brut part sur le fil.
+# (Les `.br` demandent `ngx_brotli`, un module tiers — voir SERVEUR.md §4.)
+gzip_static on;
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name VOTRE-HOTE;
+
+    # 🛑 HTTPS N'EST PAS OPTIONNEL. La page déclare `upgrade-insecure-requests` : en
+    # HTTP nu, le navigateur réécrit toutes les sous-ressources en https:// et chacune
+    # échoue. Le service worker et crypto.subtle exigent un contexte sécurisé.
+    ssl_certificate     /chemin/vers/fullchain.pem;
+    ssl_certificate_key /chemin/vers/privkey.pem;
+
+    root /chemin/vers/ce/dossier;
+    index index.html;
+
+    # En-têtes de sécurité. Aucun n'empêche le boot ; tous sont recommandés, et seul le
+    # serveur peut les poser — une balise <meta> ne fonctionne pour aucun des trois.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Content-Security-Policy "frame-ancestors 'self'" always;
+
+    # ⚠️ NE PAS remplacer par `try_files $uri /index.html`. Ce n'est pas une application
+    # à routes côté client, et un repli global fait RÉUSSIR le pré-cache du service
+    # worker sur du HTML — le mode hors-ligne est alors silencieusement corrompu.
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # Artefacts empreintés : leur nom change à chaque build, donc cache maximal.
+    # Le motif couvre `.mjs` — un `\.(js|css)$` ne le matcherait PAS, et laisserait les
+    # plus gros fichiers du dossier sans Cache-Control.
+    location ~* \.(mjs|js|css|woff2?|png|svg)$ {
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    }
+
+    # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés, ils
+    # référencent les artefacts empreintés ci-dessus.
+    location ~* /(index\.html|init\.js|manifest\.json|sw-core\.js)$ {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    }
+}
+
+# Redirection HTTP → HTTPS. Elle rend aussi le slash final, dont l'absence casse tous
+# les chemins relatifs du document (SERVEUR.md §3).
+server {
+    listen 80;
+    server_name VOTRE-HOTE;
+    return 301 https://$host$request_uri;
+}

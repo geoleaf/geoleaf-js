@@ -1,0 +1,13 @@
+{
+    "enabled": true,
+    "showButton": true,
+    "defaultVisible": false,
+    "pageSize": 50,
+    "maxRowsPerLayer": 10000,
+    "enableExportButton": true,
+    "virtualScrolling": true,
+    "defaultHeight": "40%",
+    "minHeight": "20%",
+    "maxHeight": "60%",
+    "resizable": true
+}

@@ -1,0 +1,30 @@
+{
+    "id": "routes_principales",
+    "label": "Routes principales",
+    "zIndex": 47,
+    "interactiveShape": false,
+    "geometry": "polyline",
+    "data": {
+        "directory": "data",
+        "file": "routes_principales.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": false
+    },
+    "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    }
+}

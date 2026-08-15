@@ -1,0 +1,7 @@
+{
+    "_comment": "S3 capacités-extraction — modules.cluster (migré depuis poiConfig.cluster*). Clustering natif MapLibre, capacité in-core opt-out.",
+    "clustering": true,
+    "clusterStrategy": "unified",
+    "clusterRadius": 80,
+    "disableClusteringAtZoom": 12
+}

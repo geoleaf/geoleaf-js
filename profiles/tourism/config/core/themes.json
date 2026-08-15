@@ -1,0 +1,437 @@
+{
+    "defaultTheme": "environnement",
+    "config": {
+        "defautTheme": "environnement",
+        "primaryThemes": {
+            "enabled": true,
+            "position": "top-map"
+        },
+        "secondaryThemes": {
+            "enabled": true,
+            "placeholder": "Météo mensuelle..",
+            "showNavigationButtons": true,
+            "position": "top-layermanager"
+        }
+    },
+    "themes": [
+        {
+            "id": "defaut",
+            "label": "Administratif",
+            "type": "primary",
+            "description": "Affiche les données environnementales et les villes",
+            "icon": "🗺️",
+            "layers": [
+                {
+                    "id": "pays",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "departements",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "provinces",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "reseau_ferroviaire",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "environnement",
+            "label": "Environnement",
+            "type": "primary",
+            "description": "Affiche les données environnementales et les villes",
+            "icon": "🌍",
+            "layers": [
+                {
+                    "id": "aires_protegees_nationales_sib",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "zones_de_conservation_wdpa",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "sites_de_conservation_wdpa",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "provinces",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "epicentres_seismes",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "observations_gbif",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "paysage",
+            "label": "Paysage",
+            "type": "primary",
+            "description": "Affiche les données paysagères et les villes",
+            "icon": "🌄",
+            "layers": [
+                {
+                    "id": "eco_regions",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "provinces",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "tourisme",
+            "label": "Tourisme",
+            "type": "primary",
+            "description": "Affiche les données touristiques et les villes",
+            "icon": "✈️",
+            "layers": [
+                {
+                    "id": "cultures",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "hebergements",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_janvier",
+            "label": "Climat - Janvier",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de janvier",
+            "icon": "❄️",
+            "layers": [
+                {
+                    "id": "pluviometrie_janvier",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_janvier",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_février",
+            "label": "Climat - Février",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de février",
+            "icon": "🌨️",
+            "layers": [
+                {
+                    "id": "pluviometrie_fevrier",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_fevrier",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_mars",
+            "label": "Climat - Mars",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de mars",
+            "icon": "🌸",
+            "layers": [
+                {
+                    "id": "pluviometrie_mars",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_mars",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_avril",
+            "label": "Climat - Avril",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois d'avril",
+            "icon": "🌷",
+            "layers": [
+                {
+                    "id": "pluviometrie_avril",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_avril",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_mai",
+            "label": "Climat - Mai",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de mai",
+            "icon": "🌺",
+            "layers": [
+                {
+                    "id": "pluviometrie_mai",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_mai",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_juin",
+            "label": "Climat - Juin",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de juin",
+            "icon": "☀️",
+            "layers": [
+                {
+                    "id": "pluviometrie_juin",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_juin",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_juillet",
+            "label": "Climat - Juillet",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de juillet",
+            "icon": "🌞",
+            "layers": [
+                {
+                    "id": "pluviometrie_juillet",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_juillet",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_aout",
+            "label": "Climat - Août",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois d'août",
+            "icon": "🏖️",
+            "layers": [
+                {
+                    "id": "pluviometrie_aout",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_aout",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_septembre",
+            "label": "Climat - Septembre",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de septembre",
+            "icon": "🍂",
+            "layers": [
+                {
+                    "id": "pluviometrie_septembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_septembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_octobre",
+            "label": "Climat - Octobre",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois d'octobre",
+            "icon": "🍁",
+            "layers": [
+                {
+                    "id": "pluviometrie_octobre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_octobre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_novembre",
+            "label": "Climat - Novembre",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de novembre",
+            "icon": "🌧️",
+            "layers": [
+                {
+                    "id": "pluviometrie_novembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_novembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        },
+        {
+            "id": "climat_décembre",
+            "label": "Climat - Décembre",
+            "type": "secondary",
+            "description": "Données climatiques pour le mois de décembre",
+            "icon": "⛄",
+            "layers": [
+                {
+                    "id": "pluviometrie_decembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "temperature_decembre",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                }
+            ]
+        }
+    ]
+}

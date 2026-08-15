@@ -1,0 +1,68 @@
+{
+    "id": "altitude",
+    "label": "Couleur par altitude",
+    "description": "Candélabres colorés selon l'altitude : vert < 200 m / orange 200–800 m / rouge > 800 m",
+    "style": {
+        "shape": "circle",
+        "radius": 7,
+        "fillColor": "#22c55e",
+        "fillOpacity": 1,
+        "color": "#ffffff",
+        "opacity": 1,
+        "weight": 1
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.altitude",
+                "operator": "<",
+                "value": 200
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 7,
+                "fillColor": "#22c55e",
+                "fillOpacity": 1,
+                "color": "#ffffff",
+                "opacity": 1,
+                "weight": 1
+            },
+            "legend": { "label": "< 200 m" }
+        },
+        {
+            "when": {
+                "all": [
+                    { "field": "properties.altitude", "operator": ">=", "value": 200 },
+                    { "field": "properties.altitude", "operator": "<=", "value": 800 }
+                ]
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 7,
+                "fillColor": "#f97316",
+                "fillOpacity": 1,
+                "color": "#ffffff",
+                "opacity": 1,
+                "weight": 1
+            },
+            "legend": { "label": "200–800 m" }
+        },
+        {
+            "when": {
+                "field": "properties.altitude",
+                "operator": ">",
+                "value": 800
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 7,
+                "fillColor": "#ef4444",
+                "fillOpacity": 1,
+                "color": "#ffffff",
+                "opacity": 1,
+                "weight": 1
+            },
+            "legend": { "label": "> 800 m" }
+        }
+    ]
+}

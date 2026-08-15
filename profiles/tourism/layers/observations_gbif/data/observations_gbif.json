@@ -1,0 +1,47 @@
+{
+    "_comment": "Jeu de démonstration à la FORME d'une réponse GBIF Occurrence API (enveloppe `{results:[…]}`, champs plats `decimalLatitude`/`decimalLongitude`), et non un extrait réel de l'API. Il existe pour deux raisons. (1) Cette couche interrogeait `api.gbif.org` AU BOOT du profil, donc dans le chemin de démarrage des 3 variantes livrées : un appel tiers non borné y bloquait la chaîne d'init des modules (B-56). (2) La requête héritée de `guyane-biodiversite` portait `country=GF`, incohérente avec les `map.bounds` de `tourism` (cône sud sud-américain) — les points ci-dessous sont replacés dans ces bornes. L'enveloppe est CONSERVÉE telle quelle : c'est elle que `data.mapping=\"gbif\"` + `data.itemsPath=\"results\"` doivent savoir traverser, et c'est ce que vérifie `e2e/cfg-b6-mapping-gbif.spec.js`.",
+    "offset": 0,
+    "limit": 300,
+    "endOfRecords": true,
+    "count": 2,
+    "results": [
+        {
+            "key": 111,
+            "vernacularName": "Jaguar",
+            "scientificName": "Panthera onca (Linnaeus, 1758)",
+            "kingdom": "Animalia",
+            "phylum": "Chordata",
+            "class": "Mammalia",
+            "order": "Carnivora",
+            "family": "Felidae",
+            "genus": "Panthera",
+            "species": "Panthera onca",
+            "basisOfRecord": "HUMAN_OBSERVATION",
+            "country": "Argentina",
+            "eventDate": "2025-11-14",
+            "institutionCode": "DEMO",
+            "datasetName": "GeoLeaf demo occurrences",
+            "decimalLatitude": -28.55,
+            "decimalLongitude": -57.45
+        },
+        {
+            "key": 222,
+            "vernacularName": "Ara chloroptère",
+            "scientificName": "Ara chloropterus Gray, 1859",
+            "kingdom": "Animalia",
+            "phylum": "Chordata",
+            "class": "Aves",
+            "order": "Psittaciformes",
+            "family": "Psittacidae",
+            "genus": "Ara",
+            "species": "Ara chloropterus",
+            "basisOfRecord": "HUMAN_OBSERVATION",
+            "country": "Argentina",
+            "eventDate": "2025-11-16",
+            "institutionCode": "DEMO",
+            "datasetName": "GeoLeaf demo occurrences",
+            "decimalLatitude": -28.42,
+            "decimalLongitude": -57.38
+        }
+    ]
+}

@@ -1,0 +1,134 @@
+{
+    "id": "sites_de_conservation_wdpa",
+    "label": "Sites de conservation WDPA",
+    "type": "geojson",
+    "geometry": "point",
+    "zIndex": 54,
+    "interactiveShape": false,
+    "showIconsOnMap": false,
+    "data": {
+        "directory": "data",
+        "file": "sites_de_conservation_wdpa.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.NAME",
+                "label": "Nom du site",
+                "sortable": true,
+                "width": "30%"
+            },
+            {
+                "field": "properties.DESIG",
+                "label": "Désignation",
+                "sortable": true,
+                "width": "25%"
+            },
+            {
+                "field": "properties.IUCN_CAT",
+                "label": "Catégorie UICN",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.REP_AREA",
+                "label": "Surface (km²)",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.STATUS_YR",
+                "label": "Année",
+                "sortable": true,
+                "width": "10%"
+            }
+        ],
+        "searchFields": ["properties.NAME", "properties.NAME_ENG"],
+        "defaultSort": {
+            "field": "properties.NAME",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    },
+    "attributes": {
+        "titleField": "properties.NAME",
+        "fields": [
+            {
+                "field": "properties.NAME",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.DESIG",
+                "label": "Désignation",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.IUCN_CAT",
+                "label": "Catégorie IUCN",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.STATUS",
+                "label": "Statut",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.STATUS_YR",
+                "label": "Année de désignation",
+                "primitive": "number",
+                "widget": "number",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.REP_AREA",
+                "label": "Superficie",
+                "primitive": "number",
+                "widget": "metric",
+                "options": {
+                    "suffix": " km²"
+                },
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

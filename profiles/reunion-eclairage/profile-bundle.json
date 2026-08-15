@@ -1,0 +1,819 @@
+{
+  "_bundleVersion": "1.0",
+  "_profileId": "reunion-eclairage",
+  "themes": {
+    "defaultTheme": "eclairage",
+    "config": {
+      "primaryThemes": {
+        "enabled": true,
+        "position": "top-map"
+      },
+      "secondaryThemes": {
+        "enabled": false
+      }
+    },
+    "themes": [
+      {
+        "id": "eclairage",
+        "label": "Éclairage",
+        "type": "primary",
+        "description": "Affiche l'ensemble des équipements d'éclairage public",
+        "icon": "💡",
+        "layers": [
+          {
+            "id": "candelabres",
+            "visible": true,
+            "style": "altitude"
+          },
+          {
+            "id": "armoires",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "reseau_cables",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "secteurs_eclairage",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "communes_reunion",
+            "visible": false,
+            "style": "defaut"
+          }
+        ]
+      },
+      {
+        "id": "administration",
+        "label": "Administration",
+        "type": "primary",
+        "description": "Affiche les communes et secteurs d'éclairage",
+        "icon": "🗺️",
+        "layers": [
+          {
+            "id": "candelabres",
+            "visible": false,
+            "style": "altitude"
+          },
+          {
+            "id": "armoires",
+            "visible": false,
+            "style": "defaut"
+          },
+          {
+            "id": "reseau_cables",
+            "visible": false,
+            "style": "defaut"
+          },
+          {
+            "id": "secteurs_eclairage",
+            "visible": true,
+            "style": "defaut"
+          },
+          {
+            "id": "communes_reunion",
+            "visible": true,
+            "style": "defaut"
+          }
+        ]
+      }
+    ]
+  },
+  "basemaps": {
+    "basemaps": {
+      "street": {
+        "id": "street",
+        "label": "Street",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles © Esri — Source: Esri, DeLorme, NAVTEQ",
+        "minZoom": 3,
+        "maxZoom": 16,
+        "defaultBasemap": true,
+        "offline": false
+      },
+      "satellite": {
+        "id": "satellite",
+        "label": "Satellite",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles © Esri — Source: Esri, Maxar, GeoEye, Earthstar Geographics",
+        "minZoom": 3,
+        "maxZoom": 18,
+        "offline": false
+      },
+      "topo": {
+        "id": "topo",
+        "label": "Topographique",
+        "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        "attribution": "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)",
+        "minZoom": 5,
+        "maxZoom": 17,
+        "offline": false
+      },
+      "ign-plan-3d": {
+        "id": "ign-plan-3d",
+        "label": "IGN Plan 3D",
+        "_comment": "ACTIVÉ HORS-LIGNE le 07/08/2026 (Sprint 8, tâche 8.1 / A7′). C'est le SEUL fond du dépôt qui puisse survivre à une coupure, et la raison est STRUCTURELLE, pas contractuelle : un fond VECTORIEL est parsé par MapLibre (PBF), donc sa requête est nécessairement en mode `cors` — la réponse porte un `status: 200` et passe la garde du Service Worker (`sw-core.js`), qui refuse toute réponse opaque (`status: 0`). Un fond RASTER cross-origin n'offre pas cette garantie : le serveur a beau servir `Access-Control-Allow-Origin: *` (mesuré le 06/08 sur les 3 origines), c'est le MODE de la requête qui décide, et il n'est pas établi. Basculer un raster à `offline: true` ressemblerait à un correctif et n'en serait pas un. ⚠️ PRIX ASSUMÉ : il n'existe aucun équivalent vectoriel à l'imagerie satellite — `satellite`, `satellite-3d` et `ign-satellite` restent `offline: false`, donc en ligne. Un profil de terrain choisit entre un fond disponible hors réseau et une vue aérienne. ⚠️ Sans zone de téléchargement dessinée dans l'interface (`vectorZone`), le style, les glyphes et le sprite sont tout de même mis en cache, et seules les tuiles vectorielles sont sautées : c'est une dégradation choisie, pas un défaut.",
+        "style": "https://data.geopf.fr/annexes/ressources/vectorTiles/styles/PLAN.IGN/standard.json",
+        "attribution": "© IGN France — Geoportail",
+        "offline": true,
+        "terrain": {
+          "enabled": true,
+          "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+          "demEncoding": "terrarium",
+          "exaggeration": 1.5,
+          "default3D": true,
+          "pitch": 60,
+          "bearing": 0
+        }
+      },
+      "satellite-3d": {
+        "id": "satellite-3d",
+        "label": "Satellite 3D",
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "Tiles © Esri — Source: Esri, Maxar, GeoEye, Earthstar Geographics",
+        "minZoom": 3,
+        "maxZoom": 18,
+        "offline": false,
+        "terrain": {
+          "enabled": true,
+          "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+          "demEncoding": "terrarium",
+          "exaggeration": 1.5,
+          "default3D": true,
+          "pitch": 60,
+          "bearing": 0
+        }
+      },
+      "ign-satellite": {
+        "id": "ign-satellite",
+        "label": "IGN Satellite",
+        "type": "wmts",
+        "wmts": {
+          "getCapabilitiesUrl": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
+          "layer": "ORTHOIMAGERY.ORTHOPHOTOS",
+          "tileMatrixSet": "PM",
+          "format": "image/jpeg"
+        },
+        "attribution": "Geoportail France",
+        "offline": false
+      },
+      "ign-cadastre": {
+        "id": "ign-cadastre",
+        "label": "IGN Cadastre",
+        "type": "wmts",
+        "wmts": {
+          "getCapabilitiesUrl": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetCapabilities",
+          "layer": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
+          "tileMatrixSet": "PM",
+          "format": "image/png"
+        },
+        "attribution": "Geoportail France",
+        "offline": false
+      }
+    }
+  },
+  "ui": {
+    "ui": {
+      "theme": "light",
+      "language": "fr",
+      "showBaseLayerControls": false,
+      "showLayerManager": true,
+      "showCacheButton": true,
+      "showCredentialButton": true
+    },
+    "layerManagerConfig": {
+      "title": "Couches",
+      "collapsedByDefault": false,
+      "sections": [
+        {
+          "id": "data-eclairage",
+          "label": "Éclairage public",
+          "order": 1,
+          "collapsedByDefault": false
+        },
+        {
+          "id": "data-administration",
+          "label": "Administration",
+          "order": 2,
+          "collapsedByDefault": true
+        },
+        {
+          "id": "basemap",
+          "label": "Fond de carte",
+          "order": 3,
+          "collapsedByDefault": true
+        }
+      ]
+    }
+  },
+  "features": {},
+  "modules": {
+    "geocoding": {
+      "enabled": true,
+      "provider": "nominatim",
+      "countrycodes": "fr",
+      "bbox": [
+        55.2,
+        -21.4,
+        55.9,
+        -20.8
+      ]
+    },
+    "table": {
+      "showButton": true
+    },
+    "theme-selector": {
+      "_comment": "S8/F3 — modules.theme-selector (in-core capability capabilities/theme-selector). Capability gate only (opt-out) ; migrated from ui.showThemeSelector.",
+      "enabled": true
+    },
+    "legend": {
+      "_comment": "S10/F2 — modules.legend (capacité in-core capabilities/legend). Migré depuis ui.showLegend. Gate seul (pas de legendConfig dans ce profil) → défauts appliqués (title:Legend, bottomleft, déplié).",
+      "enabled": true
+    },
+    "taxonomy": {
+      "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Point SIZE stays with the layer style (candelabres keeps radius 7). Amber palette, preserving the layer's existing yellow identity (fillColor #facc15). Glyphs are DARK here: a white stroke on light amber would be unreadable. NB the filter of this profile reads `subField: subCategoryId` (camelCase) while the taxonomy declares `subcategoryId` — pre-existing, out of scope.",
+      "enabled": true,
+      "icons": {
+        "spriteUrl": "profiles/reunion-eclairage/icons/sprite_reunion.svg",
+        "symbolPrefix": "reunion-poi-cat-"
+      },
+      "render": {
+        "popup": {
+          "showIconCategory": true,
+          "showIconSubcategory": true,
+          "colorBadges": true
+        },
+        "sidepanel": {
+          "showIconCategory": true,
+          "showIconSubcategory": true,
+          "colorBadges": true
+        }
+      },
+      "layers": {
+        "candelabres": {
+          "use": "poi-cat"
+        },
+        "armoires": {
+          "use": "poi-cat"
+        }
+      },
+      "taxonomies": {
+        "poi-cat": {
+          "categoryField": "categoryId",
+          "subCategoryField": "subcategoryId",
+          "categories": {
+            "eclairage": {
+              "svgId": "eclairage-generic",
+              "iconColor": "#3e2723",
+              "marker": {
+                "fill": "#f9a825",
+                "stroke": "#f57f17",
+                "strokeWidth": 1
+              },
+              "label": "Éclairage public",
+              "subcategories": {
+                "candelabres": {
+                  "svgId": "candelabres",
+                  "iconColor": "#263238",
+                  "marker": {
+                    "fill": "#fdd835",
+                    "stroke": "#f9a825",
+                    "strokeWidth": 1
+                  },
+                  "label": "Candélabres"
+                },
+                "armoires": {
+                  "svgId": "armoires",
+                  "iconColor": "#fff3e0",
+                  "marker": {
+                    "fill": "#ef6c00",
+                    "stroke": "#e65100",
+                    "strokeWidth": 1
+                  },
+                  "label": "Armoires électriques"
+                },
+                "reseau": {
+                  "svgId": "reseau",
+                  "iconColor": "#4e342e",
+                  "marker": {
+                    "fill": "#ffb300",
+                    "stroke": "#ff8f00",
+                    "strokeWidth": 1
+                  },
+                  "label": "Réseau câbles"
+                },
+                "secteurs": {
+                  "svgId": "secteurs",
+                  "iconColor": "#fffde7",
+                  "marker": {
+                    "fill": "#ff6f00",
+                    "stroke": "#e65100",
+                    "strokeWidth": 1
+                  },
+                  "label": "Secteurs"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "feature-info": {
+      "_comment": "S2 capacités-extraction — modules.feature-info (plugin @geoleaf-plugins/feature-info). Attribute-rendering capacity: tooltip (hover), popup (click), side-panel (selection) for GeoJSON/VT layers. Per-layer bindings live in layers/<id>/{id}_config.json under capabilities.feature-info. POI rendering stack delegated to this plugin since S2b (see CDC_plugin-feature-info.md).",
+      "enabled": true
+    },
+    "filter": {
+      "_comment": "S5 F4.3 — modules.filter (capacité in-core). Migration de searchConfig + ui.showFilterPanel. searchConfig = recherche + categories (ni proximité ni tags). Catégories portées à la seule couche 'candelabres' (elle porte categoryId/subCategoryId ; 'armoires' ne les porte pas — Option A).",
+      "enabled": true,
+      "title": "Filtrer",
+      "fields": [
+        {
+          "id": "searchText",
+          "kind": "text",
+          "label": "Recherche textuelle",
+          "placeholder": "Candélabre, secteur…",
+          "searchFields": [
+            "properties.id",
+            "properties.secteur",
+            "properties.adresse"
+          ]
+        },
+        {
+          "id": "categories",
+          "kind": "taxonomy",
+          "taxonomyRef": "poi-cat",
+          "label": "Catégories",
+          "field": "categoryId",
+          "subField": "subCategoryId",
+          "layers": [
+            "candelabres"
+          ]
+        }
+      ],
+      "actions": {
+        "applyLabel": "Appliquer",
+        "resetLabel": "Réinitialiser"
+      }
+    }
+  },
+  "layersFile": {
+    "layers": [
+      {
+        "id": "candelabres",
+        "configFile": "layers/candelabres/candelabres_config.json",
+        "layerManagerId": "data-eclairage"
+      },
+      {
+        "id": "armoires",
+        "configFile": "layers/armoires/armoires_config.json",
+        "layerManagerId": "data-eclairage"
+      },
+      {
+        "id": "reseau_cables",
+        "configFile": "layers/reseau_cables/reseau_cables_config.json",
+        "layerManagerId": "data-eclairage"
+      },
+      {
+        "id": "secteurs_eclairage",
+        "configFile": "layers/secteurs_eclairage/secteurs_eclairage_config.json",
+        "layerManagerId": "data-eclairage"
+      },
+      {
+        "id": "communes_reunion",
+        "configFile": "layers/communes_reunion/communes_reunion_config.json",
+        "layerManagerId": "data-administration"
+      }
+    ]
+  },
+  "layerConfigs": {
+    "candelabres": {
+      "id": "candelabres",
+      "label": "Candélabres",
+      "zIndex": 95,
+      "geometry": "point",
+      "geometryType": "point",
+      "interactiveShape": true,
+      "showIconsOnMap": true,
+      "data": {
+        "directory": "data",
+        "file": "candelabres.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "altitude.json",
+        "available": [
+          {
+            "id": "altitude",
+            "label": "Couleur par altitude",
+            "file": "altitude.json"
+          },
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "table": {
+        "enabled": true,
+        "columns": [
+          {
+            "field": "properties.id",
+            "label": "ID",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.commune",
+            "label": "Commune",
+            "sortable": true,
+            "width": "25%"
+          },
+          {
+            "field": "properties.secteur",
+            "label": "Secteur",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.type_lampe",
+            "label": "Type",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.statut",
+            "label": "Statut",
+            "sortable": true,
+            "width": "15%"
+          },
+          {
+            "field": "properties.puissance_w",
+            "label": "Puissance",
+            "sortable": true,
+            "width": "15%"
+          }
+        ],
+        "defaultSort": {
+          "field": "properties.id",
+          "order": "asc"
+        }
+      },
+      "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 60,
+        "disableClusteringAtZoom": 13
+      },
+      "attributes": {
+        "titleField": "properties.id",
+        "fields": [
+          {
+            "field": "properties.id",
+            "label": "Identifiant",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.secteur",
+            "label": "Secteur",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup"
+              ]
+            }
+          },
+          {
+            "field": "properties.altitude",
+            "label": "Altitude (m)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup"
+              ]
+            }
+          },
+          {
+            "field": "properties.puissance_w",
+            "label": "Puissance (W)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup"
+              ]
+            }
+          },
+          {
+            "field": "properties.statut",
+            "label": "Statut",
+            "primitive": "string",
+            "widget": "badge",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "category"
+              }
+            }
+          },
+          {
+            "field": "attributes.short_desc",
+            "label": "Description",
+            "primitive": "string",
+            "widget": "longtext",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true,
+                "defaultOpen": true
+              }
+            }
+          },
+          {
+            "field": "attributes.photo",
+            "label": "Photo",
+            "primitive": "string",
+            "widget": "image",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "hero": true
+              }
+            }
+          },
+          {
+            "field": "attributes.informations",
+            "label": "Caractéristiques techniques",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.highlights",
+            "label": "Observations",
+            "primitive": "string[]",
+            "widget": "list",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ],
+              "presentation": {
+                "accordion": true
+              }
+            }
+          },
+          {
+            "field": "attributes.link_official",
+            "label": "Documentation technique",
+            "primitive": "string",
+            "widget": "link",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "attributes.tags",
+            "label": "Tags",
+            "primitive": "string[]",
+            "widget": "tags",
+            "display": {
+              "surfaces": [
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "armoires": {
+      "id": "armoires",
+      "label": "Armoires électriques",
+      "zIndex": 90,
+      "geometry": "point",
+      "interactiveShape": true,
+      "showIconsOnMap": false,
+      "data": {
+        "directory": "data",
+        "file": "armoires.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.id",
+        "fields": [
+          {
+            "field": "properties.id",
+            "label": "id",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.secteur",
+            "label": "Secteur",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.puissance_kw",
+            "label": "Puissance totale (kW)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "reseau_cables": {
+      "id": "reseau_cables",
+      "label": "Réseau câbles",
+      "zIndex": 80,
+      "geometry": "line",
+      "interactiveShape": false,
+      "data": {
+        "directory": "data",
+        "file": "reseau_cables.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      }
+    },
+    "secteurs_eclairage": {
+      "id": "secteurs_eclairage",
+      "label": "Secteurs d'éclairage",
+      "zIndex": 70,
+      "geometry": "polygon",
+      "interactiveShape": true,
+      "data": {
+        "directory": "data",
+        "file": "secteurs_eclairage.geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+          {
+            "field": "properties.nom",
+            "label": "nom",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ],
+              "presentation": {
+                "emphasis": "title"
+              }
+            }
+          },
+          {
+            "field": "properties.nb_candelabres",
+            "label": "Nb candélabres",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          },
+          {
+            "field": "properties.puissance_kw",
+            "label": "Puissance totale (kW)",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "communes_reunion": {
+      "id": "communes_reunion",
+      "label": "Communes de La Réunion",
+      "zIndex": 60,
+      "geometry": "polygon",
+      "interactiveShape": true,
+      "data": {
+        "dataUrl": "https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeName=ADMINEXPRESS-COG.LATEST:commune&outputFormat=application/json&count=50&srsName=EPSG:4326&bbox=55.2,-21.5,55.9,-20.8,EPSG:4326",
+        "format": "geojson"
+      },
+      "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+          {
+            "id": "defaut",
+            "label": "Défaut",
+            "file": "defaut.json"
+          }
+        ]
+      },
+      "attributes": {
+        "titleField": "properties.nom_officiel",
+        "fields": [
+          {
+            "field": "properties.nom_officiel",
+            "label": "nom_officiel",
+            "primitive": "string",
+            "widget": "text",
+            "display": {
+              "surfaces": [
+                "tooltip",
+                "popup",
+                "sidepanel"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

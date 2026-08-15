@@ -1,0 +1,76 @@
+{
+    "id": "parcours",
+    "label": "Parcours (démo édition)",
+    "zIndex": 96,
+    "geometry": "polyline",
+    "geometryType": "polyline",
+    "interactiveShape": true,
+    "data": {
+        "directory": "data",
+        "file": "parcours.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+            {
+                "field": "properties.nom",
+                "label": "nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.type_parcours",
+                "label": "Type",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.distance_km",
+                "label": "Distance (km)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.difficulte",
+                "label": "Difficulté",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "properties.description",
+                "label": "Description",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            }
+        ]
+    }
+}
