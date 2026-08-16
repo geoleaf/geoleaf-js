@@ -17,7 +17,6 @@
  * MaplibreAdapter) and used at mount time. Depends on `geojson` (not `ui`) so the
  * subscription runs before the event fires (mirrors labels/theme-selector).
  */
-"use strict";
 
 import { CoordinatesDisplay } from "./coordinates.js";
 import { getCoordinatesConfig } from "./config.js";

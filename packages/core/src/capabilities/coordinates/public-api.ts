@@ -12,7 +12,6 @@
  * helpers (`isEnabled` / `getConfig`). Mounted on `GeoLeaf.Coordinates` via
  * `geoleaf.coordinates.ts` (Full + Lite builds).
  */
-"use strict";
 
 import { CoordinatesDisplay } from "./coordinates.js";
 import { getCoordinatesConfig, type CoordinatesCapabilityConfig } from "./config.js";

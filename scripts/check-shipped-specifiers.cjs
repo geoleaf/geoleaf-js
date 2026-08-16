@@ -25,6 +25,31 @@
  * publie — ses `dependencies` — et à ce que le dépôt sait de la cible : un workspace `private`
  * ne sera jamais sur le registre, quelle que soit la façon dont on le déclare.
  *
+ * ## 🛑 LE RECOUVREMENT DES GATES DU TARBALL — écrit ICI, et nulle part ailleurs (B-87, B-232)
+ *
+ * Quatre instruments jugent ce qui part dans un tarball. **Aucun ne disait ce qu'il NE couvre
+ * PAS**, et c'est ce silence qui a coûté : on lit un vert, on en déduit une garantie plus large
+ * que la sienne. Le tableau est ici parce que ce fichier est le plus récent des quatre et le
+ * seul qui compare déjà ses voisins ; les trois autres y renvoient.
+ *
+ * | Gate | La question qu'elle pose | Ce qu'elle ne peut PAS voir |
+ * | --- | --- | --- |
+ * | **SHIP-SPEC** (ici) | un specifier NU d'un fichier atteignable se résout-il chez l'intégrateur ? | la VISIBILITÉ d'un symbole — un type non exporté qui atteint le `.d.ts` publié ne fait apparaître aucun specifier étranger |
+ * | **PUB-TYPES** (`verify-published-types.cjs`) | l'entrée `types` est-elle atteignable ? | ce que cette entrée IMPORTE, transitivement — elle ne compile rien |
+ * | **check 4** (`check-versions.cjs`) | les cartes de dépendances sont-elles cohérentes ? | les `.d.ts` — elle lit des `package.json`, jamais du code émis |
+ * | **`typecheck:consumer`** | le paquet compile-t-il chez un consommateur ? | ce qui n'est absent que HORS du monorepo : elle compile depuis `packages/core/examples/`, où les symlinks de workspace résolvent tout |
+ *
+ * ⚠️ **LA CASE VIDE EST B-87, ET AUCUNE QUATRIÈME GATE NE LA REMPLIRA PAR ADDITION.** Un type
+ * interne non exporté qui atteint la déclaration publiée est invisible à SHIP-SPEC **par
+ * construction** — il n'introduit aucun specifier étranger, donc son zéro n'en dit rien. La
+ * baseline vide de SHIP-SPEC (`entries: 0`) peut donc coexister avec la classe entière de B-87
+ * ouverte : **deux questions différentes sur le même fichier**, l'une sur la CIBLE d'un import,
+ * l'autre sur la VISIBILITÉ d'un symbole.
+ *
+ * 📌 Ce tableau est le geste que B-87 demandait — « c'est le recouvrement lui-même qu'il faut
+ * écrire, pas une quatrième gate ». Un vert ne vaut que ce que sa question vaut, et une question
+ * qu'on ne peut pas lire se lit comme une garantie.
+ *
  * ## Les trois règles
  *
  *   SHIP-SPEC-01  Tout specifier NU d'un fichier ATTEIGNABLE doit être déclaré dans les

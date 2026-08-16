@@ -54,7 +54,6 @@
  * }
  * ```
  */
-"use strict";
 
 import type {
     ICapabilityConfigGate,

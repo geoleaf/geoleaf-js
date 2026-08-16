@@ -110,7 +110,14 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
         // 🛑 Sans la remise à zéro, l'entrée retomberait en quarantaine au premier échec :
         // son budget est déjà épuisé, c'est précisément ce qui l'y a mise.
         expect(updates).toEqual([
-            ["create:sites:loc:abc:1", "pending", { attempts: 0, quarantine: null }],
+            [
+                "create:sites:loc:abc:1",
+                "pending",
+                // ⚠️ B-200 — `quarantineStatus` s'efface AVEC le motif. Une entrée remise en file
+                // qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas
+                // encore eu lieu — plus trompeur qu'une absence, puisqu'il a l'air d'une mesure.
+                { attempts: 0, quarantine: null, quarantineStatus: null },
+            ],
         ]);
     });
 
@@ -143,7 +150,14 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
         mountOutbox([quarantined({ quarantine: "notImplementedByServer", attempts: 1 })]);
         expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({ ok: true });
         expect(updates).toEqual([
-            ["create:sites:loc:abc:1", "pending", { attempts: 0, quarantine: null }],
+            [
+                "create:sites:loc:abc:1",
+                "pending",
+                // ⚠️ B-200 — `quarantineStatus` s'efface AVEC le motif. Une entrée remise en file
+                // qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas
+                // encore eu lieu — plus trompeur qu'une absence, puisqu'il a l'air d'une mesure.
+                { attempts: 0, quarantine: null, quarantineStatus: null },
+            ],
         ]);
     });
 

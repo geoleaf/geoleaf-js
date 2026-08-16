@@ -35,7 +35,6 @@
  * `GeoLeaf.Utils.performanceProfiler` but absent from `Object.keys()`. That asymmetry
  * is preserved here on purpose — changing it would alter the published surface.
  */
-"use strict";
 
 import { Utils as UtilsBase } from "./utils-base.js";
 import { createElement, applyCssText } from "./dom-helpers.js";

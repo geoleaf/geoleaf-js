@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.Taxonomy` facade — geometry-agnostic category styling

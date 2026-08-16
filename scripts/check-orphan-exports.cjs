@@ -364,6 +364,25 @@ const IDENTIFIER_RE = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 // c'est précisément ce qui l'a fait survivre : un motif faux sous une décision
 // juste ne se fait jamais contredire par une gate.
 const ALLOWLIST = {
+    // ── Un décâblage exporté POUR LE HARNAIS, sans lequel les tests ne prouvent rien ────
+    //
+    // `unwireEvictionNotice` (B-163) n'a aucun appelant de production : le core n'a pas de
+    // chemin de démontage, et `wireEvictionNotice()` est posée une fois pour toutes par
+    // `setupStorage()`. Son consommateur est le harnais — `__tests__/storage/eviction-notice.test.ts`.
+    //
+    // ⚠️ **Elle n'est pas un confort de test, elle est ce qui rend la suite falsifiable.**
+    // L'écouteur porte un drapeau module (`_evictionNoticeWired`) qui rend tout second
+    // `wireEvictionNotice()` inopérant — c'est le but : `setupStorage()` est re-callable, et
+    // deux écouteurs afficheraient deux toasts. Sans le décâblage, un `beforeEach` ne pourrait
+    // pas remettre l'état à zéro : les cas s'exécuteraient sur l'écouteur du premier, et les
+    // trois cas de cycle de vie (idempotence, décâblage, re-câblage) sortiraient verts **sans
+    // rien éprouver**.
+    //
+    // C'est le cas exact de `unwireEngineSignals` dans `offline-ui`, dont le relevé C1 de la
+    // tâche 8.8 avait conclu « sans consommateur » — et sa dé-exportation avait fait rougir
+    // 7 cas immédiatement. Même classe, même motif : « annoncé mort ≠ mort ».
+    "kernel/storage/eviction-notice.ts": ["unwireEvictionNotice"],
+
     // ── Un seam de GATE : exporté pour être confronté, pas pour être appelé ────
     //
     // `RENDERED_WIDGETS` est dérivé de la table de rendu (`Object.keys`), jamais écrit à
@@ -545,13 +564,25 @@ const ALLOWLIST = {
         "WriteDialect",
     ],
 
-    // ── Façade Introspection (~850 l., 0 appel réel hors JSDoc) ───────────────
-    // Conservée pour le futur SaaS (Studio). Cf. rapport de code mort.
-    "api/geoleaf.introspection.ts": "*",
-    "contracts/introspection.contract.ts": "*",
-    "contracts/capability.contract.ts": "*",
-    "kernel/api/plugin-registry.ts": "*",
-
+    // ── ✅ B-20 — LES 4 EXEMPTIONS GLOBALES SONT RETIRÉES (16/08/2026) ──────────
+    //
+    // Elles couvraient `api/geoleaf.introspection.ts`, `contracts/introspection.contract.ts`,
+    // `contracts/capability.contract.ts` et `kernel/api/plugin-registry.ts`, sous le motif
+    // « Façade Introspection (~850 l., 0 appel réel hors JSDoc) — conservée pour le futur SaaS ».
+    //
+    // 🛑 MESURÉ : elles masquaient **ZÉRO** orphelin. Les 13 exports de ces quatre fichiers ont
+    // tous un consommateur réel, et aucun n'était en baseline. Le motif était juste à sa date ;
+    // il ne l'est plus, et son chiffre non plus — `geoleaf.introspection.ts` fait **36 lignes**,
+    // pas 850.
+    //
+    // ⚠️ ET VOICI POURQUOI PERSONNE NE POUVAIT LE VOIR : `checkAllowlistFresh` portait
+    // `if (value === "*") continue;`. **Une exemption globale était exemptée du contrôle de
+    // péremption lui-même.** C'est la seule forme d'exemption qui ne pouvait jamais se périmer,
+    // et c'est exactement pourquoi ces quatre-là ont survécu à la purge de leur motif.
+    //
+    // ✅ Le joker n'appartient plus au vocabulaire : l'ALLOWLIST n'accepte QUE des listes de
+    // symboles nommés, et toute autre valeur est signalée comme périmée. Un fichier entièrement
+    // exempté doit donc NOMMER ses exports — ce qui les rend visibles, donc périssables.
     // ── `GeoLeaf.Errors.*` — vivants via la façade, jamais importés nommément ──
     // `kernel-exports.ts` ré-exporte `Errors`, monté au boot B1 par `globals.core.ts`.
     // Le token-search ne voit que l'agrégat, pas ses membres : exemple canonique du
@@ -591,7 +622,18 @@ const ALLOWLIST = {
     // Ces types décrivent une frontière vérifiée STRUCTURELLEMENT (le plugin
     // déclare sa propre copie) : aucun import cross-package, par conception.
     "contracts/api.contract.ts": ["IGeoLeafAPIConstructors", "IHealthError"],
-    "contracts/event-bus.contract.ts": ["GeoLeafFeatureGeometry", "GeoLeafLayerAddedDetail"],
+    // ⚠️ `GeoLeafGeolocationStateChangeDetail` (B-207) est le même cas, et il l'est de façon
+    // particulièrement littérale : l'événement `geoleaf:geolocation:statechange` est émis par le
+    // core et lu par `plugins/measure/src/tools/tool-gps.ts`, qui n'en importe pas le type — il
+    // lit `e.detail` en duck-typing. Le type part dans `dist/types/` pour que l'intégrateur
+    // puisse le NOMMER ; non exporté, la déclaration publiée citerait un type que personne ne
+    // peut écrire (B-87). C'est un contrat qui FRANCHIT la frontière core → plugin, donc
+    // « sans consommateur » y est une propriété, pas un symptôme.
+    "contracts/event-bus.contract.ts": [
+        "GeoLeafFeatureGeometry",
+        "GeoLeafLayerAddedDetail",
+        "GeoLeafGeolocationStateChangeDetail",
+    ],
     "contracts/sidepanel-renderer.contract.ts": [
         "SidePanelFeatureDetail",
         "SidePanelFeatureGeometry",
@@ -732,7 +774,20 @@ function checkAllowlistFresh(coreFiles, exportsByFile) {
             stale.push(`${rel} — fichier introuvable`);
             continue;
         }
-        if (value === "*") continue;
+        // 🛑 B-20 — LE JOKER `"*"` N'EXISTE PLUS, et cette ligne disait pourquoi il fallait
+        // le retirer. Elle s'écrivait `if (value === "*") continue;` : une exemption globale
+        // était donc **exemptée du contrôle de péremption lui-même**. Les quatre qui vivaient
+        // ici ont survécu à ce titre — mesuré le 16/08/2026, elles masquaient **zéro** orphelin,
+        // et rien ne pouvait le dire. Une exemption qui échappe au contrôle des exemptions est
+        // la seule qui ne se périme jamais.
+        if (!Array.isArray(value)) {
+            stale.push(
+                `${rel} — valeur non listée (${JSON.stringify(value)}). L'ALLOWLIST n'accepte ` +
+                    `QUE des listes de symboles nommés : une exemption globale échapperait à ce ` +
+                    `contrôle et survivrait à la purge de sa cible.`
+            );
+            continue;
+        }
         const names = new Set((exportsByFile.get(abs) || []).map((e) => e.name));
         for (const sym of value) {
             if (!names.has(sym)) stale.push(`${rel}::${sym} — export introuvable`);
@@ -906,7 +961,9 @@ function main() {
 
         const relFile = path.relative(CORE_SRC, file);
         const allow = allowlistFor(relFile);
-        if (allow === "*") continue;
+        // B-20 — plus de joker : `allow` est soit `undefined`, soit une liste de symboles.
+        // Un fichier entièrement exempté se déclare donc en NOMMANT ses exports, ce qui les
+        // rend visibles à `checkAllowlistFresh` — et donc périssables.
 
         for (const exp of exportsFound) {
             if (allow && allow.includes(exp.name)) continue;

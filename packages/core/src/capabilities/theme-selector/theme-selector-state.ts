@@ -5,8 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
-
 import type { NormalizedTheme, ValidatedThemesConfig } from "../../kernel/themes/index.js";
 
 /**

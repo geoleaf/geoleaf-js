@@ -43,7 +43,7 @@ const SCREEN_DPI = 96;
  *
  * ⚠️ THE FIRST SWITCH IS THE EXPENSIVE ONE, and a single sample hides that. Measured on a
  * 2-core host (`taskset -c 0,1`, the honest model of a CI runner — see `playwright.config.js`),
- * `print:render:start` → `print:render:end` for consecutive format switches:
+ * `geoleaf:print:render:start` → `geoleaf:print:render:end` for consecutive format switches:
  *
  *     A4 → A3  (first)   109 280 ms      ← larger canvas, no tile yet cached
  *     A3 → A4              28 062 ms
@@ -59,7 +59,7 @@ const SCREEN_DPI = 96;
  * most one of them, so this is not a 4×180 s ceiling on one interaction.
  *
  * ⚠️ Whoever changes this must also raise the E2E wait in `e2e/14-print.spec.js`
- * (`withRenderSettled`): the two are IN SERIES. `print:render:end` is emitted from a `finally`,
+ * (`withRenderSettled`): the two are IN SERIES. `geoleaf:print:render:end` is emitted from a `finally`,
  * so it fires only AFTER this budget is spent — an E2E wait equal to it can never observe the
  * event, and the suite reports an opaque wait timeout instead of the console error that says
  * what actually happened. That mistake was made here on 01/08/2026, with both set to 90 s.
@@ -184,7 +184,7 @@ function _copyCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
 }
 
 /** Dispatches a CustomEvent on document (drives the modal spinner in Sprint 5). */
-function _emit(name: "print:render:start" | "print:render:end"): void {
+function _emit(name: "geoleaf:print:render:start" | "geoleaf:print:render:end"): void {
     document.dispatchEvent(new CustomEvent(name));
 }
 
@@ -267,14 +267,14 @@ export async function captureExtent(
         zoom,
     } = _resolveRenderParams(bbox, opts, config);
 
-    _emit("print:render:start");
+    _emit("geoleaf:print:render:start");
 
     let mapInst: MaplibreGL.Map | null = null;
     let containerEl: HTMLElement | null = null;
 
     try {
         // Clone map style and (if present) the transformRequest for tile auth.
-        // Inside try so print:render:end fires even if getStyle() throws.
+        // Inside try so geoleaf:print:render:end fires even if getStyle() throws.
         const style: unknown = nativeMap.getStyle?.() ?? {};
         const transformRequest: unknown =
             (nativeMap as { _requestManager?: { _transformRequest?: unknown } })._requestManager
@@ -307,7 +307,7 @@ export async function captureExtent(
             scaleDenominator,
         };
     } finally {
-        _emit("print:render:end");
+        _emit("geoleaf:print:render:end");
         mapInst?.remove?.();
         containerEl?.remove?.();
     }
@@ -411,12 +411,12 @@ export class OffscreenSession {
     async waitReady(): Promise<void> {
         const map = this._map;
         if (!map) return;
-        _emit("print:render:start");
+        _emit("geoleaf:print:render:start");
         try {
             await _waitForIdle(map);
             await _scaleSymbolTextSizes(map, this._dpi);
         } finally {
-            _emit("print:render:end");
+            _emit("geoleaf:print:render:end");
         }
     }
 
@@ -431,7 +431,7 @@ export class OffscreenSession {
         zoom: number
     ): Promise<void> {
         if (!this._map || !this._container) return;
-        _emit("print:render:start");
+        _emit("geoleaf:print:render:start");
         try {
             Object.assign(this._container.style, {
                 width: `${widthPx}px`,
@@ -442,19 +442,19 @@ export class OffscreenSession {
             await _waitForIdle(this._map);
             await _scaleSymbolTextSizes(this._map, this._dpi);
         } finally {
-            _emit("print:render:end");
+            _emit("geoleaf:print:render:end");
         }
     }
 
     /** Repositions the camera without resizing. Waits for idle. */
     async jumpTo(center: [number, number], zoom: number): Promise<void> {
         if (!this._map) return;
-        _emit("print:render:start");
+        _emit("geoleaf:print:render:start");
         try {
             this._map.jumpTo({ center, zoom, bearing: 0, pitch: 0 });
             await _waitForIdle(this._map);
         } finally {
-            _emit("print:render:end");
+            _emit("geoleaf:print:render:end");
         }
     }
 

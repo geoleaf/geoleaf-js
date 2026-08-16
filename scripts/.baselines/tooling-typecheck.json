@@ -1,0 +1,6 @@
+{
+    "_comment": "B-93 — nombre d'erreurs `tsc --checkJs` sur scripts/, e2e/ et les configs racine. Ce nombre ne peut que DÉCROÎTRE (TOOLING-TS). Ne jamais le remonter à la main : corrigez, ou expliquez pourquoi la hausse est légitime dans le commit qui la porte.",
+    "_generated": "node scripts/check-tooling-typecheck.cjs --update-baseline",
+    "maxErrors": 301,
+    "filesCompiled": 198
+}

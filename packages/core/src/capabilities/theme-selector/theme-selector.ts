@@ -27,7 +27,6 @@
  *
  * @public
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { Config } from "../../kernel/config/config-primitives.js";

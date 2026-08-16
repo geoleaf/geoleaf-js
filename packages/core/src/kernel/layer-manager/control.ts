@@ -17,8 +17,6 @@
  * - GeoLeaf._LayerManagerControl
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { LMRenderer } from "./renderer.js";
 import type { LMSection, LMControlOptions, LMControlInstance } from "./layer-manager-helpers.js";

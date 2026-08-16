@@ -50,34 +50,14 @@ interface QuotaExceededDetail {
     size?: number;
 }
 
-/**
- * Détail porté par `geoleaf:cache:evicted`.
- *
- * ⚠️ **DEUX producteurs depuis la tâche 1.4**, et leurs détails ne portent pas la même chose :
- *   · IndexedDB (`db/eviction.ts` via `_enforceCacheQuota`) — `EvictionResult` complet, octets
- *     compris, comptes exprimés en OCTETS ;
- *   · Cache API (le Service Worker, relayé par `kernel/storage/sw-register.ts`) — **pas de
- *     `freedBytes`** : la Cache API n'expose la taille d'aucune entrée, et `totalBefore` /
- *     `totalAfter` y comptent des ENTRÉES, pas des octets.
- *
- * C'est pourquoi `formatFileSize` est appelé sur une valeur possiblement absente plutôt que
- * sur un nombre supposé : il rend `""`, et l'avis se prononce alors sans taille. Fabriquer un
- * nombre pour homogénéiser les deux producteurs afficherait une quantité fausse.
- */
-interface EvictedDetail {
-    evicted?: number;
-    freedBytes?: number;
-    totalBefore?: number;
-    totalAfter?: number;
-    /** Quel magasin a évincé. Absent = IndexedDB, la forme historique. */
-    store?: "indexeddb" | "cache-api";
-    /** Pourquoi — seul le worker le renseigne. */
-    reason?: "pressure" | "quota";
-}
+// 🛑 B-163 — `EvictedDetail` et `EVICTED_MS` sont partis avec l'écouteur d'éviction.
+// Le contrat du détail est désormais `GeoLeafCacheEvictedDetail`
+// (`core/src/contracts/event-bus.contract.ts`), lu par `kernel/storage/eviction-notice.ts`.
+// Ce qu'ils documentaient sur les DEUX producteurs — la Cache API ne renseigne pas
+// `freedBytes` — est repris dans l'en-tête de ce fichier-là, là où le rendu se décide.
 
-/** Durées d'affichage — le refus d'écriture reste plus longtemps que l'éviction. */
+/** Durée d'affichage du refus d'écriture. */
 const QUOTA_MS = 8000;
-const EVICTED_MS = 5000;
 
 // ⚠️ `formatFileSize` et NON un formateur local. J'en avais écrit un — vingt lignes de
 // division par 1024 — avant de mesurer que ce paquet en expose déjà trois
@@ -108,24 +88,23 @@ export function wireEngineSignals(): void {
         getUINotifications()?.error?.(size ? `${base} (${size})` : base, QUOTA_MS);
     };
 
-    const onEvicted = (event: Event) => {
-        const detail = (event as CustomEvent<EvictedDetail>).detail ?? {};
-        // 🛑 SORTIE EN TÊTE SI RIEN N'A ÉTÉ ÉVINCÉ. `_enforceCacheQuota` émet le signal
-        // quand des enregistrements SONT retirés, mais un détail à zéro reste possible ; une
-        // notification « 0 entrée retirée » entraîne exactement la même désaffection.
-        const count = typeof detail.evicted === "number" ? detail.evicted : 0;
-        if (count <= 0) return;
-        const freed = formatFileSize(detail.freedBytes);
-        const base = t("storage.notif.cacheEvicted").replace("{count}", String(count));
-        getUINotifications()?.warning?.(freed ? `${base} (${freed})` : base, EVICTED_MS);
-    };
-
+    // 🛑 B-163 — L'ÉCOUTEUR D'ÉVICTION A ÉTÉ REMONTÉ DANS LE CORE, il n'est plus ici.
+    //
+    // Il vivait dans ce fichier, et c'était le SEUL du dépôt : sur `deploy-core`, qui n'embarque
+    // pas ce plugin, l'alerte partait donc dans le vide. Elle est désormais rendue par
+    // `kernel/storage/eviction-notice.ts`, sur un chemin de boot inconditionnel — donc sur
+    // TOUTES les variantes, et pour les deux émetteurs (le pont SW et `cache-manager`, ce
+    // dernier hors PWA).
+    //
+    // ⚠️ Ne pas le rétablir « pour l'UI riche » : les deux écouteurs afficheraient DEUX toasts
+    // sur `deploy-full`. C'est le nombre d'écouteurs qui était à zéro sur une variante, pas le
+    // nombre d'émetteurs qui était à corriger.
+    //
+    // 🖐 Le quota, lui, RESTE ICI : `geoleaf:storage:quota-exceeded` est émis par le
+    // `db/layers.ts` de ce plugin — celui qui écrit dans IndexedDB. Cette moitié n'a aucun
+    // émetteur in-core, donc rien à remonter.
     document.addEventListener("geoleaf:storage:quota-exceeded", onQuota);
-    document.addEventListener("geoleaf:cache:evicted", onEvicted);
-    _detach = [
-        () => document.removeEventListener("geoleaf:storage:quota-exceeded", onQuota),
-        () => document.removeEventListener("geoleaf:cache:evicted", onEvicted),
-    ];
+    _detach = [() => document.removeEventListener("geoleaf:storage:quota-exceeded", onQuota)];
 }
 
 /**

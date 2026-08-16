@@ -17,7 +17,6 @@
  *   - **A** — the façade module (`geoleaf.labels`) pulled into the static closure
  *     by the import below.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

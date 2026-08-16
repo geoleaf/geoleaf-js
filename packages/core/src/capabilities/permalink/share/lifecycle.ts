@@ -23,7 +23,6 @@
  * the desktop panel and emits `geoleaf:desktop-panel:tabs-ready`. The catch-up injection
  * below covers any future reordering anyway.
  */
-"use strict";
 
 import { openShareModal, closeShareModal } from "./share-modal.js";
 import { appendShareButtonToTabs, removeShareButtonsFromDocument } from "./share-button-desktop.js";

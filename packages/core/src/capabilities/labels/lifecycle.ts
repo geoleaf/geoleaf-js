@@ -17,7 +17,6 @@
  * `modules.labels.enabled` is set), replacing the former dispersed init
  * (`init-deferred-ui.ts` + `globals.ui.ts`).
  */
-"use strict";
 
 import { Labels } from "./labels.js";
 import { LabelButtonManager } from "./label-button-manager.js";

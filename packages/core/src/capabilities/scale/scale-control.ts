@@ -36,7 +36,6 @@
  * is a method of the adapter contract, the second a shared utility used by three
  * capabilities.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";

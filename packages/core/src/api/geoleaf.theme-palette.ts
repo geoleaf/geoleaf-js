@@ -16,7 +16,7 @@
  * The selector button is opt-in (`modules.theme-palette.enabled`), but the configured
  * `default` palette applies either way.
  */
-"use strict";
+
 import {
     buildPublicApi,
     type ThemePalettePublicApi,

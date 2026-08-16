@@ -25,7 +25,6 @@
  *
  * ⚠ Call **exactly once** per bundle: it registers modules and writes `GeoLeaf.*`.
  */
-"use strict";
 
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 import { ModuleRegistry } from "./module-registry.js";

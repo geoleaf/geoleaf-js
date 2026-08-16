@@ -12,7 +12,6 @@
  * `modules.language-switcher.enabled: true` (real default OFF, enforced by the
  * lifecycle's late gate).
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

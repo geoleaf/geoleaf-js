@@ -38,7 +38,6 @@
  *
  * The same ordering trick is still carried by `labels`, `feature-info` and `filter`.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

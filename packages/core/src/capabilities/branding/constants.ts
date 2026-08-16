@@ -19,7 +19,6 @@
  * value) and the control (its `_options` seed) — makes the three the same *by construction*
  * (roadmap_optimisation-capacites B.24). Mirrors the `cluster/constants.ts` pattern.
  */
-"use strict";
 
 // Type-only (erased at compile): no runtime edge back to the reader that imports us.
 import type { BrandingCapabilityConfig } from "./config.js";

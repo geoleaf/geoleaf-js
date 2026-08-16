@@ -8,7 +8,6 @@
 /**
  * @fileoverview CacheStorage - IndexedDB operations for cache management
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded, BoundedFetchError } from "../../../utils/general/fetch-bounded.js";

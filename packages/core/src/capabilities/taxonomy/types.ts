@@ -14,7 +14,6 @@
  * line stroke, and a point's business colour) belongs to the layer's
  * `styleRules`, as does the point's SIZE (`circle-radius`).
  */
-"use strict";
 
 /**
  * The marker disc drawn under a point's icon.

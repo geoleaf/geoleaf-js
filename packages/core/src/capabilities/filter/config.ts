@@ -13,7 +13,6 @@
  * it over the built-in defaults. Replaces the scattered `searchConfig` /
  * `ui.showFilterPanel` reads (migrated in F4).
  */
-"use strict";
 
 import type { FilterConfig } from "./types.js";
 import { Config } from "../../kernel/config/config-primitives.js";

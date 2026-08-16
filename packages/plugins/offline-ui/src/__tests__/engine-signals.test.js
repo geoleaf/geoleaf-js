@@ -73,27 +73,23 @@ describe("engine-signals — les trois orphelins de B-72", () => {
         });
     });
 
-    describe("cache:evicted → AVERTISSEMENT", () => {
-        it("notifie en avertissement, avec le compte et les octets libérés", () => {
+    describe("cache:evicted — REMONTÉ DANS LE CORE (B-163), donc plus rien ici", () => {
+        // 🛑 Le rendu de l'éviction n'appartient plus à ce plugin : il vivait ici et NULLE PART
+        // ailleurs, donc `deploy-core` — qui ne l'embarque pas — n'affichait jamais l'avis.
+        // Il est désormais dans `core/src/kernel/storage/eviction-notice.ts`, sur un chemin de
+        // boot inconditionnel. Le comportement est éprouvé LÀ-BAS ; ici on garde uniquement
+        // l'absence, pour qu'un rétablissement « pour l'UI riche » se fasse voir : deux
+        // écouteurs afficheraient DEUX toasts sur `deploy-full`.
+        it("ne notifie PLUS — l'écouteur a quitté le plugin", () => {
             document.dispatchEvent(
                 new CustomEvent("geoleaf:cache:evicted", {
                     detail: { evicted: 3, freedBytes: 2048, totalBefore: 10, totalAfter: 8 },
                 })
             );
 
-            expect(notify.warning).toHaveBeenCalledTimes(1);
-            expect(notify.warning.mock.calls[0][0]).toBe("storage.notif.cacheEvicted (2048 o)");
-            // L'éviction n'est pas une erreur : elle ne doit pas se déguiser en panne.
-            expect(notify.error).not.toHaveBeenCalled();
-        });
-
-        it("NE notifie RIEN quand zéro entrée a été évincée", () => {
-            document.dispatchEvent(
-                new CustomEvent("geoleaf:cache:evicted", { detail: { evicted: 0, freedBytes: 0 } })
-            );
-
             expect(notify.warning).not.toHaveBeenCalled();
             expect(notify.error).not.toHaveBeenCalled();
+            expect(notify.info).not.toHaveBeenCalled();
         });
     });
 
@@ -110,24 +106,29 @@ describe("engine-signals — les trois orphelins de B-72", () => {
     });
 
     describe("cycle de vie", () => {
+        // ⚠️ CES DEUX CAS PORTAIENT SUR `cache:evicted` — l'événement que le plugin n'écoute
+        // PLUS depuis B-163. Ils seraient devenus VACUEMENT VERTS : « rien n'a notifié » est
+        // exactement ce qu'un écouteur absent produit, donc ils n'auraient plus rien gardé tout
+        // en restant au vert. Ils portent désormais sur `quota-exceeded`, la moitié qui reste
+        // légitimement ici — la propriété éprouvée (idempotence, décâblage réel) est la même.
         it("un second câblage ne double PAS les notifications", () => {
             // Sans l'idempotence, deux imports de l'entrée poseraient deux écouteurs et
             // l'utilisateur verrait chaque événement deux fois.
             wireEngineSignals();
             document.dispatchEvent(
-                new CustomEvent("geoleaf:cache:evicted", { detail: { evicted: 1 } })
+                new CustomEvent("geoleaf:storage:quota-exceeded", { detail: { size: 4096 } })
             );
 
-            expect(notify.warning).toHaveBeenCalledTimes(1);
+            expect(notify.error).toHaveBeenCalledTimes(1);
         });
 
         it("le décâblage retire réellement les écouteurs", () => {
             unwireEngineSignals();
             document.dispatchEvent(
-                new CustomEvent("geoleaf:cache:evicted", { detail: { evicted: 5 } })
+                new CustomEvent("geoleaf:storage:quota-exceeded", { detail: { size: 4096 } })
             );
 
-            expect(notify.warning).not.toHaveBeenCalled();
+            expect(notify.error).not.toHaveBeenCalled();
         });
     });
 });

@@ -25,7 +25,6 @@
  * contract encapsulates the initialization guard and provides a typed entry
  * point without exposing the global namespace.
  */
-"use strict";
 
 import { Legend as _Legend } from "../../api/geoleaf.legend.js";
 import type { LegendLayerConfig } from "../../contracts/legend.contract.js";

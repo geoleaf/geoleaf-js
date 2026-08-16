@@ -765,6 +765,48 @@
             "description": "Couche d'interface générique du kernel : layout de page pleine hauteur, helpers réutilisables, sans aucun style de thème dupliqué",
             "confidence": "moyenne",
             "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E7, profondeur inutile : `css/components/ui/` ne contenait que ce fichier. Ce sont des utilitaires de BASE, pas le CSS d'une feature : il remonte à `css/` plutôt que sous `kernel/`. Renommé `geoleaf-ui-base.css` pour rejoindre la forme des 8 feuilles voisines (`geoleaf-theme`, `geoleaf-core`, `geoleaf-controls`…). ⚠️ Le verdict portait `name: \"ok\"` tout en prescrivant ce renommage dans son `existenceTarget` : il se contredisait, le champ a été corrigé."
+        },
+        "packages/core/src/api/geoleaf.language-switcher.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Facade publique GeoLeaf.LanguageSwitcher - selecteur de langue de l'interface, rendu dans la bande d'onglets desktop et la barre mobile",
+            "confidence": "haute",
+            "rationale": "Facade au sens de la regle des facades publiques (verify-facade-purity) : elle re-exporte buildPublicApi de capabilities/language-switcher/public-api.js et ne porte AUCUNE logique - c'est ce qui justifie son existence separee de la capacite. Le nom suit le contrat geoleaf.<capacite>.ts des 29 facades du core. OPT-IN : inerte tant que modules.language-switcher.enabled n'est pas true, contrairement a toast-renderer qui est opt-out - la distinction se lit sur le enableWhenAbsent de la gate, jamais sur la presence d'une cle dans un profil."
+        },
+        "packages/core/src/api/geoleaf.profile-switcher.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Facade publique GeoLeaf.ProfileSwitcher - selecteur de profil de donnees, rendu en tete du gestionnaire de couches",
+            "confidence": "haute",
+            "rationale": "Meme forme et meme justification que les 28 autres facades geoleaf.*.ts : re-export pur de capabilities/profile-switcher/public-api.js, zero logique inline. Sa condition d'activation est DOUBLE et c'est ce qui la distingue : modules.profile-switcher.enabled true ET au moins deux profils moissonnes dans data.availableProfiles au moment du build. Un selecteur a une seule entree n'a pas d'objet - la seconde condition n'est donc pas une precaution mais la definition de son utilite."
+        },
+        "packages/core/src/api/geoleaf.theme-palette.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Facade publique GeoLeaf.ThemePalette - palette de couleur d'accent (orange / vert / bleu)",
+            "confidence": "haute",
+            "rationale": "Re-export pur, comme les 28 autres facades. Son verdict tient surtout a ce qu'elle N'EST PAS : trois axes de theme coexistent dans ce core et se confondent au nom - ThemeToggle (clair/sombre), ThemeSelector (themes de CARTE) et cette palette d'accent. Ils sont orthogonaux et cumulatifs, et l'en-tete du fichier le dit explicitement. Nuance d'activation propre a elle : le BOUTON de selection est opt-in (modules.theme-palette.enabled), mais la palette default configuree s'applique de toute facon - l'option gouverne la surface, pas l'effet."
         }
     }
 }

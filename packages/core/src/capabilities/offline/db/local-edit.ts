@@ -43,7 +43,6 @@
  *
  * @version 1.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import type {

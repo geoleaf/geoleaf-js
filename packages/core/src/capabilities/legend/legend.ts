@@ -22,8 +22,6 @@
  * re-export `api/geoleaf.legend.ts` publishes, and `lifecycle.ts` imports THIS file.
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import {

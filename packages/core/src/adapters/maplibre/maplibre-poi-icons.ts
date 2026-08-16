@@ -17,7 +17,6 @@
  * unreliable in Chrome for stroke-only SVGs (known blank-canvas issue) and is
  * subject to `img-src` CSP restrictions.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";

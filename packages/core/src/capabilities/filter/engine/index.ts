@@ -12,7 +12,6 @@
  * mapping-driven panel (F2) and the source binding (F3); replaces the former
  * POI/Route-centric `built-in/filters` engine.
  */
-"use strict";
 
 export {
     getFieldValue,

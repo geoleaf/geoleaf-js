@@ -19,7 +19,6 @@
  *   item-controls/attach-toggle were removed (S4): no caller left. Those
  *   sub-modules are still consumed directly by `render-sections.ts`.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { GeoJSONShared } from "../shared/geojson-state.js";

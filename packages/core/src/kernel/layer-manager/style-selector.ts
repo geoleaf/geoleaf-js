@@ -10,8 +10,6 @@
  * @version 1.2.0
  */
 
-"use strict";
-
 import { GeoJSONCore } from "../geojson/core.js";
 import { StyleLoader } from "../../utils/loaders/style-loader.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
@@ -48,9 +46,7 @@ function _applyStyleResult(
     // receives a flat paint object directly, while preserving styleRules so that
     // applyLayerStyle() can rebuild MapLibre case-expressions for per-category colouring.
     const sd = res.styleData as
-        | { style?: Record<string, unknown>; styleRules?: unknown[] }
-        | null
-        | undefined;
+        { style?: Record<string, unknown>; styleRules?: unknown[] } | null | undefined;
     const paintData: Record<string, unknown> = { ...(sd?.style ?? sd ?? {}) };
     if (Array.isArray(sd?.styleRules)) {
         paintData.styleRules = sd.styleRules;

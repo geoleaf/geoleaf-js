@@ -17,7 +17,6 @@
  * The native primitives (clustered source creation, click-to-expand wiring) stay in
  * the MapLibre adapter; this module only owns the policy/defaults.
  */
-"use strict";
 
 import type { GeoJSONLoaderLog } from "../../kernel/geojson/loader/loader-types.js";
 import type { ClusterLayerDef } from "./types.js";

@@ -22,7 +22,6 @@
  * there are no event listeners to wire. The gate
  * is enforced by the config reader (`getClusterConfig().enabled`).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 import { clusterConfigDefaults } from "./constants.js";

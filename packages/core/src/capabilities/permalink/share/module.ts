@@ -15,7 +15,6 @@
  * The desktop button is injected by the capability itself, which subscribes to the
  * kernel `geoleaf:desktop-panel:tabs-ready` seam (no static kernel→capability import).
  */
-"use strict";
 
 import type { ILifecycleModule, IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../../contracts/map-adapter.contract.ts";

@@ -45,7 +45,6 @@
  * a LIVING state is a second source of truth. The 744 survives because it is explicitly a dated
  * past measurement, which is what makes the shrink traceable at all.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

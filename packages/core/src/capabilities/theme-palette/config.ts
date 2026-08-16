@@ -13,7 +13,6 @@
  * inert unless `enabled` is `true`, but the configured `default` palette applies either
  * way — an integrator who fixes a brand colour offers no choice at all.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

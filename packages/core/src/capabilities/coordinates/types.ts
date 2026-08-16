@@ -12,7 +12,6 @@
  * coordinates readout was reclassified to an in-core capability
  * (`capabilities/coordinates/`, gate `modules.coordinates.enabled`).
  */
-"use strict";
 
 import type { GeoLeafControl, GeoLeafLatLng } from "../../contracts/map-adapter.contract.js";
 

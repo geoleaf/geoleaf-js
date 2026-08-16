@@ -310,24 +310,24 @@ describe("openModal", () => {
     });
 
     // ------------------------------------------------------------------
-    // Spinner (print:render:start / print:render:end events)
+    // Spinner (geoleaf:print:render:start / geoleaf:print:render:end events)
     // ------------------------------------------------------------------
 
-    it("spinner becomes visible on print:render:start event", async () => {
+    it("spinner becomes visible on geoleaf:print:render:start event", async () => {
         openModal(makeEmpriseResult(), {});
         await flushMicrotasks();
         const spinner = document.querySelector(".gl-print-spinner") as HTMLElement;
         expect(spinner).not.toBeNull();
-        document.dispatchEvent(new CustomEvent("print:render:start"));
+        document.dispatchEvent(new CustomEvent("geoleaf:print:render:start"));
         expect(spinner.style.display).toBe("flex");
     });
 
-    it("spinner is hidden on print:render:end event", async () => {
+    it("spinner is hidden on geoleaf:print:render:end event", async () => {
         openModal(makeEmpriseResult(), {});
         await flushMicrotasks();
         const spinner = document.querySelector(".gl-print-spinner") as HTMLElement;
-        document.dispatchEvent(new CustomEvent("print:render:start"));
-        document.dispatchEvent(new CustomEvent("print:render:end"));
+        document.dispatchEvent(new CustomEvent("geoleaf:print:render:start"));
+        document.dispatchEvent(new CustomEvent("geoleaf:print:render:end"));
         expect(spinner.style.display).toBe("none");
     });
 

@@ -13,7 +13,6 @@
  * flag. Opt-out (`enableWhenAbsent: true`): active unless a profile sets
  * `modules.coordinates.enabled: false`.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 import { DEFAULT_COORDINATES_DECIMALS } from "./constants.js";

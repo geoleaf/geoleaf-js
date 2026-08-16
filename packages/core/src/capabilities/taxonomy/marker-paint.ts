@@ -25,7 +25,6 @@
  * — plus `circle-opacity` in the single `marker: false` case (a bare icon). It
  * deliberately never touches `circle-radius`: size belongs to the layer.
  */
-"use strict";
 
 import type { TaxonomyCategory, TaxonomyConfig } from "./types.js";
 import { resolveLayerBinding } from "./resolver.js";

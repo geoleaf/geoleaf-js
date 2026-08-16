@@ -16,7 +16,6 @@
  * Docks onto the scale control's wrapper (`.gl-scale-main-wrapper`) when present,
  * falling back to a standalone control otherwise.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";

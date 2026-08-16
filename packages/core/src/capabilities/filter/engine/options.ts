@@ -14,7 +14,6 @@
  * stays decoupled and works whether taxonomy is enabled or not. Tag options are
  * derived from the data (`"auto"`).
  */
-"use strict";
 
 import { getFieldValue, normalizeTags } from "./field-access.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";

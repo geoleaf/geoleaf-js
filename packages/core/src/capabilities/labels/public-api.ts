@@ -17,7 +17,6 @@
  * and the layer manager consume `initializeLayerLabels` / `enableLabels` /
  * `toggleLabels` / … through this object.
  */
-"use strict";
 
 import { Labels } from "./labels.js";
 import { getLabelsConfig, type LabelsCapabilityConfig } from "./config.js";

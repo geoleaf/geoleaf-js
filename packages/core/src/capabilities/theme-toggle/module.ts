@@ -16,7 +16,6 @@
  * `init()` runs post-merge, so the lifecycle reads the merged config and mounts the
  * button only when `modules.theme-toggle.enabled === true` (default OFF, opt-in).
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

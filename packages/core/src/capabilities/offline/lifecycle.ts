@@ -17,7 +17,6 @@
  * ⚠️ The `offline → pwa` dependency is NOT auto-enforced by `CapabilityRegistry`
  * (introspection metadata only) — it is guarded explicitly here.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { CapabilityRegistry } from "../../kernel/api/index.js";

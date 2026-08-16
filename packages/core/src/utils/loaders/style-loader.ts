@@ -20,8 +20,6 @@
  * (`style-loader-core`) imports it directly from `label-extractor.js`, not through this façade.
  */
 
-"use strict";
-
 import { styleCache, clearStyleCache } from "./style-cache.js";
 import { extractLabelConfig } from "./label-extractor.js";
 import { loadAndValidateStyle } from "./style-loader-core.js";

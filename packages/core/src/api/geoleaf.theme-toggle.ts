@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.ThemeToggle` facade — light/dark theme toggle button. In-core

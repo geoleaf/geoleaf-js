@@ -18,7 +18,6 @@
  * default-on behaviour. Migrated from the former root `labels.enabled` key (which
  * now belongs solely to the i18n override dictionary).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

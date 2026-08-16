@@ -27,7 +27,6 @@
  * It is called by `ShareModule.init()` — and only there since S2 Lot 6 (the eager call in
  * `setupUI` is gone, which removes the last static kernel → share import).
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

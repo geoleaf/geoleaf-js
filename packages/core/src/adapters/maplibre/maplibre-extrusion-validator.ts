@@ -10,8 +10,6 @@
  * Called during layer loading to fail fast on invalid configuration.
  */
 
-"use strict";
-
 import type { FlatStyle } from "./maplibre-style-converter.js";
 import { Log } from "../../utils/log/index.js";
 

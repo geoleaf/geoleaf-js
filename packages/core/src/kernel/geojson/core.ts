@@ -16,8 +16,6 @@
  * - geojson/popup-tooltip.js : Unified popups and tooltips
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { GeoJSONShared as SharedModule } from "./shared.ts";
 import {
@@ -130,9 +128,7 @@ const GeoJSONModule = {
      */
     _validateOptions(options: GeoJSONInitOptions): GeoJSONInitOptions {
         const map = options.map as
-            | { getNativeMap?: unknown; addLayer?: unknown }
-            | null
-            | undefined;
+            { getNativeMap?: unknown; addLayer?: unknown } | null | undefined;
         if (map && typeof map.getNativeMap !== "function" && typeof map.addLayer !== "function") {
             Log.warn(
                 "[GeoLeaf.GeoJSON] options.map does not appear to be a valid map or adapter instance."

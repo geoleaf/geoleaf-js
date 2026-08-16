@@ -15,7 +15,6 @@
  * Implementors: the concrete `Config` object in `config-core.ts` satisfies
  * this interface without modification.
  */
-"use strict";
 
 /**
  * Minimal read-only interface to the GeoLeaf configuration system.

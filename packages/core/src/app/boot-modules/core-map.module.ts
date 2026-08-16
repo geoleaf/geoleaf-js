@@ -18,7 +18,6 @@
  * extraction is graph-preserving on purpose: `id` and `dependencies` are unchanged, so
  * the boot graph and `boot-sequence-order` are untouched.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

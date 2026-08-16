@@ -18,7 +18,6 @@
  * destroy → recreate cycle. Hence: a live subscription (later builds) plus a catch-up
  * scan (earlier build), both funnelling into an idempotent insert.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";

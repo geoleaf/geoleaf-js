@@ -9,7 +9,6 @@
  * GeoLeaf GeoJSON Module - Layer Configuration Manager
  * Layer configuration and option handling
  */
-"use strict";
 
 import { getLog } from "../../utils/general/di-accessors.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";

@@ -17,7 +17,6 @@
  * config and mounts the control synchronously (mirroring the former
  * `ui-api._initMapControls` timing); `destroy()` tears it down.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

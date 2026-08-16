@@ -23,7 +23,6 @@
  * Every resolver here honours the `enabled` gate. It is opt-out: only an explicit
  * `false` silences them.
  */
-"use strict";
 
 import type {
     TaxonomyConfig,

@@ -17,7 +17,6 @@
  * capability is opt-out (active unless a profile sets it to `false`), matching
  * the former plugin default (`DEFAULTS.enabled = true`).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

@@ -17,8 +17,6 @@
  * engine imports.
  */
 
-"use strict";
-
 import { bindFeatureInteractionEvents, GeoJSONShared } from "../../kernel/geojson/index.js";
 import { getLog } from "../../utils/general/di-accessors.js";
 import { buildVtLayerData } from "./vector-tiles-layer-data.js";
@@ -255,8 +253,7 @@ const VectorTiles = {
 
         // Trigger visibility check.
         const LayerManager = getGeoLeaf()?._GeoJSONLayerManager as
-            | LayerManagerModuleLike
-            | undefined;
+            LayerManagerModuleLike | undefined;
         if (LayerManager) {
             LayerManager.updateLayerVisibilityByZoom?.();
         }
@@ -275,8 +272,7 @@ const VectorTiles = {
         if (!layerData || !layerData.isVectorTile) return;
 
         const Core = getGeoLeaf()?.Core as
-            | { getMap?: () => GeoJSONAdapter | undefined }
-            | undefined;
+            { getMap?: () => GeoJSONAdapter | undefined } | undefined;
         const adapter = Core?.getMap?.();
         if (!adapter?.updateVectorTileLayerStyle) return;
 

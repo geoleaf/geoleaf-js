@@ -26,7 +26,6 @@
  * out simply has no writer, and the loader falls back to `{ shouldCluster: false }` —
  * the same outcome as a present-but-disabled `modules.cluster.enabled: false`.
  */
-"use strict";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { CLUSTER_CAPABILITY } from "./cluster-capability.js";

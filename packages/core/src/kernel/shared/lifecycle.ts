@@ -37,7 +37,6 @@
  * been evaluated: `ReferenceError: Cannot access '_teardowns' before initialization`. It took
  * down three `ci:local` gates. See the store declaration below for what now prevents it.
  */
-"use strict";
 
 /** A store teardown callback (idempotent — safe to run more than once). */
 type LifecycleTeardownFn = () => void;

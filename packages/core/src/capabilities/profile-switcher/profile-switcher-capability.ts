@@ -19,7 +19,6 @@
  * `modules.profile-switcher.enabled === true` (enforced by `ProfileSwitcherLifecycle`,
  * with `getProfileSwitcherConfig().enabled` defaulting to `false`).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

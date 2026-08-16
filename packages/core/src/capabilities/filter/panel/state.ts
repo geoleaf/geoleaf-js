@@ -13,7 +13,6 @@
  * (`[data-gl-filter-id]`) so several fields of the same kind coexist. Reuses the
  * existing DOM hooks (tree checkboxes, tag badges, proximity data-attributes).
  */
-"use strict";
 
 import type { FilterConfig, FilterFieldDescriptor } from "../types.js";
 import type { ActiveField } from "../engine/types.js";

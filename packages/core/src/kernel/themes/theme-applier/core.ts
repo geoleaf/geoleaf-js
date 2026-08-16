@@ -9,7 +9,6 @@
  * GeoLeaf Theme Applier - Core
  * Module state, init/cleanup, applyTheme orchestration, getCurrentThemeId
  */
-"use strict";
 
 import { Config } from "../../config/config-primitives.js";
 import { Legend } from "../../../api/geoleaf.legend.js";
@@ -200,8 +199,7 @@ function _reapplyZoomVisibility() {
     // `exactOptionalPropertyTypes` (`var GeoLeaf: GeoLeafGlobal | undefined` is PRESENT holding
     // undefined, which `GeoLeaf?:` does not accept).
     const mgr = getGeoLeaf()?._GeoJSONLayerManager as
-        | { updateLayerVisibilityByZoom?: () => void }
-        | undefined;
+        { updateLayerVisibilityByZoom?: () => void } | undefined;
     if (mgr && typeof mgr.updateLayerVisibilityByZoom === "function") {
         mgr.updateLayerVisibilityByZoom();
     }

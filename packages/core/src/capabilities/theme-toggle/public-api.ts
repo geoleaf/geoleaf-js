@@ -12,7 +12,6 @@
  * `GeoLeaf.ThemeToggle`. The button itself is managed by the lifecycle (there is no
  * imperative public control — the toggle is fire-and-forget, driven by config).
  */
-"use strict";
 
 import { getThemeToggleConfig, type ThemeToggleCapabilityConfig } from "./config.js";
 

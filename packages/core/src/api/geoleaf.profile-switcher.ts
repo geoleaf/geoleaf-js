@@ -13,7 +13,7 @@
  * Opt-in: inert unless `modules.profile-switcher.enabled` is `true` AND at least two
  * profiles were harvested into `data.availableProfiles` at deploy time.
  */
-"use strict";
+
 import {
     buildPublicApi,
     type ProfileSwitcherPublicApi,

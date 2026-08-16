@@ -10,7 +10,6 @@
  * d'un profil (`profile.json` → `layers.json`). Sa place est le domaine profil/config,
  * aux côtés de `profile.ts` et `profile-loader.ts`.
  */
-"use strict";
 
 import { extractRawLayers, expandLayerTemplates } from "./profile-loader-helpers.js";
 

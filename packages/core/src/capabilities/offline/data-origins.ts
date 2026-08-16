@@ -30,7 +30,6 @@
  *
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import type { DataOriginDeclaration, DataOriginRole } from "../../contracts/sync.contract.js";

@@ -19,7 +19,6 @@
  * (same service-locator template as `vector-tiles`, S5), so leaving this capability out
  * of a preset now genuinely tree-shakes `notifications.ts`.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

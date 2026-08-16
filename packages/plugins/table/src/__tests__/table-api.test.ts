@@ -132,7 +132,12 @@ describe("modules/table/table-api", () => {
         expect(_TablePanel.create).toHaveBeenCalledWith(mockMap, expect.any(Object));
         expect(TableModule._container).toBeInstanceOf(HTMLElement);
         expect(TableModule._map).toBe(mockMap);
-        expect(mockMap.on).toHaveBeenCalledWith("geoleaf:filters:changed", expect.any(Function));
+        // ⚠️ B-204 — les filtres ne passent PLUS par `map.on()` : leur émetteur dispatche sur
+        // `document`. Ce qui reste sur le bus carte est ce que `kernel/geojson/` y `fire()`.
+        expect(mockMap.on).not.toHaveBeenCalledWith(
+            "geoleaf:filters:changed",
+            expect.any(Function)
+        );
         expect(mockMap.on).toHaveBeenCalledWith(
             "geoleaf:geojson:layers-loaded",
             expect.any(Function)
@@ -401,17 +406,21 @@ describe("modules/table/table-api", () => {
         expect(bounds.extend).toHaveBeenCalled();
     });
 
-    it("map event geoleaf:filters:changed triggers refresh when visible and layer set", () => {
+    // 🛑 B-204 — réécrit : la forme précédente récupérait le handler sur `mockMap.on` et
+    // l'appelait à la main, donc elle restait verte alors que l'abonnement était mort (nom
+    // inexistant, ET bus MapLibre là où l'émetteur dispatche sur `document`). Émettre un vrai
+    // événement est la seule forme qui distingue « le handler est correct » de « le handler est
+    // atteignable ».
+    it("l'événement `geoleaf:filters:applied` déclenche refresh quand visible et couche choisie", () => {
         TableModule.init({ map: mockMap, config: { enabled: true } });
         TableModule._isVisible = true;
         TableModule._currentLayerId = "ly1";
         TableModule._config = { maxRowsPerLayer: 1000 };
         globalThis.GeoLeaf.GeoJSON = { getLayerData: () => ({ features: [] }) };
-        const filtersCall = mockMap.on.mock.calls.find((c) => c[0] === "geoleaf:filters:changed");
-        expect(filtersCall).toBeDefined();
-        const filtersHandler = filtersCall[1];
         const refreshSpy = vi.spyOn(TableModule, "refresh");
-        filtersHandler();
+
+        document.dispatchEvent(new CustomEvent("geoleaf:filters:applied"));
+
         expect(refreshSpy).toHaveBeenCalled();
         refreshSpy.mockRestore();
     });

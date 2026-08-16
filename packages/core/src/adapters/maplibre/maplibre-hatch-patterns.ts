@@ -19,7 +19,6 @@
  * 2. Register it with MapLibre: `map.addImage(patternId, imageData, { pixelRatio })`.
  * 3. Set the fill layer paint: `{ "fill-pattern": patternId }`.
  */
-"use strict";
 
 import type { MaplibreMap } from "./maplibre-adapter-types.js";
 
@@ -163,10 +162,21 @@ export function registerHatchPattern(
 
 // ─── Canvas helpers ──────────────────────────────────────────────────────────
 
-/** Creates an offscreen canvas (OffscreenCanvas where available, fallback to DOM). */
+/**
+ * Creates an offscreen canvas — OffscreenCanvas when it can actually hand out a 2D context,
+ * fallback to DOM otherwise.
+ *
+ * ⚠️ The guard tests USABILITY, not existence. An environment can expose the constructor and
+ * still return `null` from `getContext("2d")` for want of a 2D backend (happy-dom ≥ 20.11.0
+ * does exactly this without a `canvasAdapter`). {@link generateHatchImage} asserts the context
+ * non-null, so existence-only detection turned that case into a `TypeError`. Measured
+ * 15/08/2026, backlog B-258. Repeating `getContext("2d")` on one surface returns the same
+ * context — the probe is free and side-effect-free.
+ */
 function _createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {
     if (typeof OffscreenCanvas !== "undefined") {
-        return new OffscreenCanvas(width, height);
+        const offscreen = new OffscreenCanvas(width, height);
+        if (offscreen.getContext("2d")) return offscreen;
     }
     const canvas = document.createElement("canvas");
     canvas.width = width;

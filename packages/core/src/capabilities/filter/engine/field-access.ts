@@ -13,7 +13,6 @@
  * capability (`../filters/`, relocated from the former `built-in/filters` in F4.4)
  * so the behaviour is byte-identical and no logic is duplicated.
  */
-"use strict";
 
 import { getNestedValue } from "./nested-value.js";
 import { haversine, normalizeTags } from "./filter-helpers.js";

@@ -9,7 +9,6 @@
  * API Factory Manager
  * Manager for multi-map instance creation.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import type { IModuleAccessFn } from "../../contracts/api.contract.ts";

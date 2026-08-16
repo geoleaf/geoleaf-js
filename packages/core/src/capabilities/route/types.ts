@@ -11,7 +11,6 @@
  * The capability decorates a bound polyline layer with start / end endpoint
  * markers; it owns no data (the line itself is rendered by the GeoJSON engine).
  */
-"use strict";
 
 /** Circle-marker style for an endpoint (start or end). */
 export interface RouteEndpointStyle {

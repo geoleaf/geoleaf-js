@@ -9,7 +9,6 @@
  * Language-switcher capability — public API surface.
  * Mounted on `GeoLeaf.LanguageSwitcher` via `api/geoleaf.language-switcher.ts`.
  */
-"use strict";
 
 import {
     getLanguageSwitcherConfig,

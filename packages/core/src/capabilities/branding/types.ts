@@ -12,7 +12,6 @@
  * reclassified to an in-core capability (`capabilities/branding/`, gate
  * `modules.branding.enabled`).
  */
-"use strict";
 
 import type { GeoLeafControl } from "../../contracts/map-adapter.contract.js";
 

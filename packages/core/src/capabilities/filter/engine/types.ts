@@ -12,7 +12,6 @@
  * selections and a feature, decide visibility. Multi-source, no POI/Route
  * special-casing. (The native-expression half was retired in S5/N-4 — see `taxonomy-options.ts`.)
  */
-"use strict";
 
 import type { FilterFieldDescriptor } from "../types.js";
 

@@ -2,8 +2,8 @@
     "_comment": "Contrat inverse — S1.8 pour les TROIS listes NÉGATIVES (`lists`, cliquets CC-04 entrant / CC-05 sortant : elles ne peuvent que RÉTRÉCIR) et S7.4 pour les DEUX listes POSITIVES (`positives`, cliquet CC-10 : `required.public` et `required.events` ne peuvent pas rétrécir sans annonce). ⚠️ Les deux moitiés se désarment DIFFÉREMMENT. Une négative se désarme en ajoutant une ligne à la main — une entrée n'en sort que quand le défaut qu'elle nomme est réparé. Une positive se désarme en RÉGÉNÉRANT après un retrait, ce qui fait passer une disparition pour un état de fait. C'est pourquoi `--update-baseline` REFUSE (exit 2 / CC-10) d'enregistrer une sortie que rien ne justifie : sur cette moitié-là, l'avertissement n'est plus en prose.",
     "_generated": "GEOLEAF_CONSUMERS=<dir> node scripts/verify-consumer-contract.cjs --update-baseline",
     "_consumer": "odoo-geoleaf",
-    "_manifest_version": "1.10.0",
-    "_manifest_sha": "dde4397b8edc",
+    "_manifest_version": "1.17.0",
+    "_manifest_sha": "163e1a5344dd",
     "lists": {
         "private_tolerated": [
             "_GeoJSONLayerConfig",
@@ -12,12 +12,15 @@
             "_GeoJSONLoader.loadAllLayersConfigsForLayerManager",
             "_LabelButtonManager.syncImmediate",
             "_LayerVisibilityManager",
-            "_app.initApp"
+            "_app.getProfilesBasePath"
         ],
         "requested": [
             "Capabilities.declareUnavailable",
             "Capabilities.onUnavailable",
-            "Layers.setPopupBinding"
+            "LegendGenerator: que gi() consulte sa propre table Rr — INCOHERENCE MESUREE en 8.9. Le generateur de legende declare `Rr = {\"properties.categoryId\":\"categoryId\", \"properties.category\":\"categoryId\", \"category\":\"categoryId\", …}`, donc il RECONNAIT `properties.category` comme champ de taxonomie : c'est `pi()` qui lit cette table, et c'est pourquoi il emet `[LegendGenerator] No icon found for properties.category=<valeur>` au lieu de passer son chemin en silence. Mais le predicat qui AUTORISE la recherche, `gi(e)`, teste en dur `e === \"properties.categoryId\" || e === \"attributes.categoryId\"` sans consulter Rr. Un champ que la table declare equivalent est donc reconnu assez pour declencher un avertissement, et pas assez pour resoudre une icone. Consequence chez nous : les cinq categories perdent leur icone DANS LA LEGENDE — la carte, elle, les affiche, parce qu'elle passe par `Config.getCategories()` et non par le seau Taxonomy. Contournement possible mais disproportionne : faire emettre `categoryId` au publisher en alias de `category`, puis basculer les `styleRules` dessus — c'est-a-dire changer le CONTRAT D'API pour une icone de legende. Correctif amont attendu : `gi()` resout le champ via Rr, comme `pi()` le fait deja trois lignes plus bas.",
+            "_RETIRE_ Layers.setPopupBinding — demande SANS OBJET, retiree a la cloture du sprint 8. Elle avait ete formulee en supposant qu'il fallait lier les popups couche par couche. La mesure a montre l'inverse : la V3 lie l'EMETTEUR dans le chemin de creation de couche (`fe()` pose les handlers de clic et de survol), et l'AUDITEUR est installe par la capacite `feature-info`. Il ne manquait donc aucune API — il manquait d'appeler `boot()`, ce que la tache 8.9 a corrige. Demander a l'amont une API dont on n'a plus l'usage aurait coute son temps et affaibli les autres demandes.",
+            "boot(): accepter une configuration INJECTEE plutot que la composer en dur. `fd()` bâtit `getProfilesBasePath() + \"geoleaf.config.json\"` et sort par `return` si le parse echoue, sans rien initialiser. Or `getProfilesBasePath()` rend une valeur RELATIVE cablee (`location.pathname.includes(\"/demo/\") ? \"../profiles/\" : \"./profiles/\"`) qui ignore `Config.data.profilesBasePath` : sous Odoo, la page etant a `/odoo/action-…`, la requete part sur `/odoo/profiles/…` ou le serveur rend son shell HTML en HTTP 200. Nous devons donc SURCHARGER `_app.getProfilesBasePath` — un membre du namespace — pour amorcer. Un parametre `boot({config})` ou `boot({configUrl})` supprimerait cette surcharge, et avec elle le seul chemin d'ecriture que la tache 8.9 a du ouvrir.",
+            "plugins: que chaque plugin declare son creneau de barre d'outils. Le coeur EXPOSE le mecanisme paresseux — `plugins.registerLazy()`, `registerLazyForAction()`, et `getLazyUISlots()` que la barre consomme au boot — mais AUCUN des plugins livres ne s'en sert : grep sur `geoleaf-print.plugin.js`, `geoleaf-measure.plugin.js` et `geoleaf-offline-ui.plugin.js` rend zero `registerLazyForAction` et zero `uiSlot`. La declaration est donc laissee a l'integrateur, qui doit INVENTER des identifiants d'action ; et un identifiant invente ne rend pas un mauvais bouton, il n'en rend aucun, en silence. Cout mesure chez nous a la tache 8.9 : renoncement a FRONT-6 et ~2,9 Mo remis sur le chemin critique, faute de pouvoir declarer les creneaux avant `registry.init()` — la barre d'outils est bâtie UNE FOIS, et un plugin arrive apres ne s'y insere pas (le registre le dit : « registered AFTER init() — neither its init() nor its UI slot will run »)."
         ],
         "broken_since_v3": [
             "GeoJSON.addData",
@@ -43,10 +46,6 @@
                     "provider": "core"
                 },
                 {
-                    "path": "Baselayers.init",
-                    "provider": "core"
-                },
-                {
                     "path": "Baselayers.setBaseLayer",
                     "provider": "core"
                 },
@@ -67,6 +66,10 @@
                     "provider": "core"
                 },
                 {
+                    "path": "Config.set",
+                    "provider": "core"
+                },
+                {
                     "path": "Core.getMap",
                     "provider": "core"
                 },
@@ -80,10 +83,6 @@
                 },
                 {
                     "path": "FeatureInfo.openSidePanel",
-                    "provider": "core"
-                },
-                {
-                    "path": "GeoJSON.init",
                     "provider": "core"
                 },
                 {
@@ -115,7 +114,7 @@
                     "provider": "core"
                 },
                 {
-                    "path": "LayerManager.init",
+                    "path": "Layers.getFeatures",
                     "provider": "core"
                 },
                 {
@@ -144,10 +143,6 @@
                 },
                 {
                     "path": "Legend.getAllLayers",
-                    "provider": "core"
-                },
-                {
-                    "path": "Legend.init",
                     "provider": "core"
                 },
                 {

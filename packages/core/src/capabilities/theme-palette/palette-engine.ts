@@ -13,7 +13,6 @@
  * NO network round-trip sits between the write and the repaint. That is what makes this
  * the only one of the three selector capabilities that switches **without reloading**.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getPalettes, getThemePaletteConfig } from "./config.js";

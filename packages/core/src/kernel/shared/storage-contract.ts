@@ -33,7 +33,6 @@
  *   // In geoleaf.storage.js (or the Storage plugin), once assembled:
  *   StorageContract.init(Storage);
  */
-"use strict";
 
 /**
  * Structural view of the optional Storage plugin facade (`geoleaf.storage.js`).

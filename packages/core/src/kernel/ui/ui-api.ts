@@ -32,8 +32,6 @@
  * - Event Delegation    -> _UIEventDelegation (ui/event-delegation.js)
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 
 // ─── GeoLeaf global namespace shape ──────────────────────────────────────────
@@ -174,8 +172,7 @@ function _initThemeControl(config: Record<string, unknown>): void {
         }
     }
     const fn = _g.GeoLeaf.UI.initThemeToggle as
-        | ((config: Record<string, unknown>) => unknown)
-        | undefined;
+        ((config: Record<string, unknown>) => unknown) | undefined;
     if (typeof fn !== "function") return;
     try {
         fn(config);

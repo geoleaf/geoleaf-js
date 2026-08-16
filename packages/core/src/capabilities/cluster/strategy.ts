@@ -14,7 +14,6 @@
  * are the config source (`modules.cluster` via `getClusterConfig()` instead of
  * `poiConfig`) and the capability enable gate.
  */
-"use strict";
 
 import { getLog } from "../../utils/general/di-accessors.js";
 import { getClusterConfig } from "./config.js";

@@ -7,7 +7,6 @@
 /**
  * Public type surface for the in-core `share` capability.
  */
-"use strict";
 
 /** The runtime Share facade (bound to `GeoLeaf.Share`). */
 export interface ShareApi {

@@ -12,7 +12,6 @@
  * to embark Feature-Info (declaration + facade globals + module factory). The
  * `GeoLeaf.FeatureInfo` write moved out of `globals.api.ts` (`assignApiFacades`).
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

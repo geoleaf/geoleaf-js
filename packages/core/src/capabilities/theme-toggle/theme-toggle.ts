@@ -13,7 +13,6 @@
  * reclassification). Drives the kernel theme engine (`_UITheme`, which stays in
  * `kernel/ui/theme.ts`) — this capability only owns the on-map button UI.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { DOMSecurity } from "../../kernel/security/index.js";

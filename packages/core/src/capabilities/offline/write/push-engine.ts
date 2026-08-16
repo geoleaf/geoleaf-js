@@ -41,7 +41,6 @@
  *
  * @version 1.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
@@ -189,7 +188,7 @@ interface OutboxModule {
     updateState(
         id: string,
         state: string,
-        patch?: { attempts?: number; quarantine?: QuarantineReason }
+        patch?: { attempts?: number; quarantine?: QuarantineReason; quarantineStatus?: number }
     ): Promise<void>;
     remove(id: string): Promise<void>;
 }
@@ -218,13 +217,16 @@ interface PushStore {
  *   Sans lui, l'entrée reste `failed` jusqu'à épuisement du budget.
  * @param lastFailure - Ce qui a fait échouer le dernier envoi, quand il y en a eu un. Il
  *   DÉCIDE du motif au plafond : un refus serveur épuisé n'est pas un réseau muet épuisé.
+ * @param httpStatus - Statut du refus, quand il y en a eu un. B-200 : il VOYAGE AVEC L'ENTRÉE
+ *   au lieu de rester dans un `Log.warn` que personne n'ouvre sur le terrain.
  * @returns `true` si l'entrée est passée en quarantaine.
  */
 async function markFailure(
     outbox: OutboxModule,
     entry: OutboxEntry,
     reason?: QuarantineReason,
-    lastFailure?: PushFailure
+    lastFailure?: PushFailure,
+    httpStatus?: number
 ): Promise<boolean> {
     const attempts = (entry.attempts ?? 0) + 1;
     // ⚠️ Une quarantaine IMMÉDIATE ne consomme pas le budget, elle le court-circuite : rejouer
@@ -250,7 +252,15 @@ async function markFailure(
             `[Offline.Push] ${entry.id} — QUARANTAINE (${quarantine}) après ${attempts} essai(s). ` +
                 "L'entrée reste en base : le contrat interdit de la détruire."
         );
-        await outbox.updateState(entry.id, "quarantined", { attempts, quarantine });
+        // B-200 — `quarantineStatus` n'est écrit QUE s'il existe : une quarantaine qui ne vient
+        // pas d'une réponse serveur (`layerNoLongerWritable`, réseau muet au plafond) ne doit
+        // pas se voir attribuer un statut fabriqué. Un champ absent dit « pas de réponse » ;
+        // un `0` dirait « le serveur a répondu 0 », ce qui est faux et indiscernable.
+        await outbox.updateState(entry.id, "quarantined", {
+            attempts,
+            quarantine,
+            ...(httpStatus !== undefined ? { quarantineStatus: httpStatus } : {}),
+        });
         return true;
     }
     await outbox.updateState(entry.id, "failed", { attempts });
@@ -398,6 +408,8 @@ async function pushOne(
     alreadyPresent?: boolean;
     conflicted?: boolean;
     failure?: PushFailure;
+    /** Statut du refus, quand le serveur a répondu — B-200, il voyage avec l'entrée. */
+    httpStatus?: number;
 }> {
     const { url, init } = buildRequest(entry, record, target, conditional);
     let response: Response;
@@ -417,7 +429,7 @@ async function pushOne(
         // pendant qu'on l'éditait ici. Le rejeu ne la ressuscitera pas.
         if (response.status === 404 && entry.kind !== "create") {
             Log.warn(`[Offline.Push] ${entry.id} — l'entité n'existe plus côté serveur (404).`);
-            return { ok: false, failure: "deletedOnServer" };
+            return { ok: false, failure: "deletedOnServer", httpStatus: response.status };
         }
         // 🛑 LA CLASSE DU STATUT DÉCIDE DU SORT DE LA SAISIE (B-199). Ces trois branches
         // étaient une seule ligne rendant `rejectedByServer` — donc une entrée non rejouable —
@@ -427,22 +439,20 @@ async function pushOne(
             Log.warn(
                 `[Offline.Push] ${entry.id} — le serveur ne connaît pas ce verbe (501) ; quarantaine immédiate.`
             );
-            return { ok: false, failure: "notImplementedByServer" };
+            return { ok: false, failure: "notImplementedByServer", httpStatus: response.status };
         }
         if (TRANSIENT_SERVER_STATUSES.has(response.status)) {
             Log.warn(
                 `[Offline.Push] ${entry.id} — serveur indisponible (${response.status}) ; l'entrée reste rejouable.`
             );
-            return { ok: false, failure: "serverUnavailable" };
+            return { ok: false, failure: "serverUnavailable", httpStatus: response.status };
         }
         Log.warn(`[Offline.Push] ${entry.id} — refusé (${response.status}).`);
-        return { ok: false, failure: "rejectedByServer" };
+        return { ok: false, failure: "rejectedByServer", httpStatus: response.status };
     }
 
     const payload = (await response.json().catch(() => null)) as
-        | { id?: unknown }
-        | Array<{ id?: unknown }>
-        | null;
+        { id?: unknown } | Array<{ id?: unknown }> | null;
     // 🛑 ZÉRO LIGNE TOUCHÉE SUR UNE MISE À JOUR CONDITIONNELLE = CONFLIT (tâche 4.6).
     // L'entité existe (l'identité serveur est connue) mais son marqueur de fraîcheur ne
     // correspond plus : quelqu'un a écrit entre la lecture et ce push. Mesuré : PostgREST rend
@@ -582,7 +592,7 @@ export async function pushOutbox(): Promise<PushReport> {
                 result.failure === "deletedOnServer" || result.failure === "notImplementedByServer"
                     ? result.failure
                     : undefined;
-            await markFailure(outbox, entry, immediate, result.failure);
+            await markFailure(outbox, entry, immediate, result.failure, result.httpStatus);
             failed += 1;
             continue;
         }

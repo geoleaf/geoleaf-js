@@ -22,6 +22,5 @@
  * GeoLeaf.LayerManager.refresh();
  * ```
  */
-"use strict";
 
 export { LayerManager } from "../kernel/layer-manager/layer-manager-api.js";

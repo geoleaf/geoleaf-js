@@ -1193,6 +1193,76 @@
             "description": "Catalogue déclaratif des modules du namespace, avec les 3 noms dont l'absence est motivée",
             "confidence": "haute",
             "rationale": "134 LOC, 2 consommateurs (`kernel/api/module-manager.ts` et son test de caractérisation). Créé à l'API publique S4.3f pour remplacer un balayage de préfixe qui ne découvrait pas des modules mais copiait tout ce qui commence par `_` — dont une chaîne (`_version`), un sac d'état (`_app`) et un ACCESSEUR qu'il déclenchait en pleine construction de l'APIController qui l'appelle (récursion mesurée en navigateur, cf. `controller.ts:331`). Le catalogue applique une politique d'accesseur : il lit `getOwnPropertyDescriptor` et ne touche jamais `.value` d'un getter — ce qui fait du parking d'instance une ceinture au lieu du seul frein. Surface publique inchangée, mesurée : `getModule(\"POI\")` rend toujours `null`, `getModule(\"_APIController\")` l'objet, `getModuleList()` l'oracle, 3 alias. Seul le cache interne passe de 38 à 34."
+        },
+        "scripts/check-tooling-typecheck.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "TOOLING-TS - cliquet decroissant sur le typage de scripts/, e2e/ et des configs racine, contre tsconfig.tooling.json",
+            "confidence": "haute",
+            "rationale": "Ne à B-93 (R1, Sprint 2) : ces trois corpus n'etaient couverts par AUCUN tsconfig. Un tsconfig sans checkJs aurait donne la resolution aux editeurs et rien d'autre - une couverture qui ne verifie rien, le defaut meme que R1 supprime. Avec checkJs le premier run rend 301 erreurs, donc un vert etait impossible : le cliquet est la troisieme voie, et l'idiome du depot. Il garde une ENVELOPPE et non une liste, ce qui est ecrit dans son en-tete : une erreur corrigee et une introduite se compensent. Une liste d'erreurs tsc s'ancrerait sur des numeros de ligne qui derivent au premier reformatage."
+        },
+        "scripts/check-tree-qualification.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "TREE-QUAL - cliquet decroissant sur les artefacts SANS verdict d'existence dans l'arborescence qualifiee",
+            "confidence": "haute",
+            "rationale": "Ne à B-36 (R1, Sprint 4) apres reouverture de l'arbitrage T5. Le balayage T5 avait atteint 1112/1112 - 100 % - et la dette s'est reformee DEUX fois (96,3 % puis 88,2 %) : rien n'exigeait qu'un artefact neuf naisse juge. Un troisieme balayage aurait produit un troisieme 100 % suivi d'une troisieme erosion. Le cliquet remplace la liste par une structure. Il LIT la sortie du generateur au lieu de recompter, deliberement : 'qualifie' a une seule definition et elle vit dans generate-docs-tree.cjs - la recompter creerait la divergence que source-inventory.cjs a ete extrait pour empecher. Le prix est une dependance au format de la ligne imprimee, paye par un plancher qui REFUSE DE CONCLURE si elle manque."
+        },
+        "scripts/probe-eviction-notice.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Sonde manuelle Chromium - l'avis d'eviction de cache parvient-il a l'ecran, et sur quelle variante",
+            "confidence": "haute",
+            "rationale": "Seul oracle de B-163 (R9). Les 10 tests unitaires de eviction-notice.ts eprouvent la logique de l'ecouteur ; aucun ne dit qu'il est CABLE dans le bundle livre - et c'est exactement le defaut d'origine vu depuis l'autre bout, un ecouteur correct et teste dans un plugin absent de deploy-core. Elle vise les DEUX variantes, un doublon plugin/core sur deploy-full etant la regression symetrique. Elle porte aussi ses deux propres mensonges, documentes sur place : un selecteur faux l'a rendue rouge partout Y COMPRIS sur le temoin, et un oracle par TOTAL de toasts la rendait rouge sur un avis parfait."
+        },
+        "scripts/lib/md-fences.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Suivi d'etat des blocs de code Markdown, conforme a CommonMark - partage par les deux extracteurs de check-dead-links",
+            "confidence": "haute",
+            "rationale": "Ne à B-153 (R1, Sprint 3). La bascule inCodeBlock = !inCodeBlock sur tout ``` est fausse : un bloc ouvert par N backticks ne se ferme que par un marqueur d'au moins N, sans chaine d'information. Le motif etait DUPLIQUE - extraction des liens ET des ancres - donc corriger un site aurait laisse l'autre, ce que l'enonce de la ligne annoncait. L'extraction en module partage est la reponse a cette duplication autant qu'au defaut. Gisement mesure NUL au 16/08 sur les 133 fichiers gates : la correction previent un verdict faux futur, elle n'en corrige aucun present."
+        },
+        "scripts/lib/event-gates.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "EM-03 - un litteral d'evenement contenant un deux-points doit commencer par geoleaf:",
+            "confidence": "haute",
+            "rationale": "Ne à B-207 (R9, Sprint 2). EVENT_LITERAL_RE est ancre sur ^geoleaf: donc EM-01 ne peut ni reclamer ni compter un evenement hors prefixe : un tel nom n'apparait dans AUCUNE mesure. La regle porte sur le deux-points et non sur une allowlist parce que la mesure l'a rendue possible - aucun des 19 evenements ETRANGERS releves (DOM, Service Worker, MapLibre, Terra Draw) n'en contient, et les 3 du domaine en portaient tous. Elle rend la classe impossible au lieu de la recenser. Son perimetre est ecrit dans son en-tete : elle inspecte des sites d'appel, donc elle ne voit ni un nom compose a l'execution ni un helper local absent d'EVENT_GATES."
         }
     }
 }

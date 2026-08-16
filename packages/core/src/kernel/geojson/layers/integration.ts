@@ -9,7 +9,6 @@
  * GeoLeaf GeoJSON Layer Manager - Integration
  * Layer Manager UI registration, legend loading, populate with all configs
  */
-"use strict";
 
 import { GeoJSONShared } from "../shared.js";
 import { getAllLayerConfigs } from "../../shared/layer-configs-state.js";

@@ -20,7 +20,6 @@
  * wiring in `lifecycle.ts` and the documented default — so they are the same value *by
  * construction* and the drift cannot reopen.
  */
-"use strict";
 
 import type { NotifyType } from "./types.js";
 

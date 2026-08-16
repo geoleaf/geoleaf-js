@@ -19,7 +19,6 @@
  * They are designed to be implemented by both built-in modules (`poi`,
  * `route`, `search`, …) and by third-party modules registered at runtime.
  */
-"use strict";
 
 import type { IGeoLeafConfig } from "./config.contract.ts";
 import type { IMapAdapter } from "./map-adapter.contract.ts";

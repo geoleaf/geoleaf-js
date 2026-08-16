@@ -13,7 +13,6 @@
  * layout defaults (position, maxVisible, animations) live in
  * `NotificationSystem.init()` and are not (yet) profile-configurable.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

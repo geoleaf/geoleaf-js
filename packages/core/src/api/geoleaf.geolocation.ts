@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.Geolocation` facade — GPS button + state seam. In-core capability

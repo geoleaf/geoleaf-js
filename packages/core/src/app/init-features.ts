@@ -10,7 +10,6 @@
  * Extracted from app/init.js (Phase 8.2.3)
  * Each function initializes one feature domain after secondary modules are loaded.
  */
-("use strict");
 
 import type {
     DesktopPanelBuilderContext,

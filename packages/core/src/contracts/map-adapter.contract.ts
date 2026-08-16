@@ -14,7 +14,6 @@
  *
  * No `maplibregl.*` type must ever appear in this file.
  */
-"use strict";
 
 import type {
     GeoLeafLatLng,

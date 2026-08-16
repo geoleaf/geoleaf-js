@@ -22,6 +22,5 @@
  * GeoLeaf.UI.applyTheme("dark");
  * ```
  */
-"use strict";
 
 export { UI } from "../kernel/ui/ui-api.js";

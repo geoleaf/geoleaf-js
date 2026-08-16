@@ -22,7 +22,6 @@
  * config): the module is always mounted but does nothing unless a profile sets
  * `modules.route.enabled: true`, so the visible default stays "no endpoints".
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

@@ -12,7 +12,6 @@
  * Represents: `GeoLeaf.LanguageSwitcher` (UI language selector). Depends on `geojson`
  * so `init()` runs before the desktop tab strip can announce itself.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

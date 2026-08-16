@@ -13,7 +13,6 @@
  * (descriptor `id`+`kind`, proximity radius in **kilometres**) persisted by the
  * `permalink` capability. Pure data mapping — no DOM, no side effects.
  */
-"use strict";
 
 import type { ActiveField } from "./engine/types.js";
 import type { FilterConfig, SerializedFilterField, SerializedFilterState } from "./types.js";

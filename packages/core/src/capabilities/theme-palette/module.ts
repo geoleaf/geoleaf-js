@@ -12,7 +12,6 @@
  * resolved palette BEFORE the UI is painted — that is what prevents the default-colour
  * flash — then mounts the button when enabled.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

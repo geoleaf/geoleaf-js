@@ -28,7 +28,6 @@
  * — and thus the `app:ready` subscription below — runs BEFORE ThemeEngineModule
  * dispatches `geoleaf:theme:applied` → `geoleaf:app:ready`, so the event is caught.
  */
-"use strict";
 
 import { ThemeSelector } from "./theme-selector.js";
 import { Log } from "../../utils/log/index.js";

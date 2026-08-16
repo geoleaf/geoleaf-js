@@ -373,12 +373,37 @@ function _applyPolygonDecorations(
     if (style.hatch) symbol.hatch = style.hatch;
 }
 
+/**
+ * Spellings channel 2 owns — the `attributes.*` family, which {@link _FIELD_CATEGORY_MAP}
+ * (channel 1) deliberately does not declare.
+ *
+ * ⚠️ The two channels are disjoint BY DESIGN, but the split used to be uneven inside this
+ * family: the two predicates below hard-coded `attributes.categoryId` and
+ * `attributes.subCategoryId` and stopped there, so `attributes.category` and
+ * `attributes.subCategory` were declared by NEITHER channel — channel 1 does not know the
+ * prefix, channel 2 did not know the suffix-less form. Measured 15/08/2026 across the 12
+ * spellings: 10 resolved, those 2 did not (backlog B-259). The `properties.*` family has
+ * always accepted both forms; there was never a reason for `attributes.*` to accept one.
+ *
+ * Enumerated in a table rather than re-hard-coded, so the two families stay comparable at
+ * a glance — an asymmetry is what this defect was.
+ */
+const _ATTRIBUTE_FIELD_KIND: Record<string, "categoryId" | "subCategoryId"> = {
+    "attributes.categoryId": "categoryId",
+    "attributes.category": "categoryId",
+    "attributes.subCategoryId": "subCategoryId",
+    "attributes.subCategory": "subCategoryId",
+};
+
 function _isSubCategoryField(field: string | undefined): boolean {
-    return field === "properties.subCategoryId" || field === "attributes.subCategoryId";
+    return (
+        field === "properties.subCategoryId" ||
+        _ATTRIBUTE_FIELD_KIND[field ?? ""] === "subCategoryId"
+    );
 }
 
 function _isCategoryIdField(field: string | undefined): boolean {
-    return field === "properties.categoryId" || field === "attributes.categoryId";
+    return field === "properties.categoryId" || _ATTRIBUTE_FIELD_KIND[field ?? ""] === "categoryId";
 }
 
 function _isKnownTaxonomyField(
@@ -598,8 +623,7 @@ function _getCategories(
     // named taxonomy in `modules.taxonomy` — no longer the legacy core taxonomy
     // accessor. The capability carries icons under `svgId`.
     const cfg = getGeoLeaf()?.Taxonomy?.getCategories?.(LEGEND_TAXONOMY_REF) as
-        | Record<string, TaxonomyCategory>
-        | undefined;
+        Record<string, TaxonomyCategory> | undefined;
     if (!cfg || Object.keys(cfg).length === 0) return null;
     return cfg;
 }

@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.Legend` facade — manages the cartographic legend panel.

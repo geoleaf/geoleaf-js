@@ -36,7 +36,6 @@
  * but the fix is to declare the gate OPT-OUT, not to bolt a preset-level default
  * on top of it. Every capability now gates correctly on its own.
  */
-"use strict";
 
 import type {
     ICapabilityConfigGate,

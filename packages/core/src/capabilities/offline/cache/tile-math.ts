@@ -19,7 +19,6 @@
  * `calculator.ts` delegates to these helpers rather than duplicating them, so the
  * engine and the UI estimate share one implementation.
  */
-"use strict";
 
 /**
  * Web Mercator latitude cutoff — the projection diverges beyond it.

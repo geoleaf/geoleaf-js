@@ -17,7 +17,6 @@
  * CapabilityRegistry). Depends on `geojson` only (the source of
  * `geoleaf:layer:added`); NOT `ui`.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

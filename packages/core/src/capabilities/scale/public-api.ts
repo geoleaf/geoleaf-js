@@ -12,7 +12,6 @@
  * helpers (`isEnabled` / `getConfig`). Mounted on `GeoLeaf.Scale` via
  * `geoleaf.scale.ts` (Full + Lite builds).
  */
-"use strict";
 
 import { ScaleControl } from "./scale-control.js";
 import { getScaleConfig, type ScaleCapabilityConfig } from "./config.js";

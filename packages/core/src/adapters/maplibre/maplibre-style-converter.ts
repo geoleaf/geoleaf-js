@@ -20,7 +20,6 @@
  * `expressionPaint` bypasses GeoLeaf conversion and is injected as-is into the
  * MapLibre paint object, enabling zoom interpolations, match expressions, etc.
  */
-"use strict";
 
 import type {
     GeoJSONStyleRule,

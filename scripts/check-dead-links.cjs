@@ -20,6 +20,7 @@
 "use strict";
 
 const fs = require("fs");
+const { createFenceTracker } = require("./lib/md-fences.cjs");
 const path = require("path");
 
 // ---------------------------------------------------------------------------
@@ -305,17 +306,17 @@ function walkDir(dir, predicate, maxDepth = Infinity) {
 function extractLinks(content) {
     const links = [];
     const lines = content.split("\n");
-    let inCodeBlock = false;
+    // B-153 ① — suivi conforme à CommonMark, PARTAGÉ avec `extractAnchors` ci-dessous.
+    // La bascule aveugle (`inCodeBlock = !inCodeBlock` sur tout ```) se trompait sur un
+    // fence imbriqué : le motif était DUPLIQUÉ ici et là, donc corriger l'un aurait laissé
+    // la moitié du défaut. Le helper est la réponse à cette duplication autant qu'au défaut.
+    const fences = createFenceTracker();
 
     for (let i = 0; i < lines.length; i++) {
         const ln = lines[i];
 
-        // Toggle fenced code block state
-        if (/^```/.test(ln.trim())) {
-            inCodeBlock = !inCodeBlock;
-            continue;
-        }
-        if (inCodeBlock) continue;
+        if (fences.consume(ln)) continue;
+        if (fences.inCode) continue;
 
         // Match [text](target) — exclude image syntax ![ and empty targets
         const linkRe = /(?<!!)\[(?:[^\]]*)\]\(([^)]+)\)/g;
@@ -370,13 +371,13 @@ function extractAnchors(filePath) {
     const anchors = new Set();
     if (!fs.existsSync(filePath)) return anchors;
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
-    let inCodeBlock = false;
+    // B-153 ① — MÊME helper que `extractLinks`. C'est ici que la duplication mordait :
+    // les deux extracteurs portaient la même cécité, et l'énoncé de la ligne insistait
+    // sur ce point — « corriger l'un laisserait la moitié du défaut ».
+    const fences = createFenceTracker();
     for (const ln of lines) {
-        if (/^```/.test(ln.trim())) {
-            inCodeBlock = !inCodeBlock;
-            continue;
-        }
-        if (inCodeBlock) continue;
+        if (fences.consume(ln)) continue;
+        if (fences.inCode) continue;
         const m = ln.match(/^(#{1,6})\s+(.+)/);
         if (m) anchors.add(headingToAnchor(m[2]));
     }

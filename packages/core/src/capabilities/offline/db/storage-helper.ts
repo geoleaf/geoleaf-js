@@ -19,7 +19,6 @@
  *
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

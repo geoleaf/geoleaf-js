@@ -20,7 +20,6 @@
  * the ESM root entry, the untyped one was. Removing it took the route-filter engine and
  * its contributor seam with it — `GeoLeaf.Filters` was their only reachable caller.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

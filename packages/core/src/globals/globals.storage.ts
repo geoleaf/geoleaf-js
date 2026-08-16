@@ -32,6 +32,7 @@ import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 // at import time — so it is present at boot, before the residual UI plugin (which wires the
 // engine into it) evaluates. Importing the binding also pins the module against tree-shaking.
 import { Storage } from "../api/geoleaf.storage.js";
+import { wireEvictionNotice } from "../kernel/storage/eviction-notice.js";
 
 /**
  * B8 — storage services kept in the core: `_OfflineDetector`, `_SWRegister`,
@@ -49,6 +50,14 @@ export function setupStorage(): void {
     // Re-affirm the façade mount (idempotent — it self-mounts at import already). The
     // engine (DB/CacheManager/Cache) is injected later via `Storage.wireModules(...)`.
     _gl.Storage = Storage as unknown as NonNullable<typeof _gl.Storage>;
+
+    // B-163 — l'unique écouteur in-core de `geoleaf:cache:evicted`. Posé ICI et non dans
+    // `_wireEvictionBridge()` (`kernel/storage/sw-register.ts`) : ce pont n'est câblé qu'après
+    // l'enregistrement d'un Service Worker, alors que le SECOND émetteur
+    // (`capabilities/offline/cache/cache-manager.ts`) est in-core et tourne hors PWA. Ce
+    // chemin-ci est inconditionnel, donc il voit les deux. Idempotent — `setupStorage()` est
+    // re-callable.
+    wireEvictionNotice();
 }
 
 // ── PHASE A — see the rationale in `globals.config.ts`. ──────────────────────────────────────

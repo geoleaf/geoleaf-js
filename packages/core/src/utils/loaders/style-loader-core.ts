@@ -16,8 +16,6 @@
  * passing `lenient = true`, so the lenient path was unreachable in production.
  */
 
-"use strict";
-
 import { Log } from "../log/index.js";
 import { StyleValidator } from "../validators/style-validator.js";
 import { getGeoLeaf } from "../general/geoleaf-global.js";

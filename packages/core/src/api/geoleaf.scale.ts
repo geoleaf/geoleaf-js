@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.Scale` facade — graphical + numeric scale bar and zoom-level

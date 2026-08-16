@@ -22,7 +22,6 @@
  * ⚠ The Lite bundle keeps its own assignment (`globals.ui-lite.ts`) — it does not go through
  * a preset manifest.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

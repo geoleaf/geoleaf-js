@@ -14,7 +14,6 @@
  * `legendConfig` reads. `collapsible` is intentionally not a profile setting (a
  * fixed control constant applied in `public-api.ts`).
  */
-"use strict";
 
 import type { LegendModuleConfig } from "./types.js";
 import { Config } from "../../kernel/config/config-primitives.js";

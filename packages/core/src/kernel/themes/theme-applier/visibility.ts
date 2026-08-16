@@ -9,7 +9,6 @@
  * GeoLeaf Theme Applier - Visibility
  * Gestion de la visibility des layers et application des styles
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { Config } from "../../config/config-primitives.js";

@@ -18,7 +18,6 @@
  * (shown when the key was entirely absent) is dropped — an unconfigured branding
  * simply renders nothing.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 import { brandingConfigDefaults } from "./constants.js";

@@ -12,7 +12,7 @@
  * @version 2.0.0
  * @phase Phase 5 - Storage Refactoring
  */
-"use strict";
+
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { formatFileSize } from "../../../utils/general/formatters.js";

@@ -272,7 +272,7 @@ function normalize(source, pkgName) {
 
     const m = rest.match(/^\/\*!([\s\S]*?)\*\//);
     const block = m[0];
-    let lines = block.split("\n");
+    const lines = block.split("\n");
     // lines[0] === "/*!", lines[last] contient "*/"
 
     // (2) titre usurpé

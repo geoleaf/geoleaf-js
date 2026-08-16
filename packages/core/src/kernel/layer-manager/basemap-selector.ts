@@ -17,8 +17,6 @@
  * - GeoLeaf._LayerManagerBasemapSelector
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { Baselayers } from "../../api/geoleaf.baselayers.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";

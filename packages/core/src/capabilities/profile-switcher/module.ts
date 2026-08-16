@@ -17,7 +17,6 @@
  * Depends on `geojson` so `init()` runs before the layer manager's panel seam can fire
  * for the first time.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

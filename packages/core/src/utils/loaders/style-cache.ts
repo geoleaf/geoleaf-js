@@ -9,8 +9,6 @@
  * Extracted from style-loader.ts as part of Sprint 1 refactoring.
  */
 
-"use strict";
-
 /**
  * In-memory cache for loaded styles.
  * Key: "profileId:layerId:styleId"

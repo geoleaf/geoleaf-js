@@ -25,7 +25,6 @@
  * BEFORE `ThemeEngineModule` — the dispatcher of `geoleaf:app:ready` on the themed
  * path — and this listener is registered before the event fires.
  */
-"use strict";
 
 // B.28 — the IMPLEMENTATION, not the facade. This import used to point at
 // `./public-api.js`, which made legend the only capability whose lifecycle depended

@@ -5,8 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
-
 /*!
  * GeoLeaf Core
  * © 2026 Mattieu Pottier

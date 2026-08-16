@@ -47,7 +47,6 @@
  * indiscernable d'une vraie pour `hasModule`. Les trois noms restent déclarés dans
  * {@link CATALOG_EXPECTED_ABSENT}, ce qui est leur vrai filet.
  */
-"use strict";
 
 /**
  * Les modules publics interrogés au boot — liste héritée, conservée telle quelle.

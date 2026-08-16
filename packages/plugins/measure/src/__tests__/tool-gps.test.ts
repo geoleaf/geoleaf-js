@@ -361,10 +361,10 @@ describe("_onPosition — proximity detection", () => {
 });
 
 // ---------------------------------------------------------------------------
-// External geoloc deactivation (gl:geoloc:statechange)
+// External geoloc deactivation (geoleaf:geolocation:statechange)
 // ---------------------------------------------------------------------------
 
-describe("gl:geoloc:statechange — external stop", () => {
+describe("geoleaf:geolocation:statechange — external stop", () => {
     it("stops GPS measure when geoloc is deactivated externally", () => {
         activateGps(map);
         geo._firePosition(COORD_A, makeTs(0));
@@ -372,7 +372,7 @@ describe("gl:geoloc:statechange — external stop", () => {
 
         // Simulate external geoloc stop (user clicked pill bar button)
         map.getContainer().dispatchEvent(
-            new CustomEvent("gl:geoloc:statechange", { detail: { active: false } })
+            new CustomEvent("geoleaf:geolocation:statechange", { detail: { active: false } })
         );
 
         expect(getSession()).toBeNull(); // session was finalized
@@ -386,7 +386,7 @@ describe("gl:geoloc:statechange — external stop", () => {
         geo._firePosition(COORD_B, makeTs(0, 10_000));
 
         map.getContainer().dispatchEvent(
-            new CustomEvent("gl:geoloc:statechange", { detail: { active: false } })
+            new CustomEvent("geoleaf:geolocation:statechange", { detail: { active: false } })
         );
 
         expect(onStop).toHaveBeenCalledOnce();
@@ -397,7 +397,7 @@ describe("gl:geoloc:statechange — external stop", () => {
         geo._firePosition(COORD_A, makeTs(0));
 
         map.getContainer().dispatchEvent(
-            new CustomEvent("gl:geoloc:statechange", { detail: { active: true } })
+            new CustomEvent("geoleaf:geolocation:statechange", { detail: { active: true } })
         );
 
         expect(getSession()).not.toBeNull(); // still active

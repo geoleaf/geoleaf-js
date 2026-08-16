@@ -24,7 +24,6 @@
  * defect this roadmap exists to remove: two places deciding the same thing, free to drift. One
  * function, two callers.
  */
-"use strict";
 
 /** The two shapes a layer configuration can carry its data reference in. */
 interface LayerDataShape {

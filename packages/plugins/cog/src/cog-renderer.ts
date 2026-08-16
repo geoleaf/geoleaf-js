@@ -15,12 +15,22 @@ type ImageCoordinates = [[number, number], [number, number], [number, number], [
 // ─── Canvas helpers ───────────────────────────────────────────────────────────
 
 /**
- * Creates a canvas element. Uses OffscreenCanvas when available (workers, modern browsers),
- * falls back to HTMLCanvasElement (jsdom, older environments).
+ * Creates a canvas element. Prefers OffscreenCanvas (workers, modern browsers) but only when
+ * it can actually hand out a 2D context; otherwise falls back to HTMLCanvasElement.
+ *
+ * ⚠️ The guard tests USABILITY, not existence. `typeof OffscreenCanvas !== "undefined"` alone
+ * is not enough: an environment can expose the constructor and still return `null` from
+ * `getContext("2d")` because it has no 2D backend. happy-dom is exactly that case from 20.11.0
+ * on — it defines `window.OffscreenCanvas` but its `getContext` returns `null` unless a
+ * `canvasAdapter` is configured. Detecting existence only, this function handed back a surface
+ * with no context and {@link rastersToCanvas} threw one line later. Measured 15/08/2026,
+ * backlog B-258. Calling `getContext("2d")` twice on one surface returns the same context, so
+ * the probe costs nothing and has no side effect.
  */
 function createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {
     if (typeof OffscreenCanvas !== "undefined") {
-        return new OffscreenCanvas(width, height);
+        const offscreen = new OffscreenCanvas(width, height);
+        if (offscreen.getContext("2d")) return offscreen;
     }
     const canvas = document.createElement("canvas");
     canvas.width = width;
@@ -204,9 +214,7 @@ export function rastersToCanvas(
     const { rasters, width, height } = data;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d") as
-        | CanvasRenderingContext2D
-        | OffscreenCanvasRenderingContext2D
-        | null;
+        CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
     if (!ctx) throw new Error("[GeoLeaf COG] Could not get 2D canvas context");
     const imageData = ctx.createImageData(width, height);
     const bi = resolveBandIndices(rasters.length, opts.bands);

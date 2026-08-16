@@ -572,38 +572,40 @@ try {
         "scripts/check-license-headers.cjs",
     ]);
 
-    // `verify-plugin-core-boundary` n'énumère pas les packages : elle scanne
-    // exactement les 2 clés de sa BASELINE, et n'imprime qu'un résumé. Deux
-    // assertions successives ont dû être corrigées ici avant de tomber juste :
-    // « nomme-t-elle la sonde ? » (elle ne scanne pas les autres packages) puis
-    // « nomme-t-elle ses cibles ? » (elle ne les imprime pas). La propriété qui
-    // compte vraiment est la RÉSOLUTION : ses cibles doivent rester trouvables, et
-    // leur perte doit être bruyante. `requireByDirName` jette désormais, donc un
-    // exit 0 prouve que la résolution a abouti — et on vérifie en plus que les
-    // répertoires résolus contiennent bien des sources à scanner.
-    assertThat("verify-plugin-core-boundary : résout ses cibles sous imbrication", () => {
+    // 🛑 **CETTE ASSERTION A ÉTÉ RÉÉCRITE À B-153 ② — et son ancienne forme illustre
+    // exactement ce que cette sonde existe pour attraper.**
+    //
+    // Elle disait : « `verify-plugin-core-boundary` n'énumère pas les packages : elle scanne
+    // exactement les **2 clés** de sa BASELINE, et n'imprime qu'un résumé », puis se rabattait
+    // sur la RÉSOLUTION de deux noms codés en dur (`editor`, `offline-ui`) faute de pouvoir
+    // vérifier autre chose. Trois choses y étaient fausses ou périmées :
+    //
+    //   ① « 2 clés » — il n'y en avait plus qu'UNE, donc la gate ouvrait 1 plugin sur 12 ;
+    //   ② `editor` n'était PAS dans la BASELINE, donc la sonde vérifiait la résolution d'une
+    //      cible que la gate ne visitait jamais — elle mesurait à côté ;
+    //   ③ « n'imprime qu'un résumé » a cessé d'être vrai le jour où la gate a été corrigée.
+    //
+    // ⚠️ **Une sonde qui se rabat sur une propriété faible parce que la forte est
+    // inobservable doit être relue quand la cible change** — sinon elle certifie une
+    // propriété que plus personne ne lui demande. La gate imprime désormais SON PÉRIMÈTRE ;
+    // c'est la propriété forte, et elle est enfin observable.
+    assertThat("verify-plugin-core-boundary : VOIT le deep import planté dans la sonde", () => {
         const res = spawnSync("node", ["scripts/verify-plugin-core-boundary.cjs"], {
             cwd: ROOT,
             encoding: "utf8",
         });
-        if (res.status !== 0) {
-            return { ok: false, detail: `exit ${res.status} — résolution rompue` };
+        const out = `${res.stdout}${res.stderr}`;
+
+        // 🛑 On attend un ÉCHEC : `deep-import.ts` de la sonde porte
+        // `import { Log } from "../../../core/src/utils/log/index.js"`, un import profond
+        // relatif vers les sources du core. Un exit 0 signifie que la gate ne l'a pas vu.
+        if (res.status === 0) {
+            return { ok: false, detail: "exit 0 — le deep import planté est passé INAPERÇU" };
         }
-        delete require.cache[require.resolve("./lib/packages.cjs")];
-        const registry = require("./lib/packages.cjs");
-        registry.reset();
-        const empty = [];
-        for (const dirName of ["editor", "offline-ui"]) {
-            const pkg = registry.requireByDirName(dirName);
-            const srcDir = path.join(pkg.absDir, "src");
-            if (!fs.existsSync(srcDir) || fs.readdirSync(srcDir).length === 0) empty.push(dirName);
+        if (!out.includes("__probe__")) {
+            return { ok: false, detail: "rouge, mais sans nommer `__probe__` — mauvaise cause" };
         }
-        return {
-            ok: empty.length === 0,
-            detail: empty.length
-                ? `périmètre vide : ${empty.join(", ")}`
-                : "2/2 cibles résolues et non vides",
-        };
+        return { ok: true, detail: "PCB-01 nomme `__probe__` et son deep import relatif" };
     });
 
     // ── Famille B — armement de règle ─────────────────────────────────────────
@@ -931,6 +933,129 @@ try {
     // rouges ne prouveraient qu'une chose — que la gate rougit toujours.
     assertThat("ci-parity : verte sur le workflow réel (contre-épreuve)", () => {
         const res = spawnSync("node", ["scripts/verify-ci-parity.cjs"], {
+            cwd: ROOT,
+            encoding: "utf8",
+        });
+        return {
+            ok: res.status === 0,
+            detail: res.status === 0 ? "exit 0" : `exit ${res.status} — la gate est rouge en vrai`,
+        };
+    });
+
+    // ── IMPL — « déclaré = exécuté » sur ce que le dépôt charge SANS importer ──
+    //
+    // 🛑 Cette gate garde une classe qu'aucune autre ne voit, et elle la garde sur un dépôt
+    // dont l'instrument est structurellement aveugle au défaut : `ci.yml` comme `ci:local`
+    // tournent sous le npm de Node 22, et la panne (B-258) n'apparaît qu'à partir de npm 11 —
+    // que seul `publish.yml` installe. Autrement dit, personne ici ne verra jamais IMPL rougir
+    // « pour de vrai ». C'est exactement le cas où une garde jamais vue rouge ne garde rien,
+    // donc les quatre codes sont éprouvés ci-dessous, chacun par sa propre mutation.
+    //
+    // ⚠️ Le dessin initial de la gate s'adossait au marqueur `peer + optional` du lockfile ;
+    // il a été écarté sur mesure, ce marqueur n'étant pas stable d'une version de npm à
+    // l'autre (npm 12 ne le pose plus du tout). IMPL-03 le balaie encore, mais en filet — et
+    // c'est IMPL-01/02 que ces sondes doivent tenir en priorité.
+    // ⚠️ `env` peut être une FONCTION, et reçoit ce que `before()` a rendu. Ce n'est pas du
+    // confort : une valeur littérale serait évaluée à l'appel d'`implMutation`, donc AVANT que
+    // `before()` ait créé le répertoire temporaire qu'elle est censée nommer.
+    const implMutation = (label, expectedCode, opts = {}) =>
+        assertThat(`impl : ${label} (${expectedCode})`, () => {
+            const undo = opts.before ? opts.before() : null;
+            const { after } = opts;
+            try {
+                const extraEnv = typeof opts.env === "function" ? opts.env(undo) : (opts.env ?? {});
+                const res = spawnSync("node", ["scripts/verify-implicit-deps.cjs"], {
+                    cwd: ROOT,
+                    encoding: "utf8",
+                    env: { ...process.env, ...extraEnv },
+                });
+                const out = `${res.stdout || ""}${res.stderr || ""}`;
+                const named = out.includes(expectedCode);
+                return {
+                    ok: res.status !== 0 && named,
+                    detail:
+                        res.status === 0
+                            ? `SORTIE VERTE sous mutation — la gate ne voit pas ${expectedCode}`
+                            : named
+                              ? `rouge (exit ${res.status}), et ${expectedCode} nommé`
+                              : `rouge, mais ${expectedCode} jamais nommé (rougit pour une autre raison)`,
+                };
+            } finally {
+                if (after) after(undo);
+            }
+        });
+
+    // 1. La propriété centrale : un paquet chargé que RIEN ne déclare. Le nom est fantôme
+    //    exprès — un vrai paquet pourrait être déclaré un jour, et la sonde passerait alors
+    //    au vert pour une raison qui n'est pas la sienne.
+    implMutation("un paquet chargé que rien ne déclare", "IMPL-01", {
+        env: { GEOLEAF_IMPLICIT_EXTRA: "__probe_undeclared_dep__" },
+    });
+
+    // 2. Le défaut qui a coûté B-258 : la copie déclarée n'est PAS celle qui s'exécute.
+    //    14 paquets déclaraient `happy-dom` et recevaient chacun une copie nichée que Vitest
+    //    ne chargeait jamais — deux mineures d'écart, invisibles pendant toute leur vie.
+    //    Reconstitué à l'identique sous le workspace sonde, que `cleanup()` efface en entier.
+    const probePkgJson = path.join(PROBE_DIR, "package.json");
+    implMutation("une copie déclarée que rien ne charge", "IMPL-02", {
+        before: () => {
+            const backup = fs.readFileSync(probePkgJson, "utf8");
+            const manifest = JSON.parse(backup);
+            manifest.devDependencies = { ...manifest.devDependencies, "happy-dom": "^20.11.2" };
+            fs.writeFileSync(probePkgJson, `${JSON.stringify(manifest, null, 4)}\n`);
+            const nested = path.join(PROBE_DIR, "node_modules", "happy-dom");
+            fs.mkdirSync(nested, { recursive: true });
+            fs.writeFileSync(
+                path.join(nested, "package.json"),
+                `${JSON.stringify({ name: "happy-dom", version: "0.0.0-probe" })}\n`
+            );
+            return backup;
+        },
+        after: (backup) => {
+            fs.rmSync(path.join(PROBE_DIR, "node_modules"), { recursive: true, force: true });
+            if (backup !== null) fs.writeFileSync(probePkgJson, backup);
+        },
+    });
+
+    // 3. Le balayage du lockfile. Une peerDependency optionnelle orpheline à la racine est
+    //    exactement la forme sous laquelle `happy-dom` et `tsx` ont vécu non déclarés.
+    implMutation("une peer optionnelle orpheline dans le lock", "IMPL-03", {
+        env: (dir) => ({ GEOLEAF_LOCKFILE: path.join(dir, "package-lock.json") }),
+        before: () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-impl-"));
+            const lock = JSON.parse(fs.readFileSync(path.join(ROOT, "package-lock.json"), "utf8"));
+            lock.packages["node_modules/__probe_phantom_peer__"] = {
+                version: "9.9.9",
+                dev: true,
+                peer: true,
+                optional: true,
+            };
+            fs.writeFileSync(path.join(dir, "package-lock.json"), JSON.stringify(lock));
+            return dir;
+        },
+        after: (dir) => {
+            if (dir) fs.rmSync(dir, { recursive: true, force: true });
+        },
+    });
+
+    // 4. Le refus de conclure. Une gate qui rassure sur un corpus qu'elle n'a pas pu lire est
+    //    pire qu'une gate absente — c'est le mode d'échec que tout ce fichier poursuit.
+    implMutation("un lockfile illisible (refus de conclure)", "IMPL-04", {
+        env: (dir) => ({ GEOLEAF_LOCKFILE: path.join(dir, "package-lock.json") }),
+        before: () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-impl-ko-"));
+            fs.writeFileSync(path.join(dir, "package-lock.json"), "pas du json");
+            return dir;
+        },
+        after: (dir) => {
+            if (dir) fs.rmSync(dir, { recursive: true, force: true });
+        },
+    });
+
+    // Contre-épreuve : sans mutation, la gate doit être VERTE — sinon les quatre rouges
+    // ci-dessus ne prouvent qu'une chose, c'est qu'elle rougit toujours.
+    assertThat("impl : verte sur le dépôt réel (contre-épreuve)", () => {
+        const res = spawnSync("node", ["scripts/verify-implicit-deps.cjs"], {
             cwd: ROOT,
             encoding: "utf8",
         });

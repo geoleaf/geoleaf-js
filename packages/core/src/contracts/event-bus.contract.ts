@@ -309,6 +309,23 @@ interface GeoLeafEditorSyncFlushedDetail {
 }
 
 /**
+ * Charge de `geoleaf:geolocation:statechange` — la veille de position a démarré ou s'est arrêtée.
+ *
+ * ⚠️ **Émis sur le CONTENEUR DE CARTE, pas par le bus** (`capabilities/geolocation/geolocation.ts`),
+ * avec `bubbles: true` — il remonte donc jusqu'à `document`, et s'écoute des deux façons.
+ *
+ * 🛑 Il s'est appelé `gl:geoloc:statechange` jusqu'au 16/08/2026, et ce nom le rendait
+ * **invisible à EM-01**, dont la reconnaissance est ancrée sur `^geoleaf:`. Ce n'était pas une
+ * dette enregistrée quelque part : c'était un angle mort qui ne se comptait nulle part. La
+ * fiche `docs/specs/capacites/geolocation.md` le documentait pourtant comme délibéré — un fait
+ * exact peut décrire une cécité sans la corriger.
+ */
+export interface GeoLeafGeolocationStateChangeDetail {
+    /** `true` quand la veille démarre, `false` quand elle s'arrête. */
+    active: boolean;
+}
+
+/**
  * Detail payload for `geoleaf:cache:evicted` — a cache made room for itself.
  *
  * 🛑 IL Y A **DEUX** PRODUCTEURS, ET C'EST DÉLIBÉRÉ. Le patron que B-155 recommande — un point
@@ -678,6 +695,23 @@ export interface GeoLeafEventMap {
     // devient un signal d'INTERFACE le jour où il déclenche un toast. Ferme une des 39 lignes
     // de B-155 (baseline 39 → 38).
     "geoleaf:cache:evicted": GeoLeafCacheEvictedDetail;
+    // ── Entrés dans le domaine au S2 de R9 (B-207) — ils s'appelaient `gl:` et `print:` ────
+    //
+    // 🛑 Ces trois-là n'étaient pas « non typés » : ils étaient **structurellement invisibles**.
+    // `EVENT_LITERAL_RE` est ancré sur `^geoleaf:`, donc EM-01 ne pouvait ni les réclamer ni
+    // les compter — un nom hors préfixe n'apparaissait dans aucune mesure, ni comme dette, ni
+    // comme manque. Les renommer les fait ENTRER dans le dispositif ; c'est le geste qui les
+    // type, pas cette table.
+    //
+    // ⚠️ `geoleaf:geolocation:statechange` est émis sur le **conteneur de carte** avec
+    // `bubbles: true`, et non par le bus — il remonte donc jusqu'à `document`. Ses consommateurs
+    // sont `kernel/ui/mobile/mobile-toolbar.ts` (teinte de la pastille) et
+    // `plugins/measure/src/tools/tool-gps.ts` : **il franchit la frontière core → plugin**,
+    // donc c'est un contrat public, quel que soit le nom qu'il portait.
+    "geoleaf:geolocation:statechange": GeoLeafGeolocationStateChangeDetail;
+    // Impression — encadrent un rendu hors écran, et pilotent le spinner de la modale.
+    "geoleaf:print:render:start": Record<string, never>;
+    "geoleaf:print:render:end": Record<string, never>;
     // Plugins
     "geoleaf:plugin:loaded": GeoLeafPluginLoadedDetail;
     "geoleaf:plugin:lazy-loaded": GeoLeafPluginLazyLoadedDetail;

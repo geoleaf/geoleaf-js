@@ -21,7 +21,6 @@
  * CapabilityRegistry, S10 F2). Declares a mobile toolbar icon (legend toggle)
  * driven by the `modules.legend.enabled` profileKey.
  */
-"use strict";
 
 import type { ILifecycleModule, IModuleUISlot } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

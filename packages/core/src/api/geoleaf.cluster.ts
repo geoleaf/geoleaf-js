@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  *
  * Public `GeoLeaf.Cluster` facade — point clustering (native MapLibre `cluster:true`)

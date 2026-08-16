@@ -21,7 +21,6 @@
  * register. The legend is gated again late by `LegendLifecycle._onAppReady` on the
  * merged `modules.legend.enabled` (read off `getLegendConfig()`).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

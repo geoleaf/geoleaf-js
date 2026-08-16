@@ -19,7 +19,6 @@
  * `engine/filter-helpers.ts`). Naming the direction is what makes a wrong conversion
  * visible at the call site instead of at the far end of a filtered-to-nothing list.
  */
-"use strict";
 
 /**
  * Metres in one kilometre.

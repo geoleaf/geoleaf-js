@@ -3,7 +3,6 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";

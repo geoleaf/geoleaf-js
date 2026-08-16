@@ -10,7 +10,6 @@
  * Single self-sufficient anchor (declaration + facade globals + module factory).
  * App-global, opt-in (`modules.branding.enabled === true`).
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

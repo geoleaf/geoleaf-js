@@ -11,7 +11,6 @@
  * Mirrors the layer manager's own style-selector idiom (`div > select` carrying an
  * `aria-label`, since there is no visible `<label>` to associate).
  */
-"use strict";
 
 import { domCreate } from "../../utils/general/dom-helpers.js";
 import { getLabel } from "../../utils/i18n/i18n.js";

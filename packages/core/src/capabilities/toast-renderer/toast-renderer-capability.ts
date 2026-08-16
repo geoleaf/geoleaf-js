@@ -18,7 +18,6 @@
  * (active unless a profile sets it to `false`), preserving the pre-migration
  * default-on behaviour so geolocation/storage toasts keep rendering.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

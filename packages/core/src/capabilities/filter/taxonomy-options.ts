@@ -20,7 +20,6 @@
  * never did. The filter is applied by `apply.ts` through the `GeoJSONCore.filterFeatures`
  * seam, which is the single writer of the layer filter.
  */
-"use strict";
 
 import { expandCategorySelection, getCategoryTree } from "./engine/options.js";
 import type { ActiveField } from "./engine/types.js";

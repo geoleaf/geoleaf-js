@@ -13,7 +13,6 @@
  * the only change is the config source: `modules.branding` via `getBrandingConfig()`
  * instead of the former app-global root `branding` key.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getLabel } from "../../utils/i18n/i18n.js";

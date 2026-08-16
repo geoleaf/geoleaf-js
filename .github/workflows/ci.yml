@@ -132,6 +132,19 @@ jobs:
             - name: Published types are reachable (PUB-TYPES)
               run: node scripts/verify-published-types.cjs
 
+            # B-93 — `scripts/`, `e2e/` et les configs racine n'étaient couverts par AUCUN
+            # tsconfig. Cliquet décroissant (301 au départ), pas un vert : exiger zéro tout de
+            # suite reviendrait à ne pas poser la couverture, et un tsconfig sans `checkJs`
+            # serait un périmètre décoratif. Keep in sync with scripts/ci-local.cjs.
+            - name: Typecheck de l'outillage (TOOLING-TS, cliquet)
+              run: node scripts/check-tooling-typecheck.cjs
+
+            # B-36 — le balayage T5 avait atteint 100 % et la dette s'est reformée DEUX fois :
+            # rien n'exigeait qu'un artefact neuf naisse jugé. Cliquet décroissant, pas un vert.
+            # Keep in sync with scripts/ci-local.cjs.
+            - name: Qualification de l'arborescence (TREE-QUAL, cliquet)
+              run: node scripts/check-tree-qualification.cjs
+
             # La question que ni PUB-TYPES ni typecheck:consumer ne peuvent poser : un specifier
             # du tarball se résout-il HORS de ce monorepo ? Les symlinks de workspace masquent la
             # classe entière — `@geoleaf/host-runtime` est `private` et 404 sur npm, et il
@@ -654,6 +667,15 @@ jobs:
 
             - name: Repo hygiene — no throwaway scripts or build artifacts
               run: node scripts/verify-repo-hygiene.cjs
+
+            # IMPL (B-258). SHIP-SPEC et knip partent tous deux d'un IMPORT ; cette gate couvre
+            # ce que le dépôt charge SANS importer — `happy-dom`, nommé par une chaîne de config
+            # et importé par Vitest depuis son propre dist/, et `tsx`, injecté dans NODE_OPTIONS.
+            # Aucun des deux n'était déclaré : ils tenaient à une peerDependency optionnelle que
+            # npm ≥ 11 ne reconduit pas. Ce job tourne sous le npm de Node 22, donc il ne verra
+            # jamais la panne elle-même — d'où une gate qui juge les MANIFESTES, pas l'install.
+            - name: Implicit toolchain deps (IMPL — déclaré = exécuté)
+              run: node scripts/verify-implicit-deps.cjs
 
             # Contrat HTML/JS de apps/geoleaf-app. Plusieurs de ses invariants portent sur des
             # formes que build-deploy.cjs patche par regex `/gm` sans `/s` : un retour à la

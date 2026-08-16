@@ -23,7 +23,6 @@
  * ⚠ The Lite bundle writes these globals on its own (`globals.{ui,api}-lite.ts`) — it
  * does not go through a preset manifest. Do not remove those anchors.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

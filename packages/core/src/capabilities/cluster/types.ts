@@ -13,7 +13,6 @@
  * reads into a single in-core capability (revived S3). Config now lives under
  * `modules.cluster`.
  */
-"use strict";
 
 /** A `modules.cluster.clusterStrategies` entry — source toggles + json-only flag. */
 interface ClusterStrategyEntry {

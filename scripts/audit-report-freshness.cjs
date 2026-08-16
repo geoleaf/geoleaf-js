@@ -1403,7 +1403,14 @@ const GATES = {
         cmd: "--source tsdoc --gate",
         hint:
             "    Un TSDoc qui renvoie à un fichier absent reste lisible et convaincant\n" +
-            "    longtemps après que le fichier a bougé. Corriger la citation.\n",
+            "    longtemps après que le fichier a bougé. Corriger la citation.\n" +
+            "    ⚠️ MAIS LIRE LA PHRASE D'ABORD — B-82. Une part de cette baseline nomme un\n" +
+            "    chemin PARCE QU'IL EST MORT (« reclassified from… », « the former… »,\n" +
+            "    « extracted from… ») : ces citations-là sont JUSTES et ne se réécrivent pas.\n" +
+            "    Les corriger effacerait l'histoire que la phrase raconte.\n" +
+            "    Mesuré le 16/08/2026 : entre 25 et 44 des 76 entrées selon le motif de\n" +
+            "    reconnaissance — l'écart de 19 vient de l'INSTRUMENT, pas du corpus, et c'est\n" +
+            "    pourquoi aucune partition automatique n'est figée ici.\n",
     },
     specs: {
         code: "SPECS-PATHS",

@@ -9,8 +9,6 @@
  * Extracted from style-loader.ts as part of Sprint 1 refactoring.
  */
 
-"use strict";
-
 import { Log } from "../log/index.js";
 
 /** Label sub-block of a style file (integrated labels). */

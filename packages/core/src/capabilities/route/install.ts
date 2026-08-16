@@ -21,7 +21,6 @@
  * Cutting the barrel left the other three links with no reader at all, so they went too.
  * The installer now carries only its module — which is what its own doc above already said.
  */
-"use strict";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { ROUTE_CAPABILITY } from "./route-capability.js";

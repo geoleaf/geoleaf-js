@@ -17,7 +17,6 @@
  * re-sourced here: `getLabel` (direct i18n import), the notify primitive (import),
  * the `_UINotifications` singleton (import), a local perf-mark helper, and `Log`.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getLabel } from "../../utils/i18n/i18n.js";

@@ -13,7 +13,6 @@
  * here — the late gate (`enabled === true`, default OFF) decides visibility
  * synchronously at `ThemeToggleModule.init()`, no `app:ready` deferral needed.
  */
-"use strict";
 
 import { initThemeToggleControl, _destroyThemeToggleControl } from "./theme-toggle.js";
 import { getThemeToggleConfig } from "./config.js";

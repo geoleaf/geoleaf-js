@@ -13,7 +13,6 @@
  * they precede setupReveal / `geoleaf:app:ready`). To be split into dedicated
  * feature modules once RevealModule is added in S1.3+.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter, GeoLeafBounds } from "../../contracts/map-adapter.contract.ts";

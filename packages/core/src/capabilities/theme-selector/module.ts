@@ -16,7 +16,6 @@
  * Registered by the preset loop via `CapabilityRegistry.isEnabled("theme-selector", …)`
  * (`modules.theme-selector.enabled`, **opt-in** — défaut `false`, S8/F3).
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

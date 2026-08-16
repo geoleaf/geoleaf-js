@@ -261,11 +261,56 @@ if (failed) process.exit(1);
 // 14/08/2026 : la clé est passée dans `GeoLeafRawEventMap` et s'émet en `CustomEvent` nu, la
 // ligne ayant bougé au passage. Une citation de ligne posée POUR corriger une citation périmée
 // s'est périmée à son tour en cinq jours — d'où le nom de fichier seul ci-dessus.
+// ── EM-03 — un événement NAMESPACÉ hors du domaine ───────────────────────────────────
+//
+// 🛑 Les règles ci-dessus sont ancrées sur `^geoleaf:` : elles ne peuvent pas voir un
+// événement qui ne porte pas le préfixe. EM-03 ferme cet angle mort — le motif complet, et
+// le périmètre que cette règle N'A PAS, sont dans `lib/event-gates.cjs`.
+const { collectNamespacedEventLiterals, DOMAIN_PREFIX } = require("./lib/event-gates.cjs");
+const { violations: nsViolations, callSites } = collectNamespacedEventLiterals(sourceFiles);
+
+// Anti-gate-vide : EM-03 inspecte des SITES D'APPEL, pas des littéraux nus. Si le balayage
+// n'en trouve aucun, c'est l'instrument qui est cassé — ce dépôt en porte des centaines.
+if (callSites === 0) {
+    console.error(
+        `ERROR [EVENT-MAP/EM-03]: 0 site d'appel d'événement sur ${sourceFiles.length} fichiers. ` +
+            "Impossible dans ce dépôt — la gate refuse de conclure."
+    );
+    process.exit(2);
+}
+
+if (nsViolations.length > 0) {
+    console.error(
+        `\nERROR [EVENT-MAP/EM-03]: ${nsViolations.length} littéral(aux) d'événement namespacé(s) ` +
+            `hors du domaine \`${DOMAIN_PREFIX}\` :\n`
+    );
+    for (const v of nsViolations) {
+        const rel = path.relative(ROOT, v.file);
+        console.error(`   "${v.name}"  ${rel}:${v.line}  (via ${v.gate}())`);
+    }
+    console.error(
+        `\n  Un littéral d'événement qui contient un \`:\` DOIT commencer par \`${DOMAIN_PREFIX}\`.\n` +
+            "  Les événements ÉTRANGERS (natifs DOM, MapLibre, Terra Draw…) n'en contiennent\n" +
+            "  aucun — c'est ce qui sépare les deux sans liste à entretenir.\n" +
+            "  Renommez, puis typez la clé dans `contracts/event-bus.contract.ts` (EM-01 la\n" +
+            "  réclamera dès qu'elle entre dans le domaine — c'est voulu).\n" +
+            "  Cas d'une bibliothèque tierce réellement namespacée : `FOREIGN_NAMESPACED`\n" +
+            "  dans `scripts/lib/event-gates.cjs`, avec son motif écrit sur place.\n"
+    );
+    process.exit(1);
+}
+
 const typedInSource = inScope.filter((n) => typed.has(n)).length;
 const pct = ((typedInSource / inScope.length) * 100).toFixed(1);
 console.log(
     `✅ [EVENT-MAP] ${typedInSource}/${inScope.length} noms d'événements relevés dans les sources ` +
         `sont typés (${pct} %) ; ${sourceFiles.length} fichiers scannés, ${typed.size} clés ` +
         `déclarées, ${baseline.size} en baseline, aucun nouveau, aucun périmé.`
+);
+// Le périmètre d'EM-03 s'imprime, il ne se recopie pas : c'est le seul moyen de voir qu'elle
+// a réellement scanné quelque chose le jour où un refactor lui retire ses sites d'appel.
+console.log(
+    `   [EM-03] ${callSites} site(s) d'appel d'événement à littéral inspecté(s) ; ` +
+        `aucun nom namespacé hors \`${DOMAIN_PREFIX}\`.`
 );
 process.exit(0);

@@ -15,7 +15,6 @@
  * compile time against its own exports) and is looked up at runtime via
  * `globalThis.GeoLeaf.FeatureInfo` — never imported statically.
  */
-"use strict";
 
 /**
  * Geometry payload of a rendered feature, or `null` when unavailable

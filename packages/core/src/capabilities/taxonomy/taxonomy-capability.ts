@@ -28,7 +28,6 @@
  * ids), so enumerating them is meaningless — same treatment as the opaque `mapping`
  * leaf of `check-config-coverage.cjs`.
  */
-"use strict";
 
 import type {
     ICapabilityDeclaration,

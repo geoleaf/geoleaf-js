@@ -21,7 +21,6 @@
  * Invoked by `FilterModule` (registered in `boot.ts` only when
  * `modules.filter.enabled`).
  */
-"use strict";
 
 import { getFilterConfig } from "./config.js";
 import { renderFilterPanel } from "./panel/render.js";

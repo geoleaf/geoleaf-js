@@ -9,7 +9,6 @@
  * @fileoverview CacheDownloader - Lightweight orchestrator for download operations
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { RetryHandler } from "./retry-handler.js";

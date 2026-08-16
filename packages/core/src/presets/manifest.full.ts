@@ -66,7 +66,6 @@
  * Two statements about the same pair, opposite verdicts, same file — and the header was the one
  * being quoted, into eight other files.
  */
-"use strict";
 
 import type { PresetManifest } from "../contracts/preset.contract.js";
 import { LABELS_INSTALLER } from "../capabilities/labels/install.js";

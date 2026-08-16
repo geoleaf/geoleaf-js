@@ -15,7 +15,6 @@
  *
  * Depends on `geojson` (the layers it filters + the data it reads at mount).
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

@@ -14,7 +14,6 @@
  *      (integrator fixes a brand colour and offers no choice).
  *   2. **Mount the button** — only when `enabled === true`.
  */
-"use strict";
 
 import { getThemePaletteConfig, getPalettes } from "./config.js";
 import { applyPalette, resolveInitialPalette } from "./palette-engine.js";

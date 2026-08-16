@@ -17,7 +17,6 @@
  * `gl-filter-panel__tag-badge`) so permalink / mobile-toolbar keep working. The
  * interactive proximity binding (map click / GPS) and the live mount are wired in F3.
  */
-"use strict";
 
 import { createElement, domCreate } from "../../../utils/general/dom-helpers.js";
 import { createPillSearchInput } from "../../../kernel/ui/index.js";

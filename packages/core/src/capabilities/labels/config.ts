@@ -17,7 +17,6 @@
  * Migrated from the former root `labels.enabled` key (S4). The root `labels`
  * namespace now belongs solely to the i18n override dictionary.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

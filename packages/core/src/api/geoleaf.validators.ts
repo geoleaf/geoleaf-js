@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  * @description Facade public of the module Validators.
  * Exposes {@link Validators} grouping: `validateUrl`, `validateCoordinates`,

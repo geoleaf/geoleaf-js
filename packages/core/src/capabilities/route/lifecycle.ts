@@ -17,7 +17,6 @@
  * `RouteModule.init`), before the map's async `load` fires `geoleaf:map:ready`,
  * so the initial sweep is caught.
  */
-"use strict";
 
 import { getRouteConfig } from "./config.js";
 import { applyToLayer, clearEndpoints } from "./apply.js";

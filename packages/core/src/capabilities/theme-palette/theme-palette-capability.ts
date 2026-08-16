@@ -19,7 +19,6 @@
  * that is the majority production case (integrator fixes a brand colour, offers no
  * choice).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

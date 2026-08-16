@@ -20,7 +20,6 @@
  * ⚠ No-op when the seam is absent. The Lite bundle and most adapter tests run
  * without `GeoLeaf.Taxonomy`, and their paint must come out byte-identical.
  */
-"use strict";
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 

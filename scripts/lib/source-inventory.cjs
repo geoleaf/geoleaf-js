@@ -157,6 +157,27 @@ function walk(dir, acc, extensions = [".ts"]) {
 }
 
 /**
+ * Lignes de LICENCE d'une bannière `/*!` — retirées avant d'y chercher de la prose.
+ *
+ * ⚠️ Cette liste est le cœur du correctif de B-28 : sans elle, le copyright de chaque fichier
+ * suffirait à le déclarer documenté, et la gate deviendrait un vert universel. Avec elle, seule
+ * la prose RÉELLEMENT écrite sous la bannière compte.
+ */
+const BANNER_LICENSE_RE =
+    /^(@geoleaf|©|\(c\)|Copyright|Released under|Licensed under|SPDX|https?:|GeoLeaf\s*$)/i;
+
+/** Prose d'un bloc de commentaire : décorations retirées, tags et licence écartés. */
+function _proseOf(raw) {
+    return raw
+        .split("\n")
+        .map((l) => l.replace(/^\s*\*\s?/, "").trim())
+        .filter((l) => l && !l.startsWith("@") && !BANNER_LICENSE_RE.test(l))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+/**
  * Pulls the module description out of a source file.
  *
  * Order of operations matters: the `/*!` license banner is stripped FIRST, otherwise
@@ -165,8 +186,28 @@ function walk(dir, acc, extensions = [".ts"]) {
  * @returns {{ description: string|null, module: string|null, hasBlock: boolean }}
  */
 function extractHeader(source) {
+    const bannerMatch = source.match(/^\s*\/\*!([\s\S]*?)\*\//);
     const withoutBanner = source.replace(/^\s*\/\*![\s\S]*?\*\//, "");
     const match = withoutBanner.match(/^\s*\/\*\*([\s\S]*?)\*\//);
+
+    // 🛑 B-28, SECONDE FORME — LA DOC ÉCRITE DANS LA BANNIÈRE ÉTAIT JETÉE AVEC ELLE.
+    //
+    // Le retrait du bloc `/*!` est nécessaire : sans lui, TOUT fichier du dépôt passerait
+    // pour documenté par sa ligne de copyright — c'est ce que dit le commentaire ci-dessus, et
+    // c'est juste. Mais le retrait était TOTAL, alors que 161 fichiers écrivent leur
+    // description **à l'intérieur** de cette bannière, sous les lignes de licence (mesuré le
+    // 16/08/2026 sur les 273 entrées de la baseline : **59 % étaient faux**).
+    //
+    // ✅ La bannière n'est donc plus jetée en bloc : ses lignes de LICENCE sont retirées, et ce
+    // qui reste est de la prose comme une autre. C'est la distinction que le retrait total ne
+    // faisait pas — « une bannière » et « ce qu'on a écrit dedans » ne sont pas la même chose.
+    if (!match && bannerMatch) {
+        const bannerProse = _proseOf(bannerMatch[1]);
+        if (bannerProse.replace(/\s/g, "").length >= MIN_PROSE_CHARS) {
+            return { description: bannerProse, module: null, hasBlock: true };
+        }
+    }
+
     if (!match) return { description: null, module: null, hasBlock: false };
 
     const raw = match[1];

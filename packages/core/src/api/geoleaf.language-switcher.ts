@@ -13,7 +13,7 @@
  * Opt-in: inert unless `modules.language-switcher.enabled` is `true`. The language
  * itself resolves as `?lang=` → `localStorage['gl-lang']` → `ui.language` → `fr`.
  */
-"use strict";
+
 import {
     buildPublicApi,
     type LanguageSwitcherPublicApi,

@@ -16,7 +16,6 @@
  * @see {@link GeoLeafAPI}
  * @see globals/globals.api — `defineApiMethods`, the single writer of the eleven
  */
-"use strict";
 
 // Side-effect import: keeps `kernel/api/geoleaf-api.js` in the bundle, so its
 // `_g.GeoLeaf = _g.GeoLeaf || {}` runs and the namespace object exists.

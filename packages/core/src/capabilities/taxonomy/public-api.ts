@@ -27,7 +27,6 @@
  * // Legend/filter read a taxonomy's categories
  * const cats = GeoLeaf.Taxonomy.getCategories("poi-cat");
  */
-"use strict";
 
 import { getTaxonomyConfig } from "./config.js";
 import {

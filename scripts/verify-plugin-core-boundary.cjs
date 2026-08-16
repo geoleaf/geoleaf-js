@@ -57,30 +57,77 @@ const ROOT = path.resolve(__dirname, "..");
  * cette gate. Le `paths` tsconfig qui les résolvait a été retiré dans le même geste :
  * sans cela, la ligne serait sortie de la baseline sans que rien ne change au réel.
  */
-const BASELINE = {
-    // API publique S4.4 — addpoi est SOLDÉ : ses 3 deep imports ont disparu. Les deux
-    // singletons (`StorageContract`, `GeoJSONShared`) passent par le namespace — leur identité
-    // était le contrat, et une copie embarquée n'est jamais celle que le core initialise. Le
-    // type `PoiToFeatureInput` est recopié, gardé par un seam.
-    //
-    // ⚠️ Le tableau est VIDÉ, la clé est GARDÉE. Retirer la clé ferait itérer la boucle
-    // `Object.entries(BASELINE)` zéro fois pour ce paquet : la gate imprimerait deux ✅ sans
-    // avoir lu un seul fichier — et `probe-gate-visibility.cjs` ne l'attraperait pas, son
-    // assertion codant en dur les deux noms. Avec `[]`, elle lit toujours les 65 fichiers
-    // d'addpoi et rougit au premier `@core/*` réintroduit.
-    // API publique S4.4 — le plugin hors-ligne est SOLDÉ à son tour. `StorageContract` passe par le
-    // namespace (son identité était le contrat) ; `resolveProfileLayers` et
-    // `estimateVectorZone` passent par la carte `exports` publiée du core — ce sont des
-    // fonctions PURES et sans import, donc en embarquer une copie est sans conséquence,
-    // contrairement à un singleton.
-    //
-    // ⚠️ Tableau vidé, clé GARDÉE — même raison qu'au-dessus. `BASELINE = {}` ferait sortir
-    // la gate verte en n'ayant lu aucun fichier.
-    "offline-ui": [],
-};
+// ✅ **VIDE — et c'est l'état CIBLE, pas un accident.** Les deux dernières entrées (`addpoi`
+// puis `offline-ui`) ont été soldées à l'API publique S4.4 : les singletons passent par le
+// namespace, les fonctions pures par la carte `exports` publiée.
+//
+// 🛑 **LA CLÉ VIDE QUI SUBSISTAIT N'EST PLUS NÉCESSAIRE, et son commentaire disait pourquoi.**
+// Il expliquait qu'on gardait `"offline-ui": []` parce que « retirer la clé ferait itérer la
+// boucle `Object.entries(BASELINE)` zéro fois pour ce paquet : la gate imprimerait deux ✅ sans
+// avoir lu un seul fichier ». **C'était exact, et c'était une parade posée à la main sur les
+// deux paquets auxquels on avait pensé.** Les dix autres n'y ont jamais eu droit — d'où B-153 ②.
+//
+// Depuis que la boucle dérive son périmètre de `registry.plugins()`, un plugin absent d'ici est
+// scanné **avec zéro tolérance**, ce qui est la bonne valeur par défaut pour une frontière
+// d'architecture. La parade n'a plus d'objet : c'est la structure qui la porte, plus une entrée.
+//
+// ⚠️ Ce qui reste vrai : **y ajouter une entrée est une décision délibérée**, et chacune est une
+// DETTE avec un propriétaire, jamais une permission permanente. PCB-02 la fait rétrécir.
+const BASELINE = {};
 
-/** Any specifier addressing core sources, whichever alias scheme the plugin uses. */
-const CORE_SPECIFIER_RE = /["'](@core(?:-offline)?\/[^"']+)["']/g;
+/**
+ * Any specifier that ADDRESSES the core — quel que soit le schéma employé.
+ *
+ * 🛑 **B-153 ② — CE MOTIF NE RECONNAISSAIT QU'UN SCHÉMA MORT, et c'est la moitié du défaut que
+ * la ligne ne portait pas.** Il s'écrivait `/["'](@core(?:-offline)?\/[^"']+)["']/g`, donc il ne
+ * voyait que les alias `@core/` et `@core-offline/`. Mesuré le 16/08/2026 : **aucun plugin ne
+ * déclare plus ces alias** — ni dans son `tsconfig.json`, ni dans son `rollup.config.mjs`.
+ *
+ * ⚠️ **Conséquence : même en scannant les 12 paquets, la gate ne pouvait attraper AUCUN import
+ * profond écrit aujourd'hui.** Un développeur qui écrirait `@geoleaf/core/src/kernel/…` ou
+ * `../../../core/src/…` passait sans un mot. Le vert n'était pas la propriété du code, c'était
+ * la forme de la question.
+ *
+ * ✅ Trois familles reconnues désormais, chacune correspondant à une façon réelle d'atteindre
+ * les sources : l'alias historique, le sous-chemin du paquet publié, et le chemin relatif qui
+ * remonte jusqu'à `core/src`.
+ */
+const CORE_SPECIFIER_RE =
+    /["'](@core(?:-offline)?\/[^"']+|@geoleaf\/core\/[^"']+|(?:\.\.\/)+(?:packages\/)?core\/src\/[^"']+)["']/g;
+
+/**
+ * Les sous-chemins que le core PUBLIE — dérivés de sa carte `exports`, jamais recopiés.
+ *
+ * 🛑 **C'est ce qui sépare un import LÉGITIME d'un import PROFOND, et la distinction n'est pas
+ * cosmétique.** `@geoleaf/core/kernel/config/layer-geometry.js` est déclaré dans `exports` : un
+ * intégrateur tiers l'écrit de la même façon, le bundler résout vers le point publié, et rien
+ * n'est ré-embarqué en douce. `@geoleaf/core/src/kernel/…` ne l'est pas : il court-circuite la
+ * carte et fait recopier une source dans le bundle du plugin — le défaut exact que cette gate
+ * existe pour empêcher.
+ *
+ * ⚠️ **Dérivé et non listé.** Une liste en dur ici se périmerait au premier sous-chemin publié,
+ * et se périmerait EN SILENCE : la gate rougirait sur un import parfaitement légitime, on
+ * l'ajouterait à la baseline, et la dette grossirait d'une entrée qui n'en est pas une.
+ */
+const CORE_EXPORT_PATTERNS = Object.keys(
+    require(path.join(ROOT, "packages/core/package.json")).exports || {}
+)
+    .filter((k) => k.startsWith("./"))
+    .map((k) => k.slice(2));
+
+/**
+ * Un sous-chemin `@geoleaf/core/<sub>` passe-t-il par la carte `exports` ?
+ *
+ * Gère le joker `*` des clés du type `./capabilities/*.js`, avec la sémantique de Node : `*`
+ * remplace un segment de chemin quelconque, y compris vide.
+ */
+function isPublishedSubpath(sub) {
+    return CORE_EXPORT_PATTERNS.some((pat) => {
+        if (!pat.includes("*")) return pat === sub;
+        const [head, tail] = pat.split("*");
+        return sub.startsWith(head) && sub.endsWith(tail) && sub.length >= head.length + tail.length;
+    });
+}
 
 /** Walks `dir`, collecting `.ts` files outside `__tests__/`. */
 function collectSources(dir, results) {
@@ -121,17 +168,63 @@ const seen = {};
 // `scripts/probe-gate-visibility.cjs`, pas par relecture.
 const registry = require("./lib/packages.cjs");
 
-for (const [plugin, allowed] of Object.entries(BASELINE)) {
+// ── B-153 ② — LA GATE ITÈRE SUR LE REGISTRE, PLUS SUR SA BASELINE ────────────────────────
+//
+// 🛑 CE QU'ELLE FAISAIT, ET POURQUOI C'EST LA PIRE FORME DU DÉFAUT. La boucle s'écrivait
+// `for (const [plugin, allowed] of Object.entries(BASELINE))`. `BASELINE` ne contient qu'UNE
+// clé : la gate qui garde la frontière d'architecture du projet **ouvrait 1 plugin sur 12**,
+// et son message de succès affirmait la conformité sans dire sur quoi il portait. Onze plugins
+// n'ont jamais été lus — pas une seule fois depuis que cette gate existe.
+//
+// ⚠️ **Le mécanisme était COMPRIS et documenté, à trente lignes d'ici.** Les commentaires de
+// `BASELINE` expliquent que la clé d'un plugin soldé est gardée VIDE parce que « retirer la clé
+// ferait itérer la boucle zéro fois pour ce paquet : la gate imprimerait deux ✅ sans avoir lu
+// un seul fichier ». La parade était juste — elle était appliquée **au cas par cas**, aux deux
+// paquets qu'on avait pensé à sortir de la baseline. Les dix autres n'y ont jamais eu droit.
+// Une parade qui doit être posée à la main sur chaque membre n'est pas une parade : c'est une
+// liste, et une liste oublie.
+//
+// ✅ **Le périmètre se DÉRIVE désormais** : `registry.plugins()` rend les paquets
+// `@geoleaf-plugins/*` du registre de workspaces. `BASELINE` ne décide plus de QUI est scanné,
+// seulement de CE QUI est toléré chez lui — un plugin absent de la baseline est scanné avec
+// zéro tolérance, ce qui est la bonne valeur par défaut pour une frontière d'architecture.
+const pluginPkgs = registry.plugins();
+
+// Anti-gate-vide, plancher n° 1 : un registre vide rendrait « 0 violation » sans rien lire.
+if (pluginPkgs.length === 0) {
+    console.error(
+        "❌ [PCB-00] 0 plugin rendu par `registry.plugins()` — impossible dans ce dépôt.\n" +
+            "   L'instrument est cassé, pas le code. La gate refuse de conclure."
+    );
+    process.exit(2);
+}
+
+let filesScanned = 0;
+
+for (const pkg of pluginPkgs) {
+    const plugin = pkg.dirName;
+    const allowed = BASELINE[plugin] ?? [];
     const srcDir = path.join(registry.requireByDirName(plugin).absDir, "src");
     seen[plugin] = new Set();
     const violations = [];
 
-    for (const file of collectSources(srcDir, [])) {
+    const sources = collectSources(srcDir, []);
+    filesScanned += sources.length;
+
+    for (const file of sources) {
         const lines = fs.readFileSync(file, "utf8").split("\n");
         lines.forEach((line, i) => {
             if (isComment(line)) return;
             for (const m of line.matchAll(CORE_SPECIFIER_RE)) {
                 const spec = m[1];
+
+                // Un sous-chemin PUBLIÉ n'est pas un deep import : il passe par la carte
+                // `exports`, comme chez un intégrateur tiers. Écarté avant même d'être vu —
+                // l'inscrire dans `seen` le ferait apparaître comme une dette à purger.
+                if (spec.startsWith("@geoleaf/core/") && isPublishedSubpath(spec.slice(14))) {
+                    continue;
+                }
+
                 seen[plugin].add(spec);
                 if (!allowed.includes(spec)) {
                     violations.push(`${path.relative(ROOT, file)}:${i + 1}  ${spec}`);
@@ -153,7 +246,23 @@ for (const [plugin, allowed] of Object.entries(BASELINE)) {
     }
 }
 
-if (!failed) console.log("✅ [PCB-01] Aucun deep import plugin → core hors baseline.");
+// Anti-gate-vide, plancher n° 2 : douze paquets qui rendent zéro fichier, c'est un
+// `collectSources` cassé ou une arborescence déplacée — pas un dépôt sans sources.
+if (filesScanned === 0) {
+    console.error(
+        `❌ [PCB-00] ${pluginPkgs.length} plugin(s) visité(s), et 0 fichier lu.\n` +
+            "   L'instrument est cassé, pas le code. La gate refuse de conclure."
+    );
+    process.exit(2);
+}
+
+if (!failed) {
+    console.log(
+        `✅ [PCB-01] Aucun deep import plugin → core hors baseline.\n` +
+            `   périmètre : ${pluginPkgs.length} plugin(s), ${filesScanned} fichier(s) — ` +
+            `${pluginPkgs.map((p) => p.dirName).join(", ")}`
+    );
+}
 
 // PCB-02 — la baseline doit rétrécir. Une entrée devenue inutile est signalée pour
 // être retirée : la laisser autoriserait silencieusement une régression future.

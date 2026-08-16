@@ -36,7 +36,6 @@
  * namespace est un chantier d'architecture, consigné à la dette. Ici il ne s'agit que d'un état
  * qui n'avait aucune raison d'être public.
  */
-"use strict";
 
 /**
  * Les configs de couches du profil actif, ou `undefined` tant qu'aucun profil n'est chargé.

@@ -2,6 +2,11 @@
 /**
  * PUB-TYPES: the declarations a package SHIPS must be REACHABLE (ARCHI S6).
  *
+ * 🔗 **Ce que cette gate NE couvre PAS est écrit une seule fois, dans l'en-tête de
+ * `check-shipped-specifiers.cjs` (§ « Le recouvrement des gates du tarball »).** Elle
+ * vérifie l'ATTEIGNABILITÉ de l'entrée `types` — jamais ce que cette entrée importe,
+ * puisqu'elle ne compile rien. Lire ce tableau avant de conclure d'un vert d'ici.
+ *
  * ## The failure this exists to catch
  *
  * A package can emit `dist/types/**`, list `dist/` in `files[]`, publish the

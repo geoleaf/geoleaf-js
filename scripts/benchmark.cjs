@@ -167,7 +167,7 @@ function measureCodeMetrics() {
 
     let totalFiles = 0;
     let totalLines = 0;
-    let largeFiles = []; // Files > 500 lines
+    const largeFiles = []; // Files > 500 lines
 
     function countLinesInFile(filepath) {
         const content = fs.readFileSync(filepath, "utf8");

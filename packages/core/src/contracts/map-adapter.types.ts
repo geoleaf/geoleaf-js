@@ -17,7 +17,6 @@
  * Adapters normalise engine-specific coordinates to/from these types at their
  * boundary; no `maplibregl.*` types must ever appear in this file.
  */
-"use strict";
 
 import type { VectorTileLayerSpec, VectorTileStyleInput } from "./vector-tiles.contract.js";
 // Re-exported so `map-adapter.contract` stays the single import surface for adapter types.

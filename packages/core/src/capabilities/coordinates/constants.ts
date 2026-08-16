@@ -13,7 +13,6 @@
  * (`config.ts`), and the introspection schema (`coordinates-capability.ts`). Centralising it
  * here keeps the advertised default and the applied default identical by construction.
  */
-"use strict";
 
 /** Default number of decimals shown for latitude / longitude in the readout. */
 export const DEFAULT_COORDINATES_DECIMALS = 6;

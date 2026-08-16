@@ -47,7 +47,6 @@
  * `profiles.<id>` — never a replacement (`kernel/config/profile.ts`, all three return
  * paths). So `effectiveCfg ⊇ baseCfg`, and reading the gate later can only ever see more.
  */
-"use strict";
 
 import { MaplibreAdapter } from "../adapters/maplibre/maplibre-adapter.js";
 import { CapabilityRegistry } from "../kernel/api/capability-registry.js";

@@ -10,7 +10,6 @@
  * Single self-sufficient anchor (declaration + facade globals + module factory).
  * Profile-level, opt-out. NB: `scale-utils` (zoom/scale math) stays kernel.
  */
-"use strict";
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one module

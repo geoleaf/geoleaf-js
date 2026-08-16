@@ -40,7 +40,6 @@
  *
  * No top-level side effect: the global mount belongs to `globals/globals.api.ts`.
  */
-"use strict";
 
 import type {
     ICapabilitySchema,

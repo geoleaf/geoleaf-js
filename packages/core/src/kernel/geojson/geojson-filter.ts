@@ -11,8 +11,6 @@
  * Handles geometry-type filtering and per-feature visibility for filterFeatures().
  */
 
-"use strict";
-
 import { GeoJSONShared } from "./shared.ts";
 import type { GeoJSONFeature } from "./geojson-types.js";
 import type { GeoJSONLayerEntry, GeoJSONSharedState } from "./core-types.js";

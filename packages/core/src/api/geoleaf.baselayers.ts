@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  * @description Facade public of the module BaseLayers.
  * Exposes {@link Baselayers} for registering, activating, and managing

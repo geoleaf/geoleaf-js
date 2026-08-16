@@ -20,7 +20,6 @@
  * Mirrors the {@link StorageContract} seam pattern: a tiny, dependency-free registry
  * that lives in the core and is read by both sides at runtime.
  */
-"use strict";
 
 import type { SyncHandler } from "../../contracts/sync.contract.js";
 

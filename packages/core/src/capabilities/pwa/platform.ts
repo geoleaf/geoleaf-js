@@ -15,7 +15,6 @@
  * Both now share this single leaf module — it imports nothing (no capability, no
  * cycle) so any part of the core can depend on it.
  */
-"use strict";
 
 /** `true` when the current user agent is an iPhone / iPad / iPod. */
 export function isIOS(): boolean {

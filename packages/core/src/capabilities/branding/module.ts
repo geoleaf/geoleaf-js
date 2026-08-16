@@ -15,7 +15,6 @@
  * (opt-in, app-global). `init()` mounts the overlay via the capability lifecycle,
  * passing the boot-created map adapter; `destroy()` tears it down.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

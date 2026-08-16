@@ -43,7 +43,6 @@
  *
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
@@ -66,7 +65,11 @@ interface OutboxModule {
     updateState(
         id: string,
         state: string,
-        patch?: { attempts?: number; quarantine?: QuarantineReason | null }
+        patch?: {
+            attempts?: number;
+            quarantine?: QuarantineReason | null;
+            quarantineStatus?: number | null;
+        }
     ): Promise<void>;
     remove(id: string): Promise<void>;
 }
@@ -192,7 +195,15 @@ export async function requeueQuarantined(id: string): Promise<QuarantineOutcome>
     }
     if (!_causeIsLifted(found)) return { ok: false, refused: "causeStillPresent" };
 
-    await outbox.updateState(id, "pending", { attempts: 0, quarantine: null });
+    // 🛑 B-200 — `quarantineStatus` s'efface AVEC le motif, jamais après. Une entrée remise en
+    // file qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas encore
+    // eu lieu — exactement le genre de fait faux que cette ligne existe pour empêcher, et il
+    // serait plus trompeur qu'une absence puisqu'il a l'air d'une mesure.
+    await outbox.updateState(id, "pending", {
+        attempts: 0,
+        quarantine: null,
+        quarantineStatus: null,
+    });
     Log.info(`[Offline.Quarantine] ${id} — remise en file (cause « ${reason} » levée).`);
     return { ok: true };
 }

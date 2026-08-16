@@ -9,7 +9,6 @@
  * GeoLeaf GeoJSON Layer Manager - Store
  * Layer CRUD operations: get, query, remove, z-index
  */
-"use strict";
 
 import { GeoJSONShared } from "../shared.js";
 import { getLog } from "../../../utils/general/di-accessors.js";

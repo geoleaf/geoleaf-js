@@ -667,6 +667,20 @@
             "description": "Feuilles de style du panneau de gestion des couches, coloquées avec lui",
             "confidence": "haute",
             "rationale": "✅ Créé au STRUCT S8 (26/07/2026) — répertoire de colocalisation CSS de la feature, ouvert par E6. Reprend le patron des 11 `capabilities/*/css/`, déclaré référence du dépôt par T7."
+        },
+        "packages/core/src/kernel/storage/eviction-notice.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "L'unique ecouteur in-core de geoleaf:cache:evicted - rend l'avis d'eviction visible sur TOUTES les variantes, deploy-core comprise",
+            "confidence": "haute",
+            "rationale": "Ne à B-163 (R9), seul P1 du registre. Le core EMETTAIT l'alerte depuis deux endroits et ne l'ecoutait nulle part : le seul addEventListener du depot vivait dans offline-ui, plugin gate absent de deploy-core - la variante qui part chez un client. Ce n'est pas du poids, c'est de la perte de donnees. Le cablage est dans setupStorage() (B8) et NON dans _wireEvictionBridge(), qui n'est appele qu'apres l'enregistrement d'un Service Worker : y poser l'ecouteur l'aurait rendu aveugle au second emetteur, cache-manager, qui tourne hors PWA. Il appelle notifyPrimitive.notify() et non GeoLeaf.UI.notify : seule la primitive porte un repli console.*, l'autre est un no-op silencieux - passer par elle aurait reproduit le silence corrige."
         }
     }
 }

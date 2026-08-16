@@ -29,7 +29,6 @@
  * @see {@link Storage}
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { StorageContract } from "../shared/storage-contract.js";

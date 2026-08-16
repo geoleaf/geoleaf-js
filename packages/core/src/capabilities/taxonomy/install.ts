@@ -19,7 +19,6 @@
  * It also ships no preset config overlay: its gate is now opt-out, so it activates
  * correctly on its own (see `taxonomy-capability.ts`).
  */
-"use strict";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { TAXONOMY_CAPABILITY } from "./taxonomy-capability.js";

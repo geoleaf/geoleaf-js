@@ -19,7 +19,6 @@
  * (baseCfg is pre-merge but already carries the app-global block). Migrated from
  * the former root `branding` key.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 import { brandingConfigDefaults } from "./constants.js";

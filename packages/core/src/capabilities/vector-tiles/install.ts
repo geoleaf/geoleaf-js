@@ -25,7 +25,6 @@
  *   - `layer-manager/style.ts` — `if (layerData.isVectorTile && VectorTiles)` → falls back to
  *     `adapter.setLayerStyle`. Doubly safe: only this capability ever sets `isVectorTile`.
  */
-"use strict";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { VECTOR_TILES_CAPABILITY } from "./vector-tiles-capability.js";

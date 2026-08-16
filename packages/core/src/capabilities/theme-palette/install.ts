@@ -8,7 +8,6 @@
 /**
  * Capability installer for the in-core `theme-palette` capability.
  */
-"use strict";
 
 // ── Stylesheets ─────────────────────────────────────────────────────────────
 // The button/popover CSS *and* the palette blocks enter the module graph from HERE.

@@ -622,7 +622,7 @@ const ENV_ALLOWLIST = new Set(["Secret scan (gitleaks)"]);
  * classement : sur un corpus effondré, « 0 feuille non couverte » est vrai par accident.
  * L'ordre des codes ci-dessous suit cette exigence.
  *
- * @returns {{corpus: object, entries: object[], problems: object[], remoteOnly: object[]}} Le rapport.
+ * @returns {{corpus: object, entries: object[], problems: object[], notes: object[], remoteOnly: object[]}} Le rapport — `notes` porte les constats NON bloquants (PARITY-13).
  * @throws {Error} Si le répertoire de workflows est illisible, ou un fichier non parsable.
  */
 function classify() {
@@ -643,6 +643,8 @@ function classify() {
         rawUsesKeys: 0,
     };
     const problems = [];
+    /** B-83 — constats NOTÉS et non bloquants. Voir PARITY-13 pour le motif. */
+    const notes = [];
     const ciSteps = [];
 
     for (const f of files) {
@@ -822,6 +824,29 @@ function classify() {
         entries.push({ leaf, category: "ORPHAN", steps, gateReelle: true });
     }
 
+    // ── PARITY-13 — LE SENS INVERSE, jusqu'ici jamais posé (B-83) ──────────────────────
+    //
+    // 🛑 CE QUI MANQUAIT. Tout ce qui précède parcourt les feuilles de `ci.yml` et vérifie
+    // que `ci:local` les couvre — donc `ci.yml ⊆ ci:local`. **Rien ne regardait l'autre
+    // sens** : une gate ajoutée à `ci:local` et oubliée dans `ci.yml` passait sans un mot, et
+    // le dépôt croyait à une équivalence dont il n'avait démontré qu'une moitié.
+    //
+    // ⚠️ Le défaut est ORIENTÉ dans le sens dangereux : le local est le plus facile à
+    // enrichir — c'est là qu'on ajoute une gate en la développant — et le distant est le seul
+    // qui juge un clone frais. Une gate qui ne vit qu'en local ne verra jamais la famille de
+    // défauts que seul le runner rend (clone frais, 2-4 cœurs).
+    //
+    // 📌 Ce n'est PAS la même question que PARITY-11, qui vérifie que les étapes E2E restent
+    // hors du chemin `push`. Celle-ci porte sur l'EXISTENCE d'une contrepartie, celle-là sur
+    // sa CONDITION de déclenchement.
+    for (const leaf of localLeaves) {
+        if (ctx.ciLeaves.has(leaf)) continue;
+        notes.push({
+            code: "PARITY-13",
+            message: `« ${leaf} » — dans \`ci:local\`, sans feuille équivalente dans \`ci.yml\`.`,
+        });
+    }
+
     // PARITY-11 — les étapes différées à `--e2e` doivent rester HORS du chemin `push`.
     //
     // ⚠️ C'est le témoin de la promesse « ci:local vert ⟹ push vert », et sans lui cette
@@ -954,7 +979,7 @@ function classify() {
         if (a.gateReelle === false) continue;
         push(a.step, a.partialMotif || "action externe", a.motif, a.localEquivalent);
     }
-    return { corpus, entries, problems, actions, remoteOnly };
+    return { corpus, entries, problems, notes, actions, remoteOnly };
 }
 
 /**

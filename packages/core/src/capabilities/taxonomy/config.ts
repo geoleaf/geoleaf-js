@@ -12,7 +12,6 @@
  * the in-core equivalent of the former `GeoLeaf.Config.get` runtime seam) and
  * merges it over the built-in defaults.
  */
-"use strict";
 
 import type { TaxonomyConfig } from "./types.js";
 import { Config } from "../../kernel/config/config-primitives.js";

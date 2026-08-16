@@ -9,7 +9,6 @@
  * @fileoverview FetchManager - Handles HTTP fetching and response parsing
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";

@@ -21,7 +21,6 @@
  * (active unless a profile sets it to `false`), preserving the pre-migration
  * default-on behaviour. Migrated from the former `ui.permalink` block (S13).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 import { DEFAULT_PERMALINK_FIELDS } from "./constants.js";

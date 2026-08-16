@@ -24,7 +24,6 @@
  * and POI layers. GeoJSON layers are inserted before this sentinel,
  * ordered by ascending `zIndex`.
  */
-"use strict";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

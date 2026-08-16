@@ -9,7 +9,6 @@
  * GeoLeaf GeoJSON Layer Manager - Visibility
  * Show/hide/toggle layers, zoom-based visibility
  */
-"use strict";
 
 import { GeoJSONShared } from "../shared.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
@@ -134,8 +133,7 @@ LayerManager.showLayer = function (layerId: string) {
             }
         }
         const LabelButtonManager = GeoLeaf?._LabelButtonManager as
-            | LabelButtonManagerLike
-            | undefined;
+            LabelButtonManagerLike | undefined;
         if (LabelButtonManager) {
             LabelButtonManager.syncImmediate(layerId);
         }
@@ -183,8 +181,7 @@ LayerManager.hideLayer = function (layerId: string) {
             Labels.disableLabels(layerId);
         }
         const LabelButtonManager = GeoLeaf?._LabelButtonManager as
-            | LabelButtonManagerLike
-            | undefined;
+            LabelButtonManagerLike | undefined;
         if (LabelButtonManager) {
             LabelButtonManager.syncImmediate(layerId);
         }
@@ -210,8 +207,7 @@ LayerManager.toggleLayer = function (layerId: string) {
 
     // Read the current state through the visibility manager
     const VisibilityManager = getGeoLeaf()?._LayerVisibilityManager as
-        | VisibilityManagerLike
-        | undefined;
+        VisibilityManagerLike | undefined;
     if (!VisibilityManager) {
         Log.error("[GeoLeaf.GeoJSON] LayerVisibilityManager not available");
         return;
@@ -249,8 +245,7 @@ LayerManager.updateLayerVisibilityByZoom = function () {
     if (!state.map) return;
 
     const VisibilityManager = getGeoLeaf()?._LayerVisibilityManager as
-        | VisibilityManagerLike
-        | undefined;
+        VisibilityManagerLike | undefined;
     if (!VisibilityManager) {
         Log.error("[GeoLeaf.GeoJSON] LayerVisibilityManager unavailable");
         return;

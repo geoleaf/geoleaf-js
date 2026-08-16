@@ -348,6 +348,31 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows[0].state).toBe("quarantined");
         expect(rows[0].attempts).toBe(3);
         expect(rows[0].quarantine).toBe("rejectedByServer");
+        // 🛑 B-200 — LE DIAGNOSTIC VOYAGE AVEC L'ENTRÉE. `rejectedByServer` seul ne distingue
+        // pas un droit manquant (403, que l'exploitant corrige) d'une requête malformée (400,
+        // qui est notre bug). Le statut était connu au point de décision et ne vivait que dans
+        // un `Log.warn` — volatil, et personne n'ouvre une console sur le terrain.
+        expect(rows[0].quarantineStatus).toBe(403);
+    });
+
+    test("B-200 — une quarantaine SANS réponse serveur ne porte AUCUN statut", async () => {
+        // ⚠️ La contre-épreuve, et elle est nécessaire : sans elle, le cas ci-dessus ne
+        // distinguerait pas « le statut voyage » de « un statut est fabriqué à chaque
+        // quarantaine ». Un réseau muet n'a pas de statut — un `0` dirait « le serveur a
+        // répondu 0 », ce qui est faux et indiscernable d'une mesure.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("Muette") });
+        serve(() => {
+            throw new Error("réseau muet");
+        });
+
+        await pushOutbox();
+        await pushOutbox();
+        await pushOutbox();
+
+        const rows = await readAll("outbox");
+        expect(rows[0].state).toBe("quarantined");
+        expect(rows[0].quarantine).toBe("retryBudgetExhausted");
+        expect(rows[0].quarantineStatus).toBeUndefined();
     });
 
     // ── ② la réconciliation d'identité ────────────────────────────────────────────────────

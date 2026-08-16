@@ -18,7 +18,6 @@
  * `HTMLElement` (the tab strip), which the sanitising GeoLeaf event bus (JSON-only, no
  * DOM refs) cannot transport — mirroring the existing `geoleaf:toolbar:action` seam.
  */
-"use strict";
 
 /** Detail payload of the `geoleaf:desktop-panel:tabs-ready` seam event. */
 export interface DesktopTabsReadyDetail {

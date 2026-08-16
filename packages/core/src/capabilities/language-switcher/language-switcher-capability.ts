@@ -13,7 +13,6 @@
  * *user-facing default is OFF*, enforced late by `LanguageSwitcherLifecycle` on the
  * merged config.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

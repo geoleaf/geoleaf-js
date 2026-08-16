@@ -11,7 +11,6 @@
  * in-core equivalent of the former `GeoLeaf.Config.get` runtime seam) and merges it
  * over the built-in defaults. Migrated from the former `ui.permalink` block (S13).
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 import type { PermalinkConfig } from "../../kernel/config/geoleaf-config/config-types.js";

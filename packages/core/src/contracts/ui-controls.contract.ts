@@ -11,7 +11,6 @@
  * Interfaces and types for the UI controls cluster.
  * These types are internal to the core module — not part of the public API.
  */
-"use strict";
 
 import type { IMapAdapter } from "./map-adapter.contract.js";
 

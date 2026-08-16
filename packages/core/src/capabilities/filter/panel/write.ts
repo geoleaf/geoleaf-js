@@ -15,7 +15,6 @@
  * controls. Iterates over `config.fields` (trusted ids) rather than the serialised
  * ids (URL-sourced) so no untrusted value ever reaches a CSS selector.
  */
-"use strict";
 
 import type { FilterConfig, SerializedFilterField, SerializedFilterState } from "../types.js";
 

@@ -20,7 +20,6 @@
  * 3. A 'theme' action can override 'zoom' but not 'user'
  * 4. A 'zoom' action never changes the state if 'user' or 'theme' is active
  */
-"use strict";
 
 import { GeoJSONShared } from "./shared.js";
 import { getLog } from "../../utils/general/di-accessors.js";

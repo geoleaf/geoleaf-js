@@ -166,6 +166,8 @@ export interface FeatureRecord {
     readonly feature: unknown;
     /** Present only when `syncState` is `quarantined`. */
     readonly quarantine?: QuarantineReason;
+    /** Statut HTTP du dernier refus, quand la quarantaine en vient un. Voir {@link OutboxEntry.quarantineStatus}. */
+    readonly quarantineStatus?: number;
 }
 
 /**
@@ -196,6 +198,29 @@ export interface OutboxEntry {
     readonly attempts: number;
     readonly createdAt: number;
     readonly quarantine?: QuarantineReason;
+    /**
+     * Statut HTTP du refus qui a causé la quarantaine — absent quand elle ne vient pas d'une
+     * réponse serveur (`layerNoLongerWritable`, `networkError` au plafond).
+     *
+     * 🛑 **B-200 — POURQUOI UN CHAMP À CÔTÉ, ET NON UN `QuarantineReason` ENRICHI.** L'énoncé
+     * demandait de « faire porter le statut par `QuarantineReason` ». Pris à la lettre, cela
+     * transforme une union de littéraux en objet : **une rupture d'une surface publiée sur npm
+     * depuis le 12/08**, alors que `DEPRECATIONS.json` est vide — donc aucun retrait autorisé.
+     * Un champ **optionnel** rend le même service et n'ajoute rien à ce qu'un consommateur
+     * existant doit lire.
+     *
+     * ⚠️ **Le motif de la ligne : sur du terrain hors-ligne, le diagnostic doit VOYAGER AVEC
+     * L'ENTRÉE.** `pushOne` connaît le statut au point de décision et le journalise
+     * (`Log.warn(… refusé (403))`) — mais un log est volatil et personne n'ouvre une console
+     * sur le terrain. `rejectedByServer` seul ne distingue pas un droit manquant (403, que
+     * l'exploitant peut corriger) d'une requête malformée (400, qui est notre bug). Sans le
+     * statut, les deux se ressemblent, et la saisie reste bloquée sans que quiconque sache
+     * laquelle des deux causes traiter.
+     *
+     * 📌 Même conséquence que B-163, par l'autre bout : une perte dont l'utilisateur n'a aucun
+     * moyen de savoir qu'elle a eu lieu, ni pourquoi.
+     */
+    readonly quarantineStatus?: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -441,11 +466,7 @@ export interface DataOriginDeclaration {
  * to the moment the network drops.
  */
 export type LayerOfflineStatus =
-    | "notDeclared"
-    | "declaredNeverPulled"
-    | "pulled"
-    | "pulledStale"
-    | "pullFailed";
+    "notDeclared" | "declaredNeverPulled" | "pulled" | "pulledStale" | "pullFailed";
 
 /** What the sync report exposes for one layer. */
 export interface LayerSyncReport {

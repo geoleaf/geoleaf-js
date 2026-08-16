@@ -232,6 +232,10 @@ const SCRIPTS_ALLOWLIST = new Set([
     // ce gate ne voit que les fichiers trackés, donc il ne pouvait pas rougir tant que le
     // script restait sur le disque sans être indexé. L'entrée précède donc son commit.
     "verify-esm-purity.cjs",
+    // IMPL (B-258) — le complément de SHIP-SPEC et de knip : les deux partent d'un IMPORT,
+    // celui-ci couvre ce que le dépôt charge SANS importer (`happy-dom` nommé par une chaîne
+    // de config, `tsx` injecté dans NODE_OPTIONS). Vérifie aussi « déclaré = exécuté ».
+    "verify-implicit-deps.cjs",
     "verify-core-standalone.cjs",
     // ARCHI S7 (7.4) — frontière symétrique : plugins → core.
     "verify-plugin-core-boundary.cjs",
@@ -345,6 +349,16 @@ const SCRIPTS_ALLOWLIST = new Set([
     // le nouvel outillage s'écrit en ESM.
     "check-fgb-index.mjs", // outil manuel de préparation de données FlatGeobuf (CDC_plugin-flatgeobuf §187)
     "probe-boot-contract.mjs", // sonde manuelle Chromium — seul oracle de l'ORDRE des marks de boot
+    // Sonde manuelle Chromium — l'avis d'éviction de cache parvient-il à l'écran, et sur QUELLE
+    // variante ? Seul oracle de B-163 : les 10 tests unitaires de `eviction-notice.ts` éprouvent
+    // la logique de l'écouteur, aucun ne dit qu'il est CÂBLÉ dans le bundle livré — et c'est
+    // exactement le défaut d'origine, vu depuis l'autre bout (un écouteur correct et testé, dans
+    // un plugin absent de `deploy-core`). Elle vise les DEUX variantes, parce qu'un doublon
+    // plugin/core sur `deploy-full` serait la régression symétrique.
+    // ⚠️ Elle porte aussi ses deux propres mensonges, documentés sur place : un sélecteur faux
+    // (`.geoleaf-toast`) l'a rendue rouge partout Y COMPRIS sur le témoin, et un oracle par
+    // TOTAL de toasts la rendait rouge sur un avis parfait — la page porte des avis de boot.
+    "probe-eviction-notice.mjs",
     // Sonde manuelle Chromium — le SW est-il observable sous Playwright ? Elle PORTE le
     // piège qui coûte une journée à retrouver : `ignoreHTTPSErrors` est un drapeau de
     // CONTEXTE et ne couvre pas le fetch du SCRIPT de Service Worker, alors que
@@ -459,6 +473,28 @@ const SCRIPTS_ALLOWLIST = new Set([
     // `check-event-map-coverage.cjs` le jour où CC-07 en a eu besoin des quatre. Même règle,
     // même motif : un second lecteur déclenche l'extraction.
     "event-names.cjs",
+    // lib/ — B-153 ① : suivi d'état des blocs de code Markdown, conforme à CommonMark.
+    // Extrait parce que le motif de bascule était DUPLIQUÉ dans `check-dead-links.cjs`
+    // (extraction des liens ET des ancres) : corriger un site aurait laissé l'autre, et
+    // l'énoncé de la ligne insistait précisément sur ce point.
+    "md-fences.cjs",
+    // B-93 — cliquet décroissant sur le typage de `scripts/`, `e2e/` et des configs racine.
+    // Ces trois corpus n'étaient couverts par AUCUN tsconfig ; `tsconfig.tooling.json` les
+    // couvre en `checkJs`, et le premier run rend 301 erreurs. Un vert était impossible, un
+    // tsconfig sans `checkJs` aurait été un périmètre décoratif — le cliquet est la troisième
+    // voie, et l'idiome de ce dépôt : la dette est chiffrée et ne peut que rétrécir.
+    "check-tooling-typecheck.cjs",
+    // B-36 — cliquet décroissant sur les artefacts sans verdict d'existence. Le balayage T5
+    // avait atteint 100 % et la dette s'est reformée deux fois : une parade appliquée à la
+    // main sur chaque membre n'est pas une parade, c'est une liste — et une liste oublie.
+    "check-tree-qualification.cjs",
+    // lib/ — EM-03 (B-207) : un littéral d'événement qui contient un `:` DOIT commencer par
+    // `geoleaf:`. Séparé de `event-names.cjs` parce qu'il mesure l'INVERSE de son compagnon :
+    // celui-ci est ancré sur `^geoleaf:` et ne peut donc, par construction, rien dire d'un nom
+    // hors préfixe. La règle porte sur le deux-points et non sur une allowlist, parce que la
+    // mesure du 16/08 l'a rendue possible — aucun des 19 événements ÉTRANGERS relevés (DOM,
+    // Service Worker, MapLibre, Terra Draw) n'en contient, et les 3 du domaine en portaient tous.
+    "event-gates.cjs",
     // lib/ — les DEUX racines de la documentation, publique (`docs/`) et interne
     // (`_docs_projet/`), et le garde qui JETTE quand l'une manque. Onze scripts et trois
     // guards de test écrivaient `_docs_projet` en dur : un chemin en dur ne casse pas au

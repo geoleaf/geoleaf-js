@@ -2653,6 +2653,8 @@ CallSignature | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerCont
 CallSignature | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.getHandler.getHandler | doc:bd1881605470
 CallSignature | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.getHandlers.getHandlers | doc:0b3a9ba62917
 CallSignature | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.registerHandler.registerHandler | doc:9901ee96c684
+CallSignature | GeoLeaf Core API.kernel/storage/eviction-notice.unwireEvictionNotice.unwireEvictionNotice | doc:314302b37781
+CallSignature | GeoLeaf Core API.kernel/storage/eviction-notice.wireEvictionNotice.wireEvictionNotice | doc:2c260c899893
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit | doc:959895fe5059
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearAll.clearAll | doc:f3acf8dea437
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.close.close | doc:26c74e1b2060
@@ -4141,6 +4143,8 @@ Function | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.init 
 Function | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.isAvailable | doc:-
 Function | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.isPluginLoaded | doc:-
 Function | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.whenReady | doc:-
+Function | GeoLeaf Core API.kernel/storage/eviction-notice.unwireEvictionNotice | doc:-
+Function | GeoLeaf Core API.kernel/storage/eviction-notice.wireEvictionNotice | doc:-
 Function | GeoLeaf Core API.kernel/ui/collapsible-toggle.applyToggleCollapsed | doc:-
 Function | GeoLeaf Core API.kernel/ui/collapsible-toggle.createCollapsibleToggle | doc:-
 Function | GeoLeaf Core API.kernel/ui/desktop/desktop-panel-slots.appendRegistryTabButtons | doc:-
@@ -4802,6 +4806,7 @@ Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFeatureGeometry
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFeatureHoverDetail | doc:3e11dfefa763
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail | doc:eeea18345265
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterResetDetail | doc:be3b6698c098
+Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafGeolocationStateChangeDetail | doc:2a9450de7405
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail | doc:c3ae31f5ff64
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerToggleDetail | doc:fbed6be716f2
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafMapMoveDetail | doc:9a8043ccee70
@@ -7089,6 +7094,7 @@ Module | GeoLeaf Core API.kernel/shared/map-cursor | doc:-
 Module | GeoLeaf Core API.kernel/shared/storage-contract | doc:-
 Module | GeoLeaf Core API.kernel/shared/sync-handler-seam | doc:-
 Module | GeoLeaf Core API.kernel/storage | doc:-
+Module | GeoLeaf Core API.kernel/storage/eviction-notice | doc:-
 Module | GeoLeaf Core API.kernel/storage/facade | doc:-
 Module | GeoLeaf Core API.kernel/storage/offline-detector | doc:-
 Module | GeoLeaf Core API.kernel/storage/sw-register | doc:-
@@ -12920,6 +12926,7 @@ Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditTally.qu
 Property | GeoLeaf Core API.capabilities/offline/db/outbox.DBOutbox.__type.init | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.updateState.updateState.patch.__type.attempts | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.updateState.updateState.patch.__type.quarantine | doc:-
+Property | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.updateState.updateState.patch.__type.quarantineStatus | doc:88de8b8747f0
 Property | GeoLeaf Core API.capabilities/offline/db/preferences.DBPreferences.__type.init | doc:-
 Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.PoiRestoreDeps.getEntries | doc:6dc9f1922990
 Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.PoiRestoreDeps.layers | doc:c1e41077b861
@@ -13377,6 +13384,7 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filter:reset | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filters:applied | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:geojson:visibility-changed | doc:0343b741920c
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:geolocation:statechange | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:layer:added | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:layer:toggle | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:legend:ready | doc:e27a352029ed
@@ -13395,6 +13403,8 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:poi:click | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:poi:panel:close | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:poi:panel:open | doc:-
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:print:render:end | doc:-
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:print:render:start | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:sw:updated | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:table:closed | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:table:exportLayer | doc:-
@@ -13435,6 +13445,7 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetai
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail.geometryType | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail.layerIds | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterResetDetail.layerIds | doc:-
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafGeolocationStateChangeDetail.active | doc:60e86059433b
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail.geometryTypes | doc:4907d4e11235
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail.layerId | doc:241b1ef542e4
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail.sourceId | doc:b07479dcbb81
@@ -13592,6 +13603,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.feature | doc:
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.layerId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.localId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.quarantine | doc:961119081dba
+Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.quarantineStatus | doc:3b1a4fc574d2
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.serverId | doc:d00cc000c4fa
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.syncState | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.updatedAt | doc:c58b02dd52fb
@@ -13623,6 +13635,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.kind | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.layerId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.localId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.quarantine | doc:-
+Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.quarantineStatus | doc:a318f6002118
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.state | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.VersionMarker.kind | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.VersionMarker.value | doc:-
@@ -15288,7 +15301,7 @@ Reference | GeoLeaf Core API.api/geoleaf.core.Core | doc:6e8fe06f0a25
 Reference | GeoLeaf Core API.api/geoleaf.events.Events | doc:7351d64c06eb
 Reference | GeoLeaf Core API.api/geoleaf.helpers.Helpers | doc:7409de102d73
 Reference | GeoLeaf Core API.api/geoleaf.introspection.Introspection | doc:054f60ea865a
-Reference | GeoLeaf Core API.api/geoleaf.layer-manager.LayerManager | doc:-
+Reference | GeoLeaf Core API.api/geoleaf.layer-manager.LayerManager | doc:a2a2672abc61
 Reference | GeoLeaf Core API.api/geoleaf.legend.Legend | doc:db0e0f151dce
 Reference | GeoLeaf Core API.api/geoleaf.permalink.Permalink | doc:0a8ac024f747
 Reference | GeoLeaf Core API.api/geoleaf.pwa.InstallPromptConfig | doc:-
@@ -15296,7 +15309,7 @@ Reference | GeoLeaf Core API.api/geoleaf.pwa.PWA | doc:6bc7c18303c6
 Reference | GeoLeaf Core API.api/geoleaf.pwa.PWAConfig | doc:-
 Reference | GeoLeaf Core API.api/geoleaf.share.Share | doc:5b06f303ad30
 Reference | GeoLeaf Core API.api/geoleaf.storage.Storage | doc:fddcad28383e
-Reference | GeoLeaf Core API.api/geoleaf.ui.UI | doc:-
+Reference | GeoLeaf Core API.api/geoleaf.ui.UI | doc:349493541931
 Reference | GeoLeaf Core API.api/geoleaf.validators.Validators | doc:cc4f9e4d24ee
 Reference | GeoLeaf Core API.bundle-esm-entry.APIController | doc:-
 Reference | GeoLeaf Core API.bundle-esm-entry.APIFactoryManager | doc:-
@@ -15349,19 +15362,19 @@ Reference | GeoLeaf Core API.capabilities/filter/engine.ProximitySelection | doc
 Reference | GeoLeaf Core API.capabilities/filter/engine.RangeSelection | doc:-
 Reference | GeoLeaf Core API.capabilities/filter/engine.distinctFieldValues | doc:-
 Reference | GeoLeaf Core API.capabilities/filter/engine.expandCategorySelection | doc:-
-Reference | GeoLeaf Core API.capabilities/filter/engine.featureCentroid | doc:-
+Reference | GeoLeaf Core API.capabilities/filter/engine.featureCentroid | doc:983beb4c0e92
 Reference | GeoLeaf Core API.capabilities/filter/engine.featurePasses | doc:-
 Reference | GeoLeaf Core API.capabilities/filter/engine.fieldAppliesToLayer | doc:-
 Reference | GeoLeaf Core API.capabilities/filter/engine.fieldPredicate | doc:-
-Reference | GeoLeaf Core API.capabilities/filter/engine.getFieldTags | doc:-
-Reference | GeoLeaf Core API.capabilities/filter/engine.getFieldValue | doc:-
-Reference | GeoLeaf Core API.capabilities/filter/engine.haversine | doc:-
-Reference | GeoLeaf Core API.capabilities/filter/engine.normalizeTags | doc:-
+Reference | GeoLeaf Core API.capabilities/filter/engine.getFieldTags | doc:983beb4c0e92
+Reference | GeoLeaf Core API.capabilities/filter/engine.getFieldValue | doc:983beb4c0e92
+Reference | GeoLeaf Core API.capabilities/filter/engine.haversine | doc:983beb4c0e92
+Reference | GeoLeaf Core API.capabilities/filter/engine.normalizeTags | doc:983beb4c0e92
 Reference | GeoLeaf Core API.capabilities/filter/engine/field-access.haversine | doc:-
 Reference | GeoLeaf Core API.capabilities/filter/engine/field-access.normalizeTags | doc:-
 Reference | GeoLeaf Core API.capabilities/legend/legend-generator.LegendData | doc:-
 Reference | GeoLeaf Core API.capabilities/legend/legend-generator.LegendItemData | doc:-
-Reference | GeoLeaf Core API.capabilities/legend/public-api.Legend | doc:-
+Reference | GeoLeaf Core API.capabilities/legend/public-api.Legend | doc:b58b0dfdc483
 Reference | GeoLeaf Core API.capabilities/legend/types.TaxonomyCategory | doc:-
 Reference | GeoLeaf Core API.capabilities/legend/types.TaxonomyFieldMappings | doc:-
 Reference | GeoLeaf Core API.capabilities/permalink/permalink-sync.PermalinkState | doc:-

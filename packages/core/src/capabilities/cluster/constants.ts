@@ -33,7 +33,6 @@
  * held them together. `clusterConfigDefaults()` below is now the single source both the
  * declaration and the reader derive from.
  */
-"use strict";
 
 import type { ClusterConfig } from "./types.js";
 

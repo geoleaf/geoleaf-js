@@ -229,7 +229,6 @@ export default [
             // because of a matching ignore pattern » avec la seule entrée `"scripts/"`.
             // Le second motif ne changeait donc rien, et sa justification décrivait un
             // comportement d'ESLint qui n'est pas le sien.
-            "scripts/",
             // Demo extensions — explicitly non-production code
             // ("must NOT be deployed" / "browser-side scratch, NOT a production module").
             // Confirmed out of scope (S3.5).
@@ -1068,13 +1067,110 @@ export default [
     // A path written by hand does not break when a package moves, it silently stops
     // matching, and the rule reports success having scanned nothing (the failure mode
     // `probe-gate-visibility.cjs` exists to catch).
+    //
+    // 🛑 **B-95 — LE CORE ÉTAIT EXCLU, ET C'EST CE QUI A FAIT MONTER LE GISEMENT À 301.**
+    // Le filtre disait `.filter((p) => p.name !== "@geoleaf/core")`, **sans motif écrit**.
+    // La règle purgeait donc 16 paquets sur 17, en épargnant précisément celui qui porte le
+    // plus de fichiers. Résultat mesuré au 16/08 : **301** `"use strict"` sous
+    // `packages/core/src`, contre une poignée ailleurs.
+    //
+    // ⚠️ Et le mécanisme s'auto-entretenait : **tout fichier neuf du core héritait de la
+    // directive par imitation de ses voisins**, y compris écrit le matin même en soldant une
+    // autre ligne (`kernel/storage/eviction-notice.ts`, R9). Un gisement qui croît par simple
+    // conformité au voisinage ne se réduit pas en attendant — il monte à chaque lot.
+    //
+    // Le glob ne vise que `**/*.ts` : `kernel/storage/sw-core.js`, copié tel quel dans les
+    // variantes de déploiement et donc PAS un module ES, garde légitimement la sienne.
+    //
+    // 🛑 **ET `geojson-worker.ts` EST LE MÊME CAS, malgré son extension.** Il est `.ts`, donc
+    // le glob l'attrapait — mais il n'est jamais consommé comme module : `rollup.config.mjs`
+    // l'émet en SCRIPT CLASSIQUE pour un Web Worker. Sa directive n'est pas du poids mort,
+    // elle est porteuse.
+    //
+    // ⚠️ **Le retrait est sorti VERT au lint, au typecheck et sur 10 854 tests** — c'est
+    // `LIC-HEADERS/LIC-04` qui l'a attrapé, et par un symptôme sans rapport apparent : privé
+    // de la directive du source, le transpileur en réinjecte une **avant** la bannière de
+    // licence, qui cesse d'être en tête du fichier expédié. Un fichier dont la nature diffère
+    // de son extension ne se voit ni au type, ni au test — seulement à ce qu'il devient une
+    // fois construit.
     {
-        files: registry
-            .all()
-            .filter((p) => p.name !== "@geoleaf/core")
-            .map((p) => `${p.dir}/src/**/*.ts`),
+        files: registry.all().map((p) => `${p.dir}/src/**/*.ts`),
+        ignores: ["**/geojson-worker.ts"],
         rules: {
             strict: ["error", "never"],
+        },
+    },
+    // ── Outillage CommonJS de `scripts/` — B-88 ────────────────────────────────
+    //
+    // 🛑 CE RÉPERTOIRE N'A JAMAIS ÉTÉ LINTÉ. `"scripts/"` figurait dans les `ignores`
+    // globaux : `isPathIgnored()` rendait `true` pour les 134 fichiers, soit ~50 000 LOC —
+    // dont TOUTES LES GATES DU DÉPÔT. L'outillage qui garde le code était le seul corpus
+    // que rien ne gardait.
+    //
+    // ⚠️ Placé EN FIN DE TABLEAU, et ce n'est pas cosmétique : en flat config, le dernier
+    // bloc qui matche l'emporte. Posé plus haut, ses assouplissements étaient écrasés par
+    // le bloc de base — mesuré, 836 avertissements `no-console` de pur bruit.
+    //
+    // Les assouplissements, et leur motif — chacun mesuré, aucun de précaution :
+    //   · `no-console` — la sortie console EST le contrat de ces scripts, pas un oubli ;
+    //   · les limites de TAILLE (`max-lines`, `complexity`, `max-depth`,
+    //     `max-lines-per-function`) — une gate est un balayage linéaire avec ses
+    //     branches ; les fragmenter pour satisfaire un seuil rendrait le périmètre plus
+    //     dur à lire, ce qui est précisément le défaut que ces gates existent pour trouver ;
+    //   · `security/detect-non-literal-fs-filename` et `detect-non-literal-regexp` — leurs
+    //     chemins dérivent de littéraux `__dirname` et d'arguments CLI d'opérateur, jamais
+    //     d'une entrée non fiable.
+    //
+    // 🛑 CE QUI N'EST PAS ASSOUPLI, DÉLIBÉRÉMENT : `no-eval`, `no-implied-eval`,
+    // `no-new-func`, `no-script-url` et `security/detect-unsafe-regex` restent en `error`.
+    // `CLAUDE.md` interdit de les abaisser sans motif écrit à côté de la règle.
+    //
+    // ⚠️ Le premier run en a trouvé **19** (18 `detect-unsafe-regex`, 1 `no-new-func`), et la
+    // tentation était de les faire taire ici — le commentaire d'exclusion d'origine plaidait
+    // déjà que ces scripts « ne sont pas atteignables par un attaquant ». **C'est vrai
+    // aujourd'hui et ce n'est pas une propriété stable** : leurs regex mordent sur des noms de
+    // fichiers du dépôt, et le dépôt est public depuis le 12/08 — une PR suffit à en proposer
+    // un. Les 18 partent donc en SUPPRESSIONS, qui est une dette qui ne peut que rétrécir,
+    // et non en `off`, qui serait une permission permanente. Le seul `no-new-func` est traité
+    // par une dérogation LOCALE avec son motif écrit (`probe-boot-contract.mjs`).
+    // ⚠️ DEUX blocs et non un : `scripts/` porte 119 fichiers CommonJS et 15 ESM
+    // (`.mjs`, l'outillage récent). Un `sourceType` unique ferait échouer le parseur sur
+    // l'une des deux moitiés — et un fichier qui ne parse pas n'est pas linté, il est
+    // SAUTÉ. Les assouplissements sont identiques ; seul le mode de module change.
+    {
+        files: ["scripts/**/*.{cjs,js}"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "commonjs",
+            globals: { ...globals.node },
+        },
+        rules: {
+            "no-console": "off",
+            "max-lines": "off",
+            "max-lines-per-function": "off",
+            "max-depth": "off",
+            complexity: "off",
+            "security/detect-non-literal-fs-filename": "off",
+            "security/detect-non-literal-regexp": "off",
+            "security/detect-object-injection": "off",
+        },
+    },
+    {
+        files: ["scripts/**/*.mjs"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: { ...globals.node },
+        },
+        rules: {
+            "no-console": "off",
+            "max-lines": "off",
+            "max-lines-per-function": "off",
+            "max-depth": "off",
+            complexity: "off",
+            "security/detect-non-literal-fs-filename": "off",
+            "security/detect-non-literal-regexp": "off",
+            "security/detect-object-injection": "off",
         },
     },
 ];

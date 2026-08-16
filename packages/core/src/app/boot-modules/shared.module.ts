@@ -34,7 +34,6 @@
  * after the profile resources load), so these lifecycles gate post-merge. `offline` reads
  * `modules.pwa.enabled` out of THAT bag — a condition, available to it whatever its rank.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

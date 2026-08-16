@@ -26,7 +26,6 @@
  * of the style spec and are still wiped by `setStyle()`; the adapter re-registers
  * them separately after the swap.
  */
-"use strict";
 
 /** Set of MapLibre source + layer ids that GeoLeaf owns and must preserve. */
 export interface OwnedStyleIds {

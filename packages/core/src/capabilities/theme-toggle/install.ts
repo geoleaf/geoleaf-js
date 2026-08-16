@@ -11,7 +11,6 @@
  * Profile-level; button defaults OFF (opt-in), gated late by the lifecycle.
  * NB: the theme engine itself (`_UITheme`, `ui.applyTheme`) stays kernel.
  */
-"use strict";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { THEME_TOGGLE_CAPABILITY } from "./theme-toggle-capability.js";

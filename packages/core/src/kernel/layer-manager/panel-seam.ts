@@ -21,7 +21,6 @@
  * ⚠️ The control is rebuilt on a destroy → recreate cycle, so this event fires more
  * than once per session. **Subscribers must be idempotent.**
  */
-"use strict";
 
 /** Detail payload of the `geoleaf:layer-manager:panel` seam event. */
 export interface LayerManagerPanelDetail {

@@ -137,6 +137,10 @@ const lang_de: LangDict = {
     "ui.notification.close_char": "\u00d7",
     "ui.branding.default_text": "Entwickelt von \u00a9 GeoLeaf with MapLibre",
     "ui.branding.not_configured": "\u26a0 Branding nicht konfiguriert",
+    // \u2500\u2500 UI texts / Cache \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    // B-163 \u2014 see the note in `lang-fr.ts`: `{0}` is positional (`getLabel`), not `{count}`.
+    "storage.notif.cacheEvicted": "{0} Offline-Element(e) entfernt, um Platz zu schaffen",
+    // \u2500\u2500 UI texts / Offline \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     "ui.offline.badge": "\u26a0\ufe0f Offline",
     "aria.offline.badge_title": "Offline-Modus aktiv",
     "ui.theme.select_placeholder": "Ein Thema ausw\u00e4hlen...",

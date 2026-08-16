@@ -97,8 +97,7 @@ export function getAvailableLayers(): TableAvailableLayer[] {
 export function getAvailableVisibleLayers(): TableAvailableLayer[] {
     const available = getAvailableLayers();
     const VisibilityManager = _g.GeoLeaf._LayerVisibilityManager as
-        | TableVisibilityManager
-        | undefined;
+        TableVisibilityManager | undefined;
     const geojson = _getGeoJSON();
     return available.filter((layer: TableAvailableLayer) => {
         if (VisibilityManager && typeof VisibilityManager.getVisibilityState === "function") {
@@ -132,7 +131,24 @@ export function attachMapEvents(
         }, 150);
     };
 
-    map.on("geoleaf:filters:changed", () => {
+    // 🛑 B-204 — CET ABONNEMENT ÉTAIT MORT DEUX FOIS, et le fichier portait la preuve à trois
+    // lignes d'écart. Il s'écrivait `map.on("geoleaf:filters:changed", …)` :
+    //
+    //   ① le NOM n'est émis par rien — le vrai est `geoleaf:filters:applied`
+    //     (`core/capabilities/filter/apply.ts`, `filter/public-api.ts`) ;
+    //   ② le BUS est le mauvais — `filters:applied` part par `dispatchGeoLeafEvent()`, donc sur
+    //     `document`. Le bus MapLibre ne porte que TROIS événements, tous émis par
+    //     `kernel/geojson/` via `map.fire()`. **Corriger le seul nom aurait laissé
+    //     l'abonnement tout aussi mort**, sur un canal où personne ne parle.
+    //
+    // Conséquence pour l'utilisateur : le tableau ne se rafraîchissait **jamais** en appliquant
+    // un filtre. Ce n'était pas du confort — les lignes affichées contredisaient la carte.
+    //
+    // ⚠️ Les deux lignes voisines montrent les deux patrons corrects : `map.on()` pour
+    // `layers-loaded` (réellement `fire()` sur le bus carte) et `document.addEventListener()`
+    // pour `theme:applied`. Le défaut n'était pas une ignorance du modèle, c'était un nom
+    // recopié.
+    document.addEventListener("geoleaf:filters:applied", () => {
         if (tableState._isVisible && tableState._currentLayerId) {
             refreshCallback();
         }

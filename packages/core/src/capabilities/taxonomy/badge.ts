@@ -18,7 +18,6 @@
  * popup uncoloured. So the field name is compared against the layer binding's own
  * `categoryField` / `subCategoryField` — which taxonomy already knows.
  */
-"use strict";
 
 import type {
     ResolvedBadgeStyle,

@@ -18,7 +18,6 @@
  * (CoordinatesLifecycle on `app:ready`, merged config) enforces the real value.
  * Migrated from the former `ui.showCoordinates` flag.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 import { DEFAULT_COORDINATES_DECIMALS } from "./constants.js";

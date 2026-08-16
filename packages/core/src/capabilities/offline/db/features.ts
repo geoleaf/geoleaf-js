@@ -29,7 +29,6 @@
  *
  * @version 3.1.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";

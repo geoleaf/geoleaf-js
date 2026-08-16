@@ -11,7 +11,6 @@
  *
  * Extracted from layer-manager/renderer.ts (Sprint 1 roadmap split).
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { GeoJSONCore } from "../geojson/core.js";

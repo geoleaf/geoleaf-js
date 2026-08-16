@@ -151,8 +151,35 @@
         "typecheck": {
             "dependsOn": ["^build"],
             "outputs": [],
+            // ── B-84 — `examples/**` AJOUTÉ aux inputs le 16/08/2026 ──────────────────
+            //
+            // Le tsconfig du core porte `include: ["src/**/*", "examples/**/*"]` et compile
+            // donc `examples/minimal/entry.ts` — la recette documentée du bundle allégé, dont
+            // le commentaire du tsconfig dit qu'elle est typée EXPRÈS. Les inputs ne citaient
+            // que `src/`, si bien qu'une modification de la recette n'invalidait pas le cache :
+            // turbo restituait un vert obtenu AVANT la modification.
+            //
+            // 🛑 Le défaut n'était donc pas « des fichiers non typés » mais un FAUX VERT PAR
+            // CACHE — la tâche avait bien tourné, sur un état antérieur. C'est plus discret
+            // qu'une absence de couverture : la gate a un verdict, il est simplement périmé.
+            //
+            // ⚠️ Le SENS de l'alignement a été vérifié avant d'agir, comme la roadmap l'exige.
+            // `examples/consumer` est déjà dans l'`exclude` du tsconfig — le partage a été pensé
+            // une fois, et c'est `inputs` qui était en retard sur `include`, pas l'inverse.
+            // 🛑 ET UNE NÉGATION A ÉTÉ ESSAYÉE PUIS RETIRÉE — elle désactivait CE QU'ELLE
+            // AFFINAIT. La première rédaction portait `"!examples/dist/**"` pour écarter la
+            // sortie de build. Mesuré au canari : avec la négation, une modification de
+            // `examples/minimal/entry.ts` laissait la tâche EN CACHE (`1 cached`) ; sans elle,
+            // le cache est invalidé (`0 cached`). Turbo traite un `inputs` porteur d'une
+            // négation autrement qu'une simple liste, et le motif positif cessait de mordre.
+            //
+            // ⚠️ C'est la classe même que cette roadmap répare : une entrée qui a l'AIR d'un
+            // raffinement et qui annule la couverture, sans rien dire. Elle est inutile de
+            // surcroît — `examples/dist` ne contient aucun `.ts`, donc `examples/**/*.ts` ne
+            // l'atteint pas.
             "inputs": [
                 "src/**/*.ts",
+                "examples/**/*.ts",
                 "tsconfig.json",
                 "package.json",
                 "$TURBO_ROOT$/packages/build-config/**"

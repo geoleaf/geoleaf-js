@@ -15,7 +15,6 @@
  * name it cannot read is stripped from the production CSS — the control would render
  * unstyled with every test still green (the trap Sprint 1 walked into).
  */
-"use strict";
 
 import { domCreate } from "../../utils/general/dom-helpers.js";
 import { getLabel, getActiveLang } from "../../utils/i18n/i18n.js";

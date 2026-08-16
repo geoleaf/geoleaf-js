@@ -13,7 +13,6 @@
  * (merged config), late-gates on `enabled` (opt-out) and on at least one active
  * scale type — reproducing the former `initScaleControl` guard.
  */
-"use strict";
 
 import { ScaleControl, type ScaleMapLike } from "./scale-control.js";
 import { getScaleConfig } from "./config.js";

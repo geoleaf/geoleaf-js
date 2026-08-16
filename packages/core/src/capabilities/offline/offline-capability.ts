@@ -28,7 +28,6 @@
  * Config gate: `modules.offline.enabled`. **Opt-in** (`enableWhenAbsent: false`) — the
  * offline engine is off (no chunk fetched) unless a profile explicitly enables it.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

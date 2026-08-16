@@ -128,7 +128,10 @@ function _stopGeolocation(
         geoState.recenterBtn = null;
     }
     map.getContainer().dispatchEvent(
-        new CustomEvent("gl:geoloc:statechange", { detail: { active: false }, bubbles: true })
+        new CustomEvent("geoleaf:geolocation:statechange", {
+            detail: { active: false },
+            bubbles: true,
+        })
     );
     Log?.info("[Geolocation] Geolocation disabled");
 }
@@ -240,7 +243,10 @@ function _onGeoPositionSuccess(
         _uiNotif()?.success?.(getLabel("toast.geoloc.position_found"), POSITION_FOUND_TOAST_MS);
         map.on("moveend", onMoveEnd);
         map.getContainer().dispatchEvent(
-            new CustomEvent("gl:geoloc:statechange", { detail: { active: true }, bubbles: true })
+            new CustomEvent("geoleaf:geolocation:statechange", {
+                detail: { active: true },
+                bubbles: true,
+            })
         );
     } else {
         _checkRecenterVisibility(map, geoState);

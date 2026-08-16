@@ -16,7 +16,6 @@
  * - Removing layers by profile
  * - Managing cache metadata (ETag, Last-Modified)
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

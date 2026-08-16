@@ -19,7 +19,6 @@
  * `maplibregl.Popup` — the marker-per-POI design predates the S9 dissolution and
  * never survived it.
  */
-"use strict";
 
 import { toClusterCirclePaint } from "./maplibre-style-converter.js";
 import { SYNC_PENDING } from "./maplibre-sync-badge.js";

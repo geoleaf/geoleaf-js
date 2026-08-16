@@ -104,6 +104,7 @@
  */
 
 import type { GeoLeafEventMap, GeoLeafRawEventMap } from "../../contracts/event-bus.contract.js";
+import { Log } from "../../utils/log/index.js";
 
 /**
  * Everything a consumer may SUBSCRIBE to — the sanitised bus plus the raw DOM-carrying seams.
@@ -120,6 +121,50 @@ type GeoLeafListenableEventMap = GeoLeafEventMap & GeoLeafRawEventMap;
 type GeoLeafEventHandler<K extends keyof GeoLeafListenableEventMap> = (
     event: CustomEvent<GeoLeafListenableEventMap[K]>
 ) => void;
+
+/**
+ * Noms déjà signalés — un avertissement par nom, pas par appel.
+ *
+ * Un intégrateur qui s'abonne dans une boucle de rendu produirait sinon des centaines de
+ * lignes identiques, et une console noyée n'avertit plus personne.
+ */
+const _warnedNames = new Set<string>();
+
+/**
+ * Avertit quand un nom d'événement sort du domaine `geoleaf:`.
+ *
+ * 🛑 **B-240 — POURQUOI UN AVERTISSEMENT PLUTÔT QU'UN REFUS, ET POURQUOI ICI.**
+ *
+ * `on()` fait `document.addEventListener(event, …)` **sans rien préfixer** : le nom passe
+ * verbatim. Un abonnement à `"popup:action"` au lieu de `"geoleaf:popup:action"` est donc
+ * **nécessairement mort** — et il l'est **en silence**, puisque le DOM accepte n'importe quelle
+ * chaîne. Mesuré chez l'aval : trois abonnements de `GeoLeafMapView.js` sont dans ce cas depuis
+ * qu'ils ont été écrits, sur un canal enrichi exprès pour eux.
+ *
+ * ⚠️ **Le typage ne protège pas la personne concernée.** `K extends keyof
+ * GeoLeafListenableEventMap` refuse le nom fautif à la compilation — mais le consommateur qui
+ * s'est trompé est en **JavaScript**, dans une base Odoo qui ne compile pas nos types. La
+ * garantie existe précisément là où elle n'est pas lue.
+ *
+ * ✅ **C'est le geste du dépôt quand un fait ne peut pas être gaté chez celui qui en a besoin :
+ * le faire VOYAGER avec l'artefact**, comme `SERVEUR.md` part avec le livrable parce qu'aucune
+ * gate ne voit le nginx de l'intégrateur. `EM-03` ferme cette classe pour NOTRE code ; rien ne
+ * peut la fermer dans le code d'un consommateur, sauf l'API elle-même au moment de l'appel.
+ *
+ * 🖐 **Il avertit, il ne refuse pas.** Refuser casserait à l'exécution un intégrateur dont le
+ * seul tort est d'avoir écrit un nom que nous acceptions hier — sur une API publiée, et avec un
+ * `DEPRECATIONS.json` vide. L'avertissement rend le défaut visible sans rien rompre.
+ */
+function _warnIfOutOfDomain(event: string): void {
+    if (event.startsWith("geoleaf:") || _warnedNames.has(event)) return;
+    _warnedNames.add(event);
+    Log.warn(
+        `[GeoLeaf.Events] « ${event} » ne commence pas par « geoleaf: » — cet abonnement ne se ` +
+            "déclenchera JAMAIS. Les événements GeoLeaf portent tous le préfixe du domaine, et " +
+            "cette API ne l'ajoute pas : le nom est passé tel quel à `document`. " +
+            `Vouliez-vous « geoleaf:${event} » ?`
+    );
+}
 
 /**
  * Public GeoLeaf Events API.
@@ -142,6 +187,7 @@ export const Events = {
      */
     on<K extends keyof GeoLeafListenableEventMap>(event: K, handler: GeoLeafEventHandler<K>): void {
         if (typeof document === "undefined") return;
+        _warnIfOutOfDomain(event as string);
         document.addEventListener(event, handler as EventListener);
     },
 
@@ -169,6 +215,7 @@ export const Events = {
         handler: GeoLeafEventHandler<K>
     ): void {
         if (typeof document === "undefined") return;
+        _warnIfOutOfDomain(event as string);
         document.removeEventListener(event, handler as EventListener);
     },
 
@@ -191,6 +238,7 @@ export const Events = {
         handler: GeoLeafEventHandler<K>
     ): void {
         if (typeof document === "undefined") return;
+        _warnIfOutOfDomain(event as string);
         document.addEventListener(event, handler as EventListener, { once: true });
     },
 };

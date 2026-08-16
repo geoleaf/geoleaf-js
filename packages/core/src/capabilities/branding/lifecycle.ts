@@ -13,7 +13,6 @@
  * replacing the former #21 call in `ui.module.ts`. The map adapter is the
  * boot-created `MaplibreAdapter` forwarded through `ICoreModule.init(adapter)`.
  */
-"use strict";
 
 import { Branding } from "./branding.js";
 import type { BrandingMapLike } from "./types.js";

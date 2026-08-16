@@ -19,7 +19,6 @@
  *   2. {@link registerPresetModules} — register the gated lifecycle module for
  *      every installer that declares a `createModule` factory.
  */
-"use strict";
 
 import type { PresetManifest } from "../contracts/preset.contract.js";
 import type {

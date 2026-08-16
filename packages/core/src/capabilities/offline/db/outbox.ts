@@ -45,7 +45,6 @@
  *
  * @version 3.0.0
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 import type { OutboxEntry, QuarantineReason } from "../../../contracts/sync.contract.js";
@@ -86,7 +85,12 @@ export interface OutboxDBInstance {
     updateState(
         id: string,
         state: string,
-        patch?: { attempts?: number; quarantine?: QuarantineReason }
+        patch?: {
+            attempts?: number;
+            quarantine?: QuarantineReason | null;
+            /** B-200 — statut HTTP du refus. `null` l'efface au rejeu. */
+            quarantineStatus?: number | null;
+        }
     ): Promise<void>;
     remove(id: string): Promise<void>;
     count(): Promise<number>;

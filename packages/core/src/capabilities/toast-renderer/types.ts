@@ -16,7 +16,6 @@
  * The kernel `notify()` primitive keeps its own zero-dependency contract in
  * `contracts/notify.contract.ts` — this file is the *rich* renderer surface.
  */
-"use strict";
 
 /**
  * Supported notification types.

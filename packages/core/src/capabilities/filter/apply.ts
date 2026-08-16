@@ -17,7 +17,6 @@
  * **The single writer of the layer filter.** A second, pure-native path lived in
  * `taxonomy-options.ts` until S5/N-4; it was retired rather than wired (see that module).
  */
-"use strict";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/index.js";
 import { GeoJSONCore } from "../../kernel/geojson/index.js";

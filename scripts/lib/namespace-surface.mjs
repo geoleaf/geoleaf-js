@@ -58,23 +58,23 @@
  * @returns {{ keys: string[], kinds: Record<string,string>, members: Record<string,string[]> }}
  */
 export function walkNamespace(root, opts) {
-    var descend = (opts && opts.descend) || [];
-    var keys = Object.keys(root).sort();
-    var kinds = {};
-    var members = {};
+    const descend = (opts && opts.descend) || [];
+    const keys = Object.keys(root).sort();
+    const kinds = {};
+    const members = {};
 
     // Depth-2 member names: own enumerable keys PLUS prototype methods (a façade may be a class
     // instance), minus `constructor` and minus anything `_`-prefixed. Read by descriptor too:
     // a getter at depth 2 is recorded by name, never invoked.
-    var memberNames = function (value) {
-        var found = {};
-        var obj = value;
+    const memberNames = function (value) {
+        const found = {};
+        let obj = value;
         while (obj && obj !== Object.prototype && obj !== Function.prototype) {
-            var own = Object.getOwnPropertyNames(obj);
-            for (var i = 0; i < own.length; i++) {
-                var n = own[i];
+            const own = Object.getOwnPropertyNames(obj);
+            for (let i = 0; i < own.length; i++) {
+                const n = own[i];
                 if (n === "constructor" || n.charAt(0) === "_") continue;
-                var d = Object.getOwnPropertyDescriptor(obj, n);
+                const d = Object.getOwnPropertyDescriptor(obj, n);
                 if (!d || d.enumerable === false) {
                     // Prototype methods are non-enumerable — keep those, drop the rest.
                     if (obj === value) continue;
@@ -86,14 +86,14 @@ export function walkNamespace(root, opts) {
         return Object.keys(found).sort();
     };
 
-    for (var i = 0; i < keys.length; i++) {
-        var k = keys[i];
-        var d = Object.getOwnPropertyDescriptor(root, k);
+    for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        const d = Object.getOwnPropertyDescriptor(root, k);
         if (d && typeof d.get === "function") {
             kinds[k] = "getter";
             continue; // never .value, never d.get(), never descend
         }
-        var v = d ? d.value : undefined;
+        const v = d ? d.value : undefined;
         kinds[k] =
             typeof v === "function"
                 ? "function"

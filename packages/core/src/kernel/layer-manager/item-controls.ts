@@ -11,7 +11,6 @@
  *
  * Extracted from layer-manager/renderer.ts (Sprint 1 roadmap split).
  */
-"use strict";
 
 import { StyleSelector } from "./style-selector.js";
 import { _UIComponents } from "../ui/components.js";

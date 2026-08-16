@@ -15,7 +15,6 @@
  * / `poiConfig.clusterStrategies` / `poiConfig.disableClusteringAtZoom`) into one
  * namespace.
  */
-"use strict";
 
 import type { ClusterConfig } from "./types.js";
 import { clusterConfigDefaults } from "./constants.js";

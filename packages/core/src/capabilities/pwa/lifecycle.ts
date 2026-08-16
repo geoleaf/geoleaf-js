@@ -26,7 +26,6 @@
  * Its install sub-flows (`InstallPrompt` / `IosBanner`) DO hold state (global listeners and
  * a pending timer); `_reset` releases them so repeated `initApp()` calls stay clean (S7.5).
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { SWRegister } from "../../kernel/storage/index.js";

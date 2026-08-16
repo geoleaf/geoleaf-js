@@ -28,7 +28,6 @@
  * ⚠ This id-space is the MapLibre ATLAS one. The DOM id-space (`<use href="#…">`,
  * used by feature-info) is separate and always RAW — see `resolveTitleIcon`.
  */
-"use strict";
 
 import type { TaxonomyCategory } from "./types.js";
 

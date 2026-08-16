@@ -9,7 +9,6 @@
  * GeoLeaf Theme Applier - UI Sync
  * Synchronization of the UI : selector de style, legend, fitBounds
  */
-"use strict";
 
 import { ThemeApplierCore as _TA } from "./core.js";
 import type { ThemeApplierModule, ThemeBounds } from "./core.js";

@@ -13,7 +13,6 @@
  * (`addGeoJSONLayer`). Idempotent: existing endpoint layers are removed first.
  * No-op when the layer has no binding or carries no line geometry.
  */
-"use strict";
 
 import type { RouteConfig, RouteMapAdapter, RouteEndpointStyle } from "./types.js";
 import { resolveLayerBinding, resolveEndpointConfig } from "./resolver.js";

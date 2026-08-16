@@ -30,7 +30,6 @@
  *
  * @version 1.0.0
  */
-"use strict";
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import type { LayerEditionPermissions, SyncOperationKind } from "../../contracts/sync.contract.js";

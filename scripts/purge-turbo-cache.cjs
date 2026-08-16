@@ -202,8 +202,8 @@ const doomed = [];
 let kept = 0;
 let keptSize = 0;
 let oldestKeptDays = 0;
-let byAge = { n: 0, size: 0 };
-let byBudget = { n: 0, size: 0 };
+const byAge = { n: 0, size: 0 };
+const byBudget = { n: 0, size: 0 };
 
 for (const [hash, g] of sorted) {
     const tooOld = NOW - g.mtime > MAX_AGE_MS;

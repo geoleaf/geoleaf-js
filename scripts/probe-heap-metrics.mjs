@@ -75,6 +75,13 @@ const AJOUT = ([count, api]) => {
     }
     const id = "_probe_mem_" + Date.now();
     const data = { type: "FeatureCollection", features };
+    // 🖐 B-88 — FAUX POSITIF INSTRUIT, pas une gêne. `detect-possible-timing-attacks` mord sur
+    // tout `===` dont un côté s'appelle `api`, `token`, `secret`… — il compare des NOMS, pas
+    // des valeurs. Ici `api` est le sélecteur de mode de la sonde (`"geoleaf"` ou l'adaptateur
+    // brut), lu depuis un argument CLI d'opérateur : il n'y a ni secret, ni comparaison en
+    // temps variable à protéger. Dérogation LOCALE et non extinction de la règle sur
+    // `scripts/` : le prochain `===` sur un vrai jeton doit encore rougir.
+    // eslint-disable-next-line security/detect-possible-timing-attacks
     if (api === "geoleaf") {
         map.addGeoJSONLayer(id, data);
     } else {

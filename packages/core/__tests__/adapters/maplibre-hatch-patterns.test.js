@@ -221,3 +221,38 @@ describe("generateHatchImage — OffscreenCanvas branch", () => {
         expect(() => generateHatchImage({ type: "vertical" })).not.toThrow();
     });
 });
+
+// ─── _createCanvas: OffscreenCanvas present but UNUSABLE ─────────────────────
+// B-258. The symmetric case of the block above: the constructor exists, so a
+// `typeof` guard admits it, but getContext("2d") yields null for want of a 2D
+// backend. That is happy-dom >= 20.11 without a canvasAdapter — and this test
+// pins the fallback WHATEVER version of happy-dom the root install resolves,
+// which is the point: the suite must not depend on which one it gets.
+
+describe("generateHatchImage — OffscreenCanvas present but unusable", () => {
+    let originalOffscreenCanvas;
+
+    beforeEach(() => {
+        originalOffscreenCanvas = globalThis.OffscreenCanvas;
+        globalThis.OffscreenCanvas = class UnusableOffscreenCanvas {
+            constructor(w, h) {
+                this.width = w;
+                this.height = h;
+            }
+            getContext() {
+                return null;
+            }
+        };
+    });
+
+    afterEach(() => {
+        globalThis.OffscreenCanvas = originalOffscreenCanvas;
+    });
+
+    it("falls back to the DOM canvas instead of throwing", () => {
+        HTMLCanvasElement.prototype.getContext.mockClear();
+        expect(() => generateHatchImage({ type: "diagonal" })).not.toThrow();
+        // Proof the fallback actually ran, not merely that nothing threw.
+        expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalled();
+    });
+});

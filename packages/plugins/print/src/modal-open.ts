@@ -130,8 +130,7 @@ async function _tryExport(
 ): Promise<Blob | null> {
     const exporter = (
         getGeoLeaf()?.Print as
-            | { _getExporter?(format: string): CanvasExporter | undefined }
-            | undefined
+            { _getExporter?(format: string): CanvasExporter | undefined } | undefined
     )?._getExporter?.(format);
     if (typeof exporter !== "function") {
         console.warn(`[GeoLeaf.Print] No exporter registered for format "${format}".`);
@@ -363,16 +362,16 @@ export async function openModal(
             state.session?.destroy();
             state.session = null;
             document.removeEventListener("keydown", _keyHandler);
-            document.removeEventListener("print:render:start", _spinnerShow);
-            document.removeEventListener("print:render:end", _spinnerHide);
+            document.removeEventListener("geoleaf:print:render:start", _spinnerShow);
+            document.removeEventListener("geoleaf:print:render:end", _spinnerHide);
             document.getElementById(MODAL_ID)?.remove();
             document.body.classList.remove("gl-print-modal-open");
             resolve(result);
         }
 
-        // Registered before the session is created — it emits print:render:start.
-        document.addEventListener("print:render:start", _spinnerShow);
-        document.addEventListener("print:render:end", _spinnerHide);
+        // Registered before the session is created — it emits geoleaf:print:render:start.
+        document.addEventListener("geoleaf:print:render:start", _spinnerShow);
+        document.addEventListener("geoleaf:print:render:end", _spinnerHide);
         document.addEventListener("keydown", _keyHandler);
 
         _wireInteractions(state, nativeMap, close);

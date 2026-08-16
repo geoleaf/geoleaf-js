@@ -15,7 +15,6 @@
  * `scaleConfig` of the real profiles (all scale types on, position bottomleft), so
  * the readout renders by default without any profile config.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

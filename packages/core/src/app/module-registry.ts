@@ -15,7 +15,6 @@
  *   with the full cycle path (e.g. `"A → B → A"`).
  * - Calls each module's `init()` in dependency order, `destroy()` in reverse.
  */
-"use strict";
 
 import type {
     ICoreModule,

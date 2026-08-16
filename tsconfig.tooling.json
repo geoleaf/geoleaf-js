@@ -1,0 +1,50 @@
+{
+    "//": [
+        "B-93 — le tsconfig de l'OUTILLAGE : scripts/, e2e/ et les configs racine.",
+        "",
+        "Ces trois corpus — 134 + 56 + 5 fichiers — n'étaient couverts par AUCUN tsconfig.",
+        "Ni éditeur, ni compilateur : la seule chose qui les regardait était ESLint, et encore,",
+        "pas `scripts/` avant B-88. Un corpus que rien ne type est un corpus où une faute de",
+        "frappe sur un nom de propriété se découvre à l'exécution, en CI, sur un run rouge dont",
+        "la cause est trois niveaux plus bas.",
+        "",
+        "🛑 POURQUOI `checkJs: true` ET NON PAS SEULEMENT `allowJs`. Un tsconfig sans `checkJs`",
+        "donnerait la résolution de modules aux éditeurs et RIEN D'AUTRE — une couverture qui ne",
+        "vérifie rien, c'est-à-dire exactement le défaut que la roadmap R1 existe pour supprimer.",
+        "Le choix a été arbitré explicitement : mieux vaut une dette chiffrée qu'un périmètre",
+        "décoratif.",
+        "",
+        "⚠️ CE FICHIER N'ÉMET RIEN et n'entre dans aucun build : `noEmit`. Il sert au typage",
+        "d'éditeur et à la gate de cliquet `check-tooling-typecheck.cjs`, qui compte les erreurs",
+        "et refuse qu'elles augmentent.",
+        "",
+        "`strict: false` est délibéré : le corpus est du JavaScript écrit sans annotations. Le",
+        "monter à `true` d'un coup produirait des milliers d'erreurs et rendrait le cliquet",
+        "inutilisable. Il se resserre quand le compte descend, pas avant."
+    ],
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "allowJs": true,
+        "checkJs": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "strict": false,
+        "types": ["node"]
+    },
+    "include": [
+        "scripts/**/*.cjs",
+        "scripts/**/*.mjs",
+        "scripts/**/*.js",
+        "e2e/**/*.js",
+        "e2e/**/*.mjs",
+        "eslint.config.mjs",
+        "knip.js",
+        "nyc.config.cjs",
+        "playwright.config.js",
+        "postcss.config.mjs"
+    ],
+    "exclude": ["**/node_modules/**", "**/dist/**"]
+}

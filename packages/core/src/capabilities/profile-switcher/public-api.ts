@@ -10,7 +10,6 @@
  *
  * Mounted on `GeoLeaf.ProfileSwitcher` via `api/geoleaf.profile-switcher.ts`.
  */
-"use strict";
 
 import {
     getAvailableProfiles,
@@ -41,8 +40,7 @@ export function buildPublicApi(): ProfileSwitcherPublicApi {
         list: (): AvailableProfileEntry[] => getAvailableProfiles(),
         current: (): string | null => {
             const config = getGeoLeaf()?.Config as
-                | { getActiveProfileId?: () => unknown }
-                | undefined;
+                { getActiveProfileId?: () => unknown } | undefined;
             const id =
                 typeof config?.getActiveProfileId === "function"
                     ? config.getActiveProfileId()

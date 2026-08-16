@@ -20,7 +20,6 @@
  * (enforced by ThemeToggleLifecycle, with `getThemeToggleConfig().enabled` defaulting
  * to `false`). Migrated from the former `ui.showThemeToggle` flag.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

@@ -13,7 +13,6 @@
  * plus capability read helpers (`isEnabled` / `getConfig`) for integrators / no-code
  * studio.
  */
-"use strict";
 
 import { buildShareUrl } from "./share-link.js";
 import { openShareModal, closeShareModal, isShareModalOpen } from "./share-modal.js";

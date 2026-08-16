@@ -13,7 +13,6 @@
  * GeoJSON pipeline. The reload path is the mechanism the demo layer used before T1b
  * removed it, and it is reproduced here — persistence excepted, which is new (S1).
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 

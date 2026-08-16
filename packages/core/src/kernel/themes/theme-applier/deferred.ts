@@ -9,7 +9,6 @@
  * GeoLeaf Theme Applier - Deferred
  * Loadsment deferred de layers, resolution de profile, gestion du cache
  */
-"use strict";
 
 import { ThemeApplierCore as _TA } from "./core.js";
 import type { ActiveProfile, ProfileLayerConfig, ThemeApplierModule } from "./core.js";
@@ -240,8 +239,7 @@ TA._loadLayerFromProfile = async function (layerId: string) {
         const found = _getActiveProfileAndLayers(layerId);
         if (!found) return null;
         const loader = LoaderSingleLayer._loadSingleLayer as unknown as
-            | SingleLayerLoader
-            | undefined;
+            SingleLayerLoader | undefined;
         if (!loader) return null;
         return await _buildAndLoadLayer(
             loader,

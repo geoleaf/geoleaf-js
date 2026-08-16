@@ -86,9 +86,42 @@
  * measurement is cheap. Converting the last three to ESM (or renaming them `.cjs`)
  * remains the prerequisite, and it is the same rule CLAUDE.md enforces on the two
  * plugins. Until someone re-runs the neutralisation, this stays.
+ *
+ * ## Measured 15/08/2026 — why the specifier is RESOLVED and no longer bare (B-258)
+ *
+ * This file used to inject the bare `--import tsx`. Node resolves a bare specifier
+ * given to `--import` relative to the process CWD, NOT relative to this file — so
+ * which copy of tsx got loaded depended on where npm had happened to place it:
+ *
+ *   • turbo swarm     → CWD = the package dir → walks up, lands on the ROOT copy
+ *   • `npx vitest run`→ CWD = repo root       → the ROOT copy
+ *   • core standalone → CWD = packages/core   → core's own nested copy
+ *
+ * And the root copy was there by accident: nothing declared tsx at the root, it was
+ * installed only as an OPTIONAL PEER of vite. npm 10 keeps such an entry, npm 11
+ * recalculates it away — and `publish.yml` is the one workflow that runs npm >= 11
+ * (trusted publishing). Measured: every suite but core's died on
+ * "Cannot find package 'tsx'". No gate could see it, because both `ci.yml` and
+ * `ci:local` run under the npm bundled with Node 22 (10.9.x).
+ *
+ * The fix is not to re-declare tsx somewhere hoisting happens to favour: it is to
+ * stop depending on hoisting at all. `import.meta.resolve` resolves from THIS
+ * module, inside the package that declares tsx (`@geoleaf/build-config`), and
+ * yields an absolute file URL. Where npm puts tsx no longer matters, and a path
+ * containing spaces survives (a file URL percent-encodes them; a bare path in
+ * NODE_OPTIONS would not).
  */
-if (!process.env.NODE_OPTIONS?.includes("--import tsx")) {
-    process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS || "", "--import tsx"]
+
+/** Absolute `file://` URL of tsx's ESM loader — its `"."` export, `dist/loader.mjs`. */
+const TSX_LOADER = import.meta.resolve("tsx");
+
+// Accepts BOTH forms: a parent process may have exported the historical bare
+// `--import tsx` before spawning us. Re-registering the loader is wasteful and the
+// duplicate hook has bitten before, so either form counts as "already installed".
+const ALREADY_INSTALLED = /--import[=\s]+(?:tsx(?=$|[\s"'])|\S*[/\\]tsx[/\\])/;
+
+if (!ALREADY_INSTALLED.test(process.env.NODE_OPTIONS ?? "")) {
+    process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS || "", `--import ${TSX_LOADER}`]
         .filter(Boolean)
         .join(" ");
 }

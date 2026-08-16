@@ -46,7 +46,6 @@
  * `PwaLifecycleConfig` already encodes the runtime half as a
  * `Pick<PWAConfig, …>`; `__tests__/capabilities/pwa/manifest-only-keys.test.js` pins it.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

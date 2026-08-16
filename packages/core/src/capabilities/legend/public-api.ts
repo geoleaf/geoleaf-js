@@ -20,6 +20,5 @@
  * `./lifecycle.ts` now imports the implementation directly instead of reaching through
  * this facade (it was the only capability lifecycle doing so).
  */
-"use strict";
 
 export { Legend } from "./legend.js";

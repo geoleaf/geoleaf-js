@@ -60,6 +60,25 @@ const args = process.argv.slice(2);
 const WITH_E2E = args.includes("--e2e");
 const BAIL = args.includes("--bail");
 
+// ⚠️ CE BLOC DOIT RESTER AU-DESSUS DE L'ANNOTATION `@type` qui suit. Posé entre elle et sa
+// déclaration, il la faisait porter sur CE `const` — `TOOLING-TS` a rendu
+// « Type 'number' is not assignable to type '{ name, run }[]' ». Une annotation ne vaut que
+// pour la déclaration IMMÉDIATEMENT suivante, exactement comme `eslint-disable-next-line`.
+// B-85 — dérivé, jamais écrit : le nombre de paquets portant un script `typecheck`.
+// `packages.cjs` jette si le registre est introuvable, donc ce compte ne peut pas devenir
+// zéro en silence.
+const TYPECHECK_PKGS = (() => {
+    const registry = require("./lib/packages.cjs");
+    const fsMod = require("node:fs");
+    return registry
+        .all()
+        .filter((p) =>
+            Boolean(
+                JSON.parse(fsMod.readFileSync(`${p.dir}/package.json`, "utf8")).scripts?.typecheck
+            )
+        ).length;
+})();
+
 /** @type {{name: string, run: string[]}[]} */
 const STEPS = [
     { name: "Build (turbo)", run: ["npx", "turbo", "run", "build"] },
@@ -131,11 +150,38 @@ const STEPS = [
     },
     { name: "Lint (0 errors, 0 warnings enforced)", run: ["npm", "run", "lint"] },
     // ARCHI S5 (5.5, constat A-12) — la tâche `typecheck` existait dans turbo.json et les
-    // 18 packages implémentaient le script, mais RIEN ne l'invoquait. Son premier run a
-    // remonté 45 erreurs, dont 39 introduites la veille par le S7 sans que rien ne les
-    // voie : plugin-storage typecheck via `tsconfig.typecheck.json`, un périmètre que
+    // packages l'implémentaient, mais RIEN ne l'invoquait. Son premier run a remonté
+    // 45 erreurs, dont 39 introduites la veille par le S7 sans que rien ne les voie :
+    // plugin-storage typecheck via `tsconfig.typecheck.json`, un périmètre que
     // `tsc -p tsconfig.json` ne couvre pas. C'est le gate qui rend ce script utile.
-    { name: "Typecheck (turbo, 18 packages)", run: ["npx", "turbo", "run", "typecheck"] },
+    //
+    // 🛑 B-85 — LE COMPTE EST DÉRIVÉ, PLUS ÉCRIT. Ce libellé disait « 18 packages » ; il y
+    // en a **17** au registre, dont **15** portent un script `typecheck`. Deux chiffres faux
+    // dans un seul mot, et le mot était le seul endroit où quiconque pouvait le lire.
+    //
+    // ⚠️ La correction n'est PAS d'écrire « 15 » : un nombre recopié se périme au prochain
+    // paquet ajouté ou retiré, exactement comme celui-ci — et il se périme EN SILENCE,
+    // puisqu'un libellé n'est vérifié par rien. Il se dérive de `packages.cjs`, seul endroit
+    // qui sache combien il y en a.
+    {
+        name: `Typecheck (turbo, ${TYPECHECK_PKGS} packages)`,
+        run: ["npx", "turbo", "run", "typecheck"],
+    },
+    // B-93 — `scripts/`, `e2e/` et les configs racine n'étaient couverts par AUCUN tsconfig.
+    // Cliquet décroissant plutôt que vert : le premier run rend 301 erreurs, et exiger zéro
+    // tout de suite reviendrait à ne pas poser la couverture. Le détail est dans l'en-tête du
+    // script, et la dette dans B-260.
+    {
+        name: "Typecheck de l'outillage (TOOLING-TS, cliquet)",
+        run: ["node", "scripts/check-tooling-typecheck.cjs"],
+    },
+    // B-36 — le balayage T5 avait atteint 100 %, et la dette s'est reformée DEUX fois : rien
+    // n'exigeait qu'un artefact neuf naisse jugé. Ce cliquet remplace la liste par une
+    // structure — il rougit le jour où un artefact arrive sans verdict.
+    {
+        name: "Qualification de l'arborescence (TREE-QUAL, cliquet)",
+        run: ["node", "scripts/check-tree-qualification.cjs"],
+    },
     { name: "Security audit — prod deps (M7)", run: ["node", "scripts/audit-ci.cjs"] },
     {
         name: "Security audit — full tree (informational)",
@@ -803,6 +849,18 @@ const STEPS = [
     },
     { name: "Profile contract (validate:profiles)", run: ["npm", "run", "validate:profiles"] },
     { name: "Version consistency", run: ["npm", "run", "versions:check"] },
+    // IMPL (B-258) — le pendant de SHIP-SPEC et de knip pour la classe qu'aucun des deux ne
+    // peut voir : un paquet que le dépôt CHARGE sans l'IMPORTER. `happy-dom` est nommé par une
+    // chaîne (`environment: "happy-dom"`), `tsx` est injecté dans NODE_OPTIONS — ni l'un ni
+    // l'autre n'est une arête du graphe de modules. Les deux ne tenaient qu'à une peer
+    // optionnelle auto-installée que npm ≥ 11 ne reconduit pas ; et seul `publish.yml` monte
+    // à npm ≥ 11, donc ni ce fichier ni `ci.yml` ne pouvaient le voir.
+    // ⚠️ Voisine de « Version consistency » à dessein : celle-ci lit les plages ENTRE paquets
+    // internes, celle-là lit ce qui est déclaré vs ce qui s'exécute vraiment.
+    {
+        name: "Implicit toolchain deps (IMPL — déclaré = exécuté)",
+        run: ["node", "scripts/verify-implicit-deps.cjs"],
+    },
 ];
 
 /**

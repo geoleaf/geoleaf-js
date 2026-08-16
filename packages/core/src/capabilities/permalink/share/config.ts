@@ -13,7 +13,6 @@
  *
  * Migrated from the former `ui.showShareButton` UI flag (S12).
  */
-"use strict";
 
 import { Config } from "../../../kernel/config/config-primitives.js";
 

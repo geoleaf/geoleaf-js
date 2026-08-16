@@ -16,8 +16,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
 import {

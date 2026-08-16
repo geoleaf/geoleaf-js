@@ -38,7 +38,6 @@
  * `geoleaf:init:mapCreate:start|end` perf marks bracketing map creation and nothing
  * else; and adapter DI through the internal `_adapter` option (no module-level seam).
  */
-"use strict";
 
 import type { IMapAdapter, GeoLeafBounds } from "../../contracts/map-adapter.contract.ts";
 import type { IGeoLeafConfig } from "../../contracts/config.contract.ts";

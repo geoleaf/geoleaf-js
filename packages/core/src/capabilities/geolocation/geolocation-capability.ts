@@ -19,7 +19,6 @@
  * Migrated from the former `ui.showGeolocation` flag. The GPS state singleton is
  * exposed via `GeoLeaf.Geolocation.getState()` for external consumers.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

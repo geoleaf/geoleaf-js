@@ -3,7 +3,6 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
-"use strict";
 
 /**
  * Composition root for the offline data engine (S14 Phase B — B3).

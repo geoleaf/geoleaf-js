@@ -5,8 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
-
 import { Log } from "../../utils/log/index.js";
 import { _state, PRIMARY_COMPACT_THRESHOLD, type ThemeEntry } from "./theme-selector-state.js";
 import { attachDOMEvent } from "./theme-selector-events.js";

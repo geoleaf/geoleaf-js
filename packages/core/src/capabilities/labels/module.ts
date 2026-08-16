@@ -15,7 +15,6 @@
  * (opt-out). `init()` wires the capability lifecycle (Labels init + the
  * `geoleaf:layer-item:controls` button seam); `destroy()` tears it down.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

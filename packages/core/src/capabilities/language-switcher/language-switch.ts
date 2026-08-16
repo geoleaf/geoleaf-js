@@ -13,7 +13,6 @@
  * re-rendering the whole UI — out of scope, and the reload is the mechanism the demo
  * layer used before T1b removed it.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { LANG_STORAGE_KEY } from "../../utils/i18n/i18n.js";

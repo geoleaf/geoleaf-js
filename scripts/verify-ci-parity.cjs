@@ -89,7 +89,7 @@ function main() {
         process.exit(1);
     }
 
-    const { corpus, entries, problems, actions } = result;
+    const { corpus, entries, problems, notes = [], actions } = result;
     const count = (cat) => entries.filter((e) => e.category === cat).length;
 
     console.log(
@@ -137,6 +137,32 @@ function main() {
             const tag = e.alive ? `${C.g}témoin OK${C.x}` : `${C.r}témoin KO${C.x}`;
             console.log(`  ${tag}  ${C.d}[${e.classe}]${C.x} ${e.leaf}`);
         }
+    }
+
+    // ── PARITY-13 — NOTÉE, jamais bloquante (B-83) ────────────────────────────────────
+    //
+    // 🛑 POURQUOI UNE NOTE ET NON UN ROUGE, et c'est un choix mesuré. Le sens inverse
+    // (`ci:local ⊄ ci.yml`) n'avait jamais été instrumenté : rien ne disait qu'une gate ajoutée
+    // en local restait absente du distant. Il l'est maintenant — mais le rendre BLOQUANT
+    // rougirait sur 13 feuilles dès sa pose, donc en permanence, donc il serait désarmé le
+    // jour même. C'est la même raison que CC-10 sur l'empreinte du manifeste aval.
+    //
+    // ⚠️ ET ELLE SUR-SIGNALE, DÉLIBÉRÉMENT NON CORRIGÉ ICI. Elle compare des FEUILLES DE
+    // COMMANDE, pas des couvertures : `ci.yml` lance `npx vitest run` là où `ci:local` passe par
+    // `scripts/run-tests.cjs` — même vérification, deux invocations. Une note qui sur-signale
+    // reste lisible ; un rouge qui sur-signale se contourne. Le tri des 13, et la décision de
+    // porter les vraies absences dans `ci.yml`, sont une DÉCISION à coût de CI — versée au
+    // registre, pas prise ici.
+    if (notes.length) {
+        console.log(
+            `\n${C.y}ℹ CI-PARITY — ${notes.length} feuille(s) locale(s) sans équivalent distant ` +
+                `(PARITY-13, non bloquant)${C.x}`
+        );
+        for (const n of notes) console.log(`  ${C.d}· ${n.message}${C.x}`);
+        console.log(
+            `  ${C.d}Compare des COMMANDES, pas des couvertures — une même vérification lancée\n` +
+                `  autrement des deux côtés apparaît ici. Tri et arbitrage : registre.${C.x}`
+        );
     }
 
     // Rapport des problèmes — les codes aveuglants d'abord, seuls s'il y en a.

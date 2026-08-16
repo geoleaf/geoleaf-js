@@ -14,7 +14,6 @@
  * opt-in: a field with no `layers` applies everywhere; a field with `layers`
  * applies only to those layers.
  */
-"use strict";
 
 import { featureCentroid, getFieldTags, getFieldValue, haversine } from "./field-access.js";
 import type { ActiveField, FeatureLike } from "./types.js";

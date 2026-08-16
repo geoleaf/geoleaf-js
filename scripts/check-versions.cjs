@@ -38,6 +38,11 @@
  * `host-runtime`) restent en `"*"` **à dessein** : elles visent des workspaces `private`, ne
  * partent dans aucun tarball, et le check 4 leur interdit déjà la position d'exécution.
  *
+ * 🔗 **Ce que le check 4 NE couvre PAS est écrit une seule fois**, dans l'en-tête de
+ * `check-shipped-specifiers.cjs` (§ « Le recouvrement des gates du tarball », B-87/B-232) :
+ * il lit des cartes de dépendances, **jamais les `.d.ts`**. Un vert d'ici ne dit rien de ce
+ * que le code émis importe.
+ *
  * ⚠️ Une plage dont la FORME n'est pas comprise est une ERREUR, jamais un passage silencieux
  * (même patron que `lib/packages.cjs`). Un vérificateur qui ignore ce qu'il ne sait pas lire
  * sort vert en n'ayant rien vérifié — c'est le mode d'échec que ce fichier existe pour tuer.

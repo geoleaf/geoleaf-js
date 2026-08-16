@@ -22,7 +22,6 @@
  * no longer drives the theme work eagerly (the block was removed from `initGeoJSON`),
  * so it never waits on this module.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

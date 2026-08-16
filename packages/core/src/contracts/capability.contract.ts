@@ -31,7 +31,6 @@
  * This matches the existing `modules.offline` / `modules.table` / `modules.geocoding`
  * pattern: presence of the config block activates the feature.
  */
-"use strict";
 
 // ─── ICapabilityFieldSchema ──────────────────────────────────────────────────
 

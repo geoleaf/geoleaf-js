@@ -248,7 +248,7 @@ export function activateGps(map: MeasureMap, onStop?: () => void): void {
     }
 
     // React if the user stops geolocation from outside (e.g., pill button click)
-    map.getContainer().addEventListener("gl:geoloc:statechange", _onGeolocStateChange);
+    map.getContainer().addEventListener("geoleaf:geolocation:statechange", _onGeolocStateChange);
 
     // Map tap = manual waypoint
     map.on("click", _onMapClick);
@@ -270,7 +270,10 @@ export function deactivateGps(): void {
     // Remove all listeners first (before any side effects that might re-trigger)
     const map = _map;
     if (map) {
-        map.getContainer().removeEventListener("gl:geoloc:statechange", _onGeolocStateChange);
+        map.getContainer().removeEventListener(
+            "geoleaf:geolocation:statechange",
+            _onGeolocStateChange
+        );
         map.off("click", _onMapClick);
         map.__geoleafExclusiveMode = false;
     }

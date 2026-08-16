@@ -28,7 +28,6 @@
  * Migrated from the former `ui.showThemeSelector` UI flag (extraction roadmap
  * theme-selector S8/F3).
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

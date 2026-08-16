@@ -48,7 +48,6 @@
  * @see globals/globals.api — `defineApiMethods`, the single writer
  * @see contracts/top-level-api.contract — the eleven, and what each of them owes
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import type { GeoLeafApiNamespace } from "./api-types.ts";

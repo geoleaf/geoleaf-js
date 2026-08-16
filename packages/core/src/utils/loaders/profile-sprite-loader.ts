@@ -23,7 +23,6 @@
  * inline `style="…"` attributes are stripped so an untrusted sprite cannot trip a
  * strict `style-src` CSP.
  */
-"use strict";
 
 import { Log } from "../log/index.js";
 import { getGeoLeaf } from "../general/geoleaf-global.js";

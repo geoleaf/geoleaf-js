@@ -15,7 +15,6 @@
  * Sprint 3: stub wrapper — initialization already performed as a side-effect
  * of the `globals.ts` import in the bundle entry point.
  */
-"use strict";
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.ts";

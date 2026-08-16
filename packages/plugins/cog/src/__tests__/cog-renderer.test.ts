@@ -1,7 +1,7 @@
 ﻿/*!
  * GeoLeaf COG Plugin â€” Tests: cog-renderer
  */
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     canvasToDataUrl,
     injectImageSource,
@@ -217,6 +217,43 @@ describe("rastersToCanvas", () => {
 });
 
 // â”€â”€â”€ canvasToDataUrl â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+// B-258. The constructor exists, so a `typeof` guard admits it, but getContext("2d")
+// yields null for want of a 2D backend — happy-dom >= 20.11 without a canvasAdapter.
+// This pins the fallback WHATEVER version of happy-dom the root install resolves;
+// the suite must not depend on which one it gets.
+
+describe("rastersToCanvas — OffscreenCanvas present but unusable", () => {
+    const g = globalThis as { OffscreenCanvas?: unknown };
+    let originalOffscreenCanvas: unknown;
+
+    beforeEach(() => {
+        originalOffscreenCanvas = g.OffscreenCanvas;
+        g.OffscreenCanvas = class UnusableOffscreenCanvas {
+            width: number;
+            height: number;
+            constructor(w: number, h: number) {
+                this.width = w;
+                this.height = h;
+            }
+            getContext(): null {
+                return null;
+            }
+        };
+    });
+
+    afterEach(() => {
+        g.OffscreenCanvas = originalOffscreenCanvas;
+    });
+
+    it("falls back to the DOM canvas instead of throwing", () => {
+        const data = makeRasterData(1, 2, 2, [200]);
+        const canvas = rastersToCanvas(data, {});
+        // Proof the fallback actually ran, not merely that nothing threw.
+        expect(canvas).toBeInstanceOf(HTMLCanvasElement);
+        expect(getPixels(canvas).data.length).toBe(2 * 2 * 4);
+    });
+});
 
 describe("canvasToDataUrl", () => {
     it("returns a string from HTMLCanvasElement.toDataURL", async () => {

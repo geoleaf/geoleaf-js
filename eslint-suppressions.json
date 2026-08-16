@@ -1,0 +1,241 @@
+{
+    "scripts/audit-cleanup.cjs": {
+        "no-empty": {
+            "count": 1
+        },
+        "no-unused-vars": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/audit-report-freshness.cjs": {
+        "no-useless-assignment": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 5
+        }
+    },
+    "scripts/audit-test-load-conversion.cjs": {
+        "no-useless-assignment": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/benchmark.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/check-config-consumers.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/check-consumer-bundle.cjs": {
+        "no-unused-vars": {
+            "count": 2
+        }
+    },
+    "scripts/check-dead-links.cjs": {
+        "no-irregular-whitespace": {
+            "count": 1
+        }
+    },
+    "scripts/check-dist-integrity.cjs": {
+        "no-irregular-whitespace": {
+            "count": 2
+        }
+    },
+    "scripts/check-doc-config-examples.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/check-e2e-wait-signature.cjs": {
+        "no-sparse-arrays": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/check-example-bundle.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/check-i18n-dict-shape.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/check-js-test-debt.cjs": {
+        "no-irregular-whitespace": {
+            "count": 9
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/check-license-headers.cjs": {
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/check-nonnull-assertion-debt.cjs": {
+        "no-irregular-whitespace": {
+            "count": 1
+        }
+    },
+    "scripts/check-orphan-exports.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/check-package-files.cjs": {
+        "no-unused-vars": {
+            "count": 2
+        }
+    },
+    "scripts/check-versions.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/count-any.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/gen-config-reference.cjs": {
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/generate-docs-tree.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        },
+        "preserve-caught-error": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/generate-pwa-icons.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/lib/docs-paths.cjs": {
+        "no-useless-assignment": {
+            "count": 1
+        }
+    },
+    "scripts/lib/license-banner.cjs": {
+        "no-irregular-whitespace": {
+            "count": 1
+        }
+    },
+    "scripts/lib/packages.cjs": {
+        "preserve-caught-error": {
+            "count": 1
+        }
+    },
+    "scripts/lib/source-inventory.cjs": {
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/lib/test-load-sites.cjs": {
+        "no-irregular-whitespace": {
+            "count": 1
+        },
+        "preserve-caught-error": {
+            "count": 1
+        }
+    },
+    "scripts/lib/test-scope.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/lib/tsdoc-examples.cjs": {
+        "no-useless-assignment": {
+            "count": 1
+        }
+    },
+    "scripts/probe-gate-visibility.cjs": {
+        "no-irregular-whitespace": {
+            "count": 2
+        },
+        "no-useless-assignment": {
+            "count": 1
+        }
+    },
+    "scripts/probe-heap-metrics.mjs": {
+        "no-useless-assignment": {
+            "count": 2
+        }
+    },
+    "scripts/purge-dist.cjs": {
+        "no-irregular-whitespace": {
+            "count": 1
+        }
+    },
+    "scripts/typecheck-docs-examples.cjs": {
+        "no-unused-vars": {
+            "count": 2
+        }
+    },
+    "scripts/validate-docs-examples.cjs": {
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/verify-ci-scripts-tracked.cjs": {
+        "no-sparse-arrays": {
+            "count": 1
+        }
+    },
+    "scripts/verify-css-tokens.cjs": {
+        "no-irregular-whitespace": {
+            "count": 2
+        }
+    },
+    "scripts/verify-esm-purity.cjs": {
+        "no-irregular-whitespace": {
+            "count": 3
+        }
+    },
+    "scripts/verify-globals-ownership.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        },
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    },
+    "scripts/verify-no-leaflet.cjs": {
+        "no-unused-vars": {
+            "count": 1
+        }
+    },
+    "scripts/verify-test-load-mode.cjs": {
+        "security/detect-unsafe-regex": {
+            "count": 1
+        }
+    }
+}

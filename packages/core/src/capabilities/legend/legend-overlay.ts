@@ -19,7 +19,6 @@
  * Capturing the element up front would let the timeout strip `aria-busy` off a
  * detached node while the current panel stays marked busy forever.
  */
-"use strict";
 
 /**
  * Reads the legend control's current container, if it has one. Deliberately NOT

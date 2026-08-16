@@ -5,7 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
 /**
  * @description Facade public of the module Core.
  * Exposes {@link Core} comprising the low-level map functions:

@@ -9,7 +9,6 @@
  * Theme-palette capability — public API surface.
  * Mounted on `GeoLeaf.ThemePalette` via `api/geoleaf.theme-palette.ts`.
  */
-"use strict";
 
 import {
     getPalettes,

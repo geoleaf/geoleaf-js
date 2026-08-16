@@ -22,7 +22,6 @@
  * panel (F2) are wired next; the panel lifecycle (`FilterModule`) is introduced in
  * F2 when the panel moves into the capability — no empty `init()` at F0.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

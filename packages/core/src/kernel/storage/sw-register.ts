@@ -24,7 +24,6 @@
  * Licensed under the MIT License
  * SPDX-License-Identifier: MIT
  */
-"use strict";
 
 import type { GeoLeafCacheEvictedDetail } from "../../contracts/event-bus.contract.js";
 import { Log } from "../../utils/log/index.js";
@@ -49,8 +48,20 @@ let _evictionBridgeWired = false;
  * du quota d'origine — le moment précis où l'utilisateur a besoin de savoir que la place
  * manque — resterait invisible, dans la console d'un worker que personne n'ouvre.
  *
- * Côté page il n'y a ensuite plus rien à écrire : `offline-ui` écoute déjà
- * `geoleaf:cache:evicted` pour l'éviction IndexedDB, et affiche le même avis.
+ * 🛑 **CE COMMENTAIRE A PORTÉ LE DÉFAUT B-163 PENDANT NEUF JOURS.** Il disait :
+ *
+ * > ~~Côté page il n'y a ensuite plus rien à écrire : `offline-ui` écoute déjà
+ * > `geoleaf:cache:evicted` pour l'éviction IndexedDB, et affiche le même avis.~~
+ *
+ * La phrase était **vraie sur `deploy-full` et fausse sur `deploy-core`** — variante qui
+ * n'embarque pas `offline-ui`, et qui part chez un client. Un lecteur venu vérifier la chaîne
+ * y trouvait l'assurance qu'elle était complète, et s'arrêtait. C'est le cas d'école du fait
+ * exact dans un périmètre, faux dans l'autre, énoncé sans son périmètre.
+ *
+ * ✅ Depuis B-163, l'écouteur est **in-core et inconditionnel** :
+ * `kernel/storage/eviction-notice.ts`, câblé par `setupStorage()` — donc présent sur toutes
+ * les variantes, et **indépendant de ce pont** (qui, lui, n'existe que si un worker s'est
+ * enregistré, alors que `cache-manager` émet aussi hors PWA).
  *
  * ⚠️ Le contrôle de `type` n'est pas décoratif. `navigator.serviceWorker` reçoit les messages
  * de TOUT worker du scope ; re-dispatcher sans discriminer ferait de n'importe quel message un

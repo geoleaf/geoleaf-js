@@ -34,7 +34,6 @@
  * two changes nothing observable, in all four `{pwa} × {offline}` config cells. What holds the
  * dependency is the GATE, and the gate is a condition — not a position.
  */
-"use strict";
 
 import type {
     CapabilityInstaller,

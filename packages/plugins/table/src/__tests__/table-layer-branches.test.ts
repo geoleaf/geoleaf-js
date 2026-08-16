@@ -247,48 +247,70 @@ describe("table/table-layer.ts — branch coverage", () => {
             const onFn = vi.fn();
             tableState._map = { on: onFn };
             attachMapEvents(vi.fn(), vi.fn());
-            expect(onFn).toHaveBeenCalledTimes(3);
+            // ⚠️ 2 et non 3 depuis B-204 : les filtres sont passés sur `document`, parce que
+            // c'est là que leur émetteur dispatche. Le bus carte ne garde que ce que
+            // `kernel/geojson/` y `fire()` réellement.
+            expect(onFn).toHaveBeenCalledTimes(2);
         });
 
-        it("filters:changed calls refresh when visible and has layerId", () => {
-            const onFn = vi.fn();
-            tableState._map = { on: onFn };
+        // 🛑 B-204 — CES TROIS CAS ONT ÉTÉ RÉÉCRITS, ET LEUR ANCIENNE FORME EST LA RAISON POUR
+        // LAQUELLE LE DÉFAUT A SURVÉCU.
+        //
+        // Ils récupéraient le handler sur `onFn.mock.calls` puis l'appelaient à la main. Un tel
+        // test est **son propre oracle** : il prouve que la fonction passée à `map.on()` fait ce
+        // qu'elle dit, jamais qu'elle est branchée sur un canal où quelqu'un parle. Les trois
+        // sont restés VERTS pendant que l'abonnement était mort **deux fois** — nom inexistant,
+        // et bus MapLibre là où l'émetteur dispatche sur `document`.
+        //
+        // ✅ Ils émettent désormais un VRAI événement. Un test qui dispatche ne peut pas se
+        // tromper de canal sans rougir : c'est la seule forme qui distingue « le handler est
+        // correct » de « le handler est atteignable ».
+        it("filters:applied déclenche refresh quand le panneau est visible et une couche choisie", () => {
+            tableState._map = { on: vi.fn() };
             tableState._isVisible = true;
             tableState._currentLayerId = "layer1";
             const refreshCb = vi.fn();
             attachMapEvents(refreshCb, vi.fn());
-            // Find the filters:changed handler
-            const filtersHandler = onFn.mock.calls.find(
-                (c) => c[0] === "geoleaf:filters:changed"
-            )[1];
-            filtersHandler();
+
+            document.dispatchEvent(new CustomEvent("geoleaf:filters:applied"));
+
             expect(refreshCb).toHaveBeenCalled();
         });
 
-        it("filters:changed does not call refresh when not visible", () => {
-            const onFn = vi.fn();
-            tableState._map = { on: onFn };
+        it("ne rafraîchit PAS quand le panneau est masqué", () => {
+            tableState._map = { on: vi.fn() };
             tableState._isVisible = false;
             const refreshCb = vi.fn();
             attachMapEvents(refreshCb, vi.fn());
-            const filtersHandler = onFn.mock.calls.find(
-                (c) => c[0] === "geoleaf:filters:changed"
-            )[1];
-            filtersHandler();
+
+            document.dispatchEvent(new CustomEvent("geoleaf:filters:applied"));
+
             expect(refreshCb).not.toHaveBeenCalled();
         });
 
-        it("filters:changed does not call refresh when no currentLayerId", () => {
-            const onFn = vi.fn();
-            tableState._map = { on: onFn };
+        it("ne rafraîchit PAS quand aucune couche n'est choisie", () => {
+            tableState._map = { on: vi.fn() };
             tableState._isVisible = true;
             tableState._currentLayerId = null;
             const refreshCb = vi.fn();
             attachMapEvents(refreshCb, vi.fn());
-            const filtersHandler = onFn.mock.calls.find(
-                (c) => c[0] === "geoleaf:filters:changed"
-            )[1];
-            filtersHandler();
+
+            document.dispatchEvent(new CustomEvent("geoleaf:filters:applied"));
+
+            expect(refreshCb).not.toHaveBeenCalled();
+        });
+
+        it("l'ancien nom `geoleaf:filters:changed` ne déclenche RIEN", () => {
+            // ⚠️ Sans ce cas, les trois précédents ne distingueraient pas « on écoute le bon
+            // nom » de « on écoute les deux ». Le nom mort ne doit pas revivre par mégarde.
+            tableState._map = { on: vi.fn() };
+            tableState._isVisible = true;
+            tableState._currentLayerId = "layer1";
+            const refreshCb = vi.fn();
+            attachMapEvents(refreshCb, vi.fn());
+
+            document.dispatchEvent(new CustomEvent("geoleaf:filters:changed"));
+
             expect(refreshCb).not.toHaveBeenCalled();
         });
 

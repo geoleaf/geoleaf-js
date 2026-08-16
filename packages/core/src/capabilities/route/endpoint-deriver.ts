@@ -12,7 +12,6 @@
  * itself is rendered by the GeoJSON engine; this only builds the endpoint marker
  * geometry (`Point` features) to hand to `addGeoJSONLayer`.
  */
-"use strict";
 
 /** Endpoint role carried on the derived point features. */
 type EndpointRole = "start" | "end";

@@ -15,7 +15,6 @@
  *   - **< 1440 px** — the mobile toolbar, which is built asynchronously, hence the
  *     `MutationObserver` (same pattern as the kernel's own theme-toggle injection).
  */
-"use strict";
 
 import { getLanguageSwitcherConfig } from "./config.js";
 import {

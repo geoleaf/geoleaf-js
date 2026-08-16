@@ -9,7 +9,6 @@
  * Preferences Module - User preferences and storage statistics
  * Part of the IndexedDB modular architecture
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

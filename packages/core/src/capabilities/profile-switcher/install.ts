@@ -9,7 +9,6 @@
  * Capability installer for the in-core `profile-switcher` capability.
  * Single self-sufficient anchor (declaration + facade globals + module factory).
  */
-"use strict";
 
 // ── Stylesheet ──────────────────────────────────────────────────────────────
 // The capability owns its CSS and pulls it into the module graph from HERE — the one

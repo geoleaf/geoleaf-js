@@ -16,7 +16,6 @@
  * Zoom does NOT affect the conversion, so this listens to `moveend`, not `zoomend`, and
  * only re-pushes past a latitude threshold — panning within a city recomputes nothing.
  */
-"use strict";
 
 import { GeoJSONShared } from "../shared.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
@@ -72,8 +71,7 @@ function syncZoomRanges(lat: number): number {
 
     const state = getState();
     const Core = getGeoLeaf()?.Core as
-        | { getMap?: () => ZoomRangeAdapterLike | undefined }
-        | undefined;
+        { getMap?: () => ZoomRangeAdapterLike | undefined } | undefined;
     const adapter = (state.adapter || Core?.getMap?.()) as ZoomRangeAdapterLike | undefined;
     if (!adapter || typeof adapter.setLayerZoomRange !== "function") return 0;
 

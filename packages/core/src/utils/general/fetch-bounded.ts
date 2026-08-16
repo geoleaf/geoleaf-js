@@ -28,7 +28,6 @@
  *
  * @version 3.0.0
  */
-"use strict";
 
 /**
  * Which of the two failure modes {@link fetchBounded} ran into.

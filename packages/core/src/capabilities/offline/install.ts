@@ -40,7 +40,6 @@
  * the self-mount — inside the closure; `registerGlobals` re-assigns the same singleton
  * (idempotent, and the surviving path for the golden master).
  */
-"use strict";
 
 import type {
     CapabilityInstaller,

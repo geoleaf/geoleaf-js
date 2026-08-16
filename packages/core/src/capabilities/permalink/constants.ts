@@ -24,7 +24,6 @@
  * runtime never honoured. They are now declared mandatory in `PermalinkConfig.fields`'
  * TSDoc and excluded from the enum.
  */
-"use strict";
 
 import type { PermalinkConfig } from "../../kernel/config/geoleaf-config/config-types.js";
 

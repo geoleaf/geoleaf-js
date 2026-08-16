@@ -12,7 +12,6 @@
  * Management of images stored locally in IndexedDB.
  * Allows storing pending upload images and managing their status.
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

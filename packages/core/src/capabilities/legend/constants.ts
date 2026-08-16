@@ -8,7 +8,6 @@
 /**
  * Legend capability — shared runtime constants.
  */
-"use strict";
 
 /**
  * Name of the taxonomy the legend reads its categories from, under

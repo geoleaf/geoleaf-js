@@ -30,7 +30,6 @@
  * structurally-compatible internal {@link GeoJSONFeature}. The two are bridged
  * by deliberate boundary casts (no `any`).
  */
-"use strict";
 
 import { GeoJSONShared } from "./shared.js";
 import { GeoJSONCore } from "./core.js";

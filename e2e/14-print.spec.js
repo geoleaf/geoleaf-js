@@ -118,7 +118,7 @@ function resourceLoaded(page, re) {
  * mécanique interne, non.
  *
  * ⚠️ Et « UN TIMEOUT PLUS LONG NE SUFFIT PAS » reste vrai pour une raison qui ne dépend pas
- * de l'étage : attendre le signal réel (`print:render:end`) est correct par construction, là
+ * de l'étage : attendre le signal réel (`geoleaf:print:render:end`) est correct par construction, là
  * où un budget plus large ne fait que parier sur une durée. `actionTimeout` a d'ailleurs été
  * porté à 30 s le même jour — c'est complémentaire, pas redondant.
  *
@@ -133,7 +133,7 @@ async function withRenderSettled(page, fn) {
         const w = /** @type {any} */ (window);
         w.__glRenderEnded = false;
         document.addEventListener(
-            "print:render:end",
+            "geoleaf:print:render:end",
             () => {
                 w.__glRenderEnded = true;
             },
@@ -143,7 +143,7 @@ async function withRenderSettled(page, fn) {
     await fn();
     // ⚠️ 240 s, et ce budget DOIT rester STRICTEMENT SUPÉRIEUR à `IDLE_TIMEOUT_MS` du plugin
     // print (180 s aujourd'hui) — les deux sont EN SÉRIE, ce n'est pas un réglage indépendant.
-    // `print:render:end` est émis depuis un `finally` : il ne part donc qu'APRÈS que le plugin
+    // `geoleaf:print:render:end` est émis depuis un `finally` : il ne part donc qu'APRÈS que le plugin
     // ait épuisé son propre budget. Les mettre à égalité (les deux à 90 s, le 01/08/2026) rend
     // l'événement inobservable et fait rendre à la suite un « wait timeout » opaque À LA PLACE
     // de l'erreur console qui, elle, dit ce qui s'est réellement passé.

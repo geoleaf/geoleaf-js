@@ -18,7 +18,6 @@
  * bus (JSON-only, no DOM refs) cannot transport — mirroring the existing
  * `geoleaf:toolbar:action` seam.
  */
-"use strict";
 
 /** Detail payload of the `geoleaf:layer-item:controls` seam event. */
 export interface LayerItemControlsDetail {

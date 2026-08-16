@@ -5,8 +5,6 @@
  * https://geoleaf.dev
  */
 
-"use strict";
-
 import { _state } from "./theme-selector-state.js";
 import { attachDOMEvent } from "./theme-selector-events.js";
 

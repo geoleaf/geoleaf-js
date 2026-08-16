@@ -230,7 +230,7 @@ function _setupGeolocListener(): void {
         domState.options?.map as ToolbarMapLike | null | undefined
     )?.getContainer?.() as HTMLElement | null;
     if (geolocMapContainer) {
-        geolocMapContainer.addEventListener("gl:geoloc:statechange", (e: Event) => {
+        geolocMapContainer.addEventListener("geoleaf:geolocation:statechange", (e: Event) => {
             const detail = (e as CustomEvent<{ active?: boolean }>).detail;
             const btn = domState.toolbar?.querySelector('[data-gl-sheet="geoloc"]');
             if (btn instanceof HTMLElement) {

@@ -12,7 +12,6 @@
  * (`isEnabled` / `getConfig`). Mounted on `GeoLeaf.Branding` via
  * `geoleaf.branding.ts` (Full + Lite builds).
  */
-"use strict";
 
 import { Branding } from "./branding.js";
 import { getBrandingConfig, type BrandingCapabilityConfig } from "./config.js";

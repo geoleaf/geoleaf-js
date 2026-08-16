@@ -22,7 +22,6 @@
  * // Integrator checks whether the filter panel is active
  * if (GeoLeaf.Filter.isEnabled()) { … }
  */
-"use strict";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/index.js";
 import { getFilterConfig } from "./config.js";

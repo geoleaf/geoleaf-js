@@ -787,6 +787,61 @@ describe("legend-generator.ts — branch coverage", () => {
             expect(result.sections[0].items[0].symbol.icon).toBe("poi-cult-icon");
         });
 
+        // ── (c) B-259 — la COMPOSITION des deux canaux, mesurée graphie par graphie ──
+        //
+        // Les deux canaux sont disjoints par conception, et aucun test ne mesurait ce que
+        // leur UNION couvre. L'angle mort était là : `attributes.category` et
+        // `attributes.subCategory` n'étaient déclarés par aucun des deux — le canal 1
+        // ignore le préfixe, le canal 2 ignorait la forme sans suffixe `Id`. Mesuré le
+        // 15/08/2026 : 10 graphies sur 12 résolvaient.
+        //
+        // ⚠️ Ce test doit être VU ROUGE en retirant les deux entrées sans `Id` de
+        // `_ATTRIBUTE_FIELD_KIND` — sinon rien ne distingue « réparé » de « jamais exercé ».
+        // Il vaut par sa COMPLÉTUDE : ajouter une graphie au code sans l'ajouter ici la
+        // laisserait non mesurée, ce qui est exactement l'état d'avant.
+        it.each([
+            ["properties.categoryId", "cat"],
+            ["properties.category", "cat"],
+            ["category", "cat"],
+            ["categoryId", "cat"],
+            ["attributes.categoryId", "cat"],
+            ["attributes.category", "cat"],
+            ["properties.subCategoryId", "sub"],
+            ["properties.subCategory", "sub"],
+            ["subCategoryId", "sub"],
+            ["subCategory", "sub"],
+            ["attributes.subCategoryId", "sub"],
+            ["attributes.subCategory", "sub"],
+        ])("(c) `%s` resout une icone (union des deux canaux)", (field, famille) => {
+            Config.getIconsConfig.mockReturnValue({ showOnMap: true });
+            const categories = {
+                CULTURES: { svgId: "cult-icon", subcategories: { MUSEE: { svgId: "musee-icon" } } },
+            };
+            Config.getCategories.mockReturnValue(categories);
+
+            const result = LegendGenerator.generateLegendFromStyle(
+                {
+                    label: "Union",
+                    styleRules: [
+                        {
+                            style: { fillColor: "#f00" },
+                            legend: { label: "L" },
+                            when: { field, value: famille === "sub" ? "MUSEE" : "CULTURES" },
+                        },
+                    ],
+                },
+                "point",
+                { categories, icons: { symbolPrefix: "poi-" } }
+            );
+
+            // La graphie est portee dans l'attendu : un echec NOMME le cas, il ne dit pas
+            // seulement « une icone manque ».
+            expect({ field, icon: result.sections[0].items[0].symbol.icon }).toEqual({
+                field,
+                icon: famille === "sub" ? "poi-musee-icon" : "poi-cult-icon",
+            });
+        });
+
         it("taxonomy lookup returns null when no rule.when", () => {
             Config.getIconsConfig.mockReturnValue({ showOnMap: true });
             Config.getCategories.mockReturnValue({ X: { svgId: "x" } });

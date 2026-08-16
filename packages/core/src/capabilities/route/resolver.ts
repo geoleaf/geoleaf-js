@@ -11,7 +11,6 @@
  * Side-effect-free: resolves a layer's binding from `modules.route.layers` and
  * the effective start / end marker styles (built-in defaults applied).
  */
-"use strict";
 
 import type {
     RouteConfig,

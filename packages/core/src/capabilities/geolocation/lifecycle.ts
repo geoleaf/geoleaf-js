@@ -13,7 +13,6 @@
  * via `getGeolocationConfig()` and late-gating on `enabled` (opt-out). Mirrors the
  * former synchronous mount in `ui-api._initMapControls`.
  */
-"use strict";
 
 import { initGeolocationControl } from "./geolocation.js";
 import { getGeolocationConfig } from "./config.js";

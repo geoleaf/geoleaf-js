@@ -20,7 +20,6 @@
  * math (`scale-utils.ts` — calculateMapScale/isScaleInRange) stays kernel (shared by
  * the visibility manager + labels); only the control is a capability.
  */
-"use strict";
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
 

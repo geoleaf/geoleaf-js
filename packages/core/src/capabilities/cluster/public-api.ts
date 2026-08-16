@@ -16,7 +16,6 @@
  * // Integrator checks whether clustering is active
  * if (GeoLeaf.Cluster.isEnabled()) { … }
  */
-"use strict";
 
 import { getClusterConfig } from "./config.js";
 import type { ClusterConfig } from "./types.js";

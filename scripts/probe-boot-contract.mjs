@@ -82,6 +82,17 @@ const run = async () => {
     // la fonction, elle ne peut donc rien capturer de ce module. C'est ce qui impose à
     // `walkNamespace` d'être auto-suffisante (assertion dédiée côté tests).
     await page.addInitScript((walkSrc) => {
+        // 🖐 B-88 — DÉROGATION MOTIVÉE À `no-new-func`, et le motif est mesurable.
+        // `walkSrc` est la SOURCE de `walkNamespace`, sérialisée depuis ce dépôt à l'appel
+        // ci-dessus — jamais une entrée. `addInitScript` sérialise la fonction et ne
+        // transporte aucune fermeture : la reconstruire dans la page est le seul moyen de
+        // l'y exécuter. C'est le mécanisme que le commentaire au-dessus décrit, pas un
+        // contournement. La règle reste `error` partout ailleurs, `scripts/` compris.
+        //
+        // ⚠️ La directive doit rester la DERNIÈRE ligne avant le code : `-next-line` porte
+        // sur la ligne suivante, et un commentaire intercalé la rend inopérante — elle sort
+        // alors « directive inutilisée », ce qui est indiscernable d'une dérogation périmée.
+        // eslint-disable-next-line no-new-func
         const walk = new Function("return (" + walkSrc + ")")();
         window.__preBootSurface = null;
         const grab = () => {

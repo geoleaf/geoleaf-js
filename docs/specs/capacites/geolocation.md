@@ -68,7 +68,7 @@ plugins.
 | GE-10 | Positions suivantes                      | Nouvelles positions de la veille                         | Marqueur et cercle remplacés, **sans re-centrer** la carte ; la visibilité du recentrage est réévaluée      | `geolocation.ts` → `_onGeoPositionSuccess`                             |
 | GE-11 | Arrêt de la veille                       | Second clic                                              | `clearWatch`, marqueur et cercle retirés, bouton de recentrage retiré, `moveend` détaché, état remis à zéro | `geolocation.ts` → `_stopGeolocation`                                  |
 | GE-12 | **Erreur ⇒ démontage COMPLET**           | Permission refusée, position indisponible, délai dépassé | Le **même** nettoyage qu'un arrêt volontaire, puis un message traduit selon le code d'erreur                | `geolocation.ts` → `_onGeoPositionError`                               |
-| GE-13 | Annonce de changement d'état             | Veille démarrée ou arrêtée                               | `gl:geoloc:statechange` (`{ active }`) émis **sur le conteneur de carte**, remontant                        | `geolocation.ts` → `_stopGeolocation`, `_onGeoPositionSuccess`         |
+| GE-13 | Annonce de changement d'état             | Veille démarrée ou arrêtée                               | `geoleaf:geolocation:statechange` (`{ active }`) émis **sur le conteneur de carte**, remontant              | `geolocation.ts` → `_stopGeolocation`, `_onGeoPositionSuccess`         |
 | GE-14 | Seam d'état GPS                          | —                                                        | `GeoLeaf.Geolocation.getState()` rend la position, la précision, l'horodatage et les drapeaux de veille     | `public-api.ts`, `state.ts`                                            |
 | GE-15 | Interactivité du cercle configurable     | `ui.interactiveShapes`                                   | Le cercle de précision est cliquable ou non, selon ce réglage **global**, pas un réglage propre             | `geolocation.ts` → `_updateGeoMarkers`                                 |
 | GE-16 | Neutralisation de la propagation         | Interaction sur le contrôle                              | Ni pan ni zoom parasite de la carte dessous                                                                 | `geolocation.ts` → `blockMapPropagation`                               |
@@ -145,19 +145,35 @@ Typage publié : `src/global.d.ts`, section des capacités (`Geolocation?:` →
 
 ### Événements
 
-| Événement               | Sens       | Émis où                                            | Détail                               |
-| ----------------------- | ---------- | -------------------------------------------------- | ------------------------------------ |
-| `gl:geoloc:statechange` | **émis**   | Sur le **conteneur de carte**, en remontant        | `{ active: boolean }`                |
-| `moveend`               | **écouté** | Sur l'adaptateur, **seulement pendant une veille** | Réévalue la visibilité du recentrage |
+| Événement                         | Sens       | Émis où                                            | Détail                               |
+| --------------------------------- | ---------- | -------------------------------------------------- | ------------------------------------ |
+| `geoleaf:geolocation:statechange` | **émis**   | Sur le **conteneur de carte**, en remontant        | `{ active: boolean }`                |
+| `moveend`                         | **écouté** | Sur l'adaptateur, **seulement pendant une veille** | Réévalue la visibilité du recentrage |
 
-⚠️ **`gl:geoloc:statechange` n'est pas un événement du bus GeoLeaf** : préfixe `gl:` et non
-`geoleaf:`, émis sur un élément du DOM et non par le bus. Il échappe donc au dispositif de typage des
-événements (`contracts/event-bus.contract.ts` et la baseline de couverture), qui raisonne sur les
-noms `geoleaf:*`. Ce n'est pas une omission de la baseline : il n'entre pas dans son périmètre.
+⚠️ **Émis sur un élément du DOM et non par le bus** — sur le conteneur de carte, avec
+`bubbles: true`, donc il remonte jusqu'à `document` et s'écoute des deux façons. Il est
+**typé** dans `contracts/event-bus.contract.ts` (`GeoLeafGeolocationStateChangeDetail`).
+
+🛑 **Il s'appelait `gl:geoloc:statechange` jusqu'au 16/08/2026, et ce paragraphe disait alors
+l'exact contraire :**
+
+> ~~Il échappe donc au dispositif de typage des événements […]. **Ce n'est pas une omission de
+> la baseline : il n'entre pas dans son périmètre.**~~
+
+**Ces deux phrases étaient exactes et c'est précisément ce qui les rendait coûteuses.** Elles
+décrivaient une cécité — `EVENT_LITERAL_RE` est ancré sur `^geoleaf:`, donc un nom hors préfixe
+n'apparaît dans **aucune** mesure, ni comme dette ni comme manque — et la présentaient comme une
+propriété de périmètre plutôt que comme un défaut. Un fait juste peut documenter un angle mort
+sans jamais le refermer ; c'est ce qui a fait vivre B-207 après que la ligne l'eut nommé.
+Renommé au S2 de R9, il est entré dans le domaine, et **EM-01 l'a réclamé aussitôt** — la
+preuve de la cécité, pas son démenti. La classe est désormais fermée par **EM-03**
+(`scripts/lib/event-gates.cjs`) : un littéral d'événement contenant un `:` doit commencer par
+`geoleaf:`.
 
 Deux consommateurs connus, et ils ne sont pas dans cette capacité :
 `kernel/ui/mobile/mobile-toolbar.ts` (pour teinter la pastille) et
-`packages/plugins/measure/src/tools/tool-gps.ts`.
+`packages/plugins/measure/src/tools/tool-gps.ts` — **il franchit donc la frontière core →
+plugin**, ce qui en fait un contrat public quel que soit le nom qu'il portait.
 
 ---
 

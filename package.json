@@ -147,6 +147,7 @@
             "prettier --write"
         ],
         "packages/**/__tests__/**/*.{js,ts}": [
+            "eslint --fix --max-warnings 0 --no-warn-ignored",
             "prettier --write"
         ],
         "packages/**/src/**/*.css": [
@@ -183,6 +184,7 @@
         "eslint-plugin-security": "^4.0.1",
         "glob": "^13.0.6",
         "globals": "^17.9.0",
+        "happy-dom": "^20.11.2",
         "http-server": "^14.1.1",
         "husky": "^9.0.11",
         "jscpd": "^5.0.14",

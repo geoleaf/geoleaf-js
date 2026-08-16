@@ -13,7 +13,6 @@
  * `plugin-addpoi`; in-core consumers import the state module directly). Mounted on
  * `GeoLeaf.Geolocation` via `geoleaf.geolocation.ts`.
  */
-"use strict";
 
 import { GeoLocationState } from "./state.js";
 import { getGeolocationConfig, type GeolocationCapabilityConfig } from "./config.js";

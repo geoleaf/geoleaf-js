@@ -13,7 +13,6 @@
  * flag. Opt-out (`enableWhenAbsent: true`): the button is active unless a profile
  * sets `modules.geolocation.enabled: false`.
  */
-"use strict";
 
 import { Config } from "../../kernel/config/config-primitives.js";
 

@@ -15,7 +15,6 @@
  *   - Transparent fallback to a main-thread fetch when the Worker is unavailable
  *   - Automatic Worker teardown after an idle delay
  */
-"use strict";
 
 import { getLog } from "../../utils/general/di-accessors.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
@@ -32,8 +31,7 @@ interface PendingEntry {
     reject: (reason: Error) => void;
     features: GeoJSONFeature[];
     onChunk:
-        | ((features: GeoJSONFeature[] | undefined, index?: number, total?: number) => void)
-        | null;
+        ((features: GeoJSONFeature[] | undefined, index?: number, total?: number) => void) | null;
 }
 
 /** Internal manager state. */

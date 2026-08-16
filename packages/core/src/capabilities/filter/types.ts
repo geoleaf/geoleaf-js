@@ -16,7 +16,6 @@
  * F0 introduces the config-model types only; the predicate engine (F1) and the
  * mapping-driven panel (F2) extend these.
  */
-"use strict";
 
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 

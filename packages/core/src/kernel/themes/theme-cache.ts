@@ -9,7 +9,6 @@
  * GeoLeaf Theme Cache
  * Cache lightweight for thes GeoJSON layers used par the themes.
  */
-"use strict";
 
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";

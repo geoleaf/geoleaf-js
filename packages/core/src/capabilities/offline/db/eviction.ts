@@ -20,7 +20,6 @@
  * tile. It only reads `{ id, timestamp, size }` per record (via a cursor, one
  * record materialized at a time) and deletes by primary key.
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

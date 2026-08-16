@@ -165,24 +165,24 @@ describe("captureExtent — idle timeout", () => {
 // ---------------------------------------------------------------------------
 
 describe("captureExtent — print:render events", () => {
-    it("emits print:render:start before print:render:end", async () => {
+    it("emits geoleaf:print:render:start before geoleaf:print:render:end", async () => {
         const fired: string[] = [];
         const onStart = () => fired.push("start");
         const onEnd = () => fired.push("end");
-        document.addEventListener("print:render:start", onStart);
-        document.addEventListener("print:render:end", onEnd);
+        document.addEventListener("geoleaf:print:render:start", onStart);
+        document.addEventListener("geoleaf:print:render:end", onEnd);
 
         await captureExtent(BBOX_PARIS, { format: "A4" });
 
-        document.removeEventListener("print:render:start", onStart);
-        document.removeEventListener("print:render:end", onEnd);
+        document.removeEventListener("geoleaf:print:render:start", onStart);
+        document.removeEventListener("geoleaf:print:render:end", onEnd);
 
         expect(fired).toContain("start");
         expect(fired).toContain("end");
         expect(fired.indexOf("start")).toBeLessThan(fired.indexOf("end"));
     });
 
-    it("emits print:render:end even when capture throws", async () => {
+    it("emits geoleaf:print:render:end even when capture throws", async () => {
         // Force getStyle to throw so captureExtent rejects
         const badMap = makeMockMaplibreMap();
         badMap.getStyle = vi.fn(() => {
@@ -192,11 +192,11 @@ describe("captureExtent — print:render events", () => {
 
         const endFired: number[] = [];
         const listener = () => endFired.push(1);
-        document.addEventListener("print:render:end", listener);
+        document.addEventListener("geoleaf:print:render:end", listener);
 
         await expect(captureExtent(BBOX_PARIS, {})).rejects.toThrow("style unavailable");
 
-        document.removeEventListener("print:render:end", listener);
+        document.removeEventListener("geoleaf:print:render:end", listener);
         expect(endFired.length).toBeGreaterThan(0);
     });
 });
@@ -306,10 +306,10 @@ describe("OffscreenSession", () => {
         }).not.toThrow();
     });
 
-    it("waitReady emits print:render:start and print:render:end", async () => {
+    it("waitReady emits geoleaf:print:render:start and geoleaf:print:render:end", async () => {
         const fired: string[] = [];
-        document.addEventListener("print:render:start", () => fired.push("start"));
-        document.addEventListener("print:render:end", () => fired.push("end"));
+        document.addEventListener("geoleaf:print:render:start", () => fired.push("start"));
+        document.addEventListener("geoleaf:print:render:end", () => fired.push("end"));
 
         session = makeSession();
         await session.waitReady();
@@ -336,8 +336,8 @@ describe("OffscreenSession", () => {
 
     it("resize emits print:render events", async () => {
         const fired: string[] = [];
-        document.addEventListener("print:render:start", () => fired.push("start"));
-        document.addEventListener("print:render:end", () => fired.push("end"));
+        document.addEventListener("geoleaf:print:render:start", () => fired.push("start"));
+        document.addEventListener("geoleaf:print:render:end", () => fired.push("end"));
 
         session = makeSession();
         await session.waitReady();

@@ -14,7 +14,6 @@
  *
  * ⚠️ Class names are string LITERALS, never composed — purgecss scans statically.
  */
-"use strict";
 
 import { domCreate, applyCssText } from "../../utils/general/dom-helpers.js";
 import { getLabel } from "../../utils/i18n/i18n.js";

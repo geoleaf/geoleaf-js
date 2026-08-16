@@ -18,7 +18,6 @@
  * Self-mounts on `globalThis.GeoLeaf.Sync` at import so a plugin can register at its own
  * eval — before the core boot completes.
  */
-"use strict";
 
 import { SyncHandlerContract, type SyncHandler } from "../kernel/shared/sync-handler-seam.js";
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";

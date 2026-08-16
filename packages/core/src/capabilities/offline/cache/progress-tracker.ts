@@ -12,7 +12,6 @@
  * @version 3.0.0
  * @phase Phase 1 - Priority 1 Critical Refactoring
  */
-"use strict";
 
 import { Log } from "../../../utils/log/index.js";
 

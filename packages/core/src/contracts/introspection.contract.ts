@@ -16,7 +16,6 @@
  *   (getCapabilitySchema, getAllCapabilities — added in S2.1) and the activation
  *   verdict (getCapabilityStatus — added in socle-init S9.4)
  */
-"use strict";
 
 import type {
     ICapabilityFieldSchema,
