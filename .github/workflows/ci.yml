@@ -853,6 +853,12 @@ jobs:
             - name: Renvois d'atelier gelés décroissants (WREF)
               run: node scripts/check-workshop-refs.cjs
 
+            # La prose publique ne pointe pas dans l'atelier. `SPECS-PATHS` et `GUIDES-PATHS`
+            # résolvent contre le dépôt courant, donc ce défaut leur est invisible ICI et ne
+            # se voit que sur le clone public. Keep in sync with ci-local.cjs.
+            - name: Prose publique ne pointant pas dans l'atelier (WPATH)
+              run: node scripts/check-workshop-paths.cjs
+
             # La convention « commentaires en anglais » est gatée par stop-words, jamais par
             # accent. Keep in sync with ci-local.cjs.
             - name: Commentaires de code en anglais (CLANG)

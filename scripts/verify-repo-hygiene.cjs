@@ -114,6 +114,9 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-css-class-ownership.cjs",
     // WREF — no new workshop reference in the public corpus (code-autonomy roadmap, S0).
     "check-workshop-refs.cjs",
+    // WPATH — public PROSE must not point the reader into the workshop. Complements WREF:
+    // `CLAUDE.md` / `.claude/` on hand-written `.md` only. No baseline — zero at posing.
+    "check-workshop-paths.cjs",
     // CLANG — no new French code comment (stop-words, never accents).
     "check-comment-lang.cjs",
     // lib/ — the MDS detector, two-stage, with its known-answer witnesses.

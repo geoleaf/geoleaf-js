@@ -1086,6 +1086,13 @@ const STEPS = [
         name: "Renvois d'atelier gelés décroissants (WREF)",
         run: ["node", "scripts/check-workshop-refs.cjs"],
     },
+    // WPATH — public PROSE must not point the reader into the workshop. Complements WREF,
+    // which covers the workshop docs directory across all public text; this one takes the
+    // harness apparatus, on hand-written `.md` only. No baseline: zero carriers at posing.
+    {
+        name: "Prose publique ne pointant pas dans l'atelier (WPATH)",
+        run: ["node", "scripts/check-workshop-paths.cjs"],
+    },
     // CLANG — no new French comment in shipped code (stop-word detection, never accents;
     // frozen census at posing, shrink-only).
     {
