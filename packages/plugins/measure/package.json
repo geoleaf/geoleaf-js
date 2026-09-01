@@ -63,7 +63,7 @@
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",
         "rimraf": "^6.1.3",
-        "rollup": "^4.62.5",
+        "rollup": "^4.63.1",
         "typescript": "^5.9.3",
         "vitest": "^4.1.8"
     },
