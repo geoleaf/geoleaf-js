@@ -1,9 +1,8 @@
 {
     "_comment": "SPECS-FRESH — fiches docs/specs/ dont `verifie_contre` est en retard sur leur sujet. Gel DÉCROISSANT (VC-05) : une fiche re-vérifiée doit SORTIR de cette liste. Ne jamais régénérer pour faire taire une péremption neuve — c'est le geste que VC-04 existe pour voir.",
     "_generated": "node scripts/check-specs-verified-against.cjs --update-baseline",
-    "count": 35,
+    "count": 34,
     "entries": [
-        "docs/specs/CDC_kernel.md",
         "docs/specs/capacites/branding.md",
         "docs/specs/capacites/cluster.md",
         "docs/specs/capacites/coordinates.md",
