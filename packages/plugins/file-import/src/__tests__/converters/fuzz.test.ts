@@ -115,6 +115,24 @@ const CASES: { conv: IFileConverter; gen: (r: () => number) => string; name: str
 
 const RUNS = 200;
 
+/**
+ * Per-conversion ReDoS ceiling. It guards TERMINATION — the header's third contract —
+ * not micro-performance: catastrophic backtracking on inputs this small runs for SECONDS,
+ * so a bound three orders of magnitude above the observed cost still catches it, while a
+ * tight one only measures the machine.
+ *
+ * ⚠️ It was 50 ms until 2026-09-01, and that is what it measured: the machine. The fuzzer
+ * is SEEDED, so every host converts byte-identical input — only the host differs. Green
+ * locally (~0.8 ms per iteration, 16 cores), red on the CI runner at `i=0` with 60.5 ms:
+ * the FIRST iteration, cold JIT under istanbul instrumentation on 2-4 shared cores. The
+ * assertion never saw a slow INPUT, it saw a slow START.
+ *
+ * 🛑 The cost is not the red itself but what a random red does to a gate: this repo has
+ * measured more than once that a gate reddening without a defect gets disarmed within the
+ * week. A ceiling that only a real ReDoS can cross keeps the guard armed.
+ */
+const REDOS_CEILING_MS = 1000;
+
 describe("converters — fuzzing (B.3)", () => {
     for (const { conv, gen, name } of CASES) {
         it(`${name}: never throws, returns a well-formed FeatureCollection, terminates, does not pollute`, async () => {
@@ -124,7 +142,10 @@ describe("converters — fuzzing (B.3)", () => {
                 const input = i % 4 === 0 ? noise(rng) : gen(rng);
                 const t0 = performance.now();
                 const r = await Promise.resolve(conv.convert(input)); // must never throw
-                expect(performance.now() - t0, `${name} slow on i=${i}`).toBeLessThan(50);
+                expect(
+                    performance.now() - t0,
+                    `${name} did not terminate promptly on i=${i} — suspect ReDoS`
+                ).toBeLessThan(REDOS_CEILING_MS);
                 expect(r.data.type).toBe("FeatureCollection");
                 expect(Array.isArray(r.data.features)).toBe(true);
                 expect(Array.isArray(r.warnings)).toBe(true);

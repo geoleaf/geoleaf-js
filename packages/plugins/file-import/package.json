@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/file-import",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf File Import Plugin — Convert and import GPX, KML, KMZ, CSV, TopoJSON files as GeoJSON layers",
