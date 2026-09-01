@@ -93,6 +93,26 @@ describe.skipIf(!present)("JOURNAL — numérotation et plafond", () => {
         ).toBeGreaterThan(0);
     });
 
+    it("reconnaît TOUS les titres d'entrée — anti-omission partielle", () => {
+        const lines = fs.readFileSync(JOURNAL, "utf8").split("\n");
+        const unread: string[] = [];
+        lines.forEach((l, i) => {
+            if (!l.startsWith("## ")) return;
+            if (!/^## (\d{4}-\d{2}-\d{2}) \((\d+[a-z]?)\)/.test(l)) {
+                unread.push(`l.${i + 1} — ${l.slice(0, 90)}`);
+            }
+        });
+        expect(
+            unread,
+            `titre(s) d'entrée que le motif ne lit PAS :\n  ${unread.join("\n  ")}\n` +
+                `  Un titre non lu n'est pas compté : il ne peut ni entrer en collision, ni ` +
+                `peser sur le plafond. Le fichier dépasse alors EN SILENCE.\n` +
+                `  Geste : conformer le titre à \`## AAAA-MM-JJ (N) — …\`, jamais élargir le ` +
+                `motif — une session à cheval sur deux jours se date par sa CLÔTURE, et dit ` +
+                `son ouverture après le tiret.`
+        ).toEqual([]);
+    });
+
     it("n'a AUCUN numéro d'entrée en double", () => {
         const entries = readEntries();
         const seen = new Map<string, Entry>();

@@ -13,6 +13,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [3.1.0] - 2026-09-01
+
 ### Fixed — a mixed-geometry layer no longer paints its features in EVERY sub-layer
 
 One declared GeoJSON layer becomes several MapLibre layers — `fill`, `casing`, `line`, `circle`,
