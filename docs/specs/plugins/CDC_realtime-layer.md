@@ -4,14 +4,14 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 81aa8d29
-date: 28 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/realtime-layer` ·
-**Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** `81aa8d29` (28/07/2026)
+**Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -23,11 +23,11 @@ date: 28 juillet 2026
 >    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
 >    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
-> ⚠️ **Deux lignes ouvertes du registre traversent ce plugin**, et la fiche les nomme à leur place
-> plutôt qu'en préambule : les trois tests
-> GTFS-RT de bout en bout sont **désactivés**, donc le décodage protobuf n'a plus **aucune**
-> couverture navigateur — et un constat versé en écrivant cette fiche : la source de scrutation
-> n'annule pas ses requêtes en vol à l'arrêt.
+> ✅ **Les deux lignes du registre qui traversaient ce plugin sont soldées**, et la fiche les nomme
+> à leur place plutôt qu'en préambule : les tests GTFS-RT de bout en bout ont été **réarmés le
+> 19/08/2026** sur une fixture protobuf forgée dans le spec — le décodage protobuf a de nouveau une
+> couverture navigateur —, et `PollingSource.stop()` **annule désormais la requête en vol** depuis
+> le 17/08/2026, avec sa garde dédiée.
 
 ---
 
@@ -46,7 +46,13 @@ rafraîchies.
   jour. C'est particulièrement contraignant pour GTFS-RT, dont le flux ne porte **aucune
   coordonnée**.
 - **Il n'a aucune configuration globale.** Tout se déclare **par couche**, sous `data.realtime` —
-  domaine de la donnée, donc du core. Aucune clé `realtimeLayer` nulle part.
+  domaine de la donnée, donc du core. **Aucun code ne lit de clé `realtimeLayer`** : le plugin n'a
+  aucun accesseur de configuration. ⚠️ La forme absolue « nulle part » serait fausse — les schémas
+  de profil DÉCLARENT la clé à deux endroits, permissive et sans lecteur : `modules.realtimeLayer`
+  dans `profiles/schemas/profile.schema.json` (« Owned by @geoleaf-plugins/realtime-layer — keys
+  validated by the plugin, not the core ») et un bloc par couche dans
+  `profiles/schemas/layer-config.schema.json`, dont la description renvoie la question
+  d'architecture. **Aucun profil ne les renseigne**, et c'est ce qui se mesure.
 - **Il ne parle jamais au moteur cartographique.** Toutes les écritures passent par
   `GeoLeaf.GeoJSON.*` ; aucun accès aux internes du core.
 - **Il ne gère pas la reconnexion des flux d'événements serveur** — c'est le navigateur qui le fait,
@@ -133,11 +139,18 @@ canonique imposé par le contrat de plugin. Le décompte se mesure :
 ls packages/plugins/realtime-layer/src/__tests__/ | wc -l
 ```
 
-⚠️ **Et cette couverture a un trou nommé.** Les trois scénarios GTFS-RT de bout en bout de
-`e2e/08-realtime.spec.js` sont **désactivés** : le décodage protobuf n'a donc **plus aucune
-couverture navigateur**, seulement des tests unitaires sur fixture. C'est
-C'est mesuré, et le fichier de test le dit sur place :
-« un test ignoré ne garde rien ».
+✅ **Le trou de couverture nommé ici est refermé — partiellement, et le partage est écrit sur
+place.** Les scénarios GTFS-RT de bout en bout d'`e2e/08-realtime.spec.js` ont été désactivés un
+mois faute de cible, le profil de démonstration qui les portait ayant été retiré et **aucun profil
+livré ne portant de flux GTFS-RT** — refus qui tient toujours, tout profil non préfixé d'un `_`
+partant dans les variantes déployées. **Deux des trois sont réarmés depuis le 19/08/2026** : ils
+re-déclarent **en vol** le bloc temps réel d'une couche du bundle servi et lui servent un protobuf
+forgé en mémoire, de sorte que le décodeur **embarqué** est exercé dans un vrai navigateur.
+
+🛑 **Le troisième ne l'est délibérément pas, et le refus est l'énoncé.** Son sujet était le fichier
+de configuration du profil retiré ; le rejouer sur la fixture — écrite trois fonctions plus haut
+dans le même spec — n'attesterait que de la fixture. Le motif est écrit dans le spec, à la place du
+test.
 
 ---
 
@@ -167,8 +180,11 @@ C'est une décision explicite, du même patron que `cog`, `file-import` et `flat
 | `channel`        | `string`                              | —          | **Obligatoire** pour `websocket`                                                |
 | `mapping`        | `object`                              | —          | Indications pour le décodeur GTFS-RT : `idField`, `delayField`, `targetLayerId` |
 
-⚠️ **`mapping.delayField` est déclaré à trois endroits et lu nulle part** — champ réservé. Le CDC
-source le signalait déjà ; c'est toujours vrai.
+⚠️ **`mapping.delayField` est déclaré à deux endroits de la source et lu nulle part** — champ
+réservé : le type `RealtimeConfig` (`config.ts`) et le type `GtfsRtMapping`
+(`decoders/gtfs-rt-decoder.ts`). `_extractDelay` ne le consulte pas : il prend le `delay` du premier
+`stopTimeUpdate`, départ avant arrivée. Le CDC source signalait déjà l'absence de lecture, mais
+annonçait **trois** déclarations — compte corrigé au §Écarts au CDC, qui porte le partage.
 
 ⚠️ **Aucune de ces clés n'est gatée par le test-garde de cette fiche**, qui ne couvre que le
 manifeste d'enregistrement. Ce tableau se relit contre `config.ts` à chaque modification — c'est la
@@ -247,19 +263,34 @@ Aucun.
 
 ### Conformité au contrat gelé
 
-`scripts/verify-plugin-contract.cjs` — le plugin est conforme, comme les douze autres :
+`scripts/verify-plugin-contract.cjs` — le plugin est conforme. **Le décompte de la flotte ne se
+recopie pas** : le rapport l'imprime en fin de run, et la liste des plugins scannés se dérive de
+`scripts/lib/packages.cjs`, jamais d'un littéral. Sans `--plugin`, la commande rend le tout :
 
 ```bash
 node scripts/verify-plugin-contract.cjs --plugin=realtime-layer
 ```
 
+### Le descripteur d'expédition — `package.json` § `geoleaf`
+
+Le `package.json` déclare **obligatoirement** comment le paquet part dans les variantes livrées :
+`bundle`, `lazyChunks`, `includeFlag`. `scripts/lib/discover-plugins.cjs` **jette** sur un champ
+absent ou mal typé — un défaut ne pourrait pas distinguer « décidé » d'« oublié », et pour un
+manifeste qui décide ce qui part chez un client, c'est le point entier.
+
+⚠️ **`lazyChunks: true` n'est pas décoratif ici : c'est la conséquence de RT-11.** Le décodeur
+GTFS-RT et son graphe protobuf sont consolidés dans un chunk séparé par le `manualChunks` de
+`rollup.config.mjs` (nom `gtfs-rt`). Sans ce drapeau, `build-deploy.cjs` copierait l'entrée **sans**
+ses chunks latéraux, et l'`import()` dynamique rendrait **404 au premier usage GTFS-RT** — après un
+build sorti vert. `includeFlag: null` signifie que le plugin part dans **toutes** les variantes.
+
 ### Dépendances
 
-| Dépendance                   | Nature                                                                        |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| `@geoleaf/core`              | Le namespace `GeoLeaf.GeoJSON` et l'événement de fin de boot                  |
-| `gtfs-realtime-bindings`     | **Seule dépendance externe** — tirée seulement quand un décodeur GTFS-RT sert |
-| `@geoleaf-plugins/websocket` | **Facultative**, déclarée au manifeste, atteinte par le namespace public      |
+| Dépendance                   | Nature                                                                                                                                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`              | Le namespace `GeoLeaf.GeoJSON` et l'événement de fin de boot. ⚠️ Déclaré en **`peerDependencies`** (`^3.0.0`) et non plus en `dependencies` : l'intégrateur installe le core lui-même, et le plugin ne peut plus en embarquer une seconde copie |
+| `gtfs-realtime-bindings`     | **Seule dépendance externe** — tirée seulement quand un décodeur GTFS-RT sert                                                                                                                                                                   |
+| `@geoleaf-plugins/websocket` | **Facultative**, déclarée au manifeste, atteinte par le namespace public                                                                                                                                                                        |
 
 ⚠️ **La dépendance externe est la seule du lot des plugins de ce palier**, et elle porte le poids.
 Elle a aussi une histoire de sécurité : sa montée de version majeure a levé une série d'alertes sur
@@ -295,12 +326,25 @@ Ce qui est réellement partagé, c'est le **symptôme** : une source lente ou in
 l'application, et c'est ce plugin qui rend le retard visible, puisque ses couches sont celles qui
 pointent vers des services externes.
 
-### Ce que la fiche a trouvé et versé au registre
+### Ce que la fiche a trouvé, versé au registre — et qui est corrigé depuis
 
-`PollingSource.stop()` **arrête le minuteur et détache l'écouteur de visibilité, mais n'annule pas
-la requête en vol** : `_fetchOne` émet un `fetch` sans signal d'annulation, et son gestionnaire
-n'est jamais remis à zéro. Une requête partie juste avant l'arrêt aboutit donc, et **applique sa
-mise à jour sur une couche qu'on venait d'arrêter**. Versé au registre, avec sa mesure.
+En écrivant cette fiche : `PollingSource.stop()` arrêtait le minuteur et détachait l'écouteur de
+visibilité, **mais n'annulait pas la requête en vol**. Une requête partie juste avant l'arrêt
+aboutissait, et appliquait sa mise à jour sur une couche qu'on venait d'arrêter.
+
+✅ **Corrigé le 17/08/2026, et c'est la FORME du correctif qui se retient.** Un `AbortController`
+**par instance**, et non par module comme ailleurs dans le dépôt : deux `PollingSource` sur deux
+couches s'arrêtent indépendamment, et l'une ne doit pas annuler les requêtes de l'autre. Le patron —
+_un contrôleur par propriétaire de cycle de vie_ — ne bouge pas ; c'est le propriétaire qui change.
+Il est **recréé au premier besoin après chaque `stop()`** : un contrôleur avorté l'est à vie, alors
+que `stop()` → `start()` est ici un cycle **normal** (reprise sur `visibilitychange`).
+
+⚠️ **Le signal ne suffit pas, et la seconde garde n'est pas redondante.** Entre la réponse et
+l'appel du gestionnaire il y a un second `await` — la lecture du corps est elle-même asynchrone —,
+fenêtre où `abort()` ne peut plus rien : la requête est finie. `_fetchOne` teste donc
+`signal?.aborted` juste avant d'appeler le gestionnaire, et une `AbortError` n'est pas journalisée
+comme une erreur de transport. Les deux fenêtres sont éprouvées et **vues rougir par mutation** :
+`src/__tests__/polling-source-abort.guard.test.ts`.
 
 ---
 
@@ -314,17 +358,17 @@ de la refonte documentaire V3.
 croisées », dix affirmations chacune adossée à un fichier. Neuf tiennent encore. Les écarts sont
 donc concentrés, et tous du **mode d'échec n° 6** — la contrainte qui motivait l'énoncé est tombée.
 
-| Énoncé du CDC                                                                   | Ce que dit le code                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| §8 PC-04 + croisée n° 7 — « `gtfs-realtime-bindings` importé **statiquement** » | Vrai **dans le module décodeur**, faux pour le chemin de boot : `realtime-runtime.ts` charge le décodeur par `import()` **dynamique**, et son commentaire donne le motif — la sonde WebAssembly et la violation CSP qu'elle provoque                                                                                                                                                                         |
-| §7 « budget bundle : inliné statiquement depuis S10 — ~81 KB gz »               | **Périmé par le point précédent** : ce n'est plus un coût de boot mais un fragment différé. Le chiffre ne se recopie pas — `npm run size:plugins`                                                                                                                                                                                                                                                            |
-| §5 « 11 suites Vitest (112 tests) »                                             | **13 fichiers** sur le disque. Chiffre recopié, donc divergé — la fiche cite la commande à sa place                                                                                                                                                                                                                                                                                                          |
-| §7 « Fetch immédiat — polling-source.ts:48 »                                    | Le comportement est exact ; **la ligne ne l'est plus**. Même défaut que les citations de ligne des déclarations de capacités                                                                                                                                                                                                                                                                                 |
-| §6 « SSE sans reconnexion gérée »                                               | ✅ **Vérifié exact** — et l'environnement sans `EventSource` est traité en plus, par une erreur explicite                                                                                                                                                                                                                                                                                                    |
-| Croisée n° 7 — « `mapping.delayField` jamais lu (champ réservé) »               | ✅ **Vérifié exact sur le fond, corrigé sur le compte (11/08/2026)** — **zéro lecture**, ce qui est l'énoncé qui compte. La case disait « **trois** déclarations » : il y en a **deux** en source (`config.ts`, `decoders/gtfs-rt-decoder.ts`), les deux autres occurrences étant des **usages de test**. Un compte faux dans une case « Vérifié exact » coûte plus qu'un chiffre nu : il porte une garantie |
-| Croisée n° 4 — repli servi une fois par fenêtre de panne                        | ✅ **Vérifié exact**                                                                                                                                                                                                                                                                                                                                                                                         |
-| Croisée n° 6 — les trois défauts (`30000`, `"upsert"`, `"remove"`)              | ✅ **Vérifiés exacts**                                                                                                                                                                                                                                                                                                                                                                                       |
-| §5 — les tests comme preuve de couverture                                       | ⚠️ **À nuancer, et le CDC ne pouvait pas le savoir** : les trois scénarios GTFS-RT de bout en bout sont désactivés depuis. La couverture unitaire est intacte, la couverture navigateur du protobuf est **nulle**                                                                                                                                                                                            |
+| Énoncé du CDC                                                                   | Ce que dit le code                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §8 PC-04 + croisée n° 7 — « `gtfs-realtime-bindings` importé **statiquement** » | Vrai **dans le module décodeur**, faux pour le chemin de boot : `realtime-runtime.ts` charge le décodeur par `import()` **dynamique**, et son commentaire donne le motif — la sonde WebAssembly et la violation CSP qu'elle provoque                                                                                                                                                                                                                |
+| §7 « budget bundle : inliné statiquement depuis S10 — ~81 KB gz »               | **Périmé par le point précédent** : ce n'est plus un coût de boot mais un fragment différé. Le chiffre ne se recopie pas — `npm run size:plugins`                                                                                                                                                                                                                                                                                                   |
+| §5 « 11 suites Vitest (112 tests) »                                             | Le compte a divergé, **et il a divergé une seconde fois depuis**, dans la case qui le constate — la fiche cite `ls packages/plugins/realtime-layer/src/__tests__/ \| wc -l` à sa place plutôt que de le recopier encore                                                                                                                                                                                                                             |
+| §7 « Fetch immédiat — polling-source.ts:48 »                                    | Le comportement est exact ; **la ligne ne l'est plus**. Même défaut que les citations de ligne des déclarations de capacités                                                                                                                                                                                                                                                                                                                        |
+| §6 « SSE sans reconnexion gérée »                                               | ✅ **Vérifié exact** — et l'environnement sans `EventSource` est traité en plus, par une erreur explicite                                                                                                                                                                                                                                                                                                                                           |
+| Croisée n° 7 — « `mapping.delayField` jamais lu (champ réservé) »               | ✅ **Vérifié exact sur le fond, corrigé sur le compte (11/08/2026)** — **zéro lecture**, ce qui est l'énoncé qui compte. La case disait « **trois** déclarations » : il y en a **deux** en source (`config.ts`, `decoders/gtfs-rt-decoder.ts`), les deux autres occurrences étant des **usages de test**. Un compte faux dans une case « Vérifié exact » coûte plus qu'un chiffre nu : il porte une garantie                                        |
+| Croisée n° 4 — repli servi une fois par fenêtre de panne                        | ✅ **Vérifié exact**                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Croisée n° 6 — les trois défauts (`30000`, `"upsert"`, `"remove"`)              | ✅ **Vérifiés exacts**                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| §5 — les tests comme preuve de couverture                                       | ⚠️ **À nuancer, et le CDC ne pouvait pas le savoir** : les trois scénarios GTFS-RT de bout en bout ont été désactivés un mois, avec le profil de démonstration qui les portait. **Deux sont réarmés depuis le 19/08/2026**, sur une fixture protobuf forgée dans le spec ; le troisième ne l'est pas, délibérément — son sujet était un fichier disparu. La couverture unitaire n'a jamais bougé ; la couverture navigateur du protobuf est revenue |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : les quatre scénarios d'usage réels
 (retards ferroviaires en GTFS-RT, navires en WebSocket, capteurs en flux d'événements, vélos en

@@ -4,14 +4,14 @@ title: flatgeobuf — la lecture de vecteur binaire, filtrée par emprise
 plugin_id: flatgeobuf
 package: "@geoleaf-plugins/flatgeobuf"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # flatgeobuf — la lecture de vecteur binaire, filtrée par emprise
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/flatgeobuf` ·
-**Code :** `packages/plugins/flatgeobuf/` · **Vérifié contre :** `5535694b` (27/07/2026)
+**Code :** `packages/plugins/flatgeobuf/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -86,8 +86,19 @@ mesure sur place. Un intégrateur qui suivait l'un des deux cherchait une API no
 | **4 — enregistrement d'un chargeur de couche** | ✅ `plugins.registerLayerLoader("flatgeobuf", …)` |
 
 La quatrième étape **n'est pas dans le squelette figé** du contrat (§4), qui n'en décrit que trois.
-Elle est ce qui rend le plugin utilisable sans code : le chargeur de profil du core interroge
-`GeoLeaf.plugins.getLayerLoader` pour toute couche portant `"plugin": "<id>"`.
+Elle est ce qui rend le plugin utilisable sans code : les deux dispatchers du core —
+`kernel/geojson/loader/profile.ts` (au boot) et `kernel/geojson/loader/single-layer.ts` (thème et
+chargement à la demande) — interrogent `GeoLeaf.plugins.getLayerLoader` pour toute couche portant
+`"plugin": "<id>"`.
+
+⚠️ **Et cette interrogation a désormais un PRÉALABLE, sans lequel elle rend `undefined`.** Les deux
+dispatchers attendent d'abord `ensurePluginLoaded(pluginId)` (posé dans
+`globals/globals.geojson.ts`), qui charge le bundle quand le registre sait le résoudre
+paresseusement. Le motif est que la résolution, elle, est **synchrone** : un plugin enregistré par
+`registerLazy` n'a pas encore exécuté son `registerLayerLoader()` au moment où on le cherche, donc
+sa couche serait sautée à 0 entité avec un simple `warn`. `flatgeobuf` est chargé par balise, donc
+chez lui ce préalable est un no-op — mais cette fiche sert de patron aux plugins déclaratifs
+suivants, et l'omettre ferait refaire le défaut.
 
 ⚠️ **Conséquence pour l'écriture des fiches suivantes** : le squelette d'`entry.ts` est un
 **minimum**, pas un gabarit. `cog` en exerce deux étapes, `flatgeobuf` quatre, `geocoding` six.
@@ -96,22 +107,22 @@ Elle est ce qui rend le plugin utilisable sans code : le chargeur de profil du c
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                    | Entrée                                            | Sortie observable                                                                                                | Code                                                    |
-| ----- | --------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| FG-01 | Lecture complète                  | `load(url, opts?)`                                | Une collection d'entités GeoJSON, plus les métadonnées d'en-tête si le format les porte                          | `fgb-api.ts` → `load`                                   |
-| FG-02 | Lecture filtrée par emprise       | `loadBbox(url, bbox, opts?)`                      | Seules les entités de l'emprise, obtenues par **index R-tree + requêtes partielles**                             | `fgb-bbox-filter.ts`                                    |
-| FG-03 | Rendu direct sur la carte         | `loadAsLayer(url, opts?)`                         | Source et sous-couches créées par l'adaptateur du core ; rend l'identifiant de couche                            | `fgb-api.ts` → `loadAsLayer`                            |
-| FG-04 | Rendu filtré sur la carte         | `loadBboxAsLayer(url, bbox, opts?)`               | Idem, sur l'emprise seule                                                                                        | `fgb-api.ts` → `loadBboxAsLayer`                        |
-| FG-05 | **Chargement déclaratif**         | Couche de profil portant `"plugin": "flatgeobuf"` | Rendue **sans code d'intégration**, par le chargeur enregistré                                                   | `entry.ts` ; `config-loader.ts` → `loadLayerFromConfig` |
-| FG-06 | Rafraîchissement au déplacement   | `autoRefresh: true`                               | Les entités sont re-cherchées sur la nouvelle emprise à chaque fin de déplacement, **et remplacées en place**    | `fgb-api.ts` ; `fgb-bbox-filter.ts`                     |
-| FG-07 | Anti-rebond du rafraîchissement   | Déplacements rapprochés                           | Une seule requête après le délai d'anti-rebond, réglable                                                         | `fgb-bbox-filter.ts`                                    |
-| FG-08 | Plafond d'entités                 | Fichier plus gros que la limite                   | L'accumulation **s'arrête** au plafond — garde anti-déni de service                                              | `internal.ts` → `collectFeatures`                       |
-| FG-09 | Validation d'URL déléguée au core | Toute URL                                         | Passe par la validation du core quand elle est disponible ; **repli** sur une liste blanche de protocoles locale | `internal.ts` → validation                              |
-| FG-10 | Abandon avant démarrage           | Signal déjà abandonné                             | Échec immédiat, **aucune requête émise**                                                                         | `internal.ts` → `validateLoadPreconditions`             |
-| FG-11 | Abandon en cours                  | Signal abandonné pendant l'itération              | L'accumulation s'interrompt                                                                                      | `internal.ts` → `collectFeatures`                       |
-| FG-12 | Validation de l'emprise           | Emprise portant `NaN` ou l'infini                 | Refusée avant toute requête                                                                                      | `fgb-bbox-filter.ts` → validation d'emprise             |
-| FG-13 | Identifiant de couche             | `layerId` absent                                  | Identifiant auto-incrémenté                                                                                      | `fgb-api.ts`                                            |
-| FG-14 | Carte absente                     | Appel avant l'initialisation de la carte          | Erreur explicite plutôt qu'un échec silencieux                                                                   | `fgb-api.ts` → résolution de l'adaptateur               |
+| ID    | Fonctionnalité                    | Entrée                                            | Sortie observable                                                                                                                                                           | Code                                                            |
+| ----- | --------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| FG-01 | Lecture complète                  | `load(url, opts?)`                                | Une collection d'entités GeoJSON et son décompte ; les métadonnées d'en-tête ne sont jointes **que si `onHeader` est fourni**, jamais du seul fait que le fichier les porte | `fgb-loader.ts` → `loadFgb` ; `internal.ts` → `collectFeatures` |
+| FG-02 | Lecture filtrée par emprise       | `loadBbox(url, bbox, opts?)`                      | Seules les entités de l'emprise, obtenues par **index R-tree + requêtes partielles**                                                                                        | `fgb-bbox-filter.ts`                                            |
+| FG-03 | Rendu direct sur la carte         | `loadAsLayer(url, opts?)`                         | Source et sous-couches créées par l'adaptateur du core ; rend l'identifiant de couche                                                                                       | `fgb-api.ts` → `loadAsLayer`                                    |
+| FG-04 | Rendu filtré sur la carte         | `loadBboxAsLayer(url, bbox, opts?)`               | Idem, sur l'emprise seule                                                                                                                                                   | `fgb-api.ts` → `loadBboxAsLayer`                                |
+| FG-05 | **Chargement déclaratif**         | Couche de profil portant `"plugin": "flatgeobuf"` | Rendue **sans code d'intégration**, par le chargeur enregistré                                                                                                              | `entry.ts` ; `config-loader.ts` → `loadLayerFromConfig`         |
+| FG-06 | Rafraîchissement au déplacement   | `autoRefresh: true`                               | Les entités sont re-cherchées sur la nouvelle emprise à chaque fin de déplacement, **et remplacées en place**                                                               | `fgb-api.ts` ; `fgb-bbox-filter.ts`                             |
+| FG-07 | Anti-rebond du rafraîchissement   | Déplacements rapprochés                           | Une seule requête après le délai d'anti-rebond, réglable                                                                                                                    | `fgb-bbox-filter.ts`                                            |
+| FG-08 | Plafond d'entités                 | Fichier plus gros que la limite                   | L'accumulation **s'arrête** au plafond — garde anti-déni de service                                                                                                         | `internal.ts` → `collectFeatures`                               |
+| FG-09 | Validation d'URL déléguée au core | Toute URL                                         | Passe par la validation du core quand elle est disponible ; **repli** sur une liste blanche de protocoles locale                                                            | `internal.ts` → validation                                      |
+| FG-10 | Abandon avant démarrage           | Signal déjà abandonné                             | Échec immédiat, **aucune requête émise**                                                                                                                                    | `internal.ts` → `validateLoadPreconditions`                     |
+| FG-11 | Abandon en cours                  | Signal abandonné pendant l'itération              | L'accumulation s'interrompt                                                                                                                                                 | `internal.ts` → `collectFeatures`                               |
+| FG-12 | Validation de l'emprise           | Emprise portant `NaN` ou l'infini                 | Refusée avant toute requête                                                                                                                                                 | `fgb-bbox-filter.ts` → validation d'emprise                     |
+| FG-13 | Identifiant de couche             | `layerId` absent                                  | Identifiant auto-incrémenté                                                                                                                                                 | `fgb-api.ts`                                                    |
+| FG-14 | Carte absente                     | Appel avant l'initialisation de la carte          | Erreur explicite plutôt qu'un échec silencieux                                                                                                                              | `fgb-api.ts` → résolution de l'adaptateur                       |
 
 Les tests qui couvrent ces lignes : `packages/plugins/flatgeobuf/src/__tests__/` (PC-09).
 
@@ -140,11 +151,28 @@ configuration déclarative, elle vit dans la définition de couche.**
 | `defaultVisible`   | Visibilité initiale                                                          |
 | `cluster`          | Regroupement des points                                                      |
 
-⚠️ **Cette forme n'est décrite que dans le TSDoc du plugin**, avec un exemple. Elle n'est ni dans
-`profiles/schemas/`, ni dans l'inventaire des paramètres — ce qui est **conforme au contrat**
-(§5 : le core ne déclare, ne valide et ne défaute pas la configuration d'un plugin), mais signifie
-aussi qu'**aucune gate ne la vérifie**. Une clé mal orthographiée dans un profil est ignorée en
-silence.
+⚠️ **Cette forme est décrite à DEUX endroits, et le partage n'est pas celui qu'on croit.** Le TSDoc
+du plugin la porte entière, avec un exemple. `profiles/schemas/layer-config.schema.json` en porte la
+part que le core doit reconnaître — `plugin`, `data.url` (dont la description nomme explicitement
+flatgeobuf), `data.limit`, `data.autoRefresh`, plus `geometry` et `zIndex` à la racine — et sa
+**racine est fermée** (`additionalProperties: false`). Ce schéma est appliqué à chaque
+`layers/<id>/<id>_config.json` par `scripts/validate-profiles.cjs`, gaté dans `ci:local` :
+
+```bash
+npm run validate:profiles
+```
+
+🛑 **Donc « aucune gate ne la vérifie » est faux, et ce qui reste vrai est bien plus étroit :** le
+bloc `data` est `additionalProperties: true`, si bien qu'une clé mal orthographiée **sous `data`**
+passe en silence — pas une clé mal orthographiée **à la racine**, qui rougit. Et deux clés que le
+plugin lit vraiment, `data.bbox` et `data.debounceMs`, ne sont déclarées dans aucun schéma : elles
+ne survivent que par la permissivité du bloc. Ce qui demeure **conforme au contrat** (§5 : le core
+ne déclare, ne valide et ne défaute pas la configuration d'un plugin), c'est que le schéma
+n'attribue à aucune de ces clés une SÉMANTIQUE flatgeobuf — il en atteste le type, pas l'effet.
+
+📌 L'inventaire des paramètres (§28 de
+`docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md`) documente bien ce plugin, mais son
+**API impérative** seulement : la forme déclarative n'y figure pas.
 
 Les valeurs par défaut vivent dans le code du plugin (plafond d'entités, délai d'anti-rebond), pas
 dans un schéma.
@@ -171,10 +199,22 @@ Les types sont **ré-exportés depuis `entry.ts`** — `FgbBbox`, `FgbLoadOption
 `FgbLayerOptions`, `FgbLoadResult`, `FgbLayerJsonConfig`.
 
 ⚠️ **Le namespace est déclaré mais non typé.** `global.d.ts` porte `FlatGeobuf?: unknown` — comme
-les six autres namespaces de plugins déclarés au typage strict. Conséquence exacte : une **faute
-de frappe sur le nom du namespace** ne compile plus (c'est le gain du typage), mais **l'arité et la
-forme des appels ne sont pas vérifiées**. Gisement suivi par
-`scripts/check-namespace-typing-coverage.cjs`.
+tous les autres namespaces montés par des plugins ; leur liste se lit, elle ne se recopie pas :
+
+```bash
+grep -n '@geoleaf-plugins/' packages/core/src/global.d.ts
+```
+
+Conséquence exacte : une **faute de frappe sur le nom du namespace** ne compile plus (c'est le gain
+du typage), mais **l'arité et la forme des appels ne sont pas vérifiées**.
+
+🛑 **Et il faut nommer la bonne garde.** L'énoncé « tout namespace monté par un plugin est déclaré
+dans `GeoLeafGlobal` » est tenu par
+`packages/core/__tests__/guards/plugin-namespace-declared.guard.test.js`. Il n'est **pas** tenu par
+`scripts/check-namespace-typing-coverage.cjs`, dont le corpus est `EXPECTED_FACADE_KEYS`
+(`scripts/lib/namespace-surface.mjs`) : cette liste ne contient **aucun** namespace de plugin, et
+`FlatGeobuf` n'a jamais figuré dans sa baseline. Se fier à cette gate ici, c'est croire surveillé
+ce que personne ne regarde.
 
 ### Le seam de rendu, et ce qu'il n'atteint pas
 
@@ -219,21 +259,40 @@ Vérifié par `scripts/verify-plugin-contract.cjs`, bloquant dans `ci:local` et
 `.husky/pre-commit`. Comme [`cog`](CDC_cog.md), le plugin n'a **ni CSS ni écriture de HTML** :
 PC-07 et PC-13 ne le concernent pas.
 
+### Le descripteur d'embarquement — `package.json` → `geoleaf`
+
+Contrat posé **après** la rédaction de cette fiche. Tout paquet publié déclare désormais **comment
+il s'embarque** : le nom de son bundle, s'il émet des chunks latéraux à recopier, et le drapeau de
+variante qui décide dans quels `deploy/*` il part. Les trois clés sont **obligatoires** —
+`scripts/lib/discover-plugins.cjs` **jette** si l'une manque ou n'a pas le bon type, et le motif est
+écrit sur place : un `includeFlag` oublié qui vaudrait « toujours » par défaut expédierait un plugin
+optionnel dans toutes les variantes, un `lazyChunks` oublié qui vaudrait `false` perdrait
+silencieusement les chunks d'un plugin découpé. Un défaut implicite y serait donc pire qu'une
+erreur. Les valeurs se lisent, elles ne se recopient pas :
+
+```bash
+node -p "JSON.stringify(require('./packages/plugins/flatgeobuf/package.json').geoleaf)"
+```
+
 ### Dépendances
 
-| Dépendance                         | Nature                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------ |
-| `@geoleaf/core`                    | Dépendance d'espace de travail ; chargé **après** le core, **avant** `boot()`              |
-| Bibliothèque de lecture FlatGeobuf | Importée par son **chemin ESM explicite** — c'est ce qui garde le plugin ESM pur (INV-ESM) |
-| `@geoleaf/host-runtime`            | En **type seulement** (`GeoLeafHost`), comme `cog` — pas via sa fonction d'accès           |
+| Dépendance                         | Nature                                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`                    | **`peerDependency`** (plage `^3.0.0`), doublée d'une `devDependency` d'atelier ; chargé **après** le core, **avant** `boot()` |
+| Bibliothèque de lecture FlatGeobuf | Importée par son **chemin ESM explicite** — c'est ce qui garde le plugin ESM pur (INV-ESM)                                    |
+| `@geoleaf/host-runtime`            | En **type seulement** (`GeoLeafHost`), comme `cog` — pas via sa fonction d'accès                                              |
 
 **Aucune dépendance sur MapLibre** : le plugin passe par l'adaptateur du core, dont il ne consomme
 qu'une vue **structurelle** locale. PC-10 ne s'applique pas.
 
 ### Frontières
 
-- **Aucune lecture de configuration du core** : ce qu'il lit vient de la définition de couche qu'on
-  lui passe.
+- **Une seule lecture de configuration du core, et elle est nécessaire** : `config-loader.ts` →
+  `resolveProfileUrl` lit `GeoLeaf.Config.get("data")` pour en tirer `profilesBasePath` (repli
+  `"profiles"` si le core ne répond pas). Le motif n'est pas le confort : le validateur d'URL du
+  core **exige une URL absolue**, donc une `data.url` relative au profil doit être racinée AVANT
+  d'être soumise à FG-09, faute de quoi elle est refusée. Tout le reste de ce que lit le plugin
+  vient de la définition de couche qu'on lui passe.
 - **Un couplage de fait, non déclaré** : `connector` reconnaît l'extension `.fgb` et route vers ce
   plugin. La détection est chez `connector`, le rendu ici, et **ni `requires` ni `optional` ne le
   disent** — les deux sont vides, ce qui est exact au sens du registre (aucun appel croisé) mais

@@ -2,7 +2,7 @@
     "_comment": "WREF-01/02 — jetons d'atelier (B-nnn, D-nn, Sprint N, Sx.y, roadmap_*, _docs_projet/) par fichier PUBLIC, gelés à la pose. DÉCROISSANT uniquement : trier un fichier (trois seaux — traçabilité pure : retirer le jeton ; le renvoi porte le motif : réécrire la phrase ; la phrase n'existe que pour le renvoi : la retirer), puis --update-baseline. Jamais de sed : la roadmap code-autonome porte l'avertissement mesuré.",
     "_generated": "node scripts/check-workshop-refs.cjs --update-baseline",
     "files": 37,
-    "tokens": 177,
+    "tokens": 175,
     "entries": {
         ".github/workflows/ci.yml": 1,
         "docs/reference/ARBORESCENCE_QUALIFIEE.html": 1,
@@ -10,7 +10,7 @@
         "docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md": 1,
         "docs/reference/MONOREPO_STRUCTURE.md": 2,
         "docs/reference/MONOREPO_WORKFLOW.md": 5,
-        "docs/specs/plugins/CDC_editor.md": 3,
+        "docs/specs/plugins/CDC_editor.md": 1,
         "packages/core/__tests__/guards/doc-profile-examples.guard.test.js": 1,
         "packages/core/__tests__/guards/journal-numbering.guard.test.ts": 1,
         "packages/core/__tests__/guards/public-partition.guard.test.ts": 6,

@@ -4,14 +4,14 @@ title: taxonomy — le symbole du point, piloté par la donnée
 capability_id: taxonomy
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 81aa8d29
-date: 28 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # taxonomy — le symbole du point, piloté par la donnée
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/taxonomy/` ·
-**Vérifié contre :** `81aa8d29` (28/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -119,7 +119,7 @@ invisible à `getCapabilitySchema` et donc au studio.
 | Sous-clé                               | Type      | Défaut  | Effet                                                                                                                                                                                                                                                                                                                                                                           |
 | -------------------------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `icons.spriteUrl`                      | `string`  | —       | URL du sprite. **Absent : aucune icône ne résout**                                                                                                                                                                                                                                                                                                                              |
-| `icons.symbolPrefix`                   | `string`  | `""`    | Préfixe de l'identifiant de `<symbol>`. ⚠️ **Ne pas le répéter dans `svgId`** — double préfixe                                                                                                                                                                                                                                                                                  |
+| `icons.symbolPrefix`                   | `string`  | `""`    | Préfixe de l'identifiant de `<symbol>`. ⚠️ **Ne pas le répéter dans `svgId`** — l'identifiant doublé n'existe dans aucun sprite et le glyphe disparaît sans erreur. Vérifié sur tous les profils du disque par `__tests__/guards/taxonomy-symbol-prefix.guard.test.js`                                                                                                          |
 | `icons.defaultIcon`                    | `string`  | —       | Repli quand une catégorie ne résout aucune icône                                                                                                                                                                                                                                                                                                                                |
 | `icons.iconSize`                       | `number`  | `0.5`   | `icon-size` MapLibre. Seul un nombre **strictement positif** est honoré. ⚠️ MapLibre 6 a **désactivé la mise à l'échelle des icônes par l'offset** (changement de rendu assumé en amont) : sans effet ici, le dépôt ne posant **ni `icon-offset` ni `icon-translate`** (mesuré le 08/08/2026) — mais c'est ce qui rendrait un décalage visible si l'un des deux était introduit |
 | `icons.showOnMap`                      | `boolean` | `true`  | Seul un `false` explicite éteint les icônes de légende                                                                                                                                                                                                                                                                                                                          |
@@ -278,18 +278,20 @@ capacité sans module.
 
 Personne n'importe cette capacité : tout le monde la lit tardivement sur `GeoLeaf.Taxonomy`.
 
-| Consommateur                                                                                                                      | Ce qu'il demande                                           |
-| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `packages/core/src/globals/globals.geojson.ts` — l'injecteur de symboles                                                          | `resolvePoiIcon` → `properties.symbolId`                   |
-| `adapters/maplibre/maplibre-poi-icons.ts`                                                                                         | `getIconVariants`, `getIcons`                              |
-| `adapters/maplibre/maplibre-taxonomy-paint.ts`                                                                                    | `getIcons().iconSize`, `resolveMarkerPaint`                |
-| `legend` — `packages/core/src/capabilities/legend/legend.ts`, `packages/core/src/capabilities/legend/legend-generator.ts`         | `getCategories`, `getFieldMappings`, `getIcons`            |
-| `filter` — `packages/core/src/capabilities/filter/engine/options.ts`, `packages/core/src/capabilities/filter/taxonomy-options.ts` | `getCategories`                                            |
-| `feature-info` — `packages/core/src/capabilities/feature-info/render/dom.ts`                                                      | `resolveTitleIcon`, `resolveBadgeStyle`                    |
-| **Plugin `addpoi`** — `add-form/fields-manager.ts`                                                                                | Les catégories d'une couche, pour construire le formulaire |
-
-⚠️ **Le dernier traverse la frontière `core → plugin` dans le bon sens** : c'est le plugin qui lit le
-namespace du core, jamais l'inverse. La règle `no-plugin-in-core` reste tenue.
+| Consommateur                                                                                                                      | Ce qu'il demande                                |
+| --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `packages/core/src/globals/globals.geojson.ts` — l'injecteur de symboles                                                          | `resolvePoiIcon` → `properties.symbolId`        |
+| `adapters/maplibre/maplibre-poi-icons.ts`                                                                                         | `getIconVariants`, `getIcons`                   |
+| `adapters/maplibre/maplibre-taxonomy-paint.ts`                                                                                    | `getIcons().iconSize`, `resolveMarkerPaint`     |
+| `legend` — `packages/core/src/capabilities/legend/legend.ts`, `packages/core/src/capabilities/legend/legend-generator.ts`         | `getCategories`, `getFieldMappings`, `getIcons` |
+| `filter` — `packages/core/src/capabilities/filter/engine/options.ts`, `packages/core/src/capabilities/filter/taxonomy-options.ts` | `getCategories`                                 |
+| `feature-info` — `packages/core/src/capabilities/feature-info/render/dom.ts`                                                      | `resolveTitleIcon`, `resolveBadgeStyle`         |
+| ⚠️ **Un septième consommateur a existé hors du core, et il a disparu.** Le plugin `addpoi` lisait                                 |
+| ici les catégories d'une couche pour bâtir son formulaire (`add-form/fields-manager.ts`) ; il a                                   |
+| fusionné dans `editor`, ce fichier n'existe plus, et **plus aucun paquet de `packages/plugins/` ne                                |
+| nomme `GeoLeaf.Taxonomy`**. Le sens de lecture qu'il illustrait reste la règle, et c'est elle qui                                 |
+| compte : un plugin lit le namespace du core, jamais l'inverse — `no-plugin-in-core` l'impose, et                                  |
+| `scripts/verify-core-standalone.cjs` la garde.                                                                                    |
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
@@ -312,9 +314,9 @@ contrairement à un attribut `style`.
 ## Écarts au CDC source
 
 Le CDC `CDC_plugin-taxonomy.md` (v3.0.0, 14/07/2026) a été **consommé** en écrivant cette fiche.
-⚠️ **Il n'a PAS été retiré du dossier de tri** — même motif que les deux CDC de la passe précédente,
-tracé au §Journal des décisions de
-la refonte documentaire V3.
+⚠️ **Il n'existe plus.** Le lot des CDC consommés a été supprimé le 28/07/2026, quelques heures
+après le gel de cette fiche. La table ci-dessous est donc un **relevé daté** : il n'y a plus de
+document à re-confronter, et cette fiche est désormais seule à porter ce que le CDC disait.
 
 ⚠️ **C'est le CDC le plus exact rencontré jusqu'ici** — parce qu'il est la spécification qui a
 **produit** le code actuel, et non un document écrit avant lui puis dérivé. Les écarts sont peu

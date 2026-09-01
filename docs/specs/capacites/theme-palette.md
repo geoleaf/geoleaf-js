@@ -4,14 +4,14 @@ title: theme-palette — la couleur d'accent de l'interface
 capability_id: theme-palette
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # theme-palette — la couleur d'accent de l'interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-palette/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -260,11 +260,20 @@ rollup + `postcss-import` + cssnano (`packages/core/rollup.config.mjs`, `cssExtr
 grep -o 'data-gl-palette=[a-z]*' packages/core/dist/geoleaf-main.min.css | sort -u
 ```
 
-⚠️ **Le risque résiduel est réel et il est ouvert au backlog.** Ces sélecteurs ne portent **aucune
+⚠️ **Le risque résiduel est réel, et il n'est plus une ligne ouverte : il est ASSUMÉ.** Ces sélecteurs ne portent **aucune
 classe**, donc la gate purgecss ne les regarde pas : ni safelistés, ni baselinés, ni signalés morts.
 S'ils cessaient d'être atteints, rien ne rougirait — et si purgecss devenait un jour une étape de
 build, les deux blocs tomberaient. Une sonde le montre : un contenu qui ne cite pas littéralement
 `data-gl-palette="blue"` fait purger le bloc bleu.
+
+**Décidé le 18/08/2026 — assumer l'exposition, ne pas safelister.** Le motif est écrit sur place,
+dans l'en-tête de `css/palettes/blue.css`, pour qu'il ne se rediscute pas à chaque relecture : la
+doctrine de `scripts/lib/purgecss-config.cjs` exige que **chaque entrée de safelist cite la ligne
+qui ASSEMBLE le nom de classe**, et ici rien n'assemble de nom — ce sont des sélecteurs
+d'**attribut**. Une entrée incapable de citer cette ligne serait injustifiable, et affaiblirait la
+règle pour toutes celles qui en dépendent. Ce que la décision laisse est donc un écart **énoncé**
+plutôt qu'une exemption silencieuse, et le geste qui le fermerait serait de rendre la palette
+**atteignable** par du contenu que le scanner lit — pas de l'exempter d'être lue.
 
 ---
 

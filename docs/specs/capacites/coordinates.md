@@ -4,14 +4,14 @@ title: coordinates — le relevé en temps réel des coordonnées du curseur
 capability_id: coordinates
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # coordinates — le relevé en temps réel des coordonnées du curseur
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/coordinates/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -66,6 +66,8 @@ autonome posé sur la carte.
 | CO-13 | Démontage — écouteur de carte détaché            | `destroy()`                             | `off("mousemove", …)` sur la **même référence liée** que celle passée à `on`                                | `coordinates.ts` → `destroy`                                    |
 | CO-14 | Aucune exception ne remonte                      | Carte absente, DOM indisponible         | Message dans `Log.error`, la méthode rend la main — chaque méthode publique est enveloppée d'un `try/catch` | `coordinates.ts`                                                |
 | CO-15 | Déclaration introspectable                       | —                                       | `getAllCapabilities()` la liste, `getCapabilitySchema("coordinates")` rend son schéma sans `loader`         | `coordinates-capability.ts`                                     |
+| CO-16 | Démontage — le séparateur est retiré             | `destroy()` après un amarrage           | Aucun `div.gl-scale-separator` orphelin ne subsiste dans le conteneur de l'échelle                          | `coordinates.ts` → `_attachToScaleWrapper`, `destroy`           |
+| CO-17 | Montage idempotent                               | Deux `init()` consécutifs               | Un seul séparateur et un seul relevé — `init()` démonte avant de remonter                                   | `coordinates.ts` → `init`                                       |
 
 ⚠️ **CO-07 et CO-11 sont les deux lignes à ne pas simplifier.** La première est une optimisation
 dont le mécanisme est contre-intuitif (voir §Décisions) ; la seconde répare un défaut réel — le délai
@@ -243,3 +245,16 @@ tree-shake avec le code. Elle ne style **que** le mode autonome (`.gl-coordinate
 `.gl-coordinates__content`) ; le mode amarré est habillé par la feuille de `scale`, comme dit
 ci-dessus. Les variables de thème viennent de `css/geoleaf-theme.css`, chargée plus tôt dans la
 cascade — la feuille ne les réimporte pas.
+
+⚠️ **Et il y a un SECOND couplage CSS, avec `branding`.** En mode autonome, le relevé est un enfant
+direct de `.maplibregl-ctrl-bottom-left`, un conteneur partagé dont
+`packages/core/src/capabilities/branding/css/branding.css` **possède la mise en page** : son en-tête
+le dit sur place (« owns the LAYOUT of `.maplibregl-ctrl-bottom-left`, a container it SHARES with
+legend, scale and coordinates »). La feuille de `coordinates` y déclare en outre sa règle de
+décalage, conditionnée par `#gl-filter-panel` — un nœud de la capacité `filter`. Deux capacités de
+plus, dont aucune n'apparaît dans `dependencies`, et le sens est l'inverse du couplage avec `scale` :
+ici c'est `coordinates` qui déclare **dans** un conteneur qu'une autre gouverne.
+
+📌 Cette règle de décalage porte encore un `!important` dont le **motif est tombé** : il compensait
+un `margin: 0 !important` que `branding` n'applique plus. L'arbitrage se fait désormais par
+spécificité seule, et l'en-tête de `branding.css` a mesuré le cas nommément.

@@ -4,14 +4,14 @@ title: theme-toggle — le bouton de bascule clair / sombre posé sur la carte
 capability_id: theme-toggle
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # theme-toggle — le bouton de bascule clair / sombre posé sur la carte
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-toggle/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -44,10 +44,21 @@ changement.
   est un **déclencheur parmi d'autres** — le panneau desktop
   (`kernel/ui/desktop/desktop-panel-theme.ts`) et le thème de carte (`kernel/map/theme.ts`) sont
   des consommateurs frères, qui fonctionnent sans elle.
+- 🛑 **Et il existe un SECOND bouton de bascule, qui n'est pas celui-ci.** `GeoLeaf.UI.init()`
+  (`kernel/ui/ui-api.ts` → `_initThemeControl`) délègue à `GeoLeaf.UI.initThemeToggle`
+  (= `_UITheme.initThemeToggle`, monté par `globals/globals.ui.ts`), qui câble un bouton **fourni
+  par l'intégrateur** et repéré par `[data-gl-role="theme-toggle"]` : le kernel y pose lui-même
+  `role`/`tabindex`, le clic, le clavier, l'`aria-pressed` et les mêmes libellés
+  `aria.theme.toggle_to_{light,dark}`. C'est un bouton **hors carte**, que cette capacité
+  n'installe ni ne connaît. Les deux chemins pilotent le même moteur et se resynchronisent par le
+  même événement, mais aucun des deux n'a besoin de l'autre — et c'est le frère le plus facile à
+  confondre avec celui-ci, parce qu'il porte le même nom.
 - **Elle ne choisit pas la palette d'accent** — c'est la capacité `theme-palette`, un axe
   orthogonal (voir `contracts/event-bus.contract.ts`, qui énonce l'orthogonalité des trois axes).
-- **Elle ne fournit pas de sélecteur de thème nommé** — c'est `theme-selector`, qui lit
-  `profiles/<profil>/config/core/themes.json` et non `modules.*`.
+- **Elle ne fournit pas de sélecteur de thème nommé** — c'est `theme-selector`, dont la LISTE de
+  thèmes vient de `profiles/<profil>/config/core/themes.json`. ⚠️ Son **activation**, elle, passe
+  bien par `modules.theme-selector.enabled` — même forme de gate qu'ici, `enableWhenAbsent: true`
+  compris : ce qui les sépare est la source des thèmes, pas la nature de la clé.
 - **Elle n'expose aucune commande impérative.** Aucun `show()` / `hide()` / `toggle()` public :
   le bouton est piloté par la configuration, la bascule elle-même passe par le moteur kernel.
 - **Elle n'apporte pas de feuille de style.** Voir §Décisions de conception.
@@ -91,14 +102,17 @@ par `__tests__/guards/doc-capability-config.guard.test.js`.
 C'est le point le plus facile à documenter de travers, parce que la déclaration et le
 comportement observable disent des choses opposées :
 
-| Étage                                                       | Valeur                                   | Ce qu'il décide                                                  |
-| ----------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------- |
-| Gate de déclaration — `theme-toggle-capability.ts` → `gate` | `configPath` + `enableWhenAbsent: true`  | **L'enregistrement du module**, avant fusion de la configuration |
-| Gate tardif — `lifecycle.ts`                                | `cfg.enabled !== true` → retour immédiat | **La visibilité du bouton**, sur la configuration fusionnée      |
+| Étage                                                       | Valeur                                   | Ce qu'il décide                                             |
+| ----------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| Gate de déclaration — `theme-toggle-capability.ts` → `gate` | `configPath` + `enableWhenAbsent: true`  | **L'exécution de `init()`**, sur la configuration fusionnée |
+| Gate tardif — `lifecycle.ts`                                | `cfg.enabled !== true` → retour immédiat | **La visibilité du bouton**, sur la configuration fusionnée |
 
-`enableWhenAbsent: true` ne veut donc **pas** dire « activé par défaut ». La capacité est
-_profile-level_ : le module doit être enregistré avant la fusion pour qu'un profil puisse encore
-l'activer ensuite. Le **défaut destiné à l'intégrateur est OFF** (`enabled: false`) — le bouton
+`enableWhenAbsent: true` ne veut donc **pas** dire « activé par défaut » : la clé absente, le gate
+répond `true` et le module **s'exécute** — il ne décide plus de son **enregistrement**.
+⚠️ `presets/apply-preset.ts` → `gatedModule` enregistre tous les modules du manifeste sans
+condition et n'évalue le gate qu'à l'intérieur d'`init()`, que le registre appelle **après** la
+fusion du profil. Les deux étages lisent donc la **même** configuration ; ce qui les sépare n'est
+plus le moment, mais la question posée. Le **défaut destiné à l'intégrateur est OFF** (`enabled: false`) — le bouton
 n'apparaît que si la configuration fusionnée porte `modules.theme-toggle.enabled === true`.
 
 Migré de l'ancien drapeau profile-level `ui.showThemeToggle`.

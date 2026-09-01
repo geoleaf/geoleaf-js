@@ -4,14 +4,14 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5519b37e
-date: 8 août 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
-**Vérifié contre :** `5519b37e` (08/08/2026)
+**Vérifié contre :** `fab770b1` (01/09/2026)
 
 > ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Les **cinq** énoncés
 > drapeautés de la table §Fonctionnalités ont été re-vérifiés dans le code à ce commit — OF-04,
@@ -37,7 +37,7 @@ date: 8 août 2026
 > [`CDC_offline-ui.md`](../plugins/CDC_offline-ui.md).
 >
 > **Le core ne connaît pas ce plugin, et ne le connaîtra pas.** Mesuré : les seules mentions de
-> `offline-ui` sous `capabilities/offline/` sont **trois commentaires**, zéro import, zéro
+> `offline-ui` sous `capabilities/offline/` sont des **commentaires** — comptés par `grep -rn "offline-ui" packages/core/src/capabilities/offline/`, jamais recopiés ici —, zéro import, zéro
 > référence d'exécution, zéro condition sur sa présence. C'est la règle `no-plugin-in-core`, tenue.
 
 ---
@@ -165,22 +165,32 @@ réparé.** Un 🛑 ne se périme pas tout seul : rien ne le rouvre, et il survi
 
 ---
 
-## Le schéma v4, et ce que le Service Worker en fait
+## Le schéma de la base locale, et ce que le Service Worker en fait
 
 _Posé le 02/08/2026. Tout ce qui suit est gaté par
 `__tests__/capabilities/offline/schema-v4.test.js` et `__tests__/storage/sw-core.test.js`._
 
-**Six stores.** Quatre hérités — `layers`, `preferences`, `metadata`, `local_images` — plus les
-deux de la v4 :
+**Les magasins se comptent, ils ne se recopient pas** :
+`grep -c 'createObjectStore(' packages/core/src/capabilities/offline/db/indexeddb.ts`. Quatre
+hérités — `layers`, `preferences`, `metadata`, `local_images` —, les deux de la v4, et `routes`
+depuis la **v5** (tâche 5.2, 22/08/2026) :
 
 ⚠️ **Il y en avait HUIT jusqu'au 04/08/2026.** `sync_queue` et `sync_backups` sont retirés à la
 tâche **4.11** ; le décompte est gardé dans les deux sens — `packages/core/__tests__/capabilities/offline/indexeddb-init.test.js` compte ce qui
 existe, `packages/core/__tests__/capabilities/offline/schema-v4.test.js` refuse ce qui reviendrait.
 
-| Store      | Clé                       | Ce qu'il porte                                              |
-| ---------- | ------------------------- | ----------------------------------------------------------- |
-| `features` | `[layerId, localId]`      | Une **entité** par enregistrement (contrat `FeatureRecord`) |
-| `outbox`   | `seq` (**autoIncrement**) | La file d'écritures (contrat `OutboxEntry`)                 |
+| Store      | Clé                       | Ce qu'il porte                                                                          |
+| ---------- | ------------------------- | --------------------------------------------------------------------------------------- |
+| `features` | `[layerId, localId]`      | Une **entité** par enregistrement (contrat `FeatureRecord`)                             |
+| `outbox`   | `seq` (**autoIncrement**) | La file d'écritures (contrat `OutboxEntry`)                                             |
+| `routes`   | `id`, index `timestamp`   | Un itinéraire persisté, sa **ligne DÉCODÉE**, et l'identité du corridor téléchargé (v5) |
+
+🛑 **`routes` garde la ligne DÉCODÉE, et c'est le point du magasin.** `RouteResult.geometry` est
+une polyline encodée : un magasin du cœur qui n'en garderait que la forme encodée obligerait
+chaque lecteur à posséder un décodeur — qui vit dans un plugin. La ligne décodée coûte des octets
+et aucun couplage. ⚠️ **Le corridor est identifié mais PAS stocké ici** : ses tuiles vivent dans le
+cache HTTP, et les dupliquer en base doublerait le coût en quota de la seule fonctionnalité dont
+tout l'intérêt est de tenir dans un quota.
 
 🛑 **`features` n'est pas « protégé » de l'éviction, il lui est INATTEIGNABLE.** `db/eviction.ts`
 ne connaît qu'un seul nom de store (`layers`). La règle dure du contrat — « ce qui porte du
@@ -221,18 +231,30 @@ et **4.11** qui l'exécute — avec la chaîne de sauvegarde, son dernier usage.
 
 ### Ce que la file offre au rejeu — et ce qu'elle met de côté
 
-_Tâche 3.10. Gaté par `__tests__/capabilities/offline/sync-queue-order.test.js`,
+_Tâche 3.10. Gaté par
 `__tests__/guards/sync-facade-surface.guard.test.js` et `e2e/28-offline-queue.spec.js`._
 
-`getPendingSyncQueue()` rend les entrées **`pending` ET `failed`**. Elle n'interrogeait que
-`index("status").getAll("pending")` : une saisie qui échouait une fois ne revenait **jamais**
-dans la file. Sur un appareil de terrain c'est le mode de perte le plus probable de la chaîne —
+🛑 **`getPendingSyncQueue()` N'EXISTE PLUS**, et cette section a continué de la décrire au présent.
+Elle est partie avec le magasin `sync_queue` à la tâche **4.11**, avec les six autres relais que
+nomme le commentaire de `db/indexeddb.ts` — le 🛑 qui ouvre cette même section l'annonce, quatre
+paragraphes plus haut. **La fiche se contredisait donc elle-même**, exactement comme elle le
+consigne pour OF-07.
+
+**Ce que la propriété est devenue**, et elle tient : le drain lit l'`outbox` **en entier**
+(`outbox.list()`) et retient `pending` **ET** `failed` — `REPLAYABLE`, dans
+`write/push-engine.ts`. Le défaut d'origine est réel et vaut d'être gardé en mémoire : la file
+n'interrogeait que `index("status").getAll("pending")`, donc une saisie qui échouait une fois ne
+revenait **jamais**. Sur un appareil de terrain c'est le mode de perte le plus probable de la chaîne —
 une capture n'a ni copie serveur ni export, donc une entrée que la file cesse d'offrir est du
 travail perdu, en silence.
 
-⚠️ **Les deux lectures d'index sont FUSIONNÉES, pas concaténées ni re-triées.** Chacune revient
-déjà en ordre de clé primaire, et la clé est monotone : la fusion n'interleave que. Un tri sur
-un autre champ serait une seconde autorité d'ordre, c'est-à-dire la forme même de la collision.
+⚠️ **Il n'y a plus DEUX lectures d'index à fusionner : il y en a UNE, et c'est le correctif.** Le
+drain faisait `[...listByState("pending"), ...listByState("failed")]` — deux lectures bout à bout,
+donc **tout `pending` avant tout `failed`**, ce qui inverse l'ordre d'insertion dès qu'une entrée
+`failed` de rang N précède une `pending` de rang N+1. Il lit désormais `outbox.list()`, l'ordre
+d'insertion **global**, filtré sur `REPLAYABLE`. ✅ Et ce drain était le SEUL à concaténer :
+`poi-restore.ts`, l'autre lecteur de l'outbox, a toujours appelé `list()`. Un tri sur un autre
+champ serait une seconde autorité d'ordre, c'est-à-dire la forme même de la collision.
 
 | Budget                        | Où il vit                                | Ce qui se passe au bout                                                                        |
 | ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -272,10 +294,19 @@ seule sortie restante étant `discardQuarantined`, c'est-à-dire la destruction.
 déclenche au retour du réseau **et sur le bouton « Réessayer »**, et `attempts` est persistant en
 base : trois clics d'opérateur pendant une fenêtre de maintenance suffisaient.
 
-⚠️ **Ce que la table ne dit pas et qu'aucune gate ne dira** : le statut HTTP n'est **pas
-persisté** sur l'entrée. Après quarantaine, `Log.warn` mis à part, rien ne permet de savoir si
-c'était un 501, un 503 ou un 403 — seul le motif subsiste, et un motif est une classe, pas une
-observation. Suivi et traité ; le champ toucherait le magasin, donc la décision A16.
+✅ **Le statut HTTP EST persisté depuis le 16/08/2026.** `markFailure` (`write/push-engine.ts`)
+écrit `quarantineStatus` sur l'entrée mise en quarantaine — le motif reste une classe, le statut
+est désormais l'observation qui l'accompagne.
+
+⚠️ **Et il n'est écrit que lorsqu'il EXISTE.** Une quarantaine qui ne vient pas d'une réponse
+serveur — `layerNoLongerWritable`, réseau muet au plafond — reste sans le champ. Un `0` aurait dit
+« le serveur a répondu 0 », c'est-à-dire une observation fausse et indiscernable de « pas de
+réponse » : ici, l'**absence** du champ porte l'information.
+
+⚠️ Cette ligne a dit « le statut HTTP n'est **pas persisté** […] le champ toucherait le magasin,
+donc la décision A16 » jusqu'à cette relecture. Le fait était vrai à sa date ; le motif, lui,
+était faux dès l'écriture — **ajouter un champ à un enregistrement ne touche pas la FORME du
+magasin**, ni son `keyPath`, ni sa version. A16 n'a jamais interdit ce champ.
 
 ⚠️ **Coalescence et idempotence ne sont PAS ici, et c'est délibéré.** Elles exigent un `localId`
 **indexé** que `sync_queue` n'a pas ; les poser dessus imposerait d'inférer une identité
@@ -362,16 +393,16 @@ C'est le point le plus important de cette fiche, et le moins évident : la faça
 appelle est montée par `packages/core/src/kernel/storage/facade.ts`, **qui s'auto-monte**. La
 capacité, elle, y **injecte** ses modules quand son moteur arrive.
 
-| Membre                             | Ce que c'est                                            |
-| ---------------------------------- | ------------------------------------------------------- |
-| `DB`                               | La base locale et ses cinq modules                      |
-| `CacheManager`                     | Téléchargement, état, quota, annulation                 |
-| `Cache`                            | Persistance de la sélection, et le sélecteur de couches |
-| `isAvailable()`                    | Le moteur est-il injecté                                |
-| `isPluginLoaded()` · `whenReady()` | **Délégués au contrat partagé** — voir ci-dessous       |
-| `pullLayer(layerId, options?)`     | **Rapatriement borné** (tâche 4.1) — voir ci-dessous    |
-| `getSyncReport()`                  | **Rapport par couche** (tâche 4.8) — voir ci-dessous    |
-| `getStats()`                       | Décomptes agrégés — compte les magasins **v4**          |
+| Membre                             | Ce que c'est                                                                                                   |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `DB`                               | La base locale et ses modules enregistrés — `db/db-modules-registry.ts` les liste, le compte ne se recopie pas |
+| `CacheManager`                     | Téléchargement, état, quota, annulation                                                                        |
+| `Cache`                            | Persistance de la sélection, et le sélecteur de couches                                                        |
+| `isAvailable()`                    | Le moteur est-il injecté                                                                                       |
+| `isPluginLoaded()` · `whenReady()` | **Délégués au contrat partagé** — voir ci-dessous                                                              |
+| `pullLayer(layerId, options?)`     | **Rapatriement borné** (tâche 4.1) — voir ci-dessous                                                           |
+| `getSyncReport()`                  | **Rapport par couche** (tâche 4.8) — voir ci-dessous                                                           |
+| `getStats()`                       | Décomptes agrégés — compte les magasins **v4**                                                                 |
 
 #### `pullLayer()` — le premier ÉCRIVAIN du store `features`
 
@@ -383,9 +414,18 @@ et **n'écrit aucun code de transport** : `fetchOgcApiFeatures` portait déjà l
 `next`, le `bbox`, `maxFeatures` et l'`AbortSignal`. Trois propriétés qui ne se lisent pas dans le
 code et qui sont chacune tenues par un test **vu rougir** :
 
-- **Le plafond est DUR.** `ogc-api-loader` coupe _après_ avoir accumulé une page entière et ne
-  tronque jamais. Mesuré en navigateur : `maxFeatures: 15` contre des pages de 10 fait rendre **20**
-  entités au chargeur ; l'orchestrateur en écrit **15** et pose `capped: true`.
+- **Le plafond est DUR — et il a CHANGÉ DE CÔTÉ le 19/08/2026.** `ogc-api-loader` coupait _après_
+  avoir accumulé une page entière et ne tronquait jamais : `pull/layer-pull.ts` compensait, **seul**,
+  pendant que le chemin d'**affichage** recevait le dépassement sans le savoir. La coupe est donc
+  passée à la source, ce qui sert les deux appelants ; le chargeur coupe à la borne exacte et pose
+  un membre `truncated` sur la collection. La coupe de l'orchestrateur devient **redondante et non
+  fausse**, conservée à dessein pour le cas où la collection viendrait d'un autre chemin.
+  🛑 **Et `capped` se lit maintenant des DEUX côtés — l'oublier aurait éteint le témoin.** Déduit de
+  la seule comparaison locale, il ne pouvait plus jamais être vrai : le rapport aurait cessé de dire
+  qu'un rapatriement était partiel **le jour même où la coupe est devenue fiable**. De même,
+  `fetched` rapporte ce que la **source** a rendu avant la coupe (`truncated.fetched`) et non ce qui
+  a survécu — sans quoi le rapport dirait que la source tenait exactement dans la borne, l'inverse
+  de ce qu'il constate.
 - **Une saisie locale n'est jamais écrasée.** La décision vit dans `db/features.ts`
   (`putManyPreservingLocal`), dans **une** transaction : un enregistrement dont `syncState` n'est pas
   `synced` est sauté et compté `preserved`. Lire l'état dans l'orchestrateur puis écrire aurait laissé
@@ -461,7 +501,10 @@ le réseau au premier `moveend`).
 
 **Mesures navigateur** (`scripts/probe-offline-pull.mjs`, contre le pygeoapi de `docker/backend/`) :
 store vide → **27 écrites**, toutes avec `serverId`, `VersionMarker` et `synced` ; emprise
-discriminante → **11** ; plafond à 15 sur des pages de 10 → chargeur **20**, store **15**.
+discriminante → **11** ; plafond à 15 sur des pages de 10 → store **15**. ⚠️ **Le relevé portait
+aussi « chargeur **20** », et il ne se rejouerait plus ainsi** : depuis le 19/08/2026 le chargeur
+coupe lui-même à la borne, donc la sonde rendrait 15 des deux côtés. La sonde se relance, elle ne
+se recopie pas.
 
 ⚠️ **Les deux derniers ont été ajoutés pour une raison précise, et elle vaut d'être connue.** Le
 plugin d'interface importait auparavant le contrat partagé **directement**. Or un plugin chargé comme
@@ -485,7 +528,7 @@ le rejouer.
 
 **Il n'y a pas de façade `geoleaf.offline.ts`.**
 
-### Événements — sept émis, et aucun n'est typé
+### Événements — sept émis, un seul déclaré au contrat
 
 | Signal                           | Émis par                   |
 | -------------------------------- | -------------------------- |
@@ -532,8 +575,13 @@ restauration, et tous deux détachés ensuite.
 
 ### Stockage écrit
 
-**C'est la seule capacité du dépôt qui écrit une base de données.** Couches, images, sauvegardes,
-préférences, file de synchronisation.
+**C'est la seule capacité du dépôt qui écrit une base de données.** Couches, images, préférences,
+entités (`features`), file d'écritures (`outbox`) et itinéraires (`routes`).
+
+⚠️ Cette phrase a listé « sauvegardes » et « file de synchronisation » : les deux magasins qui les
+portaient — `sync_backups` et `sync_queue` — sont partis à la tâche **4.11**, la chaîne de
+sauvegarde avec eux. Un inventaire écrit en prose est le premier endroit d'une fiche que le
+retrait d'un magasin ne visite pas.
 
 ---
 
@@ -611,7 +659,7 @@ ne sont pas du code** :
 3. ~~les tuiles **vectorielles** exigent en plus une `vectorZone` **dessinée par
    l'utilisateur**, qu'aucun profil ne peut déclarer.~~ — 🛑 **ÉNONCÉ FAUX, corrigé le
    07/08/2026.** La `vectorZone` n'a jamais été une clé de profil : c'est une zone **dessinée
-   dans l'interface**, et `offline-ui/src/cache/cache-control-zone.ts:257` la produit et la
+   dans l'interface**, et `packages/plugins/offline-ui/src/cache/cache-control-zone.ts` (`persistZone`) la produit et la
    persiste depuis toujours (bbox → `persistZone` → `Storage.saveLayerSelection` → relue par
    `_addVectorBasemapResources`). « Qu'aucun profil ne peut déclarer » décrivait donc une
    impossibilité qui n'en était pas une, et faisait passer A7′ pour bloquée par deux verrous
@@ -852,7 +900,14 @@ règles `DEP-01..04` de `packages/core/__tests__/guards/generated-entries.guard.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
-Trois arêtes, **toutes par un baril de médiation**, aucun import profond :
+Les arêtes passent **toutes par un baril de médiation** — aucun import profond, ce que la règle
+R.8 d'`eslint.config.mjs` interdit par expression régulière (`kernel/<sous-dir>/` autre
+qu'`index.js`, `*-types.js`, `*-seam.js`, `config-primitives.js`). Elles se relèvent, elles ne se
+comptent pas de mémoire :
+`grep -rn "kernel/[a-z]*/index.js" packages/core/src/capabilities/offline/`. ⚠️ **La table
+ci-dessous n'en nomme que trois et il en manque deux barils entiers** — `kernel/api/index.js`
+(`CapabilityRegistry`, dans `lifecycle.ts`) et `kernel/config/index.js` (`resolveProfileLayers`,
+dans `cache/storage.ts`) :
 
 | Arête                                        | Baril                     | Ce qu'elle sert                        |
 | -------------------------------------------- | ------------------------- | -------------------------------------- |

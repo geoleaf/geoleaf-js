@@ -4,14 +4,14 @@ title: websocket — le transport temps réel, et sa reconnexion
 plugin_id: websocket
 package: "@geoleaf-plugins/websocket"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 81aa8d29
-date: 28 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # websocket — le transport temps réel, et sa reconnexion
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/websocket` ·
-**Code :** `packages/plugins/websocket/` · **Vérifié contre :** `81aa8d29` (28/07/2026)
+**Code :** `packages/plugins/websocket/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -96,30 +96,30 @@ Trois gestes — le squelette minimal du contrat, sans rien de plus :
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                     | Entrée                                     | Sortie observable                                                                                                       | Code                                     |
-| ----- | -------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| WS-01 | Initialisation explicite                           | `GeoLeaf.Ws.init(config)`                  | Se connecte immédiatement ; la promesse se résout **à la connexion**, pas à l'appel                                     | `ws-lifecycle.ts` → `wsInit`             |
-| WS-02 | TLS imposé en production                           | URL en `ws://` avec `NODE_ENV=production`  | La validation **jette** avant toute connexion, avec un code d'erreur structuré                                          | `config.ts` → `validateConfig`           |
-| WS-03 | Cohérence du battement de cœur validée             | `timeoutMs >= intervalMs`                  | **Jette** — un délai d'attente plus long que l'intervalle déclarerait la connexion perdue en permanence                 | `config.ts` → `validateConfig`           |
-| WS-04 | Machine à cinq états                               | Cycle de vie de la connexion               | `disconnected` → `connecting` → `connected`, puis `disconnected` → `reconnecting` → `connected`, ou `failed`            | `connection-manager.ts`                  |
-| WS-05 | Retrait exponentiel plafonné                       | Coupure                                    | Délai = `initialDelayMs × 2^(tentative-1)`, plafonné à `maxDelayMs`                                                     | `connection-manager.ts`                  |
-| WS-06 | Réessais infinis possibles                         | `maxRetries: 0`                            | Le plugin ne renonce **jamais** — la posture voulue pour une application hors-ligne d'abord                             | `connection-manager.ts`                  |
-| WS-07 | Ré-abonnement automatique                          | Reconnexion réussie                        | **Tous** les canaux actifs sont ré-abonnés avant que quoi que ce soit d'autre ne parte                                  | `channel-manager.ts` → `resubscribeAll`  |
-| WS-08 | Vidage de la file **après** le ré-abonnement       | Reconnexion réussie                        | Les messages en attente partent **dans l'ordre**, une fois les canaux rétablis                                          | `connection-manager.ts`, `send-queue.ts` |
-| WS-09 | Un canal, un gestionnaire                          | Deuxième `subscribe` sur le même canal     | Le gestionnaire précédent est **remplacé** — pas de diffusion à plusieurs abonnés                                       | `channel-manager.ts` → `subscribe`       |
-| WS-10 | Désabonnement idempotent                           | `subscribe()` rend une fonction            | L'appeler deux fois est sans effet ; `unsubscribe(canal)` sur un canal inconnu aussi                                    | `channel-manager.ts`                     |
-| WS-11 | File d'envoi pendant la coupure                    | `send()` alors que la connexion est perdue | Le message est mis en file quand `queueOnDisconnect` le permet, sinon il est **abandonné**                              | `send-queue.ts`                          |
-| WS-12 | Débordement de file : le plus **ancien** part      | File pleine                                | Le plus ancien message est jeté et un événement de débordement est émis — le plus récent est le plus pertinent          | `send-queue.ts`                          |
-| WS-13 | Taille de file plancher                            | `maxQueueSize: 0`                          | Ramené à `1` — une file de taille nulle serait indiscernable d'une file désactivée                                      | `send-queue.ts`                          |
-| WS-14 | Battements de cœur                                 | `heartbeat.enabled: true`                  | Un `ping` par intervalle ; sans réponse dans le délai, la connexion est déclarée perdue et la reconnexion s'enclenche   | `heartbeat-manager.ts`                   |
-| WS-15 | Le transport est nommé dans l'événement de timeout | Transport personnalisé                     | L'événement porte la **clé configurée**, pas le nom du transport intégré — sinon un transport tiers serait mal étiqueté | `heartbeat-manager.ts`                   |
-| WS-16 | Métriques instantanées                             | `getMetrics()`                             | Instantané **immuable** : connexion, reconnexions, messages, dernier ping, canaux actifs, longueur de file              | `metrics-collector.ts`                   |
-| WS-17 | Métriques lisibles **avant** l'initialisation      | `getMetrics()` avant `init()`              | Rend un instantané neutre au lieu de jeter                                                                              | `public-api.ts`, `metrics-collector.ts`  |
-| WS-18 | Reconnexion forcée                                 | `reconnect()`                              | Réinitialise le compteur de tentatives ; **sans effet** si la connexion est déjà établie                                | `ws-lifecycle.ts`                        |
-| WS-19 | Démontage idempotent                               | `destroy()`                                | Déconnecte, vide les abonnements, remet les métriques à zéro — appelable plusieurs fois                                 | `ws-lifecycle.ts` → `wsDestroy`          |
-| WS-20 | L'objet d'API survit aux cycles                    | `init()` → `destroy()` → `init()`          | Les collaborateurs sont **remplacés**, pas mutés : la référence rendue par `buildPublicApi()` reste valable             | `ws-lifecycle.ts`                        |
-| WS-21 | Transport personnalisé                             | `registerTransport(clé, fabrique)`         | La clé devient utilisable dans `config.transport`                                                                       | `transports/transport-registry.ts`       |
-| WS-22 | Douze événements de diagnostic                     | Cycle de vie de la connexion et des canaux | Émis sur le document — connexion, coupure, reconnexion, échec, abonnements, file, battement, métriques                  | `event-bus-bridge.ts`                    |
+| ID    | Fonctionnalité                                     | Entrée                                     | Sortie observable                                                                                                                                                                                                                               | Code                                     |
+| ----- | -------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| WS-01 | Initialisation explicite                           | `GeoLeaf.Ws.init(config)`                  | Se connecte immédiatement ; la promesse se résout **à la connexion**, pas à l'appel                                                                                                                                                             | `ws-lifecycle.ts` → `wsInit`             |
+| WS-02 | TLS imposé en production                           | URL en `ws://` avec `NODE_ENV=production`  | La validation **jette** avant toute connexion, avec un code d'erreur structuré                                                                                                                                                                  | `config.ts` → `validateConfig`           |
+| WS-03 | Cohérence du battement de cœur validée             | `timeoutMs >= intervalMs`                  | **Jette** — un délai d'attente plus long que l'intervalle déclarerait la connexion perdue en permanence                                                                                                                                         | `config.ts` → `validateConfig`           |
+| WS-04 | Machine à cinq états                               | Cycle de vie de la connexion               | `disconnected` → `connecting` → `connected`, puis `disconnected` → `reconnecting` → `connected`, ou `failed`                                                                                                                                    | `connection-manager.ts`                  |
+| WS-05 | Retrait exponentiel plafonné                       | Coupure                                    | Délai = `initialDelayMs × 2^(tentative-1)`, plafonné à `maxDelayMs`                                                                                                                                                                             | `connection-manager.ts`                  |
+| WS-06 | Réessais infinis possibles                         | `maxRetries: 0`                            | Le plugin ne renonce **jamais** — la posture voulue pour une application hors-ligne d'abord                                                                                                                                                     | `connection-manager.ts`                  |
+| WS-07 | Ré-abonnement automatique                          | Reconnexion réussie                        | **Tous** les canaux actifs sont ré-abonnés avant que quoi que ce soit d'autre ne parte                                                                                                                                                          | `channel-manager.ts` → `resubscribeAll`  |
+| WS-08 | Vidage de la file **après** le ré-abonnement       | Reconnexion réussie                        | Les messages en attente partent **dans l'ordre**, une fois les canaux rétablis                                                                                                                                                                  | `connection-manager.ts`, `send-queue.ts` |
+| WS-09 | Un canal, un gestionnaire                          | Deuxième `subscribe` sur le même canal     | Le gestionnaire précédent est **remplacé** — pas de diffusion à plusieurs abonnés                                                                                                                                                               | `channel-manager.ts` → `subscribe`       |
+| WS-10 | Désabonnement idempotent                           | `subscribe()` rend une fonction            | L'appeler deux fois est sans effet ; `unsubscribe(canal)` sur un canal inconnu aussi                                                                                                                                                            | `channel-manager.ts`                     |
+| WS-11 | File d'envoi pendant la coupure                    | `send()` alors que la connexion est perdue | Le message est mis en file quand `queueOnDisconnect` le permet, sinon il est **abandonné**                                                                                                                                                      | `send-queue.ts`                          |
+| WS-12 | Débordement de file : le plus **ancien** part      | File pleine                                | Le plus ancien message est jeté et un événement de débordement est émis — le plus récent est le plus pertinent                                                                                                                                  | `send-queue.ts`                          |
+| WS-13 | Taille de file plancher                            | `maxQueueSize: 0`                          | Ramené à `1` — une file de taille nulle serait indiscernable d'une file désactivée                                                                                                                                                              | `send-queue.ts`                          |
+| WS-14 | Battements de cœur                                 | `heartbeat.enabled: true`                  | Un `ping` par intervalle ; sans réponse dans le délai, la connexion est déclarée perdue et la reconnexion s'enclenche                                                                                                                           | `heartbeat-manager.ts`                   |
+| WS-15 | Le transport est nommé dans l'événement de timeout | Transport personnalisé                     | L'événement porte la **clé configurée**, pas le nom du transport intégré — sinon un transport tiers serait mal étiqueté                                                                                                                         | `heartbeat-manager.ts`                   |
+| WS-16 | Métriques instantanées                             | `getMetrics()`                             | Instantané **immuable** — mais ⚠️ **deux champs ne sont jamais alimentés en production** : `lastPingMs` reste `null`, `messagesReceived` reste à zéro, `touchPingMs()` et `touchMessageReceived()` n'ayant **aucun appelant hors `__tests__/`** | `metrics-collector.ts`                   |
+| WS-17 | Métriques lisibles **avant** l'initialisation      | `getMetrics()` avant `init()`              | Rend un instantané neutre au lieu de jeter                                                                                                                                                                                                      | `public-api.ts`, `metrics-collector.ts`  |
+| WS-18 | Reconnexion forcée                                 | `reconnect()`                              | Réinitialise le compteur de tentatives ; **sans effet** si la connexion est déjà établie                                                                                                                                                        | `ws-lifecycle.ts`                        |
+| WS-19 | Démontage idempotent                               | `destroy()`                                | Déconnecte, vide les abonnements, remet les métriques à zéro — appelable plusieurs fois                                                                                                                                                         | `ws-lifecycle.ts` → `wsDestroy`          |
+| WS-20 | L'objet d'API survit aux cycles                    | `init()` → `destroy()` → `init()`          | Les collaborateurs sont **remplacés**, pas mutés : la référence rendue par `buildPublicApi()` reste valable                                                                                                                                     | `ws-lifecycle.ts`                        |
+| WS-21 | Transport personnalisé                             | `registerTransport(clé, fabrique)`         | La clé devient utilisable dans `config.transport`                                                                                                                                                                                               | `transports/transport-registry.ts`       |
+| WS-22 | Douze événements de diagnostic                     | Cycle de vie de la connexion et des canaux | Émis sur le document — connexion, coupure, reconnexion, échec, abonnements, file, battement, métriques                                                                                                                                          | `event-bus-bridge.ts`                    |
 
 Les tests qui couvrent ces lignes : `packages/plugins/websocket/src/__tests__/` — l'emplacement
 canonique imposé par le contrat de plugin.
@@ -256,9 +256,19 @@ node scripts/verify-plugin-contract.cjs --plugin=websocket
 
 ### Dépendances
 
-**Une seule, et elle est le core** — aucune dépendance externe. C'est le plugin le plus léger de ce
-palier, et l'écart avec [`realtime-layer`](CDC_realtime-layer.md) tient entièrement à la
-bibliothèque protobuf de ce dernier.
+**Aucune dépendance d'exécution déclarée, et aucune dépendance externe.** Le core est sorti de
+`dependencies` pour `peerDependencies` le 25/08/2026, avec un doublon en `devDependencies` pour que
+le workspace continue de résoudre et de tester : c'est désormais l'installateur du consommateur qui
+fournit le core, pas le tarball. ⚠️ Le motif n'est pas cosmétique — en `dependencies`, deux bornes
+qui ne se recoupent pas installent **deux copies** du core, or `ensureGeoLeaf()` leur fait partager
+le **même** namespace global : la panne se déplace du runtime silencieux vers l'installation
+bruyante. C'est le plugin le plus léger de ce palier, et l'écart avec
+[`realtime-layer`](CDC_realtime-layer.md) tient entièrement à la bibliothèque protobuf de ce
+dernier. Le manifeste se lit :
+
+```bash
+node -p "JSON.stringify(require('./packages/plugins/websocket/package.json').peerDependencies)"
+```
 
 ### Frontières
 
@@ -266,14 +276,23 @@ bibliothèque protobuf de ce dernier.
   ne monte rien si le namespace est absent.
 - **Aucun accès à la carte, aucune notion de couche.** Un canal transporte une charge utile opaque ;
   c'est [`realtime-layer`](CDC_realtime-layer.md) qui lui donne un sens cartographique.
-- **La relation avec `realtime-layer` est à SENS UNIQUE et tardive** : c'est l'autre plugin qui lit
-  `GeoLeaf.Ws` au démarrage de sa source. Ce plugin ne connaît pas son consommateur, et son
-  manifeste ne le mentionne pas.
+- **La relation avec ses consommateurs est à SENS UNIQUE et tardive** : ce sont les autres plugins
+  qui lisent `GeoLeaf.Ws`, jamais l'inverse. Ce plugin n'en connaît aucun, et son manifeste n'en
+  mentionne aucun — c'est **eux** qui le déclarent en `optional`. `realtime-layer` le lit au
+  démarrage de sa source ; `position-share` s'y est ajouté depuis (`transports/ws-transport.ts`),
+  et il pose une contrainte de plus qui ne se devine pas : il **n'appelle jamais `GeoLeaf.Ws.init()`**
+  — la connexion appartient à l'intégrateur et peut déjà être ouverte —, donc il **jette** si le
+  namespace est absent ou si l'état n'est pas `connected`. La liste des déclarants se dérive :
+
+    ```bash
+    grep -rn "optional:.*websocket" packages/plugins/*/src/entry.ts
+    ```
 
 ### Ce que la fiche a re-mesuré
 
-Le constat ouvre sur `HeartbeatConfig`, déclaré **deux fois**
-dans ce paquet. Le pré-vol confirme la duplication et **requalifie le risque** :
+Le constat ouvrait sur `HeartbeatConfig`, alors déclaré **deux fois sous le même nom**
+dans ce paquet. Le pré-vol d'alors confirmait la duplication et **requalifiait le risque** —
+la table ci-dessous est ce relevé, et il a été soldé depuis (voir juste après) :
 
 | Ce que la ligne énonçait                                                                                 | Ce que la mesure donne                                                                                                                                                |
 | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -281,8 +300,7 @@ dans ce paquet. Le pré-vol confirme la duplication et **requalifie le risque** 
 | « Un appelant qui suit la surface publiée satisfait le type exporté et pas celui qu'`attach()` utilise » | ❌ **Ce cas n'existe pas.** `HeartbeatManager` n'est ré-exporté ni par l'entrée ni par la carte d'exports du paquet : `attach()` est **inatteignable de l'extérieur** |
 | Le risque porte sur un contrat public                                                                    | ❌ Son **unique** appelant est interne et lui passe toujours la configuration **résolue**, où les trois champs sont présents par construction                         |
 
-**Ce qui reste vrai** : deux descriptions du même objet tenues à la main, qu'aucune gate ne relie —
-troisième occurrence du motif dans ce dépôt. C'est un défaut de **maintenance**, pas de contrat.
+**Ce qui reste vrai, et ce qui a été soldé depuis** : la forme résolue est toujours écrite deux fois à la main — le littéral de `ResolvedWsConfig["heartbeat"]` dans `config.ts`, l'interface `ResolvedHeartbeatConfig` dans `heartbeat-manager.ts`. Mais les deux moitiés du diagnostic sont tombées le 17/08/2026 : l'**homonymie** a disparu (le type local a été renommé, il ne s'appelle plus `HeartbeatConfig`), et le lien n'est plus absent — **le site d'appel EST la garde**. `ws-lifecycle.ts` passe `resolved.heartbeat` à `attach()` : si `applyDefaults()` cesse de fournir un champ que l'interface exige, `tsc` refuse de compiler. ⚠️ **Et la garde a été vue rougir**, par mutation, avec le `TS2345` recopié dans le commentaire sur place — ce n'est pas une garde supposée. Trois dispositifs plus lourds ont été essayés puis écartés **par la mesure**, et leurs motifs sont écrits au-dessus de l'interface : l'alias indexé fait inliner un `TypeLiteral` dans la signature publique par TypeDoc, l'`extends` sur type indexé ne compile pas (TS2499), et le garde de type explicite est soit TS6196 soit un export mort pour knip. Reste un défaut de **lisibilité**, gardé.
 
 ---
 
@@ -296,13 +314,13 @@ la refonte documentaire V3.
 vérifications croisées** — dix affirmations adossées à un fichier. Neuf tiennent. Voici l'écart, et
 il est **livré aux intégrateurs**.
 
-| Énoncé du CDC                                                                             | Ce que dit le code                                                                                                                                                                                                                   |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Croisée n° 8 — « `MockTransport` exporté via `./test-utils` dans `package.json#exports` » | ❌ **La sous-voie n'existe plus.** La carte d'exports ne déclare que `.` et `./package.json` — et une carte d'exports **bloque** toute sous-voie non listée. `import … from "@geoleaf-plugins/websocket/test-utils"` échoue          |
-| §2.19 — le double simulé est offert aux consommateurs                                     | Le fichier est **bien livré** (`test-utils/` est dans `files[]`, donc dans l'archive npm) et son propre en-tête documente le chemin d'import qui ne résout pas — versé au registre                                                   |
-| Croisée n° 3 — « `init()` sur plugin initialisé → `public-api.ts` »                       | Le **comportement** tient (`wsInit` appelle `wsDestroy` avant de reconstruire) ; **le fichier a changé** : la logique est passée dans `ws-lifecycle.ts`, la façade ne fait plus que déléguer                                         |
-| §2.19 — « 9 suites Vitest »                                                               | ✅ **Vérifié exact** — mais le décompte de tests, lui, ne se recopie pas                                                                                                                                                             |
-| Croisées n° 1, 2, 4, 5, 6, 7, 9, 10                                                       | ✅ **Vérifiées exactes** — validation TLS et battement de cœur, cinq états, remplacement de gestionnaire, file d'envoi, ré-abonnement avant vidage, formule de retrait, et le code de fermeture 1008 traité en échec non réessayable |
+| Énoncé du CDC                                                                             | Ce que dit le code                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Croisée n° 8 — « `MockTransport` exporté via `./test-utils` dans `package.json#exports` » | ❌ **La sous-voie n'existe plus.** La carte d'exports ne déclare que `.` et `./package.json` — et une carte d'exports **bloque** toute sous-voie non listée. `import … from "@geoleaf-plugins/websocket/test-utils"` échoue                                                                                                                                                                                                                                                                   |
+| §2.19 — le double simulé est offert aux consommateurs                                     | ❌ **Il ne l'est plus.** `files[]` a cessé de porter `test-utils/` le 17/08/2026 : le double ne voyage plus dans le tarball, et son en-tête **interdit** désormais d'y remettre un `@example` visant `@geoleaf-plugins/websocket/test-utils`. Le geste supporté est d'implémenter `IWsTransport` et de le passer à `registerTransport()`, l'interface étant exportée depuis la racine du paquet. Le manifeste se lit : `node -p "require('./packages/plugins/websocket/package.json').files"` |
+| Croisée n° 3 — « `init()` sur plugin initialisé → `public-api.ts` »                       | Le **comportement** tient (`wsInit` appelle `wsDestroy` avant de reconstruire) ; **le fichier a changé** : la logique est passée dans `ws-lifecycle.ts`, la façade ne fait plus que déléguer                                                                                                                                                                                                                                                                                                  |
+| §2.19 — « 9 suites Vitest »                                                               | ✅ **Vérifié exact** — mais le décompte de tests, lui, ne se recopie pas                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Croisées n° 1, 2, 4, 5, 6, 7, 9, 10                                                       | ✅ **Vérifiées exactes** — validation TLS et battement de cœur, cinq états, remplacement de gestionnaire, file d'envoi, ré-abonnement avant vidage, formule de retrait, et le code de fermeture 1008 traité en échec non réessayable                                                                                                                                                                                                                                                          |
 
 ⚠️ **Pourquoi rien ne rougit sur l'écart de sous-voie** : les tests du paquet importent le double par
 un **chemin relatif** (`../../test-utils/…`), pas par le nom du paquet. Ils ne peuvent donc pas voir

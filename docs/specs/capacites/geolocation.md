@@ -4,14 +4,14 @@ title: geolocation — le suivi GPS de la position de l'utilisateur
 capability_id: geolocation
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # geolocation — le suivi GPS de la position de l'utilisateur
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/geolocation/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -24,9 +24,14 @@ date: 27 juillet 2026
 >    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
 > ⚠️ **Son contrôle est invisible, et ce n'est pas un défaut.** `.geoleaf-ctrl-geolocation` est en
-> `display: none !important` : toutes les interactions passent par la **pastille de la barre
-> d'outils mobile**, qui clique le lien du contrôle par programme. Le contrôle est donc un
-> **mécanisme**, pas une surface visible. Voir §Dépendances.
+> `display: none !important` : rien ne l'atteint au doigt. Son lien est cliqué **par programme**,
+> et par trois appelants — la **pastille de la barre d'outils mobile**
+> (`kernel/ui/mobile/mobile-toolbar.ts`), l'outil GPS de `measure`
+> (`packages/plugins/measure/src/tools/tool-gps.ts`) et `position-share`
+> (`packages/plugins/position-share/src/gps-watch.ts`), qui écrit le motif du détour là où il se
+> lit : un navigateur n'accorde la géolocalisation **qu'au geste de l'utilisateur**, et ce geste
+> est câblé ici. Le contrôle est donc un **mécanisme** — et le seul chemin de demande de
+> permission du dépôt —, pas une surface visible. Voir §Dépendances.
 
 ---
 
@@ -44,8 +49,8 @@ plugins.
 - **Elle ne géocode pas** : convertir une adresse en coordonnées est le plugin `geocoding`.
 - **Elle ne mesure rien** : les distances relèvent du plugin `measure` (qui, lui, **écoute** l'état
   publié ici).
-- **Elle ne filtre pas par proximité** : c'est la capacité `filter` qui lit l'état GPS pour son
-  mode de proximité (⏳ fiche à écrire, palier L/XL).
+- **Elle ne filtre pas par proximité** : c'est la capacité [`filter`](filter.md) qui lit l'état GPS
+  pour son mode de proximité.
 - **Elle n'affiche pas ses propres messages.** Les notifications passent par la capacité
   `toast-renderer`, atteinte **au runtime** : absente, chaque appel est un non-événement.
 - **Elle ne mémorise rien.** Aucune persistance : l'état vit le temps de la page.
@@ -137,8 +142,14 @@ les utilisateurs associent à « ma position ».
 
 ⚠️ **`getState()` rend le singleton lui-même, pas une copie.** Le type est présenté comme un
 « instantané », mais l'objet est la référence vivante : un consommateur qui le garde voit les
-positions suivantes changer sous lui — ce qui est précisément ce que le mode de proximité de
-`filter` et le plugin `measure` exploitent. Ne pas le muter depuis l'extérieur.
+positions suivantes changer sous lui. ⚠️ **Cette ligne a nommé `filter` et `measure` comme les
+exploitants de cette référence vivante jusqu'au 01/09/2026, et ni l'un ni l'autre ne passe par ce
+membre** : le mode de proximité de `filter` importe le module d'état **directement** (voir §Le seul
+lien capacité → capacité), et `measure` ne lit pas l'état du tout — il écoute l'événement et monte
+sa propre veille. Les lecteurs du seam sont hors du core, et ils le rappellent à chaque usage
+plutôt que de retenir la référence : `packages/plugins/editor/src/add-form/placement-form.ts`,
+`packages/plugins/routing/src/origin.ts` et `packages/plugins/position-share/src/emitter.ts`. Ne
+pas le muter depuis l'extérieur.
 
 Typage publié : `src/global.d.ts`, section des capacités (`Geolocation?:` →
 `GeolocationPublicApi`). Ne pas citer de numéro de ligne pour ce fichier.
@@ -179,21 +190,21 @@ plugin**, ce qui en fait un contrat public quel que soit le nom qu'il portait.
 
 ## Décisions de conception
 
-| Décision                                                     | Pourquoi                                                                                                                                                                                                           | Alternative écartée                                                                                                     |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| **Le contrôle est masqué, la pastille mobile le pilote**     | Une seule implémentation du comportement GPS, atteinte depuis la surface visible du moment. Le contrôle joue le rôle de **mécanisme** ; le clic par programme évite de dupliquer la logique dans la barre d'outils | Deux implémentations, ou un contrôle visible en plus de la pastille — deux surfaces à garder en phase                   |
-| **L'état GPS est un singleton ESM, publié comme seam**       | Trois consommateurs en ont besoin (barre d'outils, proximité de `filter`, plugin `measure`) et aucun ne doit importer statiquement la capacité. Le seam rend l'absence de capacité indolore                        | Un état privé plus des événements — chaque consommateur devrait reconstruire la position courante à partir des annonces |
-| **L'erreur emprunte le démontage de l'arrêt volontaire**     | Un nettoyage partiel laissait fuir une souscription GPS à chaque cycle erreur → re-clic, et laissait `moveend` recentrer sur une position morte. La fonction d'arrêt faisait déjà le bon travail                   | Réécrire une moitié du nettoyage dans le gestionnaire d'erreur — c'est l'état d'avant, et il fuyait                     |
-| **Ne re-centrer qu'au premier point**                        | Recentrer à chaque position rendrait la carte impossible à explorer pendant une veille. Le bouton de recentrage rend le geste **explicite** quand l'utilisateur le veut                                            | Recentrer en continu                                                                                                    |
-| **Le bouton de recentrage n'apparaît qu'au-delà d'un seuil** | Il serait du bruit visuel quand la carte est déjà sur l'utilisateur                                                                                                                                                | L'afficher en permanence pendant la veille                                                                              |
-| **Pas de cercle au-delà d'un seuil de précision**            | Un cercle de plusieurs centaines de mètres n'informe pas, il masque la carte                                                                                                                                       | Toujours dessiner le cercle                                                                                             |
-| **Notifications atteintes au runtime, pas importées**        | La capacité de notification est optionnelle : un import statique la rendrait obligatoire. Absente, chaque appel est un non-événement — dégradation gracieuse, pas panne                                            | Un import statique de `toast-renderer`                                                                                  |
-| **Notification d'attente persistante et non congédiable**    | Obtenir un premier point peut prendre plusieurs secondes ; un message qui s'efface laisserait l'utilisateur sans retour. Elle est mémorisée pour être refermée à coup sûr — succès **comme** erreur                | Un message éphémère                                                                                                     |
-| **Haute précision, jamais de position mise en cache**        | Une position en cache placerait l'utilisateur là où il était, ce qui est pire que pas de position du tout pour un usage cartographique                                                                             | Autoriser une position récente                                                                                          |
-| **Couleur du cercle non thématisée**                         | C'est la teinte conventionnelle de « ma position » ; la faire varier avec la palette la rendrait méconnaissable                                                                                                    | La brancher sur les jetons de thème                                                                                     |
-| **Réglages d'ergonomie non exposés à la configuration**      | Ce sont des choix d'interface, pas des paramètres d'intégration. Ils sont **nommés** dans le code pour rester lisibles, sans devenir des promesses publiques                                                       | Les publier dans le `configSchema` — chacun deviendrait une surface à maintenir                                         |
-| **Icônes construites par le helper de sécurité**             | Les tracés sont statiques, mais le dépôt interdit `innerHTML` hors des helpers : la règle ne se négocie pas au cas par cas                                                                                         | `innerHTML`                                                                                                             |
-| Pas de `loader`                                              | Inline avec le bundle UI ; le gate de configuration décide                                                                                                                                                         | Un `import()` paresseux                                                                                                 |
+| Décision                                                     | Pourquoi                                                                                                                                                                                                                                                                                                                                                | Alternative écartée                                                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Le contrôle est masqué, la pastille mobile le pilote**     | Une seule implémentation du comportement GPS, atteinte depuis la surface visible du moment. Le contrôle joue le rôle de **mécanisme** ; le clic par programme évite de dupliquer la logique dans la barre d'outils                                                                                                                                      | Deux implémentations, ou un contrôle visible en plus de la pastille — deux surfaces à garder en phase                   |
+| **L'état GPS est un singleton ESM, publié comme seam**       | Les lecteurs sont hors du core — `editor`, `routing`, `position-share` — et aucun ne doit importer statiquement la capacité : le seam rend l'absence de capacité indolore. En interne c'est autre chose : la proximité de `filter` lit le même singleton par import direct, et la barre d'outils mobile ne le lit pas du tout — elle écoute l'événement | Un état privé plus des événements — chaque consommateur devrait reconstruire la position courante à partir des annonces |
+| **L'erreur emprunte le démontage de l'arrêt volontaire**     | Un nettoyage partiel laissait fuir une souscription GPS à chaque cycle erreur → re-clic, et laissait `moveend` recentrer sur une position morte. La fonction d'arrêt faisait déjà le bon travail                                                                                                                                                        | Réécrire une moitié du nettoyage dans le gestionnaire d'erreur — c'est l'état d'avant, et il fuyait                     |
+| **Ne re-centrer qu'au premier point**                        | Recentrer à chaque position rendrait la carte impossible à explorer pendant une veille. Le bouton de recentrage rend le geste **explicite** quand l'utilisateur le veut                                                                                                                                                                                 | Recentrer en continu                                                                                                    |
+| **Le bouton de recentrage n'apparaît qu'au-delà d'un seuil** | Il serait du bruit visuel quand la carte est déjà sur l'utilisateur                                                                                                                                                                                                                                                                                     | L'afficher en permanence pendant la veille                                                                              |
+| **Pas de cercle au-delà d'un seuil de précision**            | Un cercle de plusieurs centaines de mètres n'informe pas, il masque la carte                                                                                                                                                                                                                                                                            | Toujours dessiner le cercle                                                                                             |
+| **Notifications atteintes au runtime, pas importées**        | La capacité de notification est optionnelle : un import statique la rendrait obligatoire. Absente, chaque appel est un non-événement — dégradation gracieuse, pas panne                                                                                                                                                                                 | Un import statique de `toast-renderer`                                                                                  |
+| **Notification d'attente persistante et non congédiable**    | Obtenir un premier point peut prendre plusieurs secondes ; un message qui s'efface laisserait l'utilisateur sans retour. Elle est mémorisée pour être refermée à coup sûr — succès **comme** erreur                                                                                                                                                     | Un message éphémère                                                                                                     |
+| **Haute précision, jamais de position mise en cache**        | Une position en cache placerait l'utilisateur là où il était, ce qui est pire que pas de position du tout pour un usage cartographique                                                                                                                                                                                                                  | Autoriser une position récente                                                                                          |
+| **Couleur du cercle non thématisée**                         | C'est la teinte conventionnelle de « ma position » ; la faire varier avec la palette la rendrait méconnaissable                                                                                                                                                                                                                                         | La brancher sur les jetons de thème                                                                                     |
+| **Réglages d'ergonomie non exposés à la configuration**      | Ce sont des choix d'interface, pas des paramètres d'intégration. Ils sont **nommés** dans le code pour rester lisibles, sans devenir des promesses publiques                                                                                                                                                                                            | Les publier dans le `configSchema` — chacun deviendrait une surface à maintenir                                         |
+| **Icônes construites par le helper de sécurité**             | Les tracés sont statiques, mais le dépôt interdit `innerHTML` hors des helpers : la règle ne se négocie pas au cas par cas                                                                                                                                                                                                                              | `innerHTML`                                                                                                             |
+| Pas de `loader`                                              | Inline avec le bundle UI ; le gate de configuration décide                                                                                                                                                                                                                                                                                              | Un `import()` paresseux                                                                                                 |
 
 ---
 
@@ -217,8 +228,10 @@ de `state.ts`.
 
 Le coût est faible **et mesurable** : `state.ts` n'importe qu'un **type** (effacé à la compilation),
 donc `filter` tire un singleton de quelques lignes, **pas** les centaines de lignes du contrôle. Tous
-les autres consommateurs — dont la barre d'outils mobile, délibérément — passent par le seam
-`GeoLeaf.Geolocation.getState()` pour éviter précisément un import statique de la capacité.
+les autres consommateurs évitent l'import statique par deux voies, et **la barre d'outils mobile
+n'emprunte pas celle que cette ligne lui prêtait** : elle n'appelle jamais `getState()`, elle
+écoute `geoleaf:geolocation:statechange` sur le conteneur de carte et clique le lien du contrôle.
+Le seam `GeoLeaf.Geolocation.getState()`, lui, sert les lecteurs hors du core.
 
 ### Ce que le seam ne rend PAS — et deux consommateurs l'ont contourné plutôt que de l'élargir
 
@@ -229,8 +242,13 @@ les autres consommateurs — dont la barre d'outils mobile, délibérément — 
 Le seam rend **position, précision, horodatage et drapeaux d'état — et rien de plus**. `heading`
 et `speed` en sont **délibérément absents**, alors que la plateforme les expose.
 
-⚠️ **La conséquence n'est pas théorique** : deux consommateurs indépendants ont eu besoin du cap,
-et **aucun des deux n'a élargi le seam** — chacun a monté sa propre veille de position. Le contrat
+⚠️ **La conséquence n'est pas théorique** : deux consommateurs ont monté leur propre veille de
+position plutôt que d'élargir le seam, et pour **deux manques distincts** — `navigation` pour le
+cap (`packages/plugins/navigation/src/platform/geo.ts`), `measure` pour un flux de points bruts à
+sa cadence, filtré par saut de vitesse (`packages/plugins/measure/src/tools/tool-gps.ts`). ⚠️ Cette
+ligne a écrit « tous deux ont eu besoin du cap » jusqu'au 01/09/2026 : `measure` ne lit jamais
+`coords.heading`, et confondre les deux manques ferait chercher UN élargissement là où il en
+faudrait deux. Le contrat
 de guidage du plugin `navigation` en porte la trace, jusqu'au détail qui compte : il déclare son
 cap `number | null`, `null` et non `0` quand il est inconnu, _« parce que la plateforme le retient
 précisément quand elle ne sait pas »_ — une distinction que le seam n'aurait pas eu à réinventer.
@@ -238,6 +256,16 @@ précisément quand elle ne sait pas »_ — une distinction que le seam n'aurai
 🛑 **Élargir le seam est le geste que cette absence DÉSIGNE, pas un contournement** — mais il est
 explicite, et il se motive sur place : deux contournements valent un besoin, trois valent une
 frontière mal placée.
+
+🛑 **Et un troisième cas ne contourne pas : il se trompe, sans que rien ne le dise.**
+`packages/plugins/routing/src/origin.ts` lit `permission`, `position` et `coordinates` sur ce que
+rend `getState()`. Le seam rend `active`, `watchId` et `userPosition` — **aucun de ces trois noms
+n'a jamais existé ici**. Le plugin déclare sa propre forme locale, tous les membres optionnels :
+rien ne rougit, ni au typage ni au test, et « partir de votre position » y répond `no-fix` quelle
+que soit la veille en cours. C'est le coût exact d'un seam décrit ailleurs que dans son type : un
+lecteur hors du core ne peut pas se tromper **contre** `GeolocationPublicApi`, il ne peut se
+tromper que contre une copie de mémoire. Un quatrième lecteur qui redéclare la forme à côté vaut
+donc moins un élargissement du seam qu'une **surface de type que les plugins puissent importer**.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 

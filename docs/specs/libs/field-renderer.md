@@ -4,14 +4,14 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 21630103
-date: 28 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
 
 **Type :** bibliothèque partagée · **Paquet :** `@geoleaf/field-renderer` ·
-**Code :** `packages/libs/field-renderer/` · **Vérifié contre :** `21630103` (28/07/2026)
+**Code :** `packages/libs/field-renderer/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -23,11 +23,22 @@ date: 28 juillet 2026
 >    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
 >    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
-> ⚠️ **Ce n'est NI une capacité, NI un plugin — et aucune gate documentaire ne lit cette fiche.**
-> Les deux gardes du §2.4 de la refonte visent `specs/capacites/` (table de configuration ↔
-> `configSchema`) et `specs/plugins/` (manifeste ↔ `entry.ts`). Une bibliothèque n'a ni l'un ni
-> l'autre. **La véracité de ce document repose donc entièrement sur sa relecture** — c'est la règle
-> documentaire du dépôt, sans filet mécanique. Le dire ici plutôt que laisser croire l'inverse.
+> ⚠️ **Ce n'est NI une capacité, NI un plugin — et aucune gate ne lit sa PROSE.** Les deux gardes
+> du §2.4 de la refonte visent `specs/capacites/` (table de configuration ↔ `configSchema`) et
+> `specs/plugins/` (manifeste ↔ `entry.ts`). Une bibliothèque n'a ni l'un ni l'autre.
+>
+> ⚠️ **Cette ligne a dit « aucune gate documentaire ne lit cette fiche », et c'était trop large.**
+> Deux gates STRUCTURELLES la lisent, et l'ignorer fait croire que toucher son en-tête est gratuit :
+>
+> - **SPECS-FRESH** (`npm run check:specs-fresh:list`) lit son frontmatter `verifie_contre:` et son
+>   `**Code :**`, puis compte les commits ayant touché le sujet depuis. Elle refuse toute
+>   péremption NEUVE, et exige que `scripts/.baselines/specs-verified-against.json` rétrécisse dès
+>   qu'une fiche gelée redevient fraîche (VC-05).
+> - **SPECS-PATHS** (`npm run check:specs-paths`) gèle les chemins que la fiche cite —
+>   `scripts/audit-specs-paths.baseline.json` en porte une entrée pour elle.
+>
+> Ni l'une ni l'autre ne dit quoi que ce soit de la VÉRACITÉ d'une phrase : **elle repose
+> entièrement sur la relecture**, c'est la règle documentaire du dépôt.
 
 ---
 
@@ -50,8 +61,13 @@ sécurité DOM.
   cadre applicatif. Une seule concession : un utilitaire lit `GeoLeaf.I18n` **s'il existe**, puis
   son **catalogue de libellés intégré** (5.1c, **D6**), puis la clé. ⚠️ Jusqu'au 05/08 il retombait
   directement sur la clé, alors qu'il utilisait **43 clés qu'il ne déclarait nulle part**.
-- **Elle n'est pas consommée par le core.** Le core porte **son propre** piège de focus, et le motif
-  est écrit dans celui de la bibliothèque.
+- **Elle n'est pas consommée par le core** — et elle n'a plus de piège de focus à lui prêter.
+  `src/ui/focus-trap.ts` et `src/ui/confirm-dialog.ts` ont été **supprimés d'ici** le 06/08/2026 et
+  vivent dans `@geoleaf/host-runtime`. Le core garde le sien
+  (`packages/core/src/utils/controls/focus-trap.ts`), et le motif de la duplication — quatre
+  différences de comportement (propriétaire du listener, ensemble focusable, filtre de visibilité,
+  conteneur vide) qu'une fusion devrait arbitrer plutôt qu'absorber — est désormais écrit dans
+  `packages/libs/host-runtime/src/ui/focus-trap.ts`.
 - **Elle ne valide pas de manière asynchrone.** Les validateurs sont **purs et synchrones**.
 
 ---
@@ -73,20 +89,19 @@ ligne — **sans cloner le composant**. Il remplace le patron de surcharge que `
 et qui coûtait **229 lignes pour changer 4 appels**. ⚠️ **Un seul stratège à la fois** : deux
 hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'ordre de chargement.
 
-| Groupe               | Contenu                                                                                                                       |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **Contrats** (types) | `FieldConfig` · `RenderCtx` · `MapLayerHint` · `ComponentDefinition`                                                          |
-| **Registre**         | `ComponentRegistry` · `registerBuiltinComponents()` · `builtinComponentIds()`                                                 |
-| **Composants**       | **23**, du `text` au `gallery` — voir ci-dessous                                                                              |
-| **Validateurs**      | Un espace `validators`, rendant chacun une chaîne d'erreur **ou `null`**                                                      |
-| **Modale**           | `createResponsiveModal(...)` + ses types                                                                                      |
-| **Piège de focus**   | `createFocusTrap(container, onEscape?)`                                                                                       |
-| **Dialogue**         | `confirmDialog(...)` → promesse de booléen                                                                                    |
-| **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                              |
-| **Téléversement**    | `setImageUploadStrategy(fn \| null)` + le type `ImageUploadStrategy` — 5.1-d                                                  |
-| **Libellés**         | Catalogue **interne** `src/lang/` — 43 clés `form.*` × 6 locales (5.1c, **D6**). Aucun export : c'est `_getLabel` qui le sert |
-| **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                     |
-| **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                       |
+| Groupe               | Contenu                                                                                                                                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Contrats** (types) | `FieldConfig` · `RenderCtx` · `MapLayerHint` · `ComponentDefinition`                                                                                                                                              |
+| **Registre**         | `ComponentRegistry` · `registerBuiltinComponents()` · `builtinComponentIds()`                                                                                                                                     |
+| **Composants**       | **23**, du `text` au `gallery` — voir ci-dessous                                                                                                                                                                  |
+| **Validateurs**      | Un espace `validators`, rendant chacun une chaîne d'erreur **ou `null`**                                                                                                                                          |
+| **Modale**           | `createResponsiveModal(...)` + ses types                                                                                                                                                                          |
+| **⚠️ Retirés**       | `createFocusTrap` et `confirmDialog` ne sont **plus exportés** — déplacés dans `@geoleaf/host-runtime` le 06/08/2026, **sans ré-export de compatibilité** ; la rupture est assumée et motivée dans `src/index.ts` |
+| **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                                                                                                                  |
+| **Téléversement**    | `setImageUploadStrategy(fn \| null)` + le type `ImageUploadStrategy` — 5.1-d                                                                                                                                      |
+| **Libellés**         | Catalogue **interne** `src/lang/` — 43 clés `form.*` × 6 locales (5.1c, **D6**). Aucun export : c'est `_getLabel` qui le sert                                                                                     |
+| **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                                                                                                         |
+| **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                           |
 
 ⚠️ **Deux aides publiques portent un préfixe `_`** — `_el` et `_getLabel`. Le préfixe est la
 convention du dépôt pour « interne », et elles sont pourtant exportées **et** consommées par trois
@@ -146,10 +161,24 @@ a déjà coûté un défaut :
 
 ## Dépendances et frontières
 
-**Aucune dépendance de production. Aucune dépendance pair.** Le paquet est publié en **MIT** sur le
+**Aucune dépendance de production. Aucune dépendance pair** — au manifeste. ⚠️ **Le paquet n'est
+pourtant plus sans arête depuis le 06/08/2026** : `src/ui/responsive-modal.ts` importe
+`createFocusTrap` et `confirmDialog` de `@geoleaf/host-runtime`, un workspace `private: true` qui
+sera 404 sur npm pour toujours. L'arête est **de build, pas d'exécution** — `rollup.config.mjs`
+déclare `external: []`, donc host-runtime est inliné dans `dist/` — et elle est déclarée en
+`devDependencies` : c'est ce qui laisse le manifeste vide de `dependencies`. Rien de ce specifier
+ne fuit dans les `.d.ts` publiés (`check-shipped-specifiers.cjs`, SHIP-SPEC-02, baseline à zéro),
+mais ⚠️ `files[]` embarque aussi `src/`, et les sources livrées, elles, le nomment.
+Le paquet est publié en **MIT** sur le
 registre public, et `files[]` embarque `dist/`, `src/`, la licence et le fichier de présentation.
 
-### Les trois consommateurs, et ce qu'ils prennent
+### Le seul consommateur, et ce qu'il prend
+
+⚠️ **Cette section a listé TROIS consommateurs — dont deux fois `editor`, séquelle du renommage
+d'`addpoi`.** Le déplacement du piège de focus et du dialogue de confirmation vers
+`@geoleaf/host-runtime` (06/08/2026) a retiré `offline-ui` de la liste : il ne déclare plus
+`@geoleaf/field-renderer` du tout. La liste se mesure, elle ne se recopie pas —
+`grep -rn '"@geoleaf/field-renderer"' packages/*/*/package.json`.
 
 | Consommateur                         | Ce qu'il importe                                                                                                                                         |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -174,15 +203,35 @@ descripteur, parce que c'est là que les composants le lisent (`fieldConfig.rows
 le vocabulaire des profils dans une lib qui l'ignore, et lui ferait perdre exactement
 l'indépendance qui a rendu cette migration bon marché.
 
+⚠️ **Le pont adresse un `FieldConfig.id` POINTÉ comme un CHEMIN depuis le 07/08/2026, et c'est un
+élargissement du contrat que cette fiche ne portait pas.** `readAt` / `writeAt`
+(`field-renderer-bridge.ts`) descendent l'objet sur les quatre sites — lecture initiale, écriture
+`onChange`, remise à zéro d'un dépendant, validation — en créant les niveaux manquants à
+l'écriture. Avant, les quatre faisaient un accès PLAT : un `id` comme `attributes.short_desc`
+cherchait une propriété littéralement nommée ainsi, donc un champ rangé sous un objet imbriqué
+s'affichait correctement (le moteur de lecture, lui, sait descendre) et **ne pouvait pas être
+saisi**. ⚠️ **La clé LITTÉRALE l'emporte**, et ce n'est pas une commodité : c'est ce qui rend le
+changement purement ADDITIF sur un paquet publié — un consommateur qui range réellement sa valeur
+sous la clé `"a.b"` continue de l'y trouver. Un niveau intermédiaire existant qui n'est pas un
+objet est **remplacé**.
+
 ⚠️ Le repli `?? ComponentRegistry.get("text")` du pont (`field-renderer-bridge.ts`) est **silencieux
 par conception** : un `type` inconnu rend un champ texte sans avertir. C'est vivable parce que le
 vocabulaire est gaté en amont (A10/A17 côté schéma, `ATTR-10`/`ATTR-11` côté parité) — et c'est
 précisément ce repli qui a écarté, à 7.2, l'idée de dériver le widget de saisie par une table en
 dur : une correspondance manquante n'aurait rien fait rougir.
 
-⚠️ **Trois plugins du dépôt ne la consomment pas du tout** — [`table`](../plugins/CDC_table.md),
-[`print`](../plugins/CDC_print.md) et [`measure`](../plugins/CDC_measure.md). Ce sont les trois qui
-ne saisissent pas de données : la frontière d'usage recoupe exactement la frontière fonctionnelle.
+⚠️ **Un seul plugin du dépôt la consomme** — `editor`. Tous les autres l'ignorent, `offline-ui`
+compris depuis le 06/08/2026 : le déplacement du piège de focus et du dialogue de confirmation vers
+`@geoleaf/host-runtime` lui a retiré sa seule raison d'en dépendre. ⚠️ **Cette ligne a nommé
+`table`, `print` et `measure` comme « les trois qui ne saisissent pas de données », et en concluait
+que la frontière d'usage recoupait la frontière fonctionnelle.** Elle ne la recoupe plus : la
+frontière réelle est « qui rend un formulaire », et un seul le fait. Les deux comptes se mesurent :
+
+```bash
+ls packages/plugins/ | wc -l
+grep -rn '"@geoleaf/field-renderer"' packages/*/*/package.json
+```
 
 ---
 
@@ -195,17 +244,20 @@ la refonte documentaire V3.
 **C'est un CDC bien tenu** : il porte le renommage depuis son nom d'origine et le déplacement sous
 `packages/libs/`. Son annexe B liste même ses affirmations techniques comme **vérifiées**.
 
-| Énoncé du CDC                                                      | Ce que dit le code                                                                                                                                              |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §Résumé — les variantes de déploiement citées                      | Les variantes réellement produites sont `deploy-core`, `deploy-addpoi` et `deploy-full` — plus la variante instrumentée                                         |
-| §Statut contractuel — hors contrat de plugin, quatre critères      | ✅ **Vérifiés exacts** tous les quatre : aucun `register()` en source, aucun `entry.ts` montant un namespace, sortie importable, point d'entrée en exports purs |
-| §Résumé — 23 composants, modale responsive, pont, validateurs purs | ✅ **Vérifiés exacts**                                                                                                                                          |
-| §Résumé — « ESM pur sans aucune dépendance externe runtime »       | ✅ **Vérifié exact** — ni `dependencies`, ni `peerDependencies`                                                                                                 |
-| §12 — contrats avec les plugins consommateurs                      | ✅ **Vérifié**, et complété ici par la mesure de ce que chacun importe réellement                                                                               |
+| Énoncé du CDC                                                      | Ce que dit le code                                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §Résumé — les variantes de déploiement citées                      | Les variantes livrables réellement produites sont `deploy-core` et `deploy-full` — `deploy-addpoi` a disparu avec la fusion d'`addpoi` dans `editor` (`scripts/build-deploy.cjs`, en-tête : « 5.5: 3 variants → 2 ») —, plus `deploy-coverage` (instrumentée) et `deploy-local` (bootstrap de poste, non livrable). Le contenu se constate : `ls deploy/` |
+| §Statut contractuel — hors contrat de plugin, quatre critères      | ✅ **Vérifiés exacts** tous les quatre : aucun `register()` en source, aucun `entry.ts` montant un namespace, sortie importable, point d'entrée en exports purs                                                                                                                                                                                           |
+| §Résumé — 23 composants, modale responsive, pont, validateurs purs | ✅ **Vérifiés exacts**                                                                                                                                                                                                                                                                                                                                    |
+| §Résumé — « ESM pur sans aucune dépendance externe runtime »       | ✅ **Vérifié exact** — ni `dependencies`, ni `peerDependencies`                                                                                                                                                                                                                                                                                           |
+| §12 — contrats avec les plugins consommateurs                      | ✅ **Vérifié**, et complété ici par la mesure de ce que chacun importe réellement                                                                                                                                                                                                                                                                         |
 
 ⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : les deux aides publiques portent un préfixe
-`_` alors qu'elles sont dans la surface publique, et **trois plugins du dépôt ne la
-consomment pas** — ceux qui ne saisissent pas de données.
+`_` alors qu'elles sont dans la surface publique, et **un seul plugin du dépôt la consomme** —
+celui qui rend des formulaires. ⚠️ Cette phrase a dit « trois plugins du dépôt ne la consomment
+pas — ceux qui ne saisissent pas de données » : c'était vrai quand `addpoi`, `editor` et
+`offline-ui` en dépendaient, et faux depuis le 06/08/2026. Le compte se mesure —
+`grep -rn '"@geoleaf/field-renderer"' packages/*/*/package.json`.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : l'origine de l'extraction (elle est
 sortie du plugin d'édition), le positionnement produit, les audiences, les limites fonctionnelles

@@ -710,11 +710,16 @@ declare global {
         //     a directory whose name does not resemble the key;
         //   • `FeatureInfoPublicApi` is declared in `types.ts`, not re-exported by its
         //     facade;
-        //   • `Cluster`, `PWA` and `Permalink` have NO named public type. They take
+        //   • `PWA` and `Permalink` have NO named public type. They take
         //     `typeof import(...)` of the value: the compiler infers the exact shape,
         //     which is precise, not a compromise. `pwa/public-api.ts` explicitly
         //     motivates its refusal of a `PWAPublicApi` — we do not fabricate one in
         //     passing.
+        //     ⚠️ This list named `Cluster` too until 2026-09-01, three lines above the
+        //     declaration that already imported `ClusterPublicApi`. A comment that
+        //     contradicts the code it introduces is worse than none: it is read as the
+        //     rule and the code as the exception. Verify before adding a name here —
+        //     `grep -n 'PublicApi' capabilities/<id>/public-api.ts`.
 
         /** Branding overlay (logo, attribution) — `GeoLeaf.Branding`. */
         Branding?: import("./capabilities/branding/public-api.js").BrandingPublicApi;

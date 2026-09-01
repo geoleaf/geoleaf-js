@@ -4,14 +4,14 @@ title: branding — la ligne de marque posée en surimpression sur la carte
 capability_id: branding
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # branding — la ligne de marque posée en surimpression sur la carte
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/branding/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -52,21 +52,21 @@ natif via l'adaptateur, et en expose le pilotage impératif (`show` / `hide` / `
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                    | Entrée                                                     | Sortie observable                                                                                                   | Code                                         |
-| ----- | --------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| BR-01 | Surimpression montée sur la carte | `BrandingModule.init(adapter)`                             | Contrôle `.gl-branding` contenant `.gl-branding__content`, ajouté via `addControl` à `position`                     | `branding.ts` → `init` puis `_createControl` |
-| BR-02 | Texte configurable                | `modules.branding.text`                                    | Le texte remplace le libellé par défaut                                                                             | `branding.ts` → `init`                       |
-| BR-03 | Texte par défaut traduit          | Aucun `text` configuré                                     | Libellé `ui.branding.default_text` de la langue active (fichiers `src/lang/lang-*.ts`)                              | `branding.ts` → graine `_options`            |
-| BR-04 | Texte vide = silence assumé       | `modules.branding.text` valant la chaîne vide              | **Aucun contrôle créé**, un `Log.info` le dit — ce n'est pas une erreur                                             | `branding.ts` → `init`, sortie anticipée     |
-| BR-05 | Position configurable             | `modules.branding.position`                                | Le contrôle est ajouté à la position demandée                                                                       | `branding.ts` → `_createControl`             |
-| BR-06 | Injection HTML impossible         | Texte contenant du balisage                                | Rendu littéral — `textContent` sur les deux chemins d'écriture (création et `setText`)                              | `branding.ts` → `_createControl`, `setText`  |
-| BR-07 | Neutralisation de la propagation  | Interaction sur la surimpression                           | Ni pan ni zoom parasite de la carte dessous                                                                         | `branding.ts` → `blockMapPropagation`        |
-| BR-08 | Affichage / masquage à chaud      | `GeoLeaf.Branding.show()` / `.hide()`                      | `style.display` du conteneur remis à sa valeur naturelle, ou `"none"`                                               | `branding.ts` → `show`, `hide`               |
-| BR-09 | Changement de texte à chaud       | `GeoLeaf.Branding.setText("…")`                            | Le contenu de `.gl-branding__content` est remplacé (inerte si rien n'est monté)                                     | `branding.ts` → `setText`                    |
-| BR-10 | Montage idempotent                | Plusieurs appels au montage                                | Un seul contrôle ; les appels suivants sont inertes                                                                 | `lifecycle.ts` → drapeau `_started`          |
-| BR-11 | Démontage complet                 | `BrandingModule.destroy()` ou `BrandingLifecycle._reset()` | Contrôle retiré, écouteurs de propagation détachés, références internes remises à `null`                            | `branding.ts` → `destroy`                    |
-| BR-12 | Aucune exception ne remonte       | Carte absente, DOM indisponible                            | Le message part dans `Log.error`, la méthode rend la main — chaque méthode publique est enveloppée d'un `try/catch` | `branding.ts`                                |
-| BR-13 | Déclaration introspectable        | —                                                          | `getAllCapabilities()` la liste, `getCapabilitySchema("branding")` rend son schéma sans `loader`                    | `branding-capability.ts`                     |
+| ID    | Fonctionnalité                    | Entrée                                                     | Sortie observable                                                                                                                                                                                                                         | Code                                         |
+| ----- | --------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| BR-01 | Surimpression montée sur la carte | `BrandingModule.init(adapter)`                             | Contrôle `.gl-branding` contenant `.gl-branding__content`, ajouté via `addControl` à `position`                                                                                                                                           | `branding.ts` → `init` puis `_createControl` |
+| BR-02 | Texte configurable                | `modules.branding.text`                                    | Le texte remplace le libellé par défaut                                                                                                                                                                                                   | `branding.ts` → `init`                       |
+| BR-03 | Texte par défaut traduit          | Aucun `text` configuré                                     | Libellé `ui.branding.default_text` de la langue active (fichiers `src/lang/lang-*.ts`)                                                                                                                                                    | `branding.ts` → graine `_options`            |
+| BR-04 | Texte vide = silence assumé       | `modules.branding.text` valant la chaîne vide              | **Aucun contrôle créé**, un `Log.info` le dit — ce n'est pas une erreur                                                                                                                                                                   | `branding.ts` → `init`, sortie anticipée     |
+| BR-05 | Position configurable             | `modules.branding.position`                                | Le contrôle est ajouté à la position demandée                                                                                                                                                                                             | `branding.ts` → `_createControl`             |
+| BR-06 | Injection HTML impossible         | Texte contenant du balisage                                | Rendu littéral — `textContent` sur les deux chemins d'écriture (création et `setText`)                                                                                                                                                    | `branding.ts` → `_createControl`, `setText`  |
+| BR-07 | Neutralisation de la propagation  | Interaction sur la surimpression                           | Ni pan ni zoom parasite de la carte dessous                                                                                                                                                                                               | `branding.ts` → `blockMapPropagation`        |
+| BR-08 | Affichage / masquage à chaud      | `GeoLeaf.Branding.show()` / `.hide()`                      | `style.display` du conteneur remis à sa valeur naturelle, ou `"none"`                                                                                                                                                                     | `branding.ts` → `show`, `hide`               |
+| BR-09 | Changement de texte à chaud       | `GeoLeaf.Branding.setText("…")`                            | Le contenu de `.gl-branding__content` est remplacé (inerte si rien n'est monté)                                                                                                                                                           | `branding.ts` → `setText`                    |
+| BR-10 | Montage idempotent                | Plusieurs appels au montage                                | Un seul contrôle ; les appels suivants sont inertes                                                                                                                                                                                       | `lifecycle.ts` → drapeau `_started`          |
+| BR-11 | Démontage complet                 | `BrandingModule.destroy()` ou `BrandingLifecycle._reset()` | Contrôle retiré, écouteurs de propagation détachés, `_controlHandle` et `_container` remis à `null` — `_map` et `_options` survivent au démontage (le contrôle est un singleton de module)                                                | `branding.ts` → `destroy`                    |
+| BR-12 | Aucune exception ne remonte       | Carte absente, DOM indisponible                            | Le message part dans `Log.error`, la méthode rend la main — `init`, `_createControl` et `destroy` sont enveloppés d'un `try/catch` ; `show`, `hide` et `setText` ne le sont pas, elles se gardent par un test de nullité sur `_container` | `branding.ts`                                |
+| BR-13 | Déclaration introspectable        | —                                                          | `getAllCapabilities()` la liste, `getCapabilitySchema("branding")` rend son schéma sans `loader`                                                                                                                                          | `branding-capability.ts`                     |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/branding/` (déclaration,
 contrôle, cycle de vie).
@@ -126,14 +126,28 @@ donc pas `enabled` — il ne tourne que si la capacité est activée.
 
 Migré de l'ancienne clé racine app-globale `branding`.
 
+⚠️ **Mais l'opt-in n'est pas qu'une commodité de gate : c'est une exception NOMMÉE à la doctrine
+d'activation.** Celle-ci pose qu'une capacité d'**interface** — qui présente une donnée déjà là,
+contrôles, panneaux, symboles, état d'URL — est active par défaut, et qu'une capacité qui
+**consomme** une ressource que le profil n'a pas déjà payée (réseau propre, stockage, service
+worker) est opt-in. La frontière est la RESSOURCE, pas le rendu. branding a la forme d'une
+capacité d'interface et n'est pourtant pas active par défaut, parce qu'elle ne présente rien :
+elle **ajoute** un contenu que le profil n'a pas demandé, et un défaut à `true` imprimerait du
+texte sur toute carte jamais configurée. Le classement — et son motif — est gardé par
+`__tests__/guards/capability-activation-doctrine.guard.test.ts`, qui rougit sur toute capacité
+non classée : la prochaine arrivante repassera devant la règle sans que personne ait à y penser.
+
 ---
 
 ## Contrat exposé
 
 ### API publique
 
-`GeoLeaf.Branding`, construit par `public-api.ts` → `buildPublicApi()`, monté par `install.ts` →
-`registerGlobals(gl)`, re-exporté par la façade ESM `src/api/geoleaf.branding.ts`.
+`GeoLeaf.Branding`, construit par `public-api.ts` → `buildPublicApi()`, dont l'unique appel vit
+dans la façade ESM `src/api/geoleaf.branding.ts` (`export const Branding = buildPublicApi()`) ;
+c'est **de cette façade** qu'`install.ts` importe l'objet pour le poser sur `gl` dans
+`registerGlobals(gl)`, appelé par la boucle de préréglage `presets/apply-preset.ts`. L'arête va
+donc `public-api.ts` → façade → installeur, jamais l'inverse.
 
 Sa forme est **le contrôle runtime augmenté** (`Object.assign(Branding, { … })`), pas un objet
 neuf — `BrandingPublicApi = BrandingControl & BrandingReadApi` :
@@ -163,16 +177,16 @@ configuration et des appels impératifs de son API publique.
 
 ## Décisions de conception
 
-| Décision                                                             | Pourquoi                                                                                                                                                                                    | Alternative écartée                                                                                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Une fabrique de défauts partagée** (`constants.ts`)                | Trois copies indépendantes du même littéral avaient déjà divergé : annoncé ≠ matérialisé ≠ appliqué. Les faire importer la même fabrique rend l'égalité structurelle, pas surveillée        | Trois littéraux plus un test qui les compare — le test aurait dit _qu'elles_ divergent, pas empêché la divergence                     |
-| **La capacité tire sa propre feuille de style**, depuis `install.ts` | `install.ts` est le seul module qu'un consommateur doit importer pour embarquer la capacité : y accrocher la CSS la fait entrer dans le graphe **avec** le code, et se tree-shaker avec lui | Une CSS globale listant toutes les capacités — c'est le régime d'avant le S6, celui qui rendait les capacités indétachables du bundle |
-| **Gate à un seul étage**, sans `enableWhenAbsent`                    | branding est app-global : son bloc est déjà présent dans la configuration de base au moment du gate pré-fusion, donc rien ne se décide plus tard                                            | Un gate tardif comme celui de `theme-toggle` — inutile ici, et il ferait croire à un opt-in tardif qui n'existe pas                   |
-| **Texte par défaut pris dans l'i18n**, pas dans les défauts          | Un défaut de configuration est une valeur unique ; un libellé affiché doit suivre la langue                                                                                                 | `text: "Powered by …"` dans `brandingConfigDefaults()` — aurait figé l'anglais pour tout le monde                                     |
-| **`textContent` sur les deux chemins d'écriture**                    | Le texte vient d'un profil, donc d'une source que le core ne contrôle pas. `textContent` rend l'injection impossible par construction, sans dépendre d'un assainissement correct            | `innerHTML` + assainissement — un chemin de plus à ne jamais oublier                                                                  |
-| **La boîte « branding non configuré » supprimée**                    | Elle transformait une absence de configuration en avertissement visible pour l'utilisateur final, alors que la capacité est opt-in : ne rien configurer est un choix valide                 | La conserver                                                                                                                          |
-| **Chaque méthode publique enveloppée d'un `try/catch`**              | Une surimpression décorative ne doit jamais empêcher la carte de fonctionner. L'échec part dans `Log.error` et la carte vit                                                                 | Laisser remonter — un DOM indisponible aurait fait échouer le boot pour un ornement                                                   |
-| Pas de `loader`                                                      | Inline, chargée avec le bundle UI ; le gate de configuration décide                                                                                                                         | Un `import()` paresseux                                                                                                               |
+| Décision                                                              | Pourquoi                                                                                                                                                                                    | Alternative écartée                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Une fabrique de défauts partagée** (`constants.ts`)                 | Trois copies indépendantes du même littéral avaient déjà divergé : annoncé ≠ matérialisé ≠ appliqué. Les faire importer la même fabrique rend l'égalité structurelle, pas surveillée        | Trois littéraux plus un test qui les compare — le test aurait dit _qu'elles_ divergent, pas empêché la divergence                     |
+| **La capacité tire sa propre feuille de style**, depuis `install.ts`  | `install.ts` est le seul module qu'un consommateur doit importer pour embarquer la capacité : y accrocher la CSS la fait entrer dans le graphe **avec** le code, et se tree-shaker avec lui | Une CSS globale listant toutes les capacités — c'est le régime d'avant le S6, celui qui rendait les capacités indétachables du bundle |
+| **Gate à un seul étage**, sans `enableWhenAbsent`                     | branding est app-global : son bloc est déjà présent dans la configuration de base au moment du gate pré-fusion, donc rien ne se décide plus tard                                            | Un gate tardif comme celui de `theme-toggle` — inutile ici, et il ferait croire à un opt-in tardif qui n'existe pas                   |
+| **Texte par défaut pris dans l'i18n**, pas dans les défauts           | Un défaut de configuration est une valeur unique ; un libellé affiché doit suivre la langue                                                                                                 | `text: "Powered by …"` dans `brandingConfigDefaults()` — aurait figé l'anglais pour tout le monde                                     |
+| **`textContent` sur les deux chemins d'écriture**                     | Le texte vient d'un profil, donc d'une source que le core ne contrôle pas. `textContent` rend l'injection impossible par construction, sans dépendre d'un assainissement correct            | `innerHTML` + assainissement — un chemin de plus à ne jamais oublier                                                                  |
+| **La boîte « branding non configuré » supprimée**                     | Elle transformait une absence de configuration en avertissement visible pour l'utilisateur final, alors que la capacité est opt-in : ne rien configurer est un choix valide                 | La conserver                                                                                                                          |
+| **`init`, `_createControl` et `destroy` enveloppés d'un `try/catch`** | Une surimpression décorative ne doit jamais empêcher la carte de fonctionner. L'échec part dans `Log.error` et la carte vit                                                                 | Laisser remonter — un DOM indisponible aurait fait échouer le boot pour un ornement                                                   |
+| Pas de `loader`                                                       | Inline, chargée avec le bundle UI ; le gate de configuration décide                                                                                                                         | Un `import()` paresseux                                                                                                               |
 
 ---
 
@@ -182,7 +196,13 @@ configuration et des appels impératifs de son API publique.
 
 `module.ts` → `BrandingModule` : `id = "branding"`, `dependencies = ["geojson"]` — monte après la
 carte et les couches. Sa position dans `presets/manifest.full.ts` n'est pas libre : l'ordre
-d'enregistrement est observable par introspection et sert de départage au tri topologique.
+d'enregistrement est observable par introspection et sert de départage au tri topologique. Sa
+**présence** dans ce manifeste, elle, est gatée dans les deux sens par
+`__tests__/guards/manifest-full-completeness.guard.test.ts`, qui compare `FULL.capabilities` aux
+répertoires de `src/capabilities/` portant un `install.ts` : pas de capacité orpheline, pas
+d'installeur fantôme. Le défaut qu'il ferme n'est pas cosmétique — une capacité absente du
+manifeste ne serait **pas embarquée dans le bundle livré, en silence**, et aucun test de capacité
+ne rougirait pour une capacité qui n'est jamais installée.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
@@ -198,6 +218,15 @@ contrat que ce dont elle a besoin, via un type local **structurel** : `types.ts`
 (une seule méthode, `addControl`). `module.ts` transtype l'adaptateur reçu vers ce type au point de
 passage. La capacité ne touche jamais MapLibre directement — une règle ESLint interdit à
 `capabilities/**` d'importer `adapters/maplibre/*`.
+
+Quatre autres contrats sont consommés, tous en **type seul** — donc effacés à la compilation, sans
+aucune arête d'exécution : `contracts/core-module.contract.ts` → `ILifecycleModule`, que
+`BrandingModule` **implémente** (jamais l'union `ICoreModule`, qu'une classe ne peut pas
+implémenter — le contrat porte l'avertissement sur place) ; `contracts/config.contract.ts` →
+`IGeoLeafConfig`, le second paramètre d'`init()`, que ce module reçoit et n'utilise pas (`_config`,
+sa configuration venant de `getBrandingConfig()`) ; `contracts/capability.contract.js` →
+`ICapabilityDeclaration` pour la déclaration ; `contracts/preset.contract.js` →
+`CapabilityInstaller` pour l'installeur.
 
 **Aucun seam**, et **aucune référence à un plugin** (règle `no-plugin-in-core`, vérifiée par
 `scripts/verify-core-standalone.cjs`).

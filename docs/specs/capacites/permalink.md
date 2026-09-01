@@ -4,14 +4,14 @@ title: permalink — l'état de la carte dans l'URL, et le partage de la vue
 capability_id: permalink
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: abc43942
-date: 28 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # permalink — l'état de la carte dans l'URL, et le partage de la vue
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/permalink/` ·
-**Vérifié contre :** `abc43942` (28/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -90,9 +90,15 @@ l'URL à chaque changement. `share` en tire une fenêtre de partage : le lien co
 | PL-22 | Démontage complet de `share`                         | `ShareModule.destroy()`                             | Écouteurs détachés, **fenêtre fermée** et **boutons retirés** — les deux survivaient sinon à un démontage sans remontage                             | `share/lifecycle.ts` → `_reset`                    |
 | PL-23 | Déclaration introspectable                           | `getCapabilitySchema("permalink")`                  | Les quatre clés, dont le sous-arbre `share`                                                                                                          | `permalink-capability.ts`                          |
 
-Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/permalink/` — dont un
-fichier dédié à l'encodage UTF-8 compact, un au durcissement de la liste blanche, et un aux couches
-montrées hors thème.
+Les tests qui couvrent ces lignes ne sont pas tous sous
+`packages/core/__tests__/capabilities/permalink/` — on y trouve bien un fichier dédié à l'encodage
+UTF-8 compact, un au durcissement de la liste blanche et un aux couches montrées hors thème, mais
+l'analyse d'URL, la synchronisation, l'injection et l'installeur sont éprouvés ailleurs :
+`packages/core/__tests__/ui/permalink.test.js`,
+`packages/core/__tests__/ui/permalink-sync.test.js`,
+`packages/core/__tests__/security/permalink-injection.test.js` et
+`packages/core/__tests__/capabilities/permalink-share-installer.test.js`. Le périmètre se mesure, il
+ne se recopie pas : `git ls-files 'packages/core/__tests__/*' | grep -i permalink`.
 
 ---
 
@@ -176,16 +182,16 @@ façade ESM `src/api/geoleaf.permalink.ts`.
 
 ### Événements
 
-| Signal                               | Sens               | Rôle                                                               |
-| ------------------------------------ | ------------------ | ------------------------------------------------------------------ |
-| `geoleaf:app:ready`                  | **écouté**         | Déclenche la restauration différée                                 |
-| `geoleaf:themes:ready`               | **écouté**         | Rendez-vous de la restauration de thème — **voir l'avertissement** |
-| `geoleaf:theme:applied`              | **écouté**         | Séquence la restauration des couches et du filtre ; réécrit l'URL  |
-| `geoleaf:geojson:visibility-changed` | **écouté**         | Réécrit l'URL                                                      |
-| `geoleaf:filters:applied`            | **écouté**         | Réécrit l'URL                                                      |
-| `moveend` (carte)                    | **écouté**         | Réécrit l'URL, avec anti-rebond                                    |
-| `geoleaf:toolbar:action`             | **écouté** (share) | Ouvre la fenêtre quand l'action est la sienne                      |
-| `geoleaf:desktop-panel:tabs-ready`   | **écouté** (share) | Point d'injection du bouton de bureau                              |
+| Signal                               | Sens                             | Rôle                                                                                                                                                                                                                                                                                            |
+| ------------------------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:app:ready`                  | **écouté**                       | Déclenche la restauration différée                                                                                                                                                                                                                                                              |
+| `geoleaf:themes:ready`               | **écouté**                       | Rendez-vous de la restauration de thème — **voir l'avertissement**                                                                                                                                                                                                                              |
+| `geoleaf:theme:applied`              | **écouté**                       | Séquence la restauration des couches et du filtre ; réécrit l'URL                                                                                                                                                                                                                               |
+| `geoleaf:geojson:visibility-changed` | **écouté**                       | Réécrit l'URL                                                                                                                                                                                                                                                                                   |
+| `geoleaf:filters:applied`            | **écouté**                       | Réécrit l'URL                                                                                                                                                                                                                                                                                   |
+| `moveend` (carte)                    | **écouté**                       | Réécrit l'URL, avec anti-rebond                                                                                                                                                                                                                                                                 |
+| `geoleaf:toolbar:action`             | **émis** _et_ **écouté** (share) | Émis BRUT par le bouton de bureau (`share/share-button-desktop.ts`) — seul des déclencheurs de barre d'outils à ne pas passer par la fabrique canonique, divergence motivée sur place ; écouté par `share/lifecycle.ts`, qui ouvre la fenêtre quand l'action est la sienne, d'où qu'elle vienne |
+| `geoleaf:desktop-panel:tabs-ready`   | **écouté** (share)               | Point d'injection du bouton de bureau                                                                                                                                                                                                                                                           |
 
 ⚠️ **Le rendez-vous sur `geoleaf:themes:ready` a un REPLI depuis le 18/08/2026.**
 Cet événement n'a qu'un seul émetteur — [`theme-selector`](theme-selector.md) —, lui-même gaté
@@ -267,6 +273,7 @@ qui enregistre `share` **avant** `legend` et exige quand même legend→share.
 | Import                                                           | Statut vis-à-vis de R.8                                             |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
 | `kernel/config/config-primitives.js`                             | **Exception** nommée par la règle                                   |
+| `kernel/config/geoleaf-config/config-types.js` (type seul)       | **Hub de types** — route ouverte par la règle (`*-types.js`)        |
 | `kernel/security/index.js` (validation, `DOMSecurity`)           | **Baril**                                                           |
 | `kernel/geojson/index.js` (`GeoJSONShared`, `VisibilityManager`) | **Baril**                                                           |
 | `kernel/themes/index.js` (`ThemeApplierCore`)                    | **Baril** — pour le chargement à la demande d'une couche hors thème |
@@ -291,15 +298,15 @@ Le CDC `CDC_capacite-permalink.md` a été **consommé** en écrivant cette fich
 dossier de tri — ligne au §Journal des décisions de
 la refonte documentaire V3.
 
-| Énoncé du CDC                                                     | Ce que dit le code                                                                                                                                                                                            |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §1 — « **12 champs** », dont `subCategories`                      | **10** : 3 de vue + 7 facettes. `subCategories` et `gl_subs` n'existent **nulle part** — le §5 du même document acte pourtant leur aplatissement en un seul paramètre. Le document se contredit lui-même      |
-| §2 — « **Full-only**, absent du Lite »                            | **Le build Lite n'existe plus** ; `share/public-api.ts` porte encore la mention. Gisement documentaire connu                                                                                                  |
-| §6 — crochet 1 dans `core-map.module.ts:59-68`                    | Il vit dans `packages/core/src/app/boot-modules/core-map-lifecycle.ts`. Le fichier a été scindé depuis ; la plage de lignes ne désigne plus rien                                                              |
-| §2 et §8 — « `PermalinkModule.destroy()` détache les listeners »  | ⚠️ **Il n'y a pas de `PermalinkModule`** — la capacité n'a aucun `ICoreModule`, et le CDC le dit lui-même ailleurs. Le démontage est `stopSync()` / `_reset()`, qui existent bien et font ce qui était promis |
-| §5 — le contrat `Filter` à 8 membres                              | ✅ **Vérifié exact** — les huit sont implémentés (`isEnabled`, `getConfig`, `getActiveFilter`, `applyFilter`, `applyNow`, `reset`, `hasActiveFilters`, `proximity`)                                           |
-| §2 — « `startSync` attache sans jamais détacher »                 | ✅ **Corrigé depuis** : `startSync` rend son démontage, `stopSync()` l'expose, et `startSync` démonte la session précédente avant d'en ouvrir une                                                             |
-| §3 — la vue non listable, la liste blanche sur les deux encodages | ✅ **Vérifiés exacts** tous les deux                                                                                                                                                                          |
+| Énoncé du CDC                                                     | Ce que dit le code                                                                                                                                                                                                                                              |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §1 — « **12 champs** », dont `subCategories`                      | **10** : 3 de vue + 7 facettes. `subCategories` et `gl_subs` n'existent **nulle part** — le §5 du même document acte pourtant leur aplatissement en un seul paramètre. Le document se contredit lui-même                                                        |
+| §2 — « **Full-only**, absent du Lite »                            | **Le build Lite n'existe plus**, et `share/public-api.ts` ne porte plus la mention comme une contrainte vivante : son en-tête a été réécrit le 19/08/2026 et la mention n'y subsiste que datée et démentie sur place. Le gisement est soldé pour cette capacité |
+| §6 — crochet 1 dans `core-map.module.ts:59-68`                    | Il vit dans `packages/core/src/app/boot-modules/core-map-lifecycle.ts`. Le fichier a été scindé depuis ; la plage de lignes ne désigne plus rien                                                                                                                |
+| §2 et §8 — « `PermalinkModule.destroy()` détache les listeners »  | ⚠️ **Il n'y a pas de `PermalinkModule`** — la capacité n'a aucun `ICoreModule`, et le CDC le dit lui-même ailleurs. Le démontage est `stopSync()` / `_reset()`, qui existent bien et font ce qui était promis                                                   |
+| §5 — le contrat `Filter` à 8 membres                              | ✅ **Vérifié exact** — les huit sont implémentés (`isEnabled`, `getConfig`, `getActiveFilter`, `applyFilter`, `applyNow`, `reset`, `hasActiveFilters`, `proximity`)                                                                                             |
+| §2 — « `startSync` attache sans jamais détacher »                 | ✅ **Corrigé depuis** : `startSync` rend son démontage, `stopSync()` l'expose, et `startSync` démonte la session précédente avant d'en ouvrir une                                                                                                               |
+| §3 — la vue non listable, la liste blanche sur les deux encodages | ✅ **Vérifiés exacts** tous les deux                                                                                                                                                                                                                            |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif du choix in-core, la raison
 de la migration cassante depuis l'ancien bloc `ui.permalink`, l'historique du découplage d'avec le

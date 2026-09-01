@@ -1,6 +1,6 @@
 {
     "_comment": "Chemins morts CONNUS dans les renvois des fiches `docs/specs/`, figés par `audit-report-freshness.cjs --source specs --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (SPECS-PATHS-01) ET sur une entrée d'ici qui n'existe plus (SPECS-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
-    "generatedCount": 86,
+    "generatedCount": 84,
     "paths": [
         "docs/specs/CDC_kernel.md→./config-primitives.js",
         "docs/specs/CDC_kernel.md→API_REFERENCE.md",
@@ -24,7 +24,6 @@
         "docs/specs/capacites/legend.md→css/geoleaf-legend.css",
         "docs/specs/capacites/offline.md→CDC_capacite-offline.md",
         "docs/specs/capacites/offline.md→CDC_offline-ui.md",
-        "docs/specs/capacites/offline.md→__tests__/capabilities/offline/sync-queue-order.test.js",
         "docs/specs/capacites/offline.md→db/sync.ts",
         "docs/specs/capacites/permalink.md→CDC_capacite-permalink.md",
         "docs/specs/capacites/profile-switcher.md→CDC_capacite-profile-switcher.md",
@@ -72,7 +71,6 @@
         "docs/specs/plugins/CDC_editor.md→addpoi/src/disable.ts",
         "docs/specs/plugins/CDC_editor.md→compat/addpoi-bridge.ts",
         "docs/specs/plugins/CDC_editor.md→db/sync.ts",
-        "docs/specs/plugins/CDC_editor.md→modal/delete-confirm-modal.ts",
         "docs/specs/plugins/CDC_editor.md→offline.md",
         "docs/specs/plugins/CDC_file-import.md→CDC_plugin-file-import.md",
         "docs/specs/plugins/CDC_flatgeobuf.md→CDC_plugin-flatgeobuf.md",

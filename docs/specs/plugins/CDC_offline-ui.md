@@ -4,14 +4,14 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ada9449a
-date: 8 août 2026
+verifie_contre: 1d0f5312
+date: 1er septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
-**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** `ada9449a` (07/08/2026) — ⚠️ cette ligne portait `1a8f7137` (28/07/2026),
+**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** `1d0f5312` (01/09/2026) — ⚠️ cette ligne portait `1a8f7137` (28/07/2026),
 dix jours plus tôt que le frontmatter.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
@@ -150,20 +150,22 @@ profil qui n'active pas le hors-ligne attendrait un signal qui ne viendra jamais
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                  | Entrée                            | Sortie observable                                                                                | Code                                                           |
-| ----- | ----------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
-| OU-01 | Bouton de cache, deux surfaces                  | Barre mobile et bandeau de bureau | **Invisible par défaut** — il faut l'activer par profil                                          | `ui/cache-button/toolbar-registration.ts`                      |
-| OU-02 | Fenêtre de gestion du cache                     | Clic sur le bouton                | État, quota, actions                                                                             | `ui/cache-button/modal-manager.ts`, `cache/cache-control-*.ts` |
-| OU-03 | Sélecteur de couches à télécharger              | Profil actif                      | Une ligne par couche, avec son état de cache — quelle que soit sa PROVENANCE, voir sous la table | `cache/layer-selector/`                                        |
-| OU-04 | Sélection persistée entre sessions              | Choix de l'utilisateur            | Relue au chargement suivant, par le cache du core                                                | `cache/layer-selector/selection-cache.ts`                      |
-| OU-05 | Estimation d'une zone de tuiles vectorielles    | Emprise et niveaux                | Un volume annoncé avant de télécharger                                                           | `sync/vector-zone-estimate.ts`                                 |
-| OU-06 | Suivi de progression                            | Signaux du core                   | Remplissage et vidage suivis séparément                                                          | `cache/cache-control-events.ts`                                |
-| OU-07 | Annulation d'un téléchargement                  | Bouton d'annulation               | Relayée au gestionnaire du core                                                                  | `cache/cache-control-state.ts`                                 |
-| OU-08 | Purge du cache d'un profil                      | Action de vidage                  | Avec confirmation, et progression                                                                | `cache/download-handler.ts`                                    |
-| OU-09 | Panneau de synchronisation                      | File en attente                   | Liste, déclenchement, et résultat                                                                | `sync/sync-manager.ts`                                         |
-| OU-10 | Rejeu par le gestionnaire d'un autre plugin     | `Sync.getHandler("poi")`          | Le plugin déclenche ce qu'[`editor`](CDC_editor.md) a déposé — sans jamais l'importer            | `core/sync-seam.ts`                                            |
-| OU-11 | Export de la file en attente                    | Action d'export                   | Lue depuis la base du core, puis vidée entrée par entrée                                         | `ui/cache-button/export-logic.ts`                              |
-| OU-12 | Détection de disponibilité sans attente infinie | Profil sans hors-ligne            | Rend `false` tout de suite — voir §La seule voie                                                 | `core/engine-ready.ts`                                         |
+| ID    | Fonctionnalité                                       | Entrée                                                   | Sortie observable                                                                                           | Code                                                           |
+| ----- | ---------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| OU-01 | Bouton de cache, deux surfaces                       | Barre mobile et bandeau de bureau                        | **Invisible par défaut** — il faut l'activer par profil                                                     | `ui/cache-button/toolbar-registration.ts`                      |
+| OU-02 | Fenêtre de gestion du cache                          | Clic sur le bouton                                       | État, quota, actions                                                                                        | `ui/cache-button/modal-manager.ts`, `cache/cache-control-*.ts` |
+| OU-03 | Sélecteur de couches à télécharger                   | Profil actif                                             | Une ligne par couche, avec son état de cache — quelle que soit sa PROVENANCE, voir sous la table            | `cache/layer-selector/`                                        |
+| OU-04 | Sélection persistée entre sessions                   | Choix de l'utilisateur                                   | Relue au chargement suivant, par le cache du core                                                           | `cache/layer-selector/selection-cache.ts`                      |
+| OU-05 | Estimation d'une zone de tuiles vectorielles         | Emprise et niveaux                                       | Un volume annoncé avant de télécharger                                                                      | `sync/vector-zone-estimate.ts`                                 |
+| OU-06 | Suivi de progression                                 | Signaux du core                                          | Remplissage et vidage suivis séparément                                                                     | `cache/cache-control-events.ts`                                |
+| OU-07 | Annulation d'un téléchargement                       | Bouton d'annulation                                      | Relayée au gestionnaire du core                                                                             | `cache/cache-control-state.ts`                                 |
+| OU-08 | Purge du cache d'un profil                           | Action de vidage                                         | Avec confirmation, et progression                                                                           | `cache/download-handler.ts`                                    |
+| OU-09 | Panneau de synchronisation                           | File en attente                                          | Liste, déclenchement, et résultat                                                                           | `sync/sync-manager.ts`                                         |
+| OU-10 | Rejeu par le gestionnaire d'un autre plugin          | `Sync.getHandler("poi")`                                 | Le plugin déclenche ce qu'[`editor`](CDC_editor.md) a déposé — sans jamais l'importer                       | `core/sync-seam.ts`                                            |
+| OU-11 | Export de la file en attente                         | Action d'export                                          | Lue depuis la base du core, puis vidée entrée par entrée                                                    | `ui/cache-button/export-logic.ts`                              |
+| OU-12 | Détection de disponibilité sans attente infinie      | Profil sans hors-ligne                                   | Rend `false` tout de suite — voir §La seule voie                                                            | `core/engine-ready.ts`                                         |
+| OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée                                   | `cache/cache-control-zone.ts`                                  |
+| OU-14 | Corridor d'un itinéraire persisté                    | Tracé lu dans le magasin `routes` de la base du core     | Un corridor estimé, **ou un refus qui nomme ses deux leviers** — plafond de zoom et tampon, avec leur effet | `cache/corridor-selection.ts`, `sync/corridor-tiles.ts`        |
 
 ```callout info label="OU-03 — une couche vaut une couche, quelle que soit la PROVENANCE de sa config"
 Une couche déclare sa configuration de **deux** façons : par un fichier (`configFile`) ou en ligne
@@ -193,17 +195,33 @@ rien. La résolution de l'alias vit maintenant en **un seul endroit** pour tout 
 `packages/core/src/kernel/config/layer-geometry.ts`, publié au `exports` du core.
 ```
 
-Les tests qui couvrent ces lignes : `packages/plugins/offline-ui/src/__tests__/`, dont **quatre
-d'intégration** qui vérifient la jonction avec le core, **plus une suite sur le paquet construit** —
-ce que seuls ce plugin et [`editor`](CDC_editor.md) portent.
+Les tests qui couvrent ces lignes : `packages/plugins/offline-ui/src/__tests__/`, dont une
+sous-suite `integration/` qui vérifie la jonction avec le core, **plus une suite sur le paquet
+construit** (`vitest.bundle.config.ts`, script `test:bundle`) — ce que seuls **ce plugin et le
+core** portent. ⚠️ Cette phrase citait [`editor`](CDC_editor.md) : il n'a **ni**
+`vitest.bundle.config.ts` **ni** script `test:bundle`. Le relevé se dérive, il ne se recopie pas :
+`grep -l '"test:bundle"' packages/*/package.json packages/plugins/*/package.json`.
 
 ---
 
 ## Configuration
 
-**Aucun bloc propre, aucun `config.ts`.** Le plugin lit des clés du **core**, au moment de s'en
-servir : le gate du hors-ligne, celui de l'ouvrier de service, l'option de cache des tuiles, le
-profil actif et son chemin de base, et les fonds de carte.
+**Aucun `config.ts`, et un seul bloc propre : sa clé de visibilité.** Le plugin déclare
+`modules.offline-ui.showButton` comme clé **canonique** de son bouton, dans la définition de slot de
+`ui/cache-button/toolbar-registration.ts`, avec `ui.showCacheButton` en **repli** ; c'est le core
+qui les lit, dans cet ordre (`kernel/ui/ui-slot-builder.ts`). Pour tout le reste il lit des clés du
+**core**, au moment de s'en servir : le gate du hors-ligne, celui de l'ouvrier de service, l'option
+de cache des tuiles, le profil actif et son chemin de base, et les fonds de carte. La liste exacte
+se dérive : `grep -rn "coreConfigGet" packages/plugins/offline-ui/src/ --include=*.ts`.
+
+🛑 **Rupture assumée du 24/08/2026 — la clé héritée ne coupe plus la capture de carte.**
+`ui/cache-button/button-control.ts` ne rend plus aucun bouton depuis le passage à la barre d'outils :
+il ne fait que **capturer** la carte réelle pour la fenêtre de cache. Il lisait pourtant encore
+`ui.showCacheButton` et rendait `null` sur `false`. Le profil pervers `showButton: true` +
+`showCacheButton: false` affichait donc un bouton **visible** au-dessus d'une fenêtre dont les
+sous-modules recevaient `null` de `getMap()`. La capture est désormais inconditionnelle ; la
+visibilité appartient au slot seul. Un profil qui posait la clé héritée à `false` ne perd rien : il
+gagne une fenêtre fonctionnelle derrière un bouton que le slot masque toujours.
 
 ➡️ **La table de configuration du système est dans [`offline.md`](../capacites/offline.md), et elle
 n'est pas dupliquée ici.** C'est le partage de propriété entre les deux fiches : la capacité possède
@@ -225,29 +243,48 @@ Le motif est écrit dans `entry.ts`.
 Le vocabulaire du plugin est centralisé dans une constante unique (`cache/cache-control-types.ts`) —
 ce qui évite que deux écouteurs du même paquet ne divergent sur une chaîne.
 
-| Signal                         | Émetteur                                         |
-| ------------------------------ | ------------------------------------------------ |
-| `geoleaf:cache:completed`      | La capacité [`offline`](../capacites/offline.md) |
-| `geoleaf:cache:cleared`        | idem                                             |
-| `geoleaf:cache:progress`       | idem                                             |
-| `geoleaf:cache:clear-progress` | idem                                             |
-| `geoleaf:profile:loaded`       | Le core, hors de la capacité                     |
-| `geoleaf:cache:cancelled`      | 🛑 **Personne** — ni le core, ni ce plugin       |
-| `geoleaf:toolbar:action`       | Le kernel                                        |
+| Signal                           | Émetteur                                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `geoleaf:cache:completed`        | La capacité [`offline`](../capacites/offline.md)                                                         |
+| `geoleaf:cache:cleared`          | idem                                                                                                     |
+| `geoleaf:cache:progress`         | idem                                                                                                     |
+| `geoleaf:cache:clear-progress`   | idem                                                                                                     |
+| `geoleaf:profile:loaded`         | Le core, hors de la capacité                                                                             |
+| `geoleaf:cache:cancelled`        | La capacité [`offline`](../capacites/offline.md) — `CacheManager.cancelDownload()`, depuis le 03/08/2026 |
+| `geoleaf:storage:quota-exceeded` | La capacité [`offline`](../capacites/offline.md) — écouté par `core/engine-signals.ts`                   |
+| `geoleaf:toolbar:action`         | Le kernel                                                                                                |
 
-⚠️ **Trois signaux émis par la capacité n'ont AUCUN écouteur ici** — la disponibilité de la base, le
-dépassement de quota, et l'éviction par budget. Le dernier est le plus notable : un utilisateur dont
-les couches sont évincées faute de place **n'en est pas informé**, alors que le moteur le signale.
+⚠️ **L'inventaire se dérive, il ne se recopie pas.** Ce que la capacité émet :
+`grep -rn "dispatchEvent\|CustomEvent(" packages/core/src/capabilities/offline/ --include=*.ts | grep -o "geoleaf:[a-z:-]*" | sort -u`.
+Ce que ce plugin écoute :
+`grep -rn "addEventListener\|events.on(" packages/plugins/offline-ui/src/ --include=*.ts | grep -o "geoleaf:[a-z:-]*" | sort -u`.
 
-🛑 **`geoleaf:cache:cancelled` — TRANCHÉ le 02/08/2026 : il l'écoute pour rien.** La fiche laissait
-l'alternative ouverte (« le plugin l'émet lui-même, ou l'écoute pour rien ») ; la mesure la ferme.
+Un seul signal de la capacité n'a pas d'écouteur **ici**, `geoleaf:cache:evicted`, et c'est
+délibéré : son écouteur a été **remonté dans le core** le 16/08/2026
+(`packages/core/src/kernel/storage/eviction-notice.ts`) parce qu'il était le seul du dépôt — sur
+`deploy-core`, qui n'embarque pas ce plugin, l'alerte partait dans le vide. Le rétablir ici
+afficherait deux notices sur `deploy-full`. **L'utilisateur est donc bien informé de l'éviction**,
+sur toutes les variantes et non sur les seules qui portent cette interface.
 
-| Rôle                        | Compte | Où                                                                                                                                                                  |
-| --------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Définition de la constante  | 1      | `CACHE_EVENTS.CANCELLED`, dans `cache/cache-control-types.ts`                                                                                                       |
-| Écouteurs                   | **2**  | les deux dans `cache/cache-control-events.ts` — l'un via `CACHE_EVENTS.CANCELLED` dans la table de câblage, l'autre en `addEventListener` vers `_handleCancelled()` |
-| Émetteurs de **production** | **0**  | — ni le core, ni ce plugin, ni l'application                                                                                                                        |
-| `dispatchEvent` du dépôt    | **2**  | `__tests__/cache-control-view.test.js` **et** `__tests__/cache-control-factory.test.js` — **deux tests, aucune production**                                         |
+🛑 **`geoleaf:cache:cancelled` — le verdict « il l'écoute pour rien » est RENVERSÉ, et il l'était
+déjà quand cette fiche a été vérifiée.** Le 02/08/2026 la mesure était juste : deux poses
+d'écouteur, zéro émetteur. Le **03/08/2026** le chantier de cache a tranché dans l'autre sens — ce
+n'était pas un écouteur mort mais un **bug** : sans émission, annuler un téléchargement laissait le
+panneau bloqué sur « Stopping… », bouton désactivé, sans autre issue qu'un rechargement de page.
+L'écouteur avait raison ; c'est l'émetteur qui manquait, et `CacheManager.cancelDownload()` l'émet
+depuis cette date.
+
+⚠️ **Et cette fiche a conclu deux fois le contraire — le 07/08 puis en ré-mesurant le 11/08.** Le
+périmètre de la mesure était le paquet du plugin ; l'émetteur est dans le core. **Une mesure dont le
+périmètre exclut l'endroit où la réponse se trouve sort verte en se trompant** — et un chiffre
+re-mesuré à l'identique donne toute l'apparence d'une confirmation.
+
+| Rôle                       | Compte | Où                                                                                                                                                                                                                                                                                           |
+| -------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Définition de la constante | 1      | `CACHE_EVENTS.CANCELLED`, dans `cache/cache-control-types.ts`                                                                                                                                                                                                                                |
+| Poses d'écouteur           | 2      | toutes deux dans `cache/cache-control-events.ts`, mais ce sont les **deux branches d'un `if (events) … else …`** : `events.on(…)` quand le gestionnaire d'écouteurs du core est là, `addEventListener(…)` en repli sans nettoyage. Mutuellement exclusives — **un seul abonnement effectif** |
+| Émetteur de **production** | oui    | `packages/core/src/capabilities/offline/cache/cache-manager.ts`, `cancelDownload()` — depuis le 03/08/2026                                                                                                                                                                                   |
+| Le relevé du dépôt         | —      | ne se recopie pas : `grep -rn "geoleaf:cache:cancelled" packages/*/src packages/plugins/*/src`                                                                                                                                                                                               |
 
 > ⚠️ **Ré-mesuré le 11/08/2026 (6.11) — les quatre citations de ce tableau étaient fausses, et
 > de deux façons distinctes.** ① Les trois numéros de ligne étaient décalés **d'exactement un**
@@ -258,27 +295,40 @@ l'alternative ouverte (« le plugin l'émet lui-même, ou l'écoute pour rien »
 > de production**. Les citations sont ré-ancrées **par symbole** — un symbole renommé se voit,
 > une ligne décalée non.
 
-⚠️ **Le seul émetteur du dépôt est un test.** C'est la forme la plus trompeuse du défaut : la suite
-prouve qu'un écouteur réagit correctement à un signal que **rien n'envoie jamais**, et sort verte en
-le prouvant. Un vert de test ne vaut pas chemin câblé.
+⚠️ **Ce que le défaut a coûté reste bon à garder.** Tant que rien n'émettait, la suite prouvait
+qu'un écouteur réagit correctement à un signal que **rien n'envoie jamais**, et sortait verte en le
+prouvant : un vert de test ne vaut pas chemin câblé. Les deux `dispatchEvent` de test sont toujours
+là — ils ne sont simplement plus seuls.
 
-⚠️ **Et l'écouteur est posé DEUX FOIS** sur le même `document`, par deux mécanismes différents
-(`events.on(…)` et `document.addEventListener(…)`) — un doublon structurel qui aurait produit un
-double appel si le signal existait.
+⚠️ **En revanche, l'écouteur n'est PAS posé deux fois** : cette phrase l'a affirmé, c'est faux, et
+ça l'était déjà. Les deux poses de `cache/cache-control-events.ts` sont les **branches d'un
+`if (events) … else …`** — `events.on(…)` quand le gestionnaire d'écouteurs du core est présent,
+`document.addEventListener(…)` en repli sans nettoyage. Elles ne peuvent pas s'exécuter ensemble :
+ni double abonnement, ni double appel.
 
-**Le geste** : l'annulation existe et fonctionne (`cancelDownload()` traverse bien la chaîne
-jusqu'au `Downloader`), c'est sa **notification** qui manque. Soit le moteur émet le signal, soit
-les deux écouteurs partent — mais l'état actuel, où l'on paie deux abonnements pour un silence,
-n'est pas tenable. Tranché avec les autres signaux sans écouteur.
+**Le geste est fait, et c'est la première branche qui a été prise.** L'annulation existe, traverse
+bien la chaîne jusqu'au `Downloader`, et **se dit** désormais : le moteur émet le signal depuis le
+03/08/2026, l'écouteur remet la barre de progression à zéro et réactive le bouton.
+⚠️ L'émission est posée dans l'**orchestrateur** (`CacheManager`) et non dans le `Downloader` :
+celui-ci est aussi appelé par des chemins internes, et l'on veut un émetteur par **intention**, pas
+par mécanisme.
 
-⚠️ **Les trois signaux du sens inverse restent ouverts** — disponibilité de la base, dépassement de
-quota, éviction par budget : la capacité les émet, ce plugin ne les écoute pas. Le troisième est le
-plus notable, et c'est un défaut **produit** : un utilisateur dont les couches sont évincées faute
-de place n'en est **pas informé**, alors que le moteur le signale.
+✅ **Les trois signaux du sens inverse sont refermés, chacun autrement — et c'est le partage qui
+instruit.** ① La **disponibilité de la base** n'a pas reçu d'écouteur : le signal a été **retiré du
+moteur** le 03/08/2026. Il ne portait aucune charge utile et se déclenchait à chaque ouverture de
+base, donc à chaque démarrage — une notification par boot est du bruit, et un écouteur qui se
+contenterait de journaliser aurait fermé le compteur à la lettre sans rien apporter.
+② Le **dépassement de quota** est écouté **ici** depuis la même date (`core/engine-signals.ts`), en
+ton _erreur_ : le navigateur a refusé une écriture, la capture suivante peut ne pas tenir.
+③ L'**éviction par budget** est rendue **par le core** depuis le 16/08/2026
+(`kernel/storage/eviction-notice.ts`), sur un chemin de boot inconditionnel — donc sur toutes les
+variantes livrées, et pour ses deux émetteurs. ⚠️ **Ne pas la restaurer ici « pour l'interface
+riche »** : les deux écouteurs afficheraient deux notices sur `deploy-full`.
 
-Les quatre constats sont **de la même famille que le bouton d'action** — un vocabulaire déclaré d'un côté et non
-honoré de l'autre — et versés au registre du
-registre.
+Ces constats étaient tous de la même famille — un vocabulaire déclaré d'un côté et non honoré de
+l'autre. Ils sont **soldés**, et chacun par un geste différent : l'annulation a reçu son émetteur,
+le dépassement de quota son écouteur, l'éviction sa notice in-core, et la disponibilité de la base a
+vu son signal retiré faute de porter quoi que ce soit.
 
 ---
 
@@ -300,27 +350,41 @@ registre.
 
 ## Dépendances et frontières
 
-| Dépendance                 | Nature        | Note                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@geoleaf/core`            | production    | —                                                                                                                                                                                                                                                                                                                                                                                        |
-| `@geoleaf/field-renderer`  | production    | Pour le dialogue de confirmation et le piège de focus                                                                                                                                                                                                                                                                                                                                    |
-| **aucune** dépendance pair | —             | Il ne touche pas la carte, donc pas de peer `maplibre-gl`. ⚠️ **Pas le seul** : une majorité des plugins n'en déclarent aucune. ⚠️ Cette case annonçait « 7 des **13** » jusqu'au 11/08/2026, dans la parenthèse même qui dit « se compte, ne se recopie pas » — ils sont **12**, et 7 sur 12 au dernier relevé. Le compte se dérive : `node -e "…peerDependencies…"` sur les manifestes |
-| `@geoleaf/host-runtime`    | développement | Utilisé, lui — journalisation, lecture de configuration, accès au namespace                                                                                                                                                                                                                                                                                                              |
+| Dépendance                    | Nature        | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`               | **pair**      | Passé de `dependencies` à `peerDependencies` le 25/08/2026, sur tous les plugins publiés. Il reste en `devDependencies` pour la construction et les tests — un plugin ne doit pas embarquer sa propre copie du core                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ~~`@geoleaf/field-renderer`~~ | —             | ⚠️ **Ce n'est plus une dépendance du tout.** `confirmDialog` et `createFocusTrap` sont passés de `field-renderer` à `@geoleaf/host-runtime` ; le manifeste ne cite plus `field-renderer`, et le double de test qui l'aliasait vise désormais `host-runtime`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| aucun peer `maplibre-gl`      | pair          | Il ne touche pas la carte, donc pas de peer `maplibre-gl` — mais il **a** un peer depuis le 25/08/2026, `@geoleaf/core`, ligne ci-dessus. 🛑 Cette case a écrit « **aucune** dépendance pair » et « une majorité des plugins n'en déclarent aucune » : les deux sont faux depuis cette bascule — **tous** les plugins publiés déclarent au moins le core, et la question utile est devenue « avec ou sans `maplibre-gl` ». ⚠️ Elle avait déjà annoncé « 7 des **13** » jusqu'au 11/08/2026, dans la parenthèse même qui dit « se compte, ne se recopie pas ». Le relevé se dérive : `node -e "const p=require('./scripts/lib/packages.cjs'); for (const k of p.all()) console.log(k.name, JSON.stringify(k.manifest.peerDependencies\|\|{}))"` |
+| `@geoleaf/host-runtime`       | développement | Utilisé, lui — journalisation, lecture de configuration, accès au namespace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ### Les arêtes statiques vers le core — et une seule vers la capacité
 
-Le plugin importe deux modules du core par sous-chemin publié : la résolution des couches d'un
-profil, et **le calcul de tuiles de la capacité `offline` elle-même**. Cette dernière est **la seule**
-arête statique du plugin vers le moteur, et elle porte sur de l'arithmétique **sans état** — c'est ce
-qui la rend sans conséquence, motif déjà inscrit dans la ligne de base de
-`scripts/verify-plugin-core-boundary.cjs`.
+Le plugin atteint le core par des sous-chemins **publiés** de sa carte `exports` — la résolution des
+couches d'un profil, la résolution de la géométrie d'une couche, le calcul de tuiles de la capacité
+`offline` elle-même, et le contrat de synchronisation en `import type`. La liste se lit à la
+commande, elle ne se recopie pas :
+`grep -rn 'from "@geoleaf/core' packages/plugins/offline-ui/src/`.
+
+Le calcul de tuiles reste **la seule** arête vers le moteur — désormais tirée depuis la voie bbox
+**et** la voie corridor — et elle porte sur de l'arithmétique **sans état**, sur un module sans
+import : ce qu'il importerait, le plugin l'embarquerait.
+
+⚠️ **Le motif ne vit plus « dans la ligne de base » : il n'y a plus de ligne de base.** `BASELINE`
+vaut `{}` dans `scripts/verify-plugin-core-boundary.cjs`, l'entrée `"offline-ui"` ayant été soldée.
+La gate ne tolère plus ces arêtes par exemption : elle **dérive** de la carte `exports` du core la
+frontière entre un sous-chemin publié et un deep import, et scanne tous les plugins du registre avec
+tolérance zéro. Un plugin absent de la baseline n'est donc plus un plugin non scanné.
 
 ### Frontière avec `editor` — médiée par le core
 
 Le plugin ne l'importe pas. Il récupère le gestionnaire `poi` **par `GeoLeaf.Sync`**, que le core
 expose. C'est l'inversion qui permet à trois paquets de coopérer sans se connaître.
 
-⚠️ **`README.md` est dans `files[]`**, comme un répertoire `docs/`.
+⚠️ **`README.md` n'est PAS dans `files[]`** — le manifeste n'y liste que `dist/`, `src/` et
+`LICENSE`, et le répertoire `docs/` du paquet n'y est pas davantage. Même cas que
+[`table`](CDC_table.md), et l'inverse de [`print`](CDC_print.md) et [`measure`](CDC_measure.md), qui
+l'y déclarent explicitement. Vérifiable :
+`node -e "console.log(require('./packages/plugins/offline-ui/package.json').files)"`.
 
 ---
 

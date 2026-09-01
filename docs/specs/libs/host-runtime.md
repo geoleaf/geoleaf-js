@@ -4,14 +4,14 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 21630103
-date: 28 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
 
 **Type :** bibliothèque partagée **interne** · **Paquet :** `@geoleaf/host-runtime` ·
-**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `21630103` (28/07/2026)
+**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -23,10 +23,19 @@ date: 28 juillet 2026
 >    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
 >    dépôt**. Les cas qui échappent aux deux sont racinés sur place.
 
-> ⚠️ **Cette fiche n'a PAS de CDC source.** C'est la seule des 37 du §2.4 écrite **entièrement depuis
-> le code**, parce que ce paquet est né d'une consolidation et non d'une spécification. Et **aucune
-> gate documentaire ne la lit** : les deux gardes du §2.4 visent les capacités et les plugins. Sa
-> véracité repose entièrement sur sa relecture — règle documentaire du dépôt, sans filet mécanique.
+> ⚠️ **Cette fiche n'a PAS de CDC source.** C'est la seule fiche du §2.4 écrite **entièrement depuis
+> le code**, parce que ce paquet est né d'une consolidation et non d'une spécification. (Le corpus se
+> dénombre à la commande — `ls docs/specs/plugins/` et ses voisins —, jamais en prose : le nombre qui
+> était écrit ici avait déjà divergé.)
+>
+> 🛑 **« Aucune gate documentaire ne la lit » est FAUX depuis le 11/08/2026.** Les deux gardes de
+> CONTENU du §2.4 visent bien les seules capacités et les plugins, mais **deux gates de FORME lisent
+> cette fiche** : `SPECS-PATHS` (`npm run check:specs-paths`, moteur
+> `scripts/audit-report-freshness.cjs`) juge que chaque chemin qu'elle cite résout, et `SPECS-FRESH`
+> (`scripts/check-specs-verified-against.cjs`) juge son `verifie_contre` — cette fiche y est
+> d'ailleurs **gelée**, dans `scripts/.baselines/specs-verified-against.json`, c'est-à-dire connue en
+> retard sur son sujet. ⚠️ Aucune des deux ne juge la VÉRACITÉ d'une phrase, et `SPECS-PATHS` ne voit
+> même pas un nom de fichier cité **sans `/`** : la véracité repose donc toujours sur la relecture.
 
 > ⚠️ **`private: true` — ce paquet n'est JAMAIS publié sur npm.** Il n'a pas de `publishConfig`. Il
 > est **regroupé à la construction** dans chacun des paquets qui l'utilisent, et se déclare donc en
@@ -41,7 +50,9 @@ date: 28 juillet 2026
 Elle donne aux plugins **un** accesseur typé vers le namespace global que le core assemble au
 démarrage, **une** forme partagée de ce namespace, et les utilitaires qu'ils avaient tous
 réimplémentés chacun de son côté : journalisation, notifications, libellés, accès à la carte native,
-fabrication d'éléments, et des primitives HTTP.
+fabrication d'éléments, **la plomberie d'interface partagée** (adoption de feuille, glissement
+souris et tactile, infobulles, ancrage de sous-menu flottant, coquille de modale, boîte de
+confirmation, piège de focus) et des primitives HTTP.
 
 ### Ce qu'elle ne fait pas
 
@@ -59,22 +70,27 @@ fabrication d'éléments, et des primitives HTTP.
 
 Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 
-| Famille                   | Exports                                                                                                                                                   |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `PluginRegisterOptions`                                                  |
-| **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                       |
-| **Seam journalisation**   | `Log`                                                                                                                                                     |
-| **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                         |
-| **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                               |
-| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)`                                                                                                                      |
-| **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                   |
-| **Téléchargement**        | `downloadBlob(...)`                                                                                                                                       |
-| **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` |
-| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `isSameOrigin(...)` · `HttpFetchError` + deux types                 |
+| Famille                   | Exports                                                                                                                                                                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `PluginRegisterOptions`                                                                                                                                                                          |
+| **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                                                                                                                                               |
+| **Seam journalisation**   | `Log`                                                                                                                                                                                                                                                                             |
+| **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                                                                                                 |
+| **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                                                                                                       |
+| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)`                                                                                                                                                                                                                                              |
+| **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                                                                                           |
+| **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                                                                                               |
+| **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` + type `MenuPositionOptions`                                                                                            |
+| **Surfaces modales**      | `createModalShell(...)` · `confirmDialog(...)` · `createFocusTrap(...)` + types `ModalShell`, `ModalShellOptions`, `ConfirmDialogOptions`, `FocusTrap` — arrivées de `field-renderer` le 06/08/2026 (`src/ui/modal-shell.ts`, `src/ui/confirm-dialog.ts`, `src/ui/focus-trap.ts`) |
+| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `isSameOrigin(...)` · `HttpFetchError` + deux types                                                                                                                                         |
 
 ⚠️ **Deux fonctions de glissement ne sont PAS ré-exportées** par l'entrée, bien qu'exportées par leur
-module : la lecture et l'application du décalage. Elles sont donc atteignables par sous-chemin et
-absentes de la surface annoncée — un demi-état qu'il vaut mieux connaître avant de s'y fier.
+module : la lecture et l'application du décalage. ⚠️ **Elles ne sont PAS « atteignables par
+sous-chemin »**, ce que cette ligne a affirmé : la carte `exports` du `package.json` ne déclare que
+`.` et `./package.json`, la résolution `Bundler` de `packages/build-config/tsconfig.base.json`
+l'honore, et `rollup.config.mjs` n'émet qu'un seul fichier de sortie. Ce ne sont donc pas des exports
+en demi-état mais des helpers **internes au paquet** — leur seul consommateur est `src/ui/touch-drag.ts`,
+qui partage la géométrie avec le chemin souris pour qu'ils ne divergent pas.
 
 ---
 
@@ -93,7 +109,7 @@ omettaient `requires`, deux omettaient la vérification de chargement, et cinq p
 champ que le contrat avait abandonné.
 
 ⚠️ **La forme reste volontairement permissive**, avec une queue ouverte. Les façades des plugins —
-`Measure`, `Print`, `Editor`, `AddPOI` — y vivent, et sont resserrées **localement** par leurs
+`Measure`, `Print`, `Editor`, … — y vivent, et sont resserrées **localement** par leurs
 consommateurs. La précision progresse sprint par sprint, en miroir de la déclaration du core.
 
 ⚠️ **`getGeoLeaf` a un JUMEAU dans le core**, et le couple est **épinglé** par
@@ -146,7 +162,7 @@ poids.
 
 ⚠️ **Changer la forme de l'import ne corrige RIEN**, et c'est le piège à connaître avant d'y
 toucher : `rollup-plugin-postcss` émet `export default <css>` pour tout module CSS de toute
-façon, et appose l'injecteur pareillement. Seul le suffixe agit — `csp-style-inject.mjs` teste
+façon, et appose l'injecteur pareillement. Seul le suffixe agit — `packages/build-config/csp-style-inject.mjs` teste
 l'identité du module et n'émet aucune injection pour `*.lazy.css`.
 
 ### Ce qui garde la propriété, et ce qui ne peut pas la garder
@@ -189,11 +205,12 @@ fuit pas chez ceux qu'on a regardés n'est pas un effet de bord qui ne fuit pas.
 
 ### Trois gardes surveillent ce paquet, et il faut savoir laquelle fait quoi
 
-| Garde                                   | Ce qu'elle tient                                                                                               |
-| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `scripts/verify-seam-drift.cjs`         | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                     |
-| `scripts/verify-plugin-shared-fork.cjs` | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus** |
-| `scripts/verify-host-contract-sync.cjs` | La synchronisation des contrats du namespace                                                                   |
+| Garde                                   | Ce qu'elle tient                                                                                                                                                                  |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-seam-drift.cjs`         | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                                                                                        |
+| `scripts/verify-plugin-shared-fork.cjs` | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus**                                                                    |
+| `scripts/check-shipped-specifiers.cjs`  | SHIP-SPEC-02 — qu'aucun fichier atteignable ne **nomme** ce workspace `private` ; il est scanné bien qu'il n'ait pas de tarball, parce qu'il part inliné dans les bundles publiés |
+| `scripts/verify-host-contract-sync.cjs` | HOST-01/02/03 — `GeoLeafHost` ⊆ `GeoLeafGlobal`, et aucun des deux ne nomme un membre que le boot ne monte pas                                                                    |
 
 ⚠️ **L'exemption de la deuxième est ce qui rend la première indispensable.** Sans la gate de dérive,
 le couple `getGeoLeaf` serait la seule copie du dépôt que **rien** ne surveille — exemptée d'un côté,
@@ -201,7 +218,12 @@ invisible de l'autre.
 
 ### Les consommateurs
 
-Tous les plugins qui parlent au namespace, en dépendance de **développement**.
+Tous les plugins qui parlent au namespace, en dépendance de **développement** — et **`@geoleaf/field-renderer`
+aussi**, qui n'est pas un plugin. Depuis le 06/08/2026 la plomberie d'interface a migré de lui vers
+ce paquet, et `packages/libs/field-renderer/src/ui/responsive-modal.ts` importe désormais
+`createFocusTrap` et `confirmDialog` d'ici : la dépendance va donc `field-renderer` → `host-runtime`,
+jamais l'inverse. La liste ne se recopie pas, elle se dérive — `npm run versions:check`, ou un grep
+de `"@geoleaf/host-runtime"` dans les `package.json` des workspaces.
 `addpoi` faisait exception (fusionné dans [`editor`](../plugins/CDC_editor.md)) : il le **déclarait** et son `entry.ts` **ne s'en
 sert pas**, préférant une conversion de `globalThis` faite à la main — c'est-à-dire exactement la
 forme que ce paquet existe pour supprimer, et le dernier site à ne pas l'avoir adoptée.

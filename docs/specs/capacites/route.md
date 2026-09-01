@@ -4,14 +4,14 @@ title: route — la décoration des extrémités d'un itinéraire
 capability_id: route
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # route — la décoration des extrémités d'un itinéraire
 
 **Type :** capacité in-core (**de surcouche**) · **Code :** `packages/core/src/capabilities/route/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -41,8 +41,9 @@ seule valeur que n'apportent ni le moteur GeoJSON — qui rend le tracé — ni 
 `file-import` — qui lit les GPX / KML.
 
 **Et depuis le 21/08/2026, elle a une SECONDE source de marqueurs** (RT-10) : si la couche porte
-déjà des points marqués d'un `properties.role`, ce sont **eux** qui sont stylés, et rien n'est
-dérivé. 🛑 **Jamais les deux à la fois.** Une couche qui porte ses étapes et se verrait ajouter des
+déjà des points marqués d'un `properties.role` — ce que publie `@geoleaf-plugins/routing` par
+`GeoLeaf.Layers.setData` (`packages/plugins/routing/src/publish.ts`) — ce sont **eux** qui sont
+stylés, et rien n'est dérivé. 🛑 **Jamais les deux à la fois.** Une couche qui porte ses étapes et se verrait ajouter des
 extrémités dérivées rendrait **deux marqueurs superposés** à chaque bout — indiscernables à l'œil,
 doublés au clic, et impossibles à expliquer depuis la donnée.
 
@@ -84,7 +85,7 @@ doublés au clic, et impossibles à expliquer depuis la donnée.
 | RT-09 | Styles distincts par règle pilotée par la donnée | Styles de départ et d'arrivée différents                       | Le style de départ est la base ; arrivée et étape sont **deux règles** pilotées par la donnée (`role == "end"`, `role == "via"`) — **rayon compris**, pas seulement la couleur. Toujours **une seule** sous-couche : RT-08 tient | `apply.ts` → `toEndpointStyleOptions`                         |
 | RT-10 | **Deux sources de marqueurs, jamais cumulées**   | Couche portant des points à `properties.role`                  | Les points **publiés** sont stylés tels quels ; la dérivation ne s'exécute pas. Sans point rôlé, RT-04/05 s'appliquent inchangés                                                                                                 | `endpoint-deriver.ts` → `collectRoledPoints` ; `apply.ts`     |
 | RT-11 | Le rôle `via`, et sa traduction                  | Point publié `origin` / `via` / `destination`                  | Traduits vers le vocabulaire du marqueur — `start` / `via` / `end` — pour que la règle RT-09 continue de mordre. `index` et `step` sont conservés                                                                                | `endpoint-deriver.ts` → `PUBLISHED_ROLE`                      |
-| RT-12 | Rôle inconnu écarté                              | Point sans rôle, ou rôle hors des trois                        | Ignoré, sans erreur — une couche mixte n'est pas une couche d'itinéraire, et prendre un point quelconque pour un marqueur ferait de n'importe quelle donnée des étapes                                                           | `endpoint-deriver.ts` → `collectRoledPoints`                  |
+| RT-12 | Rôle inconnu écarté                              | Point sans rôle, ou rôle absent de `PUBLISHED_ROLE`            | Ignoré, sans erreur — une couche mixte n'est pas une couche d'itinéraire, et prendre un point quelconque pour un marqueur ferait de n'importe quelle donnée des étapes                                                           | `endpoint-deriver.ts` → `collectRoledPoints`                  |
 | RT-10 | Masquage d'une extrémité                         | `showStart: false` ou `showEnd: false`                         | L'autre extrémité seule, **toujours dans une sous-couche unique**                                                                                                                                                                | `apply.ts` → `applyToLayer`                                   |
 | RT-11 | Rafraîchissement idempotent                      | Nouvelle application sur la même couche                        | La sous-couche précédente est retirée **avant** d'être reconstruite                                                                                                                                                              | `apply.ts` → `clearEndpoints`                                 |
 | RT-12 | Aucune sous-couche vide                          | Aucune extrémité dérivée (couche sans ligne exploitable)       | Rien n'est ajouté                                                                                                                                                                                                                | `apply.ts` → `applyToLayer`                                   |
@@ -136,11 +137,16 @@ Forme d'une désignation, par identifiant de couche :
 | ----------- | --------- | ------ | -------------------------------------------------------------------------------------------------- |
 | `start`     | objet     | —      | Surcharge du style du marqueur de départ (`radius`, `color`, `fillColor`, `fillOpacity`, `weight`) |
 | `end`       | objet     | —      | Idem pour l'arrivée                                                                                |
+| `via`       | objet     | —      | Idem pour les étapes intermédiaires — jamais dérivées, lues sur la donnée                          |
 | `showStart` | `boolean` | `true` | Afficher le marqueur de départ                                                                     |
 | `showEnd`   | `boolean` | `true` | Afficher le marqueur d'arrivée                                                                     |
+| `showVia`   | `boolean` | `true` | Afficher les marqueurs d'étape                                                                     |
 
-Les styles par défaut sont dans `resolver.ts` (départ bleu, arrivée orange) et ne sont **pas** dans
-le `configSchema` : ce sont des défauts de **rendu**, pas des paramètres de configuration.
+Les styles par défaut sont dans `resolver.ts` (départ bleu, arrivée orange, étape gris-bleu et d'un
+pixel plus petite — un arrêt qui se lit aussi fort que la destination ferait de l'itinéraire un
+ensemble de points égaux, quand toute sa forme est que l'un d'eux est là où l'on va) et ne sont
+**pas** dans le `configSchema` : ce sont des défauts de **rendu**, pas des paramètres de
+configuration.
 
 ### Le double gate, et pourquoi l'inversion est ici obligatoire
 
@@ -172,9 +178,19 @@ extrémité.
 
 La façade impérative `GeoLeaf.Route` — `loadFromConfig`, `show`, `hide`, `clear`,
 `filterVisibility` — a été **dissoute** : la capacité est pilotée **entièrement** par la
-configuration `modules.route.*` et par ses écouteurs. Le dynamique passe désormais par le seam
-générique `GeoLeaf.Layers.setData(layerId, …)` : la capacité **re-dérive** ses extrémités, de façon
-idempotente.
+configuration `modules.route.*` et par ses écouteurs. Le dynamique passe par le seam
+générique `GeoLeaf.Layers.setData(layerId, …)`, qui réécrit les entités de la couche — c'est par là
+qu'un plugin d'itinéraire publie ses points rôlés.
+
+🛑 **Mais `setData` ne déclenche AUCUNE re-dérivation.** Il ne passe par aucun événement : le refus
+d'émettre `geoleaf:layer:updated` est écrit, motivé, et assorti de sa condition de réouverture dans
+`kernel/geojson/layers-public-api.ts`. Or la capacité n'a que deux déclencheurs —
+`geoleaf:layer:added`, émis par l'adaptateur à la **construction** de la couche
+(`adapters/maplibre/maplibre-layer-builders.ts`, ses deux seuls sites d'émission), et
+`geoleaf:map:ready`, tiré une fois. Une donnée réécrite après le boot n'est donc redécorée qu'à la
+**reconstruction** de la couche (changement de thème, de profil). L'**application**, elle, est bien
+idempotente : la ligne « Rafraîchissement idempotent » du tableau ci-dessus tient, `clearEndpoints`
+précédant toute reconstruction.
 
 Il n'y a donc **ni `public-api.ts`, ni `src/api/geoleaf.route.ts`**, et `GeoLeaf.Route` est sorti de
 l'oracle des clés de façade attendues.
@@ -230,7 +246,7 @@ extrémités, et pas seulement celles que le balayage attrape.
 | **Rafraîchissement idempotent (retirer puis ajouter)**         | La même couche peut être décorée plusieurs fois (nouvelle donnée, balayage après ajout). Sans retrait préalable, les sous-couches s'accumuleraient                                    | Mettre à jour en place                                                                  |
 | **Aucune sous-couche vide**                                    | Une source sans entité coûte pour rien et brouille l'inspection de la carte                                                                                                           | Ajouter systématiquement                                                                |
 | **Façade impérative dissoute**                                 | Cinq méthodes de pilotage doublaient ce que la configuration et le seam générique de données font déjà. Une rupture assumée, sans coût réel : aucun profil ne suivait l'ancien modèle | Conserver `GeoLeaf.Route`                                                               |
-| **Extrémités par entité en V1**                                | Agréger un itinéraire multi-segments et poser des étapes intermédiaires est un autre problème, avec son propre modèle. Le faire à moitié aurait figé une forme                        | Agréger tout de suite                                                                   |
+| **Extrémités par entité en V1**                                | Agréger un itinéraire multi-segments est un autre problème, avec son propre modèle. Le faire à moitié aurait figé une forme. Les **étapes** sont sorties de ce report                 | Agréger tout de suite                                                                   |
 | **Extrémités non interactives**                                | Rien ne demande de popup sur un marqueur de départ ; le seam d'interaction du moteur GeoJSON est disponible si le besoin apparaît                                                     | Brancher les interactions par défaut                                                    |
 | **Adaptateur atteint par `Core.getMap()`**                     | C'est le chemin canonique ; le capturer à l'`init()` échouerait au balayage si la carte est recréée                                                                                   | Mémoriser l'adaptateur reçu par le module                                               |
 | Pas de `loader`                                                | Inline : la capacité est légère, et c'est le gate tardif qui décide                                                                                                                   | Un `import()` paresseux                                                                 |

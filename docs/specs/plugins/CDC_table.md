@@ -4,14 +4,14 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 00e6bdd7
-date: 28 juillet 2026
+verifie_contre: 1d0f5312
+date: 1er septembre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/table` ·
-**Code :** `packages/plugins/table/` · **Vérifié contre :** `00e6bdd7` (28/07/2026)
+**Code :** `packages/plugins/table/` · **Vérifié contre :** `1d0f5312` (01/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -41,8 +41,11 @@ autrefois interne au core.
 
 ### Ce qu'il ne fait pas
 
-- **Il ne pagine pas.** Le défilement est **virtuel** : toutes les lignes retenues sont dans le
-  modèle, seules les visibles sont dans le DOM. Voir l'avertissement sur `pageSize`.
+- **Il ne pagine pas.** Toutes les lignes retenues sont dans le modèle. **Au-delà de
+  `VIRTUAL_THRESHOLD`** (`table-renderer-virtual-scroll.ts`, lu par `renderer.ts`) le rendu bascule
+  en **défilement virtuel** et seules les lignes visibles sont dans le DOM ; **en deçà, elles y sont
+  toutes**. C'est un seuil, pas un régime permanent — et la clé `virtualScrolling` ne le commande
+  pas. Voir l'avertissement sur `pageSize`.
 - **Il ne modifie pas les données.** Lecture seule ; l'édition est le domaine du plugin `editor`.
 - **Il ne se construit pas au démarrage**, sauf demande explicite — voir §Cycle de vie.
 - **Il n'embarque pas son moteur de classeur.** Le format tableur est chargé **à la demande**, au
@@ -89,8 +92,17 @@ trois.
 | 2     | Monte `GeoLeaf.Table`                                                                                                         |
 | 3     | Abonne le cycle de vie à `geoleaf:map:ready`                                                                                  |
 | 4     | S'enregistre au registre de plugins (le manifeste ci-dessus)                                                                  |
-| 5     | Déclare **deux** créneaux de barre d'outils — pastille mobile **et** onglet de bureau                                         |
+| 5     | Déclare **deux** créneaux de barre d'outils — pastille mobile **et** onglet de bureau — **uniquement sur le chemin EAGER**    |
 | 6     | Câble l'action : construction paresseuse, puis bascule                                                                        |
+
+⚠️ **L'étape 5 est CONDITIONNELLE depuis le 21/08/2026** — `if (registry.isInitialized() !== true)`.
+Avant `boot()`, cet appel est la **seule** déclaration du créneau : un intégrateur n'a pas d'`init.js`
+pour la poser à sa place, donc la retirer coûterait le bouton. Après `init()`, la barre d'outils est
+déjà construite : l'enregistrement serait mémorisé, jamais dessiné, et produirait un avertissement
+dont le lecteur visé a déjà fait ailleurs ce qu'il recommande. ⚠️ Le test est `!== true` et non
+`=== false` : un hôte sans `isInitialized` rend `undefined`, et le créneau **est** déclaré — échouer
+en ouvrant est le bon sens, un avertissement parasite coûte une ligne de console, une déclaration
+manquante coûte le bouton.
 
 ⚠️ **Aucune entrée `al` dans le dictionnaire, et c'est délibéré** : le core aliase `al` vers `de`, et
 la reconstruction du dictionnaire à plat résout le code actif vers `de` pour les deux.
@@ -103,23 +115,24 @@ doit donc en garder l'apparence. C'est le seul créneau du lot à porter cette v
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                             | Entrée                                               | Sortie observable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Code                                          |
-| ----- | ------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| TB-01 | Construction **paresseuse** du panneau     | Premier clic sur l'action                            | Rien n'est construit avant. Avec `defaultVisible`, la construction se fait au démarrage                                                                                                                                                                                                                                                                                                                                                                                                                                          | `lifecycle.ts` → `ensureInitialized`          |
-| TB-02 | Sélecteur de couche                        | Couches déclarant un binding                         | Seules les couches dont le binding n'est pas `false` apparaissent                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `table-layer.ts`, `panel.ts`                  |
-| TB-03 | Colonnes déclarées ou déduites             | `columns` du binding de couche                       | Libellé, largeur, triabilité et type par colonne ; à défaut, déduites des propriétés                                                                                                                                                                                                                                                                                                                                                                                                                                             | `renderer.ts`, `table-layer.ts`               |
-| TB-04 | Tri initial déclaré                        | `defaultSort`                                        | Champ et sens appliqués à l'ouverture                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `sort.ts`                                     |
-| TB-05 | Défilement **virtuel**                     | Couche volumineuse                                   | Seules les lignes visibles sont dans le DOM. Le nombre de lignes retenues est borné — voir §Configuration                                                                                                                                                                                                                                                                                                                                                                                                                        | `table-renderer-virtual-scroll.ts`            |
-| TB-06 | Sélection bidirectionnelle                 | Clic sur une ligne, ou appel programmatique          | La sélection est un état partagé : la table la reflète, la carte la surligne                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `table-selection.ts`, `table-highlight.ts`    |
-| TB-07 | Zoom sur la sélection                      | Action de sélection                                  | La carte se cadre sur les entités sélectionnées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `selection-actions.ts`                        |
-| TB-08 | Surbrillance commutable                    | Action de surbrillance                               | Un état, pas un geste : elle s'active et se désactive                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `table-highlight.ts`                          |
-| TB-09 | Export de la sélection **ou** de la couche | Deux actions distinctes                              | Deux chemins séparés, deux événements distincts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `export.ts`                                   |
-| TB-10 | Format tableur chargé **à la demande**     | Export au format classeur                            | Le module d'écriture est importé à ce moment-là, jamais au démarrage                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `lazy/export-excel.ts`, `lazy/xlsx-writer.ts` |
-| TB-11 | Résolveur d'identifiant **unique**         | Nom de repère, attribut DOM, table de correspondance | Les trois passent par le même résolveur — sinon la sélection et l'export désigneraient des entités différentes                                                                                                                                                                                                                                                                                                                                                                                                                   | `feature-id.ts`                               |
-| TB-12 | Redimensionnement à la poignée             | Glissement du bord haut, **souris ou doigt**         | Hauteur bornée par un minimum et un maximum — voir §Configuration. Le geste passe par des **Pointer Events**, donc un seul chemin pour les deux entrées ; il était souris-seul jusqu'au 14/08/2026. ⚠️ La poignée porte `touch-action: none` — **sans cette règle CSS le portage serait purement cosmétique** : au doigt le navigateur revendique le glissement vertical comme un défilement et n'émet aucun `pointermove`. Un geste confisqué (`pointercancel`) relâche le curseur et la sélection posés sur le document entier | `panel-resize.ts`                             |
-| TB-13 | Formatage localisé des valeurs             | Nombres, dates                                       | Suit la langue active                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `format-value.ts`                             |
-| TB-14 | Neuf événements de cycle                   | Chaque geste                                         | Émis sur le document **et**, si la carte sait le faire, répliqués sur la carte                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `table-state.ts` → `fireEvent`                |
-| TB-15 | Membrane pour les appelants                | Autres plugins                                       | Un seam typé plutôt qu'un accès direct au namespace                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `table-seam.ts`                               |
+| ID    | Fonctionnalité                             | Entrée                                               | Sortie observable                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Code                                                |
+| ----- | ------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| TB-01 | Construction **paresseuse** du panneau     | Premier clic sur l'action                            | Rien n'est construit avant. Avec `defaultVisible`, la construction se fait au démarrage                                                                                                                                                                                                                                                                                                                                                                                                                                          | `lifecycle.ts` → `ensureInitialized`                |
+| TB-02 | Sélecteur de couche                        | Couches déclarant un binding                         | Seules les couches dont le binding porte `enabled` **vrai** apparaissent — une couche sans bloc `table`, ou avec `table: {}`, est **exclue**                                                                                                                                                                                                                                                                                                                                                                                     | `table-layer.ts`, `panel.ts`                        |
+| TB-03 | Colonnes déclarées ou déduites             | `columns` du binding de couche                       | Libellé, largeur, triabilité et type par colonne. ⚠️ **Sans `columns`, la table ne rend RIEN** — `renderer.ts` journalise l'absence puis vide le conteneur. La déduction depuis les propriétés n'existe que sur le chemin d'**export**                                                                                                                                                                                                                                                                                           | `renderer.ts`, `table-layer.ts`                     |
+| TB-04 | Tri initial déclaré                        | `defaultSort`                                        | Champ et sens appliqués à l'ouverture                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `sort.ts`                                           |
+| TB-05 | Défilement **virtuel**                     | Couche volumineuse                                   | Seules les lignes visibles sont dans le DOM. Le nombre de lignes retenues est borné — voir §Configuration                                                                                                                                                                                                                                                                                                                                                                                                                        | `table-renderer-virtual-scroll.ts`                  |
+| TB-06 | Sélection bidirectionnelle                 | Clic sur une ligne, ou appel programmatique          | La sélection est un état partagé : la table la reflète, la carte la surligne                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `table-selection.ts`, `table-highlight.ts`          |
+| TB-07 | Zoom sur la sélection                      | Action de sélection                                  | La carte se cadre sur les entités sélectionnées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `table-selection.ts` (calcul), `panel.ts` (bouton)  |
+| TB-08 | Surbrillance commutable                    | Action de surbrillance                               | Un état, pas un geste : elle s'active et se désactive                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `table-highlight.ts`                                |
+| TB-09 | Export de la sélection **ou** de la couche | Deux actions distinctes                              | Deux chemins séparés, deux événements distincts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `export.ts`                                         |
+| TB-10 | Format tableur chargé **à la demande**     | Export au format classeur                            | Le module d'écriture est importé à ce moment-là, jamais au démarrage                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `lazy/export-excel.ts`, `lazy/xlsx-writer.ts`       |
+| TB-11 | Résolveur d'identifiant **unique**         | Nom de repère, attribut DOM, table de correspondance | Les trois passent par le même résolveur — sinon la sélection et l'export désigneraient des entités différentes                                                                                                                                                                                                                                                                                                                                                                                                                   | `feature-id.ts`                                     |
+| TB-12 | Redimensionnement à la poignée             | Glissement du bord haut, **souris ou doigt**         | Hauteur bornée par un minimum et un maximum — voir §Configuration. Le geste passe par des **Pointer Events**, donc un seul chemin pour les deux entrées ; il était souris-seul jusqu'au 14/08/2026. ⚠️ La poignée porte `touch-action: none` — **sans cette règle CSS le portage serait purement cosmétique** : au doigt le navigateur revendique le glissement vertical comme un défilement et n'émet aucun `pointermove`. Un geste confisqué (`pointercancel`) relâche le curseur et la sélection posés sur le document entier | `panel-resize.ts`                                   |
+| TB-13 | Formatage localisé des valeurs             | Nombres, dates                                       | Suit la langue active                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `format-value.ts`                                   |
+| TB-14 | Neuf événements de cycle                   | Chaque geste                                         | Émis sur le document **et**, si la carte sait le faire, répliqués sur la carte                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `table-state.ts` → `fireEvent`                      |
+| TB-15 | Membrane pour les appelants                | Autres plugins                                       | Un seam typé plutôt qu'un accès direct au namespace                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | `table-seam.ts`                                     |
+| TB-16 | Recherche plein texte dans les lignes      | Saisie dans le champ de la barre d'outils            | Filtre débouncé sur le texte des cellules **du DOM**. ⚠️ Il n'est **pas** réappliqué par le défilement virtuel, qui reconstruit le `tbody` : au-delà de `VIRTUAL_THRESHOLD`, le filtre ne voit que la fenêtre rendue et disparaît au premier défilement. Son écouteur ne passe pas par le seam `utils/events.ts` et n'est pas enregistré au registre de démontage                                                                                                                                                                | `panel.ts` → `createSearchInput`, `filterTableRows` |
 
 Les tests qui couvrent ces lignes : `packages/plugins/table/src/__tests__/`, plus un scénario
 navigateur dédié sous `e2e/`.
@@ -137,7 +150,7 @@ couverture de ces clés relève de `scripts/check-config-coverage.cjs` et de l'i
 | `enabled`            | `boolean` | `true`  | Éteint le plugin — ni panneau, ni construction, même à l'activation                     |
 | `showButton`         | `boolean` | `true`  | La `profileKey` des deux créneaux de barre d'outils                                     |
 | `defaultVisible`     | `boolean` | `false` | `true` → construction **et** ouverture au démarrage ; `false` → construction paresseuse |
-| `pageSize`           | `number`  | `50`    | ⚠️ **Lu nulle part** — voir ci-dessous                                                  |
+| `pageSize`           | `number`  | —       | ⚠️ **Déprécié, sans défaut, lu nulle part** — voir ci-dessous                           |
 | `maxRowsPerLayer`    | `number`  | `1000`  | Borne le nombre de lignes retenues par couche                                           |
 | `enableExportButton` | `boolean` | `true`  | Affiche les boutons d'export                                                            |
 | `virtualScrolling`   | `boolean` | `true`  | Rendu virtuel                                                                           |
@@ -149,28 +162,51 @@ couverture de ces clés relève de `scripts/check-config-coverage.cjs` et de l'i
 Trois clés supplémentaires sont **tolérées et transmises aux options d'export**, sans défaut :
 `exportFormats`, `csvSeparator`, `csvIncludeGeometry`.
 
-⚠️ **`pageSize` est déclaré, porte un défaut, et n'est lu nulle part.**
+⚠️ **`pageSize` n'a plus de défaut, il est `@deprecated`, et il n'est toujours lu nulle part.**
 
 ```bash
 grep -rn "pageSize" packages/plugins/table/src/ | grep -v __tests__
 ```
 
-**Deux occurrences : sa déclaration de type et son défaut.** Aucun site de lecture. Le plugin ne
-pagine pas — il défile virtuellement —, donc la clé n'a pas d'objet. Un intégrateur qui la pose
-n'obtient **aucun** effet et **aucun** avertissement. Le CDC source la signalait déjà sous
-`ANO-038` ; elle est toujours là, et elle est désormais versée au
-registre.
+**Les occurrences restantes sont toutes dans `types.ts`** : la déclaration du champ, et la prose
+de son propre `@deprecated`. Aucun site de lecture, et plus une ligne dans `config.ts` — le défaut
+a été retiré le 28/07/2026 parce qu'il matérialisait une valeur que rien ne consomme. Le champ,
+lui, est **conservé et marqué** plutôt que supprimé : le type est publié, le retirer casserait la
+compilation d'un intégrateur qui l'a écrit, tandis que le déprécier le lui **dit** — ce que son
+silence d'avant ne faisait pas. ⚠️ **Cette fiche a écrit « aucun effet et aucun avertissement »
+jusqu'au 01/09/2026** : la première moitié reste vraie, la seconde a cessé de l'être le jour même
+où la fiche a été écrite. Rien n'en subsiste au registre, la ligne y étant soldée puis purgée.
+
+🛑 **Et `pageSize` n'était pas seule : `virtualScrolling` est dans le même cas, et la fiche ne le
+disait nulle part.** La bascule en rendu virtuel se décide sur le seuil `VIRTUAL_THRESHOLD`
+(`table-renderer-virtual-scroll.ts`), lu par `renderer.ts` — **jamais sur la clé de profil**.
+L'éteindre n'éteint rien.
+
+```bash
+grep -rn "virtualScrolling" packages/plugins/table/src/ | grep -v __tests__
+```
 
 ### Binding par couche — `layer.config.table.*`
 
-Lu par le seam `GeoLeaf.GeoJSON`, déclaré dans le schéma de couche.
+Lu par le seam `GeoLeaf.GeoJSON`. Le schéma de référence est `profiles/schemas/layer-config.schema.json`, et il **ne recouvre pas ce que le plugin lit** — il ferme le bloc (`additionalProperties: false`) dans les deux sens :
 
-| Clé           | Type      | Rôle                                                         |
-| ------------- | --------- | ------------------------------------------------------------ |
-| `enabled`     | `boolean` | La couche apparaît dans le sélecteur si ce n'est pas `false` |
-| `title`       | `string`  | Son libellé dans le sélecteur                                |
-| `columns`     | `array`   | Colonnes : champ, libellé, largeur, triabilité, type         |
-| `defaultSort` | `object`  | Champ et sens du tri initial                                 |
+- `columns[].type` est **lu par `renderer.ts`** (il pilote `formatValue` et l'alignement des nombres) et **refusé par le schéma**, qui n'admet que `field`, `label`, `sortable`, `width` ;
+- `searchFields` est **admis par le schéma** et **lu par personne** ;
+- le libellé du sélecteur ne vient pas d'ici mais de `layer.label`, puis de `layer.config.title` — **hors du bloc `table`**.
+
+L'écart se re-mesure, il ne se recopie pas :
+
+```bash
+grep -rn "col\." packages/plugins/table/src/renderer.ts
+node -e "const s=require('./profiles/schemas/layer-config.schema.json'); console.log(JSON.stringify(s.properties.table,null,1))"
+```
+
+| Clé            | Type      | Rôle                                                                                                            |
+| -------------- | --------- | --------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `boolean` | La couche apparaît dans le sélecteur **si et seulement si la valeur est vraie** — absente, la couche est exclue |
+| `searchFields` | `array`   | Accepté par le schéma de couche, **lu par aucun code du plugin**                                                |
+| `columns`      | `array`   | Colonnes : champ, libellé, largeur, triabilité, type                                                            |
+| `defaultSort`  | `object`  | Champ et sens du tri initial                                                                                    |
 
 ---
 
@@ -237,7 +273,28 @@ précédent inverse existait déjà — les neuf `geoleaf:editor:*` sont typés 
 
 ### Écoutés
 
-`geoleaf:map:ready` (construction) et `geoleaf:toolbar:action` (filtré sur `table`).
+**Six abonnements, sur DEUX bus distincts** — et c'est la distinction qui compte : un abonnement
+posé sur le mauvais bus est indiscernable d'un abonnement absent. La liste se re-dérive :
+
+```bash
+grep -rn 'addEventListener("geoleaf:\|\.on("geoleaf:' packages/plugins/table/src/ | grep -v __tests__
+```
+
+| Événement                            | Bus        | Où               | Effet                                             |
+| ------------------------------------ | ---------- | ---------------- | ------------------------------------------------- |
+| `geoleaf:map:ready`                  | `document` | `lifecycle.ts`   | Construit **seulement** si `defaultVisible`       |
+| `geoleaf:toolbar:action`             | `document` | `entry.ts`       | Filtré sur `table` — construit puis bascule       |
+| `geoleaf:filters:applied`            | `document` | `table-layer.ts` | Recharge les lignes de la couche active           |
+| `geoleaf:theme:applied`              | `document` | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                |
+| `geoleaf:geojson:layers-loaded`      | carte      | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                |
+| `geoleaf:geojson:visibility-changed` | carte      | `table-layer.ts` | Recharge, ou retombe sur une autre couche visible |
+
+🛑 **Le troisième était mort DEUX FOIS jusqu'au 25/08/2026, et une seule des deux corrections
+n'aurait rien réparé.** Il s'abonnait à `geoleaf:filters:changed` — un nom qu'aucun émetteur ne
+porte — **et** sur le bus de la carte, alors que le vrai `geoleaf:filters:applied` sort par
+`dispatchGeoLeafEvent()`, donc sur `document`. Conséquence utilisateur : la table ne se
+rafraîchissait **jamais** à l'application d'un filtre, et les lignes affichées contredisaient la
+carte.
 
 ---
 
@@ -258,15 +315,28 @@ précédent inverse existait déjà — les neuf `geoleaf:editor:*` sont typés 
 
 ## Dépendances et frontières
 
-**Dépendance de production unique : `@geoleaf/core`.** `maplibre-gl` est une dépendance **pair**,
-donc hors paquet. `@geoleaf/host-runtime` est une dépendance de **développement** — elle est
-regroupée à la construction, jamais installée chez l'intégrateur.
+**Aucune dépendance de production : le paquet n'a plus de bloc `dependencies`.** `@geoleaf/core`
+l'a quitté pour rejoindre `maplibre-gl` en dépendance **pair** — les deux sont hors paquet, et
+c'est l'hôte qui fournit le core, ce qui interdit qu'un intégrateur en installe deux copies.
+`@geoleaf/host-runtime` est une dépendance de **développement** — elle est regroupée à la
+construction, jamais installée chez l'intégrateur. Les trois blocs se lisent au fichier :
+
+```bash
+node -e "const p=require('./packages/plugins/table/package.json'); console.log({dependencies: p.dependencies, peerDependencies: p.peerDependencies, devDependencies: Object.keys(p.devDependencies)})"
+```
 
 **Aucune dépendance vers un autre plugin**, ce que le manifeste dit correctement.
 
-⚠️ **`README.md` n'est PAS dans `files[]`** — il n'est donc pas dans l'archive npm. Le plugin le
-partage sur ce point avec `addpoi`, alors que `print` et `measure` le publient. L'écart n'est pas
-tranché ; il est relevé ici pour qu'il le soit une fois.
+⚠️ **`README.md` n'est PAS dans `files[]`** — il n'est donc pas dans l'archive npm. ⚠️ Cette ligne
+citait `addpoi` comme compagnon d'infortune : **ce paquet n'existe plus**, il a fusionné dans
+`editor` le 05/08/2026. Et le cas n'est pas la minorité qu'elle laissait entendre — il est
+**majoritaire** parmi les plugins. La liste se mesure, elle ne se recopie pas :
+
+```bash
+grep -L '"README.md"' packages/plugins/*/package.json
+```
+
+L'écart n'est toujours pas tranché ; il est relevé ici pour qu'il le soit une fois, et pour tous.
 
 ---
 
@@ -280,12 +350,12 @@ la refonte documentaire V3.
 clé, défaut par défaut ; sa table d'événements liste les neuf, correctement attribués ; et sa section
 licence dit **MIT sur le registre public**, ce qui est vrai depuis la bascule.
 
-| Énoncé du CDC                                                        | Ce que dit le code                                                                                          |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| §2.6 — le rendu vit dans `table-renderer-utils.ts`                   | **Le fichier n'existe pas.** Le rendu est réparti entre `renderer.ts` et `table-renderer-virtual-scroll.ts` |
-| §2.5 — `pageSize` « ⚠️ orphelin runtime (ANO-038) »                  | ✅ **Toujours vrai, et toujours ouvert** — mesuré : deux occurrences, aucune lecture. Versé au registre     |
-| §2.5 — `virtualScrolling` « ne pagine pas par `pageSize` » (ANO-039) | ✅ **Vrai**, et c'est le corollaire du précédent : il n'y a pas de pagination du tout                       |
-| §2.5, §2.9 — configuration, binding de couche, neuf événements       | ✅ **Vérifiés exacts**, clé par clé et ligne par ligne                                                      |
+| Énoncé du CDC                                                        | Ce que dit le code                                                                                                                                                                      |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §2.6 — le rendu vit dans `table-renderer-utils.ts`                   | **Le fichier n'existe pas.** Le rendu est réparti entre `renderer.ts` et `table-renderer-virtual-scroll.ts`                                                                             |
+| §2.5 — `pageSize` « ⚠️ orphelin runtime (ANO-038) »                  | ✅ **L'orphelin subsiste** (aucun site de lecture) mais la ligne est **soldée** : défaut retiré de `config.ts`, champ `@deprecated` dans `types.ts` (28/07/2026). Plus rien au registre |
+| §2.5 — `virtualScrolling` « ne pagine pas par `pageSize` » (ANO-039) | ✅ **Vrai**, et c'est le corollaire du précédent : il n'y a pas de pagination du tout                                                                                                   |
+| §2.5, §2.9 — configuration, binding de couche, neuf événements       | ✅ **Vérifiés exacts**, clé par clé et ligne par ligne                                                                                                                                  |
 
 ⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : le `label` du manifeste vaut `table`, et
 `open()` bascule au lieu d'ouvrir. Les deux sont au même registre.

@@ -4,14 +4,14 @@ title: file-import — la conversion de fichiers géographiques vers GeoJSON
 plugin_id: file-import
 package: "@geoleaf-plugins/file-import"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # file-import — la conversion de fichiers géographiques vers GeoJSON
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/file-import` ·
-**Code :** `packages/plugins/file-import/` · **Vérifié contre :** `5535694b` (27/07/2026)
+**Code :** `packages/plugins/file-import/` · **Vérifié contre :** `fab770b1` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -86,22 +86,23 @@ cosmétique, mais elle existe.
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                               | Entrée                                              | Sortie observable                                                                                                                 | Code                                       |
-| ----- | -------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| FI-01 | Conversion vers GeoJSON                      | `convert(file)`                                     | Une collection d'entités **plus une liste d'avertissements**                                                                      | `import-api.ts` → `convert`                |
-| FI-02 | Détection du format par extension            | Nom de fichier                                      | Le convertisseur correspondant, ou `null`                                                                                         | `format-detector.ts` → `detectConverter`   |
-| FI-03 | Format non pris en charge                    | Extension inconnue                                  | Collection **vide** plus un avertissement nommant le fichier — **jamais d'exception**                                             | `import-api.ts` → `convert`                |
-| FI-04 | Fichier absent ou sans nom                   | `convert(null)`                                     | Collection vide plus un avertissement                                                                                             | `import-api.ts` → `convert`                |
-| FI-05 | Décompression KMZ                            | Fichier `.kmz`                                      | Le KML est extrait de l'archive puis converti ; **les avertissements de décompression sont fusionnés** avec ceux de la conversion | `kmz-extractor.ts` ; `import-api.ts`       |
-| FI-06 | KMZ illisible                                | Archive sans KML exploitable                        | Collection vide plus les avertissements de décompression                                                                          | `import-api.ts` → `convert`                |
-| FI-07 | Convertisseurs intégrés                      | `.gpx`, `.kml`, `.kmz`, `.csv`, `.tsv`, `.topojson` | Six extensions servies par quatre convertisseurs — `.kmz` réutilise celui du KML, `.tsv` celui du CSV                             | `format-detector.ts` → registre            |
-| FI-08 | Liste des formats servis                     | `getSupportedFormats()`                             | Les extensions **réellement enregistrées**, extensions ajoutées comprises                                                         | `import-api.ts` → `getSupportedFormats`    |
-| FI-09 | **Extension par un tiers**                   | `registerConverter(".shp", monConvertisseur)`       | L'extension est servie comme les autres ; **peut aussi remplacer** un convertisseur intégré                                       | `format-detector.ts` → `registerConverter` |
-| FI-10 | Extension insensible à la casse              | `.GPX`, `.Kmz`                                      | Reconnue — l'extension est normalisée à l'enregistrement comme à la détection                                                     | `format-detector.ts`                       |
-| FI-11 | Rendu direct sur la carte                    | `importAsLayer(file, options?)`                     | Source et sous-couches créées par l'adaptateur du core ; rend l'identifiant de couche                                             | `import-api.ts` → `importAsLayer`          |
-| FI-12 | Échecs francs du rendu                       | Aucune entité extraite, ou carte absente            | Exception explicite — contrairement à `convert()`, qui n'échoue jamais                                                            | `import-api.ts` → `importAsLayer`          |
-| FI-13 | Identifiant de couche                        | `layerId` absent                                    | Identifiant auto-incrémenté                                                                                                       | `import-api.ts`                            |
-| FI-14 | Convertisseurs synchrones **ou** asynchrones | Convertisseur rendant une valeur ou une promesse    | Les deux sont acceptés — le contrat de convertisseur ne l'impose pas                                                              | `import-api.ts` → `convert`                |
+| ID     | Fonctionnalité                               | Entrée                                                   | Sortie observable                                                                                                                                                                                                                                                                                                                             | Code                                       |
+| ------ | -------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| FI-01  | Conversion vers GeoJSON                      | `convert(file)`                                          | Une collection d'entités **plus une liste d'avertissements**                                                                                                                                                                                                                                                                                  | `import-api.ts` → `convert`                |
+| FI-02  | Détection du format par extension            | Nom de fichier                                           | Le convertisseur correspondant, ou `null`                                                                                                                                                                                                                                                                                                     | `format-detector.ts` → `detectConverter`   |
+| FI-03  | Format non pris en charge                    | Extension inconnue                                       | Collection **vide** plus un avertissement nommant le fichier — **jamais d'exception**                                                                                                                                                                                                                                                         | `import-api.ts` → `convert`                |
+| FI-04  | Fichier absent ou sans nom                   | `convert(null)`                                          | Collection vide plus un avertissement                                                                                                                                                                                                                                                                                                         | `import-api.ts` → `convert`                |
+| FI-05  | Décompression KMZ                            | Fichier `.kmz`                                           | Le KML est extrait de l'archive puis converti ; **les avertissements de décompression sont fusionnés** avec ceux de la conversion                                                                                                                                                                                                             | `kmz-extractor.ts` ; `import-api.ts`       |
+| FI-06  | KMZ illisible                                | Archive sans KML exploitable                             | Collection vide plus les avertissements de décompression                                                                                                                                                                                                                                                                                      | `import-api.ts` → `convert`                |
+| FI-06b | **Archive KMZ hors plafond (bombe zip)**     | KMZ dont le décompressé dépasse `MAX_DECOMPRESSED_BYTES` | Collection vide plus un avertissement nommant le plafond — **jamais d'exception**. Deux lignes de garde, et la seconde existe parce que la première ne prouve rien : le total **déclaré** dans le répertoire central refuse l'inflation, puis le total **réellement inflaté** est resommé, la taille déclarée étant contrôlée par l'attaquant | `kmz-extractor.ts` → `extractKmlFromKmz`   |
+| FI-07  | Convertisseurs intégrés                      | `.gpx`, `.kml`, `.kmz`, `.csv`, `.tsv`, `.topojson`      | Six extensions servies par quatre convertisseurs — `.kmz` réutilise celui du KML, `.tsv` celui du CSV                                                                                                                                                                                                                                         | `format-detector.ts` → registre            |
+| FI-08  | Liste des formats servis                     | `getSupportedFormats()`                                  | Les extensions **réellement enregistrées**, extensions ajoutées comprises                                                                                                                                                                                                                                                                     | `import-api.ts` → `getSupportedFormats`    |
+| FI-09  | **Extension par un tiers**                   | `registerConverter(".shp", monConvertisseur)`            | L'extension est servie comme les autres ; **peut aussi remplacer** un convertisseur intégré                                                                                                                                                                                                                                                   | `format-detector.ts` → `registerConverter` |
+| FI-10  | Extension insensible à la casse              | `.GPX`, `.Kmz`                                           | Reconnue — l'extension est normalisée à l'enregistrement comme à la détection                                                                                                                                                                                                                                                                 | `format-detector.ts`                       |
+| FI-11  | Rendu direct sur la carte                    | `importAsLayer(file, options?)`                          | Source et sous-couches créées par l'adaptateur du core ; rend l'identifiant de couche                                                                                                                                                                                                                                                         | `import-api.ts` → `importAsLayer`          |
+| FI-12  | Échecs francs du rendu                       | Aucune entité extraite, ou carte absente                 | Exception explicite — contrairement à `convert()`, qui n'échoue jamais                                                                                                                                                                                                                                                                        | `import-api.ts` → `importAsLayer`          |
+| FI-13  | Identifiant de couche                        | `layerId` absent                                         | Identifiant auto-incrémenté                                                                                                                                                                                                                                                                                                                   | `import-api.ts`                            |
+| FI-14  | Convertisseurs synchrones **ou** asynchrones | Convertisseur rendant une valeur ou une promesse         | Les deux sont acceptés — le contrat de convertisseur ne l'impose pas                                                                                                                                                                                                                                                                          | `import-api.ts` → `convert`                |
 
 ⚠️ **Deux régimes d'erreur cohabitent, et c'est délibéré** : `convert()` **ne jette jamais** — il
 rend une collection vide et des avertissements, parce qu'un fichier fourni par un utilisateur est
@@ -111,6 +112,18 @@ vide est une erreur de programmation de l'intégrateur. Ne pas aligner les deux.
 Les tests qui couvrent ces lignes : `packages/plugins/file-import/src/__tests__/`, dont un fichier
 par convertisseur (PC-09).
 
+✅ **Et les quatre convertisseurs sont FUZZÉS depuis le 01/09/2026** —
+`src/__tests__/converters/fuzz.test.ts` (durcissement B.3). Le générateur est pseudo-aléatoire à
+**graine fixe** : toutes les machines convertissent une entrée identique au bit près, ce qui garde
+la couverture stable et rend un rouge reproductible. Il éprouve quatre propriétés qu'aucune autre
+ligne de cette fiche ne porte : ① `convert()` **ne jette jamais**, y compris sur du bruit Unicode
+et des méta-caractères XML/CSV/JSON ; ② la valeur rendue est **toujours** une collection d'entités
+bien formée ; ③ la conversion **termine** — le plafond `REDOS_CEILING_MS` garde la terminaison, pas
+la performance, et il a valu un rouge distant pour avoir mesuré la machine à sa place ; ④ **aucune
+clé venue du fichier n'atteint `Object.prototype`**, alors que les entrées y injectent délibérément
+`__proto__` et `constructor`. `cog` et `flatgeobuf` sont hors de ce périmètre : ils délèguent leur
+lecture au réseau.
+
 ---
 
 ## Configuration
@@ -118,6 +131,14 @@ par convertisseur (PC-09).
 **Aucun bloc `modules.file-import`**, et aucune lecture de la configuration du core. Comme
 [`cog`](CDC_cog.md), tout passe par les arguments d'appel — ici, l'objet fichier et les options de
 couche.
+
+⚠️ **Le schéma de profil ouvre pourtant un emplacement, et personne ne l'habite.**
+`profiles/schemas/profile.schema.json` déclare `modules.fileImport` (casse chameau) en objet libre,
+avec la description « keys validated by the plugin, not the core ». Or **rien dans `src/` ne le
+lit** : la validation annoncée n'existe pas. Une clé qu'un intégrateur écrirait là serait acceptée
+par le schéma et ignorée par le plugin, sans un mot. La mesure des deux côtés :
+`grep -n fileImport profiles/schemas/profile.schema.json` (une ligne) contre
+`grep -rn 'modules\.' packages/plugins/file-import/src/` (aucune).
 
 Ce plugin va plus loin que l'absence de configuration : sa **variabilité passe par le code**, via le
 registre de convertisseurs. C'est la zone d'extension libre du contrat (§3), et c'est une forme de
@@ -132,6 +153,20 @@ conversion.
 
 Montée par `entry.ts`. `public-api.ts` est une **pure ré-exportation** de `import-api.ts`
 (INV-FACADE — elle portait auparavant toute la chaîne de conversion).
+
+⚠️ **Mais le namespace n'existe PAS au boot : l'intégration de référence charge ce plugin
+PARESSEUSEMENT.** `apps/geoleaf-app/init.js` l'enregistre par
+`gl.plugins.registerLazy("file-import", …)` — seul le _résolveur_ est posé avant `boot()` ; le
+bundle n'est importé qu'au premier `GeoLeaf.plugins.load("file-import")`, donc **après** `boot()`.
+Un intégrateur qui appelle `GeoLeaf.FileImport.convert()` sans avoir chargé le plugin lit
+`undefined`, sans erreur et sans trace.
+
+⚠️ **Ce n'était pas le cas quand cette fiche a été écrite** : le plugin portait alors une balise
+`<script type="module">` dans `index.html`, et l'en-tête de `e2e/15-file-import.spec.js` dit
+lui-même avoir affirmé « EAGER … no `plugins.load` needed » jusqu'au 07/08/2026. Le témoin est
+dans ce spec, qui appelle `plugins.load("file-import")` avant d'exercer l'API. ⚠️ L'en-tête de
+`src/entry.ts` prescrit toujours un chargement « BEFORE `GeoLeaf.boot()` » : cette consigne ne
+décrit plus l'intégration qui l'éprouve.
 
 | Membre                          | Rend / fait                                                     |
 | ------------------------------- | --------------------------------------------------------------- |
@@ -212,10 +247,11 @@ convertisseur GPX est le plus gros fichier du paquet.
 
 ### Dépendances
 
-| Dépendance              | Nature                                                                        |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `@geoleaf/core`         | Dépendance d'espace de travail ; chargé **après** le core, **avant** `boot()` |
-| `@geoleaf/host-runtime` | En **type seulement** (`GeoLeafHost`) — même forme que `cog` et `flatgeobuf`  |
+| Dépendance                      | Nature                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`                 | Dépendance d'espace de travail ; chargé **après** le core, **avant** `boot()`                                                                                                                                                                                                                                                                                                                                                                            |
+| `@geoleaf/host-runtime`         | En **type seulement** (`GeoLeafHost`) — même forme que `cog` et `flatgeobuf`                                                                                                                                                                                                                                                                                                                                                                             |
+| Quatre lecteurs de format tiers | Les seules dépendances de production porteuses de code, **empaquetées** dans le bundle du plugin : analyse KML (`@tmcw/togeojson`), décompression ZIP du KMZ (`fflate`), analyse CSV/TSV (`papaparse`), conversion TopoJSON (`topojson-client`). Le GPX n'en a aucune — il passe par le `DOMParser` du navigateur. (`@types/geojson` figure aussi en `dependencies`, mais ne porte que des types.) Les bornes se lisent dans le `package.json` du paquet |
 
 **Aucune dépendance sur MapLibre** : la carte est atteinte par l'adaptateur du core, dont une vue
 **structurelle** locale est déclarée. PC-10 ne s'applique pas.

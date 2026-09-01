@@ -4,14 +4,14 @@ title: scale — la barre d'échelle graphique, l'échelle numérique éditable 
 capability_id: scale
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # scale — l'échelle graphique, l'échelle numérique éditable et le niveau de zoom
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/scale/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -64,25 +64,26 @@ Elle fournit aussi le conteneur auquel [`coordinates`](coordinates.md) vient s'a
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                       | Entrée                                               | Sortie observable                                                                                                                    | Code                                                                   |
-| ----- | ------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| SC-01 | Montage différé                      | Événement `geoleaf:app:ready`                        | Le bandeau apparaît une fois l'application prête — écouteur `{ once: true }`                                                         | `lifecycle.ts` → `init`, `_onAppReady`                                 |
-| SC-02 | Conteneur unique                     | Montage                                              | `.gl-scale-main-wrapper` en mise en page horizontale, puis les blocs demandés                                                        | `scale-control.ts` → `_createMainContainer`                            |
-| SC-03 | Barre d'échelle graphique            | `scaleGraphic: true`                                 | `.gl-scale-graphic` + `.gl-scale-graphic-line` dont la **largeur en pixels** et l'étiquette suivent une valeur ronde                 | `scale-control.ts` → `_addGraphicScaleToContainer`, `_updateScaleLine` |
-| SC-04 | Arrondi à une valeur « propre »      | Distance mesurée quelconque                          | Longueur choisie dans la progression 1 / 2 / 3 / 5 / 10 de la puissance de dix courante                                              | `scale-control.ts` → `_getRoundNum`                                    |
-| SC-05 | Unité adaptée                        | Distance mesurée                                     | Kilomètres au-delà d'un kilomètre, mètres sinon                                                                                      | `scale-control.ts` → `_updateScaleLine`                                |
-| SC-06 | Mesure par projection réelle         | Zoom ou déplacement                                  | La distance est obtenue en projetant **deux points de l'écran** puis en mesurant entre eux — pas par une formule d'écran             | `scale-control.ts` → `_addGraphicScaleToContainer`                     |
-| SC-07 | Échelle numérique                    | `scaleNumeric: true`, `scaleNumericEditable: false`  | `.gl-scale-numeric` affichant `1:N`                                                                                                  | `scale-control.ts` → `_updateScale`                                    |
-| SC-08 | Échelle numérique **éditable**       | `scaleNumericEditable: true`                         | Un préfixe `1:`, un dénominateur cliquable, et un champ de saisie qui le remplace en édition                                         | `scale-control.ts` → `_createCustomScaleBlock`, `_switchToEditMode`    |
-| SC-09 | Saisie d'une échelle                 | L'utilisateur tape `250 000` puis valide             | La carte va au zoom correspondant, à centre constant                                                                                 | `scale-control.ts` → `_onScaleInputChange`                             |
-| SC-10 | Saisie invalide                      | Texte non numérique, ou zéro                         | Avertissement journalisé **et remise de la valeur affichée** — jamais de déplacement de carte                                        | `scale-control.ts` → `_onScaleInputChange`                             |
-| SC-11 | Zoom cible par convergence           | Échelle demandée                                     | Recherche itérative amortie, résultat arrondi puis **borné** aux niveaux de zoom valides                                             | `scale-control.ts` → `_calculateZoomFromScale`                         |
-| SC-12 | Séparateur de milliers par espace    | Dénominateur à plusieurs groupes                     | `380585` s'affiche `380 585` — espace ASCII, obtenu par un parcours de droite à gauche, **sans expression régulière**                | `scale-control.ts` → `_formatNumber`                                   |
-| SC-13 | Niveau de zoom                       | `scaleNivel: true`                                   | `.gl-scale-zoom` affichant `Zoom: <n>` à deux décimales                                                                              | `scale-control.ts` → `_updateScale`                                    |
-| SC-14 | Le champ en édition n'est pas écrasé | Une mise à jour de zoom arrive **pendant** la saisie | Le dénominateur n'est réécrit que si le champ de saisie est masqué                                                                   | `scale-control.ts` → `_updateScale`                                    |
-| SC-15 | Garde « aucun relevé demandé »       | Les trois relevés désactivés                         | **Rien n'est monté** — reproduit la garde de l'ancien contrôle                                                                       | `lifecycle.ts` → `_onAppReady`                                         |
-| SC-16 | Démontage complet                    | `ScaleModule.destroy()` / `_reset()`                 | Écouteurs de carte détachés, contrôle retiré, conteneur retiré **par ceinture et bretelles**, toutes les références remises à `null` | `scale-control.ts` → `destroy`                                         |
-| SC-17 | Déclaration introspectable           | —                                                    | `getAllCapabilities()` la liste, `getCapabilitySchema("scale")` rend son schéma sans `loader`                                        | `scale-capability.ts`                                                  |
+| ID    | Fonctionnalité                       | Entrée                                               | Sortie observable                                                                                                                                                                                                                                                      | Code                                                                           |
+| ----- | ------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| SC-01 | Montage différé                      | Événement `geoleaf:app:ready`                        | Le bandeau apparaît une fois l'application prête — écouteur `{ once: true }`                                                                                                                                                                                           | `lifecycle.ts` → `init`, `_onAppReady`                                         |
+| SC-02 | Conteneur unique                     | Montage                                              | `.gl-scale-main-wrapper` en mise en page horizontale, puis les blocs demandés                                                                                                                                                                                          | `scale-control.ts` → `_createMainContainer`                                    |
+| SC-03 | Barre d'échelle graphique            | `scaleGraphic: true`                                 | `.gl-scale-graphic` + `.gl-scale-graphic-line` dont la **largeur en pixels** et l'étiquette suivent une valeur ronde                                                                                                                                                   | `scale-control.ts` → `_addGraphicScaleToContainer`, `_updateScaleLine`         |
+| SC-04 | Arrondi à une valeur « propre »      | Distance mesurée quelconque                          | Longueur choisie dans la progression 1 / 2 / 3 / 5 / 10 de la puissance de dix courante                                                                                                                                                                                | `scale-control.ts` → `_getRoundNum`                                            |
+| SC-05 | Unité adaptée                        | Distance mesurée                                     | Kilomètres au-delà d'un kilomètre, mètres sinon                                                                                                                                                                                                                        | `scale-control.ts` → `_updateScaleLine`                                        |
+| SC-06 | Mesure par projection réelle         | Zoom ou déplacement                                  | La distance est obtenue en projetant **deux points de l'écran** puis en mesurant entre eux — pas par une formule d'écran                                                                                                                                               | `scale-control.ts` → `_addGraphicScaleToContainer`                             |
+| SC-07 | Échelle numérique                    | `scaleNumeric: true`, `scaleNumericEditable: false`  | `.gl-scale-numeric` affichant `1:N`                                                                                                                                                                                                                                    | `scale-control.ts` → `_updateScale`                                            |
+| SC-08 | Échelle numérique **éditable**       | `scaleNumericEditable: true`                         | Un préfixe `1:`, un dénominateur cliquable, et un champ de saisie qui le remplace en édition                                                                                                                                                                           | `scale-control.ts` → `_createCustomScaleBlock`, `_switchToEditMode`            |
+| SC-09 | Saisie d'une échelle                 | L'utilisateur tape `250 000` puis valide             | La carte va au zoom correspondant, à centre constant                                                                                                                                                                                                                   | `scale-control.ts` → `_onScaleInputChange`                                     |
+| SC-10 | Saisie invalide                      | Texte non numérique, ou zéro                         | Avertissement journalisé **et remise de la valeur affichée** — jamais de déplacement de carte                                                                                                                                                                          | `scale-control.ts` → `_onScaleInputChange`                                     |
+| SC-11 | Zoom cible : amorce puis convergence | Échelle demandée                                     | Amorce par l'inverse analytique `zoomAtScale`, puis raffinement itératif amorti ; résultat arrondi à 4 décimales et **borné à `[0 ; 22]`** — la plage du contrôle, pas celle de MapLibre                                                                               | `scale-control.ts` → `_calculateZoomFromScale`                                 |
+| SC-12 | Séparateur de milliers par espace    | Dénominateur à plusieurs groupes                     | `380585` s'affiche `380 585` — espace ASCII, obtenu par un parcours de droite à gauche, **sans expression régulière**                                                                                                                                                  | `scale-control.ts` → `_formatNumber`                                           |
+| SC-13 | Niveau de zoom                       | `scaleNivel: true`                                   | `.gl-scale-zoom` affichant `Zoom: <n>` à deux décimales                                                                                                                                                                                                                | `scale-control.ts` → `_updateScale`                                            |
+| SC-14 | Le champ en édition n'est pas écrasé | Une mise à jour de zoom arrive **pendant** la saisie | Le dénominateur n'est réécrit que si le champ de saisie est masqué                                                                                                                                                                                                     | `scale-control.ts` → `_updateScale`                                            |
+| SC-15 | Garde « aucun relevé demandé »       | Les trois relevés désactivés                         | **Rien n'est monté** — reproduit la garde de l'ancien contrôle                                                                                                                                                                                                         | `lifecycle.ts` → `_onAppReady`                                                 |
+| SC-16 | Démontage complet                    | `ScaleModule.destroy()` / `_reset()`                 | Écouteurs de carte détachés, contrôle retiré, conteneur retiré **par ceinture et bretelles**, toutes les références remises à `null`                                                                                                                                   | `scale-control.ts` → `destroy`                                                 |
+| SC-17 | Déclaration introspectable           | —                                                    | `getAllCapabilities()` la liste, `getCapabilitySchema("scale")` rend son schéma sans `loader`                                                                                                                                                                          | `scale-capability.ts`                                                          |
+| SC-18 | Carte neutralisée sous le champ      | `scaleNumericEditable: true`                         | Le bloc éditable **arrête la propagation** de `click`, `dblclick`, `mousedown`, `touchstart`, `wheel` et `contextmenu` en phase bulle — un clic ou une molette dans le champ ne déplace ni ne zoome la carte ; les désabonnements sont empilés et rejoués au démontage | `scale-control.ts` → `_createEditableScale` (`blockMapPropagation`), `destroy` |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/scale/`.
 
@@ -161,7 +162,7 @@ celle passée à l'abonnement.
 ### Le conteneur qu'elle fournit aux autres
 
 `.gl-scale-main-wrapper` est le point d'amarrage de [`coordinates`](coordinates.md), et
-`packages/core/src/capabilities/scale/css/scale.css` **style le séparateur que `coordinates` crée**. Ce couplage n'est déclaré dans
+`packages/core/src/capabilities/scale/css/scale.css` **style les deux nœuds que `coordinates` crée dans ce conteneur** — le séparateur et le relevé lui-même. Ce couplage n'est déclaré dans
 aucun `dependencies` — il est documenté des deux côtés, ici et dans la fiche de `coordinates`.
 
 ---
@@ -176,7 +177,7 @@ aucun `dependencies` — il est documenté des deux côtés, ici et dans la fich
 | **Longueur arrondie à une valeur « propre »**                       | Une barre annonçant « 3,742 km » est illisible ; l'œil a besoin d'un repère rond                                                                                                                                                                                                                                            | Afficher la valeur exacte                                                                                             |
 | **Espace ASCII comme séparateur de milliers — CHOIX TRANCHÉ**       | Deux raisons, dans cet ordre : c'est le séparateur ISO 31-0 / SI, non ambigu partout ; et il est **porteur pour la saisie**, puisque la relecture du champ reparse cette sortie même                                                                                                                                        | `Intl.NumberFormat` — proposé, **mesuré, puis fermé** : voir l'encadré ci-dessous                                     |
 | **Format de nombre écrit en boucle, pas en expression régulière**   | L'expression régulière évidente imbrique un quantificateur dans une anticipation, ce que la règle de sécurité signale ; la désactiver reposait sur une **borne de type** qu'un élargissement ultérieur aurait rendue fausse **sans qu'aucune gate ne le voie**. La boucle **supprime la question** au lieu de la documenter | La regex plus un `eslint-disable` justifié                                                                            |
-| **Recherche itérative amortie du zoom cible**                       | L'inversion analytique de la formule d'échelle est sensible à la latitude ; une convergence amortie évite les oscillations et reste bornée                                                                                                                                                                                  | Une inversion en forme fermée                                                                                         |
+| **Amorce analytique, puis raffinement amorti du zoom cible**        | L'inverse exact `zoomAtScale` donne l'amorce ; la boucle amortie (20 passes, facteur 0,95, sortie dès que l'écart d'échelle est < 1) absorbe l'arrondi entier de `scaleAtZoom` et évite les oscillations, avant un bornage à `[0 ; 22]` — la plage du contrôle, plus étroite que le `[0 ; 24]` de `scaleToZoom`             | La **seule** inversion en forme fermée, sans raffinement — pas l'inversion elle-même, qui est utilisée                |
 | **Le champ en édition n'est jamais écrasé**                         | Sans cette garde, un déplacement de carte pendant la saisie remplacerait ce que l'utilisateur est en train de taper                                                                                                                                                                                                         | Rafraîchir inconditionnellement                                                                                       |
 | **Une saisie invalide remet la valeur affichée**                    | Laisser un texte invalide dans le champ ferait croire qu'il a été pris en compte                                                                                                                                                                                                                                            | Laisser la saisie en place, ou lever                                                                                  |
 | **Rien n'est monté si aucun relevé n'est demandé**                  | Un bandeau vide occupe le coin de la carte sans rien apporter                                                                                                                                                                                                                                                               | Monter le conteneur quand même — et casser en prime l'amarrage de `coordinates`, qui le prendrait pour un hôte valide |
@@ -229,12 +230,28 @@ son délai de repli. Ne pas « simplifier » ce dispositif en supposant un ordre
 | La formule d'échelle (`scale-utils`, kernel) | Consommée, **jamais recopiée** — voir ci-dessous |
 
 Le reste passe par `utils/` : `utils/log`, `utils/general/dom-helpers` (`domCreate`),
-`utils/controls/propagation-blocker`, et `utils/geo/haversine`.
+`utils/controls/propagation-blocker`, `utils/geo/haversine` — et `utils/general/scale-utils`, que
+cette liste omettait pour l'avoir rangé dans la ligne « kernel » ci-dessus. S'y ajoute un import de
+**types seuls** depuis `contracts/map-adapter.contract.js` (`GeoLeafControl`, `GeoLeafLatLng`,
+`GeoLeafPoint`), effacé à la compilation. La liste se relit à la commande, jamais de mémoire :
+`grep -n '^import' packages/core/src/capabilities/scale/scale-control.ts`.
 
 ⚠️ **La formule de Mercator est consommée, pas dupliquée**, et l'histoire est instructive : le
 contrôle en portait une **copie privée**, qui a **dérivé** de la version kernel. Elle a été
-supprimée au profit d'un appel unique. Trois consommateurs dépendent aujourd'hui de cette source
-unique — ce contrôle, le gestionnaire de visibilité et `labels`.
+supprimée au profit d'un appel unique. ⚠️ Cette ligne annonçait ensuite « trois consommateurs », en
+les nommant — un compte recopié, et il a divergé : le décompte se dérive, il ne s'écrit pas ici.
+
+```bash
+grep -rl 'scale-utils\.js' packages/core/src --include=*.ts
+```
+
+Et la source unique **porte désormais ses vérificateurs**, ce que cette section ne disait pas :
+`packages/core/__tests__/capabilities/kernel-reuse.test.js` recalcule chaque valeur attendue **avec**
+la primitive partagée, donc toute re-fork numérique rougit quelle que soit son écriture ; et un bloc
+`no-restricted-syntax` d'`eslint.config.mjs` interdit la copie littérale de la constante de Mercator
+(`156543.03392` et sa forme arrondie), en nommant le symbole à importer. Ni `knip` ni la sonde
+d'exports orphelins ne pouvaient tenir ce rôle : `scaleAtZoom` a aussi des appelants internes à son
+propre module, donc une re-fork les laisserait verts.
 
 De même, la distance géodésique est un **utilitaire partagé** par trois capacités, et la projection
 d'un point d'écran est une **méthode du contrat d'adaptateur** : aucune des deux n'est une
@@ -256,8 +273,12 @@ directement.
 `css/scale.css`, sous `@layer gl.capabilities`, tirée par `install.ts` — donc elle se tree-shake
 avec le code.
 
-⚠️ **Elle style un nœud qu'elle ne crée pas** : `.gl-scale-separator` est créé par
-[`coordinates`](coordinates.md) et habillé ici. Le couplage est bidirectionnel et **implicite** :
+⚠️ **Elle style DEUX nœuds qu'elle ne crée pas** : `.gl-scale-separator` **et**
+`.gl-scale-coordinates` sont créés par [`coordinates`](coordinates.md) et habillés ici — y compris
+la reprise mobile, où la feuille bascule le bandeau en deux rangées, met le relevé de coordonnées
+seul sur la première et masque le séparateur au profit d'un `border-bottom`. La fiche n'en nommait
+qu'un, ce qui sous-estimait exactement ce que la phrase suivante annonce. Le couplage est
+bidirectionnel et **implicite** :
 `coordinates` écrit dans le DOM de `scale`, et dépend du CSS de `scale`. Aucune gate ne le vérifie ;
 retirer une règle de séparateur d'ici casse l'apparence d'une autre capacité.
 

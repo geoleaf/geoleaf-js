@@ -4,14 +4,14 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ed1db5b5
-date: 28 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-selector/` ·
-**Vérifié contre :** `ed1db5b5` (28/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -131,11 +131,16 @@ doit dire **ce que le runtime fait**. Il déclarait `true` auparavant, promettan
 profil omettant la clé n'obtenait jamais. **Les deux valeurs répondent à deux questions
 différentes ; c'est le SCHÉMA qui doit s'aligner sur le runtime, pas sur le gate.**
 
-⚠️ **Deux en-têtes de cette capacité disent encore le contraire.** `module.ts` et `lifecycle.ts`
-qualifient le gate d'« opt-out — S8/F3 ». C'est **faux** : la déclaration du même répertoire et le
-test `=== true` de `_createUI` disent tous deux opt-in. Relevé ici plutôt que recopié — c'est
-exactement la classe de défaut qui a déjà coûté une journée (« relire le fichier plutôt que son
-commentaire »).
+⚠️ **Les deux en-têtes qui disaient le contraire ont été corrigés.** `module.ts` et `lifecycle.ts`
+qualifiaient le gate d'« opt-out » ; ils annoncent aujourd'hui **opt-in**, et `lifecycle.ts` porte
+sur place la trace de sa propre erreur — il note que ces deux lignes citaient un test `!== false`
+qui n'existe plus. La seule mention « opt-out » qui subsiste est dans `theme-selector.ts` →
+`_createUI`, et elle est **juste** : elle nomme le gate d'AMORÇAGE (`enableWhenAbsent: true`), pas
+le gate tardif. L'état des mentions se relit à la commande, il ne se recopie pas :
+
+```bash
+grep -n "opt-in\|opt-out" packages/core/src/capabilities/theme-selector/*.ts
+```
 
 ### La vraie configuration de la barre est dans `themes.json`
 
@@ -172,6 +177,16 @@ contrairement à `labels` ou `theme-palette`. Le namespace expose directement l'
 a donc **pas** d'aides `isEnabled()` / `getConfig()` ici : un intégrateur qui veut connaître l'état
 du gate lit sa propre configuration, ou passe par `getCapabilitySchema`.
 
+⚠️ **Le motif de cette absence a été RÉÉCRIT dans `install.ts` le 24/08/2026, et l'ancien était
+faux.** Il disait que la capacité « ne monte aucun namespace » : elle en monte un —
+`registerGlobals` écrit `gl.ThemeSelector`, symbole issu de ce répertoire et déclaré de surcroît
+dans `global.d.ts`. C'est donc bien une surface propre, et l'argument de la « coquille vide »
+tombait de lui-même. **La décision d'absence tient quand même, sur un autre motif, écrit au site du
+montage** : ce montage direct est fonctionnellement identique à un fichier de ré-export, la clé est
+déjà gelée par les oracles de surface, et conformer un fichier livré stable à un patron interne ne
+changerait aucun octet observable. Ce qui rouvrirait la question est nommé : **l'apparition d'un
+second consommateur de `ThemeSelector` à l'intérieur du paquet**.
+
 | Membre                                                        | Rend / fait                                                                                |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `init({ profileId, primaryContainer, secondaryContainer })`   | Charge la configuration, construit la barre, reflète le thème actif                        |
@@ -182,8 +197,19 @@ du gate lit sa propre configuration, ou passe par `getCapabilitySchema`.
 | `isInitialized()`                                             | `true` après un chargement réussi                                                          |
 | `destroy()`                                                   | Relâche les écouteurs et efface **toutes** les références DOM et de données                |
 
-Le moteur, lui, reste monté par le kernel : `GeoLeaf._ThemeApplier`, `GeoLeaf._ThemeLoader`,
-`GeoLeaf.ThemeCache`. Les retirer casserait le thème, pas la barre.
+Le moteur, lui, reste au kernel — mais **une seule** de ses clés est encore sur le namespace :
+`GeoLeaf.ThemeCache`, montée par `globals/globals.ui.ts`. `_ThemeApplier` et `_ThemeLoader` en sont
+partis, faute de lecteur, et rien n'a cassé — c'est la mesure, pas une prévision. Deux conséquences
+qui ne se devinent pas : le retrait de `_ThemeApplier` a emporté la composition `Object.assign` qui
+n'existait que pour cette écriture (les correctifs qu'elle ancrait sont désormais tenus par des
+imports à effet de bord, nommés sur place) ; et il a laissé le cache du loader **sans porte
+publique**, d'où l'unique point d'entrée `GeoLeaf.Config.clearThemesCache()`, posé au même endroit
+et pour cette seule raison. La barre, elle, n'a jamais lu ces clés : elle atteint le moteur par
+import ESM du baril `kernel/themes/`.
+
+```bash
+grep -n "_gl\.\|clearThemesCache" packages/core/src/globals/globals.ui.ts
+```
 
 Typage publié : `src/global.d.ts`, section des capacités. Ne pas citer de numéro de ligne pour ce
 fichier.
@@ -196,10 +222,22 @@ fichier.
 | `geoleaf:themes:ready` | **émis**               | Fin de chargement, **succès comme échec** (`{ time }`, plus `error` en cas d'échec) |
 
 ⚠️ **`geoleaf:themes:ready` est émis par CETTE capacité et par elle seule** — et le permalien
-l'attend pour restaurer un thème d'URL. Quand la barre ne monte pas (gate opt-in à `false`, ou l'un
-des deux conteneurs absent), l'événement **ne part jamais**, et le permalien reste en attente : ni
-le thème, ni les couches, ni le filtre du lien ne sont restaurés, sans trace. Mesuré, ligne
-Versé au registre à l'époque.
+l'attend pour restaurer un thème d'URL.
+
+🛑 **Mais le gate tardif ne le supprime PAS, contrairement à ce qu'on suppose.** Quand
+`modules.theme-selector.enabled` ne vaut pas `true`, `_createUI` **sort sans lever** : `init()` va
+jusqu'au bout, marque la capacité initialisée et émet l'événement — **sans barre**. Les trois
+conditions qui l'empêchent réellement sont énumérées au site de l'attente
+(`capabilities/permalink/permalink-sync.ts`) : la capacité doit être enregistrée, un profil doit
+être actif, et les **deux** conteneurs doivent exister dans la page.
+
+⚠️ **Et le permalien ne reste plus en attente indéfiniment.** Il arme un second écouteur sur
+`geoleaf:app:ready` — qui, lui, part toujours, le dévoilement ayant sa propre temporisation de
+sûreté — puis conclut au bout d'un délai de grâce que l'émetteur ne viendra pas : il **journalise
+un avertissement** et applique tout de même les couches, les couches visibles et le filtre
+différés. **Seule la bascule de thème est abandonnée**, faute de sélecteur pour l'opérer — et elle
+l'est bruyamment. Avant ce repli, c'est tout l'état différé qui était perdu, silencieusement. Le
+délai est une constante du fichier, à lire sur place plutôt qu'ici.
 
 ⚠️ **Les deux événements n'ont pas le même statut de typage** : `geoleaf:app:ready` est **typé**
 dans `contracts/event-bus.contract.ts` ; `geoleaf:themes:ready` — celui que cette capacité **émet**
@@ -215,22 +253,22 @@ lit `getCurrentTheme()` — pas par cette capacité.
 
 ## Décisions de conception
 
-| Décision                                                           | Pourquoi                                                                                                                                                                                                                    | Alternative écartée                                                 |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **Le moteur reste au kernel, seule la barre sort**                 | `geoleaf:theme:applied` est le signal central du dévoilement, du permalien, des toasts et de plusieurs plugins. Le faire dépendre d'une UI optionnelle rendrait l'application aveugle dès qu'un intégrateur retire la barre | Sortir le moteur entier en capacité                                 |
-| **Le thème par défaut est appliqué par un module kernel**          | Corollaire du point précédent : la capacité ne fait que **refléter**. Un profil sans barre obtient quand même son thème par défaut                                                                                          | Laisser l'`init()` du sélecteur appliquer, comme avant la migration |
-| **Montage sur `app:ready`, pas à l'`init()` du module**            | La barre a besoin d'un profil actif et de deux conteneurs que le kernel construit plus tard ; l'écoute est posée pendant la passe synchrone du registre et l'événement est asynchrone, donc il est toujours capté           | Monter dans `init()`                                                |
-| **Garde d'acceptation, sortie silencieuse**                        | Une page hôte a le droit de ne pas fournir les conteneurs. La capacité ne les crée pas : elle s'abstient                                                                                                                    | Créer les conteneurs manquants                                      |
-| **Le schéma annonce `false`, le gate `enableWhenAbsent: true`**    | Ils répondent à deux questions distinctes. Annoncer `true` promettait une barre qu'un profil omettant la clé ne recevait jamais — le schéma doit décrire le RUNTIME                                                         | Aligner les deux valeurs, dans un sens ou dans l'autre              |
-| **Accès au moteur par IMPORT DIRECT, pas par seam**                | Le namespace ne porte qu'une **copie superficielle** de l'applier (composée par `Object.assign`) : router dessus casserait l'état interne des chemins d'ajout et de bascule. L'import typé préserve le singleton vivant     | Le seam `getGeoLeaf()._ThemeApplier`, prévu par le CDC source       |
-| **Les réglages de barre restent dans `themes.json`**               | Ils décrivent la présentation d'un jeu de thèmes, pas une option d'application. Les dupliquer dans `modules.*` créerait deux sources pour un même fait                                                                      | Les remonter dans le bloc `modules.theme-selector`                  |
-| **`setTheme` REJETTE au lieu de dégrader**                         | Une commutation silencieusement ignorée laisserait la barre surligner un thème qui n'est pas appliqué. Le rejet remonte à l'appelant, y compris au permalien                                                                | Journaliser et continuer                                            |
-| **`themes:ready` est émis même en cas d'échec**                    | Ses consommateurs attendent un signal de fin, pas un signal de succès. Ne l'émettre qu'au succès les ferait attendre indéfiniment sur un profil dont les thèmes ne chargent pas                                             | N'émettre qu'au succès                                              |
-| **Un écouteur d'arrêt de propagation par contrôle**                | Sans lui, un clic sur un bouton de thème atteint le canevas et déclenche l'interaction cartographique sous la barre                                                                                                         | Un seul écouteur sur le conteneur                                   |
-| **Vidage par le helper de sécurité**                               | Les libellés de thème viennent d'un profil, donc d'une source que le core ne contrôle pas. Les insertions passent toutes par `textContent`, et le vidage par le helper du kernel                                            | `innerHTML = ""`                                                    |
-| **Le mode compact scinde le DOM plutôt qu'il ne le réduit**        | Au-delà du seuil, une zone défilante encadrée de deux boutons garde tous les thèmes accessibles ; réduire la liste en cacherait                                                                                             | Tronquer la liste, ou un menu déroulant unique                      |
-| **`destroy()` efface les références, pas seulement les écouteurs** | Un cycle démontage → remontage opérerait sinon sur des nœuds détachés de l'instance précédente                                                                                                                              | Ne relâcher que les écouteurs                                       |
-| Pas de `loader`                                                    | La barre est une surface de premier plan, montée au dévoilement : un `import()` paresseux la ferait apparaître après coup                                                                                                   | Un chargement paresseux                                             |
+| Décision                                                           | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Alternative écartée                                                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Le moteur reste au kernel, seule la barre sort**                 | `geoleaf:theme:applied` est le signal central du dévoilement, du permalien, des toasts et de plusieurs plugins. Le faire dépendre d'une UI optionnelle rendrait l'application aveugle dès qu'un intégrateur retire la barre                                                                                                                                                                                                                                            | Sortir le moteur entier en capacité                                 |
+| **Le thème par défaut est appliqué par un module kernel**          | Corollaire du point précédent : la capacité ne fait que **refléter**. Un profil sans barre obtient quand même son thème par défaut                                                                                                                                                                                                                                                                                                                                     | Laisser l'`init()` du sélecteur appliquer, comme avant la migration |
+| **Montage sur `app:ready`, pas à l'`init()` du module**            | La barre a besoin d'un profil actif et de deux conteneurs que le kernel construit plus tard ; l'écoute est posée pendant la passe synchrone du registre et l'événement est asynchrone, donc il est toujours capté                                                                                                                                                                                                                                                      | Monter dans `init()`                                                |
+| **Garde d'acceptation, sortie silencieuse**                        | Une page hôte a le droit de ne pas fournir les conteneurs. La capacité ne les crée pas : elle s'abstient                                                                                                                                                                                                                                                                                                                                                               | Créer les conteneurs manquants                                      |
+| **Le schéma annonce `false`, le gate `enableWhenAbsent: true`**    | Ils répondent à deux questions distinctes. Annoncer `true` promettait une barre qu'un profil omettant la clé ne recevait jamais — le schéma doit décrire le RUNTIME                                                                                                                                                                                                                                                                                                    | Aligner les deux valeurs, dans un sens ou dans l'autre              |
+| **Accès au moteur par IMPORT DIRECT, pas par seam**                | Le seam **n'existe plus** : `GeoLeaf._ThemeApplier` a quitté le namespace faute de lecteur, et l'objet composé par `Object.assign` qui l'y portait n'existait que pour cette écriture — il est parti avec elle. La décision était déjà bonne avant ce retrait (cette copie superficielle divergeait de l'état interne des chemins d'ajout et de bascule) ; elle est aujourd'hui la seule possible. L'import typé du baril `kernel/themes/` atteint le singleton vivant | Le seam `getGeoLeaf()._ThemeApplier`, prévu par le CDC source       |
+| **Les réglages de barre restent dans `themes.json`**               | Ils décrivent la présentation d'un jeu de thèmes, pas une option d'application. Les dupliquer dans `modules.*` créerait deux sources pour un même fait                                                                                                                                                                                                                                                                                                                 | Les remonter dans le bloc `modules.theme-selector`                  |
+| **`setTheme` REJETTE au lieu de dégrader**                         | Une commutation silencieusement ignorée laisserait la barre surligner un thème qui n'est pas appliqué. Le rejet remonte à l'appelant, y compris au permalien                                                                                                                                                                                                                                                                                                           | Journaliser et continuer                                            |
+| **`themes:ready` est émis même en cas d'échec**                    | Ses consommateurs attendent un signal de fin, pas un signal de succès. Ne l'émettre qu'au succès les ferait attendre indéfiniment sur un profil dont les thèmes ne chargent pas                                                                                                                                                                                                                                                                                        | N'émettre qu'au succès                                              |
+| **Un écouteur d'arrêt de propagation par contrôle**                | Sans lui, un clic sur un bouton de thème atteint le canevas et déclenche l'interaction cartographique sous la barre                                                                                                                                                                                                                                                                                                                                                    | Un seul écouteur sur le conteneur                                   |
+| **Vidage par le helper de sécurité**                               | Les libellés de thème viennent d'un profil, donc d'une source que le core ne contrôle pas : **toute donnée de profil** est posée en `textContent`, et le vidage passe par `DOMSecurity.clearElementFast`. Les seuls `innerHTML` de la capacité posent les deux chevrons du mode compact — une entité HTML statique, sans donnée d'origine externe, annotée `SAFE:` sur place                                                                                           | `innerHTML = ""`                                                    |
+| **Le mode compact scinde le DOM plutôt qu'il ne le réduit**        | Au-delà du seuil, une zone défilante encadrée de deux boutons garde tous les thèmes accessibles ; réduire la liste en cacherait                                                                                                                                                                                                                                                                                                                                        | Tronquer la liste, ou un menu déroulant unique                      |
+| **`destroy()` efface les références, pas seulement les écouteurs** | Un cycle démontage → remontage opérerait sinon sur des nœuds détachés de l'instance précédente                                                                                                                                                                                                                                                                                                                                                                         | Ne relâcher que les écouteurs                                       |
+| Pas de `loader`                                                    | La barre est une surface de premier plan, montée au dévoilement : un `import()` paresseux la ferait apparaître après coup                                                                                                                                                                                                                                                                                                                                              | Un chargement paresseux                                             |
 
 ---
 
@@ -314,9 +352,9 @@ registre.
 ## Écarts au CDC source
 
 Le CDC `CDC_capacite-theme-selector.md` (v1.0.7, 10/07/2026) a été **consommé** en écrivant cette
-fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartient à une session
-concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
-décisions de la refonte documentaire V3.
+fiche, puis **retiré du dépôt** — plus aucun fichier de ce nom n'y existe. La table ci-dessous est
+donc désormais la seule trace de ses écarts, et c'est la raison pour laquelle elle cite l'énoncé
+source _in extenso_ plutôt que d'y renvoyer.
 
 | Énoncé du CDC                                                                                  | Ce que dit le code                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

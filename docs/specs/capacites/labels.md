@@ -4,14 +4,14 @@ title: labels — les étiquettes de texte par couche
 capability_id: labels
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ed1db5b5
-date: 28 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # labels — les étiquettes de texte par couche
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/labels/` ·
-**Vérifié contre :** `ed1db5b5` (28/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -55,9 +55,11 @@ du zoom ou de l'échelle.
 
 - **Elle ne décide pas de ce qui est étiqueté** : la configuration réelle est **par couche**, dans
   la clé `label` du fichier de style, pas dans le bloc `modules.labels` — voir §Configuration.
-- **Elle ne s'abonne à rien au montage.** Contrairement à ce que son voisinage suggère,
-  `Labels.init()` **ne fait que journaliser**. Tout le pilotage passe par des appels directs venus
-  du kernel. C'est central pour son rang de boot — voir §Dépendances et frontières.
+- **`Labels.init()` ne s'abonne à rien.** Contrairement à ce que son voisinage suggère, il **ne fait
+  que journaliser**, et le pilotage des étiquettes passe par des appels directs venus du kernel.
+  ⚠️ La capacité, elle, **s'abonne bien au montage** : `LabelsLifecycle.init()` pose l'écouteur du
+  seam `geoleaf:layer-item:controls` (voir §Événements et abonnements), qui ne sert qu'au bouton 🏷️.
+  C'est central pour son rang de boot — voir §Dépendances et frontières.
 - **Elle ne crée aucun nœud DOM par entité.** Une étiquette est une entrée de couche `symbol` ;
   le seul DOM qu'elle produit est le bouton 🏷️, un par ligne de couche.
 - **Elle ne gère pas les infobulles au survol** ni les popups d'entité — c'est `feature-info`.
@@ -66,31 +68,31 @@ du zoom ou de l'échelle.
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                       | Entrée                                                      | Sortie observable                                                                                                                | Code                                                        |
-| ----- | ---------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| LB-01 | Rendu en couche `symbol` native                      | Couche visible, style portant `label.enabled: true`         | Couche MapLibre `gl-<layerId>-label-text` ajoutée sur la source de la couche                                                     | `label-renderer.ts` → `createSymbolLayerForMapLibre`        |
-| LB-02 | Initialisation au chargement d'une couche            | Appel direct depuis le chargeur GeoJSON                     | L'état d'étiquette de la couche est (re)construit ; l'ancien est purgé d'abord                                                   | `labels.ts` → `initializeLayerLabels`                       |
-| LB-03 | Précédence du style **intégré** sur la configuration | `currentStyle.label` présent                                | Le style intégré gagne ; `enabled !== true` **désactive** franchement, sans repli sur la configuration d'appel                   | `labels.ts` → `_resolveLabelStyleConfig`                    |
-| LB-04 | Repli sur une configuration d'appel                  | Aucun style intégré, mais `{ enabled, labelId }` fournis    | Style construit avec des valeurs par défaut (Arial 10 pt, noir, opaque, sans halo ni fond)                                       | `labels.ts` → `_buildLabelStyleFromConfig`                  |
-| LB-05 | Affichage initial gouverné par `visibleByDefault`    | Style intégré portant ou non `visibleByDefault`             | Quand la clé est présente elle **l'emporte** sur la demande de l'appelant ; sinon c'est l'appelant qui décide                    | `labels.ts` → `_resolveLabelEffectiveShow`                  |
-| LB-06 | Couche masquée : préparé sans être rendu             | Étiquettes configurées, couche invisible                    | L'état est enregistré, **aucune couche `symbol` n'est créée** — le rendu attend que la couche redevienne visible                 | `labels.ts` → `_computeShouldShow`, `_createLabelsForLayer` |
-| LB-07 | Bascule par couche                                   | `toggleLabels(layerId)`                                     | Rend le nouvel état. **Refuse** si le style de la couche n'active pas les étiquettes                                             | `labels.ts` → `toggleLabels`                                |
-| LB-08 | Réaction au zoom                                     | `zoomend` sur la carte                                      | Chaque couche étiquetée est ré-évaluée : création si elle entre dans la plage, purge si elle en sort                             | `labels.ts` → `_handleZoomChange`, `_processZoomLayerItem`  |
-| LB-09 | Plage par **échelle** ou par **zoom**                | `labelScale: { minScale, maxScale }` ou `minZoom`/`maxZoom` | L'échelle prime quand elle est déclarée ; les deux bornes de zoom doivent être présentes pour s'appliquer                        | `labels.ts` → `_resolveShouldShowForZoom`, `_isOutOfRange`  |
-| LB-10 | Abonnement `zoomend` **paresseux**                   | Première couche réellement étiquetée                        | L'abonnement est armé à ce moment-là, pas au montage de la capacité                                                              | `labels.ts` → `_ensureZoomListener`                         |
-| LB-11 | Ré-armement sur changement d'adaptateur              | Changement de fond de carte ou de thème (échange en place)  | L'abonnement est relâché puis reposé **sur la nouvelle carte** — la comparaison porte sur l'adaptateur, pas sur un drapeau       | `labels.ts` → `_ensureZoomListener`                         |
-| LB-12 | Suivi de la visibilité de couche                     | Couche montrée / masquée                                    | Étiquettes recréées ou purgées — le kernel appelle `refreshLabels` / `_hideLabelsForLayer` par le namespace                      | `kernel/geojson/visibility-manager.ts`                      |
-| LB-13 | Pile de polices résolue sur le style chargé          | Création d'une couche `symbol`                              | La première `text-font` réellement servie par le style est reprise ; repli `Noto Sans Regular`. **Évite les 404 de glyphes PBF** | `label-renderer.ts` → `_resolveMapFontStack`                |
-| LB-14 | Points → pixels                                      | `font.sizePt` d'un profil                                   | `text-size` en pixels au ratio exact 96/72 ; `12` quand aucune taille n'est écrite                                               | `label-renderer.ts` → `_buildLabelSymbolLayout`             |
-| LB-15 | Halo optionnel                                       | `buffer.enabled: true`                                      | `text-halo-color` / `-width` / `-blur` posés ; absent sinon                                                                      | `label-renderer.ts` → `_buildLabelSymbolPaint`              |
-| LB-16 | Purge tolérante aux styles périmés                   | Retrait d'étiquettes après rechargement du style MapLibre   | Chaque retrait qui jette est absorbé **individuellement**, et la table est vidée dans tous les cas                               | `labels.ts` → `_clearTooltips`                              |
-| LB-17 | Bouton 🏷️ injecté par seam                           | `geoleaf:layer-item:controls` émis par le gestionnaire      | Bouton inséré **avant** la bascule de visibilité de la ligne, ou appendu à défaut                                                | `lifecycle.ts`, `label-button-manager.ts` → `createButton`  |
-| LB-18 | Rattrapage des couches déjà rendues                  | Capacité montée après le rendu de la liste des couches      | Chaque `[data-layer-id]` du document est resynchronisé — filet de premier rendu                                                  | `lifecycle.ts` → `syncExistingLayers`                       |
-| LB-19 | État visuel du bouton                                | Style, visibilité de couche, état des étiquettes            | Désactivé si le style n'active pas les étiquettes ou si la couche est masquée ; `aria-pressed` reflète l'état                    | `label-button-manager.ts` → `_getState`, `_applyState`      |
-| LB-20 | Bouton non dupliqué                                  | Seam ré-émis pour la même couche                            | Le bouton existant est rendu tel quel, aucun second bouton                                                                       | `label-button-manager.ts` → `createButton`                  |
-| LB-21 | Configuration obsolète refusée bruyamment            | `labels.styleFile` dans une couche                          | **Jette** une erreur nommant la couche — pas d'ignorance silencieuse                                                             | `labels.ts` → `enableLabels`                                |
-| LB-22 | Démontage complet                                    | `LabelsModule.destroy()` / `_reset()`                       | Seam détaché, **tous** les boutons 🏷️ retirés du document, étiquettes purgées, abonnement `zoomend` relâché                      | `lifecycle.ts` → `_reset`, `labels.ts` → `destroy`          |
-| LB-23 | Déclaration introspectable                           | —                                                           | `getAllCapabilities()` la liste, `getCapabilitySchema("labels")` rend son schéma                                                 | `labels-capability.ts`                                      |
+| ID    | Fonctionnalité                                       | Entrée                                                                                                                        | Sortie observable                                                                                                                | Code                                                                                      |
+| ----- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| LB-01 | Rendu en couche `symbol` native                      | Couche visible, style portant `label.enabled: true`                                                                           | Couche MapLibre `gl-<layerId>-label-text` ajoutée sur la source de la couche                                                     | `label-renderer.ts` → `createSymbolLayerForMapLibre`                                      |
+| LB-02 | Initialisation au chargement d'une couche            | Appel direct du chargeur GeoJSON — **conditionné** : un style préchargé, ou une définition de couche portant `labels.enabled` | L'état d'étiquette de la couche est (re)construit ; l'ancien est purgé d'abord                                                   | `labels.ts` → `initializeLayerLabels`, appelé par `kernel/geojson/loader/single-layer.ts` |
+| LB-03 | Précédence du style **intégré** sur la configuration | `currentStyle.label` présent                                                                                                  | Le style intégré gagne ; `enabled !== true` **désactive** franchement, sans repli sur la configuration d'appel                   | `labels.ts` → `_resolveLabelStyleConfig`                                                  |
+| LB-04 | Repli sur une configuration d'appel                  | Aucun style intégré, mais `{ enabled, labelId }` fournis                                                                      | Style construit avec des valeurs par défaut (Arial 10 pt, noir, opaque, sans halo ni fond)                                       | `labels.ts` → `_buildLabelStyleFromConfig`                                                |
+| LB-05 | Affichage initial gouverné par `visibleByDefault`    | Style intégré portant ou non `visibleByDefault`                                                                               | Quand la clé est présente elle **l'emporte** sur la demande de l'appelant ; sinon c'est l'appelant qui décide                    | `labels.ts` → `_resolveLabelEffectiveShow`                                                |
+| LB-06 | Couche masquée : préparé sans être rendu             | Étiquettes configurées, couche invisible                                                                                      | L'état est enregistré, **aucune couche `symbol` n'est créée** — le rendu attend que la couche redevienne visible                 | `labels.ts` → `_computeShouldShow`, `_createLabelsForLayer`                               |
+| LB-07 | Bascule par couche                                   | `toggleLabels(layerId)`                                                                                                       | Rend le nouvel état. **Refuse** si le style de la couche n'active pas les étiquettes                                             | `labels.ts` → `toggleLabels`                                                              |
+| LB-08 | Réaction au zoom                                     | `zoomend` sur la carte                                                                                                        | Chaque couche étiquetée est ré-évaluée : création si elle entre dans la plage, purge si elle en sort                             | `labels.ts` → `_handleZoomChange`, `_processZoomLayerItem`                                |
+| LB-09 | Plage par **échelle** ou par **zoom**                | `labelScale: { minScale, maxScale }` ou `minZoom`/`maxZoom`                                                                   | L'échelle prime quand elle est déclarée ; les deux bornes de zoom doivent être présentes pour s'appliquer                        | `labels.ts` → `_resolveShouldShowForZoom`, `_isOutOfRange`                                |
+| LB-10 | Abonnement `zoomend` **paresseux**                   | Première couche réellement étiquetée                                                                                          | L'abonnement est armé à ce moment-là, pas au montage de la capacité                                                              | `labels.ts` → `_ensureZoomListener`                                                       |
+| LB-11 | Ré-armement sur changement d'adaptateur              | Changement de fond de carte ou de thème (échange en place)                                                                    | L'abonnement est relâché puis reposé **sur la nouvelle carte** — la comparaison porte sur l'adaptateur, pas sur un drapeau       | `labels.ts` → `_ensureZoomListener`                                                       |
+| LB-12 | Suivi de la visibilité de couche                     | Couche montrée / masquée                                                                                                      | Étiquettes recréées ou purgées — le kernel appelle `refreshLabels` / `_hideLabelsForLayer` par le namespace                      | `kernel/geojson/visibility-manager.ts`                                                    |
+| LB-13 | Pile de polices résolue sur le style chargé          | Création d'une couche `symbol`                                                                                                | La première `text-font` réellement servie par le style est reprise ; repli `Noto Sans Regular`. **Évite les 404 de glyphes PBF** | `label-renderer.ts` → `_resolveMapFontStack`                                              |
+| LB-14 | Points → pixels                                      | `font.sizePt` d'un profil                                                                                                     | `text-size` en pixels au ratio exact 96/72 ; `12` quand aucune taille n'est écrite                                               | `label-renderer.ts` → `_buildLabelSymbolLayout`                                           |
+| LB-15 | Halo optionnel                                       | `buffer.enabled: true`                                                                                                        | `text-halo-color` / `-width` / `-blur` posés ; absent sinon                                                                      | `label-renderer.ts` → `_buildLabelSymbolPaint`                                            |
+| LB-16 | Purge tolérante aux styles périmés                   | Retrait d'étiquettes après rechargement du style MapLibre                                                                     | Chaque retrait qui jette est absorbé **individuellement**, et la table est vidée dans tous les cas                               | `labels.ts` → `_clearTooltips`                                                            |
+| LB-17 | Bouton 🏷️ injecté par seam                           | `geoleaf:layer-item:controls` émis par le gestionnaire                                                                        | Bouton inséré **avant** la bascule de visibilité de la ligne, ou appendu à défaut                                                | `lifecycle.ts`, `label-button-manager.ts` → `createButton`                                |
+| LB-18 | Rattrapage des couches déjà rendues                  | Capacité montée après le rendu de la liste des couches                                                                        | Chaque `[data-layer-id]` du document est resynchronisé — filet de premier rendu                                                  | `lifecycle.ts` → `syncExistingLayers`                                                     |
+| LB-19 | État visuel du bouton                                | Style, visibilité de couche, état des étiquettes                                                                              | Désactivé si le style n'active pas les étiquettes ou si la couche est masquée ; `aria-pressed` reflète l'état                    | `label-button-manager.ts` → `_getState`, `_applyState`                                    |
+| LB-20 | Bouton non dupliqué                                  | Seam ré-émis pour la même couche                                                                                              | Le bouton existant est rendu tel quel, aucun second bouton                                                                       | `label-button-manager.ts` → `createButton`                                                |
+| LB-21 | Configuration obsolète refusée bruyamment            | `styleFile` dans la configuration passée à `enableLabels()`                                                                   | **Jette** une erreur nommant la couche. ⚠️ Rien n'est lu depuis le fichier de style — voir §Configuration                        | `labels.ts` → `enableLabels`                                                              |
+| LB-22 | Démontage complet                                    | `LabelsModule.destroy()` / `_reset()`                                                                                         | Seam détaché, **tous** les boutons 🏷️ retirés du document, étiquettes purgées, abonnement `zoomend` relâché                      | `lifecycle.ts` → `_reset`, `labels.ts` → `destroy`                                        |
+| LB-23 | Déclaration introspectable                           | —                                                                                                                             | `getAllCapabilities()` la liste, `getCapabilitySchema("labels")` rend son schéma                                                 | `labels-capability.ts`                                                                    |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/labels/`.
 
@@ -101,22 +103,32 @@ Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/labels
 Bloc `modules.labels` d'un profil. Conformité de cette table au code gardée par
 `__tests__/guards/doc-capability-config.guard.test.js`.
 
-| Paramètre | Type      | Défaut | Où c'est lu                                                                                     |
-| --------- | --------- | ------ | ----------------------------------------------------------------------------------------------- |
-| `enabled` | `boolean` | `true` | `config.ts` → `getLabelsConfig()` ; gate d'enregistrement du module. **Opt-out**, comme le gate |
+| Paramètre | Type      | Défaut | Où c'est lu                                                                                                                                                                    |
+| --------- | --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled` | `boolean` | `true` | `config.ts` → `getLabelsConfig()` ; gate évalué à l'`init()` du module — `presets/apply-preset.ts` → `gatedModule` —, **pas** à son enregistrement. **Opt-out**, comme le gate |
 
 ### Deux étages de configuration, et le gate ne commande que le premier
 
 C'est la nuance qui compte pour un intégrateur, et elle n'est pas dans la table ci-dessus :
 
-| Étage                                  | Où il vit                                     | Ce qu'il décide                                       |
-| -------------------------------------- | --------------------------------------------- | ----------------------------------------------------- |
-| **Gate de capacité** (table ci-dessus) | `modules.labels.enabled` d'un profil          | Si la capacité existe **du tout**                     |
-| **Style d'étiquette, par couche**      | Clé `label` du fichier de **style de couche** | Si CETTE couche est étiquetée, et à quoi ça ressemble |
+| Étage                                  | Où il vit                                     | Ce qu'il décide                                                                                       |
+| -------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Gate de capacité** (table ci-dessus) | `modules.labels.enabled` d'un profil          | Si le **cycle de vie** du module tourne — seam du bouton 🏷️ et rattrapage. Pas si le namespace existe |
+| **Style d'étiquette, par couche**      | Clé `label` du fichier de **style de couche** | Si CETTE couche est étiquetée, et à quoi ça ressemble                                                 |
 
 Un profil qui laisse `modules.labels` absent obtient la capacité, et **aucune étiquette** tant
-qu'aucun style de couche ne porte `label.enabled: true`. L'inverse — des styles qui déclarent des
-étiquettes et `modules.labels.enabled: false` — éteint tout.
+qu'aucun style de couche ne porte `label.enabled: true`. 🛑 **L'inverse n'éteint PAS tout, et cette ligne l'a affirmé.** Avec `modules.labels.enabled: false`,
+seul le cycle de vie du module est court-circuité — le seam du bouton 🏷️ et le rattrapage des
+couches déjà rendues. Le namespace, lui, est monté **sans condition** à la passe 1 des installeurs,
+et c'est par lui que le chargeur GeoJSON atteint `initializeLayerLabels` (dépendance injectée
+`getLabels()`, qui relit `GeoLeaf.Labels`). Les étiquettes continuent donc d'être peintes, et le
+bouton finit par apparaître dès qu'un changement de visibilité, de style ou de thème appelle
+`syncImmediate` — qui crée le bouton s'il manque. Rien dans le core ne lit `Labels.isEnabled()` :
+
+```bash
+grep -rn "getLabels\b" packages/core/src --include=*.ts
+grep -rn "isEnabled()" packages/core/src --include=*.ts | grep -i label
+```
 
 Les clés lues dans le style de couche :
 
@@ -130,9 +142,20 @@ Les clés lues dans le style de couche :
 | `label.buffer.*`                 | Halo : `enabled`, `color`, `sizePx`                                            |
 | `labelScale.{minScale,maxScale}` | Plage d'**échelle** — prime sur les bornes de zoom                             |
 
-⚠️ **`label.styleFile` est refusé, pas ignoré.** Une couche qui le porte encore fait **jeter** une
-erreur nommant la couche. C'est délibéré : la forme obsolète pointait un second fichier de style,
-et l'ignorer aurait produit des couches muettes sans explication.
+⚠️ **`styleFile` est refusé, pas ignoré — mais dans la configuration d'APPEL, pas dans le style.**
+`enableLabels(layerId, { styleFile })` **jette** une erreur nommant la couche. C'est délibéré : la
+forme obsolète pointait un second fichier de style, et l'ignorer aurait produit des couches muettes
+sans explication.
+
+🛑 **En revanche la clé n'est PAS lue dans le fichier de style.** Un `label.styleFile` écrit là est
+recopié tel quel dans le style résolu et jamais relu — donc silencieusement inerte, exactement ce
+que le refus voulait empêcher. Le contrôle porte sur le second argument d'`enableLabels()`, et tous
+les appelants du dépôt lui passent un objet vide :
+
+```bash
+grep -rn "styleFile" packages/core/src/capabilities/labels/
+grep -rn "enableLabels(" packages/core/src --include=*.ts | grep -v capabilities/labels/
+```
 
 ---
 
@@ -161,8 +184,18 @@ restreinte les couperait de leur seul point d'accès.
 | `destroy()`                                         | Purge toutes les couches et relâche l'abonnement `zoomend`                         |
 
 Deux autres clés sont montées par l'installeur : `_LabelButtonManager` et `_LabelRenderer`. Le
-préfixe `_` marque l'usage interne — elles existent parce qu'elles étaient déjà dans la surface
-publiée avant la migration.
+préfixe `_` marque l'usage interne, **mais les deux ne sont pas du même genre** :
+
+- ⚠️ `_LabelButtonManager` a des **lecteurs vivants dans le kernel**, qui repeignent le bouton 🏷️
+  en le lisant tardivement sur le namespace (`syncImmediate`) — retirer la clé casserait la
+  synchronisation du bouton, ce n'est pas un vestige ;
+- `_LabelRenderer` n'a aucun lecteur hors de la capacité, qui l'importe statiquement. Lui n'est là
+  que parce qu'il était déjà dans la surface publiée avant la migration.
+
+```bash
+grep -rn "_LabelButtonManager\|_LabelRenderer" packages/core/src --include=*.ts \
+  | grep -v "capabilities/labels/"
+```
 
 Typage publié : `src/global.d.ts`, section des capacités (`Labels?:` → `LabelsPublicApi`). Ne pas
 citer de numéro de ligne pour ce fichier.
@@ -215,9 +248,8 @@ reconstruit depuis le style au rechargement.
 
 `module.ts` → `LabelsModule` : `id = "labels"`, `dependencies = ["geojson"]`.
 
-⚠️ **Ce que `init()` fait réellement, mesuré fichier par fichier** — c'est la question que
-que pose la question des dépendances, et la réponse n'est pas celle que le nom de
-la capacité suggère :
+⚠️ **Ce que `init()` fait réellement, mesuré fichier par fichier** — c'est la question que pose le rang
+de dépendance, et la réponse n'est pas celle que le nom de la capacité suggère :
 
 | Étape de `LabelsLifecycle.init()`                 | Ce qu'elle lit                            | Besoin de l'état GeoJSON ? |
 | ------------------------------------------------- | ----------------------------------------- | -------------------------- |
@@ -232,7 +264,9 @@ Or le namespace est monté par `registerGlobals`, à la passe 1 des installeurs,
 **avant** l'initialisation de tout module. Le pipeline d'étiquettes ne dépend donc pas du rang de
 `LabelsModule`.
 
-Les sites d'appel du kernel, mesurés — **cinq fichiers** :
+Les sites d'appel du kernel se relèvent à la commande — ⚠️ elle rend aussi
+`kernel/geojson/loader/loader-types.ts`, qui **déclare** le type de la dépendance injectée sans rien
+appeler :
 
 ```bash
 grep -rn "initializeLayerLabels\|refreshLabels\|enableLabels\|disableLabels\|_hideLabelsForLayer" \

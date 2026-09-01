@@ -4,14 +4,14 @@ title: language-switcher — le sélecteur de langue de l'interface
 capability_id: language-switcher
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
-date: 27 juillet 2026
+verifie_contre: e52f91de
+date: 1er septembre 2026
 ---
 
 # language-switcher — le sélecteur de langue de l'interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/language-switcher/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `e52f91de` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -44,8 +44,14 @@ Elle ne fait qu'**exposer un choix** entre eux.
 - **Elle ne bascule pas à chaud** : changer de langue **recharge la page**. Voir §Décisions.
 - **Elle ne résout pas la langue au boot** — c'est `utils/i18n/i18n.ts` → `initI18n()` qui arbitre
   les sources ; la capacité ne fait qu'**écrire** dans deux d'entre elles.
-- **Elle n'ajoute pas de langue.** Le jeu offert est celui des dictionnaires compilés ; en ajouter
-  une est un geste kernel (`LANGS` + un `src/lang/lang-<code>.ts`).
+- **Elle n'ajoute pas de langue** — et en ajouter une n'est pas seulement un geste kernel. Un
+  dictionnaire de plus, c'est `LANGS` + un `src/lang/lang-<code>.ts` ; mais le jeu **offert** ne se
+  lit pas dans `LANGS` : `getOfferedLanguages()` filtre `SUPPORTED_LANGUAGES`, module-locale à
+  `config.ts`, qui porte en plus l'endonyme et l'emoji. Une langue versée au seul `LANGS`
+  répondrait à `?lang=` **sans jamais apparaître dans le popover**. ⚠️ Et **rien ne tient les deux
+  listes ensemble** : `SUPPORTED_LANGUAGES` n'est lue nulle part ailleurs que dans `config.ts`,
+  aucune garde ne la confronte à `LANGS`, et le test qui compte les entrées offertes fige un
+  nombre écrit à la main — il resterait vert sur la divergence.
 - **Elle ne détecte pas `navigator.language`** — non instruit : l'interaction avec la persistance
   et avec le partage de lien demande d'être tranchée d'abord.
 
@@ -105,6 +111,16 @@ absente ou vide → toutes ; codes inconnus → écartés ; filtre qui ne corres
 l'enregistrement du module avant fusion ; le **défaut destiné à l'intégrateur est OFF**, décidé par
 le gate tardif du cycle de vie. Le CDC source annonçait `false` — voir §Écarts au CDC.
 
+🛑 **Conséquence neuve : l'introspection ne voit QUE le premier des deux gates, et elle répond donc
+l'inverse du défaut.** `GeoLeaf.Introspection.getCapabilityStatus()` calcule son `enabled` en
+réévaluant le gate de la **déclaration** contre la configuration au moment de l'appel — jamais un
+verdict figé, ce qui est juste. Mais sur un profil qui ne porte aucun bloc
+`modules.language-switcher`, `enableWhenAbsent: true` fait répondre `enabled: true` **pendant que le
+bouton n'est nulle part**. Le gate tardif du cycle de vie n'est exposé par aucune API : le lire
+comme « le sélecteur est affiché » est précisément l'erreur que la double porte rend possible. Le
+membre voisin `embarked` répond à une autre question encore — la déclaration vient-elle d'un
+installeur de préréglage —, pas à celle de la visibilité.
+
 ### Les langues offertes, et le 7ᵉ nom qui n'est pas une langue
 
 `config.ts` → `SUPPORTED_LANGUAGES` énumère les langues proposées, avec pour chacune son
@@ -117,7 +133,11 @@ applique le filtre.
 langue supplémentaire. Compter les clés de `LANGS` pour compter les langues donnerait donc un
 résultat faux. Conséquence pratique : `?lang=al` fonctionne, et `getActiveLang()` rend `de` — il
 dérive la clé du dictionnaire actif et rencontre `de` avant `al`, donc le bouton affiche le bon
-glyphe. La forme acceptée par `switchToLanguage` (deux lettres minuscules) laisse aussi passer
+glyphe. **Même dérivation, seconde conséquence, et elle est porteuse** : `initI18n()` publie
+désormais la langue résolue dans `<html lang>`, et l'attribut reçoit `de`, jamais `al`. `al` n'est
+pas une sous-étiquette de langue — l'y écrire rendrait un attribut qu'aucun agent utilisateur
+n'interprète. La valeur vient de `getActiveLang()` et non du code de résolution ; l'avertissement
+est porté sur place, dans `_syncDocumentLang()`. La forme acceptée par `switchToLanguage` (deux lettres minuscules) laisse aussi passer
 `al`, bien qu'il ne soit pas offert dans le popover.
 
 ### Endonymes, et pourquoi ce n'est pas un détail
@@ -191,23 +211,23 @@ Un code inconnu (URL ou stockage) retombe sur le français sans casser le boot.
 
 ## Décisions de conception
 
-| Décision                                                    | Pourquoi                                                                                                                                                                             | Alternative écartée                                                              |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| **Bouton + popover**, pas un `<select>`                     | Le bandeau d'onglets est vertical et étroit ; un `<select>` n'y tient pas. Le patron « bouton icône → popover » est celui de `share` et du toggle de thème                           | Un `<select>` dans un bandeau supérieur — il n'y a plus de bandeau supérieur     |
-| **Bascule = rechargement**                                  | `initI18n()` fige le dictionnaire actif au boot, et chaque libellé est résolu à la **construction** de son nœud DOM. Une bascule à chaud imposerait de re-rendre toute l'interface   | Le re-rendu à chaud                                                              |
-| **Priorité au paramètre d'URL**                             | Un lien partagé doit rendre la même chose pour son destinataire que pour son auteur                                                                                                  | Faire primer la préférence enregistrée — le partage deviendrait non déterministe |
-| **Deux canaux, deux rôles** (URL + `localStorage`)          | L'URL rend ce chargement reproductible ; le stockage porte la préférence. Un seul canal perdrait l'un des deux                                                                       | Un seul canal                                                                    |
-| **`display: "flag" \| "code"`, prévu dès la spécification** | Les emojis-drapeaux régionaux ne sont pas dessinés par toutes les plateformes. `"code"` est l'échappatoire **par configuration**, sans toucher au code                               | Ne prévoir que l'emoji, et découvrir le problème sur le poste d'un utilisateur   |
-| **Un `display` invalide vaut `"flag"`**                     | Une faute de frappe dans un profil rendrait un bouton **vide** — un contrôle invisible qu'on ne sait pas diagnostiquer                                                               | Laisser la valeur telle quelle, ou lever                                         |
-| **Trois replis sur `languages`**                            | Un popover vide est un cul-de-sac : l'utilisateur clique et ne peut rien choisir. Chaque repli couvre une façon différente d'arriver à zéro entrée                                   | Un seul contrôle de validité                                                     |
-| **Codes inconnus écartés en silence**                       | Offrir une langue sans dictionnaire basculerait l'UI sur un repli muet — pire qu'une entrée manquante                                                                                | Les honorer, ou lever                                                            |
-| **Libellés en endonymes, hors i18n**                        | Un utilisateur perdu dans une langue qu'il ne lit pas doit reconnaître la sienne                                                                                                     | Traduire les noms de langues — « Allemand » n'aide pas un germanophone égaré     |
-| **Deux voies d'injection, un seul composant**               | Desktop et mobile n'ont ni le même conteneur ni le même moment de construction, mais le comportement doit être identique                                                             | Deux composants — deux comportements à maintenir en phase                        |
-| **Écoute en phase de capture** pour la fermeture            | La carte avale les clics qui remontent sur certaines surfaces : en phase de bulle, le popover resterait ouvert                                                                       | La phase de bulle                                                                |
-| **`Échap` rend le focus au bouton**                         | Sans retour de focus, la fermeture au clavier laisse l'utilisateur nulle part                                                                                                        | Fermer seulement                                                                 |
-| **`_reset()` interroge tout le document**                   | Le bouton est injecté dans des conteneurs que la capacité ne possède pas, depuis **deux** points d'entrée : le démontage ne doit pas dépendre de l'appelant                          | Une portée limitée à un conteneur mémorisé                                       |
-| **Classes CSS écrites en littéraux**                        | purgecss lit les sources statiquement : un nom composé est déclaré règle morte et **la règle part du CSS de production**. Le contrôle s'afficherait sans style, tous les tests verts | `` `${ROOT}__item` `` — c'est le piège dans lequel le sprint précédent est tombé |
-| Pas de `loader`                                             | Inline avec le bundle UI ; le gate de configuration décide                                                                                                                           | Un `import()` paresseux                                                          |
+| Décision                                                    | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Alternative écartée                                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Bouton + popover**, pas un `<select>`                     | Le bandeau d'onglets est vertical et étroit ; un `<select>` n'y tient pas. Ce que ce bouton reprend de `share` (`capabilities/permalink/share/share-button-desktop.ts`) est sa classe de base, son point d'insertion et sa garde d'idempotence — **pas** le popover : `share` ouvre une **modale** par l'action de barre d'outils, et le toggle de thème bascule sur place. Le popover proprement dit est le patron que `theme-palette` a repris **d'ici** | Un `<select>` dans un bandeau supérieur — il n'y a plus de bandeau supérieur     |
+| **Bascule = rechargement**                                  | `initI18n()` fige le dictionnaire actif au boot, et chaque libellé est résolu à la **construction** de son nœud DOM. Une bascule à chaud imposerait de re-rendre toute l'interface                                                                                                                                                                                                                                                                         | Le re-rendu à chaud                                                              |
+| **Priorité au paramètre d'URL**                             | Un lien partagé doit rendre la même chose pour son destinataire que pour son auteur                                                                                                                                                                                                                                                                                                                                                                        | Faire primer la préférence enregistrée — le partage deviendrait non déterministe |
+| **Deux canaux, deux rôles** (URL + `localStorage`)          | L'URL rend ce chargement reproductible ; le stockage porte la préférence. Un seul canal perdrait l'un des deux                                                                                                                                                                                                                                                                                                                                             | Un seul canal                                                                    |
+| **`display: "flag" \| "code"`, prévu dès la spécification** | Les emojis-drapeaux régionaux ne sont pas dessinés par toutes les plateformes. `"code"` est l'échappatoire **par configuration**, sans toucher au code                                                                                                                                                                                                                                                                                                     | Ne prévoir que l'emoji, et découvrir le problème sur le poste d'un utilisateur   |
+| **Un `display` invalide vaut `"flag"`**                     | Une faute de frappe dans un profil rendrait un bouton **vide** — un contrôle invisible qu'on ne sait pas diagnostiquer                                                                                                                                                                                                                                                                                                                                     | Laisser la valeur telle quelle, ou lever                                         |
+| **Trois replis sur `languages`**                            | Un popover vide est un cul-de-sac : l'utilisateur clique et ne peut rien choisir. Chaque repli couvre une façon différente d'arriver à zéro entrée                                                                                                                                                                                                                                                                                                         | Un seul contrôle de validité                                                     |
+| **Codes inconnus écartés en silence**                       | Offrir une langue sans dictionnaire basculerait l'UI sur un repli muet — pire qu'une entrée manquante                                                                                                                                                                                                                                                                                                                                                      | Les honorer, ou lever                                                            |
+| **Libellés en endonymes, hors i18n**                        | Un utilisateur perdu dans une langue qu'il ne lit pas doit reconnaître la sienne                                                                                                                                                                                                                                                                                                                                                                           | Traduire les noms de langues — « Allemand » n'aide pas un germanophone égaré     |
+| **Deux voies d'injection, un seul composant**               | Desktop et mobile n'ont ni le même conteneur ni le même moment de construction, mais le comportement doit être identique                                                                                                                                                                                                                                                                                                                                   | Deux composants — deux comportements à maintenir en phase                        |
+| **Écoute en phase de capture** pour la fermeture            | La carte avale les clics qui remontent sur certaines surfaces : en phase de bulle, le popover resterait ouvert                                                                                                                                                                                                                                                                                                                                             | La phase de bulle                                                                |
+| **`Échap` rend le focus au bouton**                         | Sans retour de focus, la fermeture au clavier laisse l'utilisateur nulle part                                                                                                                                                                                                                                                                                                                                                                              | Fermer seulement                                                                 |
+| **`_reset()` interroge tout le document**                   | Le bouton est injecté dans des conteneurs que la capacité ne possède pas, depuis **deux** points d'entrée : le démontage ne doit pas dépendre de l'appelant                                                                                                                                                                                                                                                                                                | Une portée limitée à un conteneur mémorisé                                       |
+| **Classes CSS écrites en littéraux**                        | purgecss lit les sources statiquement : un nom composé est déclaré règle morte et **la règle part du CSS de production**. Le contrôle s'afficherait sans style, tous les tests verts                                                                                                                                                                                                                                                                       | `` `${ROOT}__item` `` — c'est le piège dans lequel le sprint précédent est tombé |
+| Pas de `loader`                                             | Inline avec le bundle UI ; le gate de configuration décide                                                                                                                                                                                                                                                                                                                                                                                                 | Un `import()` paresseux                                                          |
 
 ---
 
@@ -250,9 +270,13 @@ cesserait silencieusement d'être relue au boot.
 
 `css/language-switcher.css`, sous `@layer gl.capabilities`, tirée par `install.ts` — l'importer
 est la seule chose qu'un consommateur fait pour embarquer la capacité, donc **la feuille se
-tree-shake avec le code**. Elle ne contient que les surcharges propres au bouton : la base
+tree-shake avec le code**. Côté **bouton**, elle ne porte que des surcharges : la base
 `.gl-rp-tab-btn` (taille, teinte, survol) appartient au bandeau d'onglets, et ce bouton est le seul
-de la pile à rendre **du texte** là où ses voisins rendent un SVG.
+de la pile à rendre **du texte** là où ses voisins rendent un SVG. Côté **popover**, en revanche,
+elle porte le style en entier — la boîte, ses lignes, leur survol, leur focus visible et l'état
+actif, stylé sur l'attribut `aria-current` lui-même pour que l'état visuel ne puisse pas diverger de
+l'état accessible —, parce que ce popover n'a aucune base ailleurs. La règle qui masque la variante
+mobile au-delà du seuil desktop y vit aussi.
 
 ---
 

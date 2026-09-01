@@ -4,14 +4,14 @@ title: filter — le filtre attributaire générique, et son contrat sérialisab
 capability_id: filter
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 00e6bdd7
-date: 28 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # filter — le filtre attributaire générique, et son contrat sérialisable
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/filter/` ·
-**Vérifié contre :** `00e6bdd7` (28/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -119,9 +119,15 @@ qui décide quelle table est lue.
 | `taxonomyRef` | `string` | Taxonomie nommée dont viennent les options (`taxonomy`)                               |
 
 ⚠️ **Le `configSchema` déclare six sous-clés ; le type `FilterFieldDescriptor` en porte bien
-davantage** — `subField`, `options`, `searchFields`, `placeholder`, `min`/`max`/`step`, les quatre
-`radius*`, `buttonLabel`, `instructionText`. Elles sont **lues par le code** et **absentes de
-l'introspection** : `getCapabilitySchema("filter")` ne les publie pas. L'intégrateur n'est pas
+davantage** — `subField`, `options`, `searchFields`, `placeholder`, `min`/`max`/`step` et les quatre
+`radius*` sont **lues par le code** (les `radius*` par la barre de proximité, hors capacité) et
+**absentes de l'introspection** : `getCapabilitySchema("filter")` ne les publie pas.
+⚠️ **`buttonLabel` et `instructionText`, elles, ne sont lues NULLE PART** — la barre de proximité
+prend ses libellés dans les dictionnaires (`ui.proximity.*`), pas dans le descripteur —, alors que
+des profils livrés les écrivent. Le trou est donc double pour ces deux-là : ni publiées, ni
+consommées. Se vérifie, ne se croit pas :
+`grep -rn 'buttonLabel\|instructionText' packages/core/src` ne rend que leur propre déclaration.
+L'intégrateur n'est pas
 démuni pour autant — l'inventaire les documente toutes, au §12 de
 [`GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md`](../../reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md).
 Le trou est donc **côté introspection**, pas côté documentation : c'est un consommateur programmatique
@@ -195,8 +201,10 @@ atteignable.
 `GeoLeaf.Filter` est lu **par le namespace** par : [`permalink`](permalink.md) (capture et
 restauration), l'initialisation des fonctionnalités de l'application, la barre d'outils mobile, son
 volet de proximité, et l'API d'interface du kernel. **Aucun** ne fait d'import statique vers
-`capabilities/filter/`. Deux d'entre eux redéclarent même leur propre vue structurelle du contrat
-plutôt que d'importer le type — un doublon assumé et motivé sur place.
+`capabilities/filter/`. Trois d'entre eux redéclarent même leur propre vue structurelle du contrat
+— la barre d'outils mobile, son volet de proximité et le permalien portent chacun leur `interface
+FilterLike` — plutôt que d'importer le type : un doublon assumé et motivé sur place. Il se dénombre,
+il ne se recopie pas : `grep -rn 'interface FilterLike' packages/core/src`.
 
 Ces cinq lecteurs remplacent les globaux `_UIFilterPanel*`, **supprimés**.
 
@@ -265,12 +273,13 @@ besoin de données est authentique ; c'est le cas le plus favorable des quatorze
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
-| Import                                              | Statut vis-à-vis de R.8 |
-| --------------------------------------------------- | ----------------------- |
-| `kernel/config/config-primitives.js`                | **Exception** nommée    |
-| `kernel/geojson/index.js` (`GeoJSONCore`)           | **Baril**               |
-| `kernel/ui/index.js` (champ de recherche en pilule) | **Baril**               |
-| `kernel/events/index.js`                            | **Baril**               |
+| Import                                                          | Statut vis-à-vis de R.8                                                                                                                                         |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kernel/config/config-primitives.js`                            | **Exception** nommée                                                                                                                                            |
+| `kernel/geojson/index.js` (`GeoJSONCore`)                       | **Baril**                                                                                                                                                       |
+| `kernel/ui/index.js` (champ de recherche en pilule)             | **Baril**                                                                                                                                                       |
+| `kernel/events/index.js`                                        | **Baril**                                                                                                                                                       |
+| `kernel/shared/index.js` — `armToolCursor` / `disarmToolCursor` | **Baril**, élargi POUR ce consommateur : la proximité arme le curseur d'outil et pose `__geoleafExclusiveMode` en passant par lui, et le baril le dit sur place |
 
 ### ⚠️ Une frontière inter-capacités franchie en import profond
 

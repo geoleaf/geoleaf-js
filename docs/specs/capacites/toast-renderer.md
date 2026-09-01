@@ -4,14 +4,14 @@ title: toast-renderer — le rendu DOM des notifications
 capability_id: toast-renderer
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ed1db5b5
-date: 28 juillet 2026
+verifie_contre: 2fcbba8a
+date: 1er septembre 2026
 ---
 
 # toast-renderer — le rendu DOM des notifications
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/toast-renderer/` ·
-**Vérifié contre :** `ed1db5b5` (28/07/2026)
+**Vérifié contre :** `2fcbba8a` (01/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -63,6 +63,12 @@ profil chargé, thème appliqué).
   en échec ») sont précisément ceux qui n'ont pas de suivant : ils étaient perdus sans trace.
   📌 Un `init()` qui **échoue** ne draine rien **et ne vide rien** : la file survit pour le
   prochain essai — la perdre là serait pire que le défaut d'origine.
+  🛑 **Et le drain est placé APRÈS la création des deux gestionnaires, jamais à côté du test de
+  conteneur.** Dans tous les cas où la file a du contenu, `_eventManager` et `_timerManager` sont
+  encore `null` — le constructeur les laisse ainsi — et `_showImmediate` retomberait alors sur un
+  `setTimeout` nu que `destroy()` ne sait pas annuler, plus un écouteur de fermeture posé
+  directement sur le bouton au lieu du gestionnaire de la capacité. Une fuite échangée contre un
+  correctif. La contrainte est portée sur place, dans `notifications.ts` → `init()`.
 - **Elle n'insère jamais de HTML.** Le message passe par `textContent` ; la surface XSS est nulle
   par construction.
 
@@ -102,8 +108,22 @@ profil chargé, thème appliqué).
 qui atteste le montage est **`initialized`**, ajouté et **vu rougir** au correctif. Un test qui
 lit un budget pour conclure « le renderer est là » est aveugle par construction.
 
-Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/toast-renderer/`, et
-`e2e/vn-toasts.spec.js` côté navigateur.
+Les tests qui couvrent ces lignes vivent à **deux endroits**, et ce n'est pas celui qui porte le nom
+de la capacité qui porte le gros. `packages/core/__tests__/capabilities/toast-renderer/` ne tient
+que le lecteur de configuration et le cycle de vie — conteneur créé ou emprunté, enregistrement
+auprès de la primitive, gate d'opt-out, toasts de boot, `_reset()`. Tout le comportement du renderer
+lui-même — file prioritaire, deux budgets, éviction, animations, bouton de fermeture et son
+écouteur, `getStatus()` — est éprouvé par `packages/core/__tests__/ui/notifications.test.js` et
+`packages/core/__tests__/ui/notifications-branches-deep.test.js`. Côté navigateur :
+`e2e/vn-toasts.spec.js`.
+
+⚠️ **Ne pas déduire la couverture du nom du répertoire** : la version précédente de cette phrase ne
+ciblait que le premier, ce qui laissait croire qu'une modification de `notifications.ts` était
+gardée par une trentaine d'assertions alors que l'essentiel est ailleurs. Le partage se mesure :
+
+```bash
+grep -c "it(" packages/core/__tests__/capabilities/toast-renderer/*.js packages/core/__tests__/ui/notifications*.test.js
+```
 
 ---
 
@@ -206,13 +226,29 @@ surface historique `GeoLeaf.UI.showNotification` et la documentation des plugins
 `show` ; l'appel tombait sur `undefined` et échouait en silence. C'est un alias assumé, pas une
 duplication accidentelle.
 
-⚠️ **`GeoLeaf.UI.Notifications` et les six raccourcis `GeoLeaf.UI.show*` n'existent PAS au
-runtime.** `kernel/ui/ui-api.ts` les monte derrière un `if (GeoLeaf._UINotifications)` de **corps de
-module**, évalué à l'import — alors que l'unique écrivain de `_UINotifications` est le
-`registerGlobals` de cette capacité, appelé au **boot**. Mesuré sur le bundle livré, avec
-contre-épreuve : écrire `_UINotifications` après coup ne les fait pas apparaître. Ligne ouverte au
-registre. Les plugins ne sont pas touchés : ils passent par
-`GeoLeaf._UINotifications` via `getUINotifications()` de `@geoleaf/host-runtime`, qui, lui, résout.
+✅ **`GeoLeaf.UI.Notifications` et les six raccourcis `UI.showNotification` · `showSuccess` ·
+`showError` · `showWarning` · `showInfo` · `clearNotifications` SONT montés** — corrigé le
+29/07/2026, le lendemain de la vérification de cette fiche.
+
+⚠️ **Ce paragraphe a dit l'inverse, et il était exact à sa date.** `kernel/ui/ui-api.ts` les
+construisait derrière un `if (GeoLeaf._UINotifications)` de **corps de module**, évalué à l'import,
+alors que l'unique écrivain de `_UINotifications` est le `registerGlobals` de cette capacité,
+appelé au **boot** : la condition était toujours fausse, et écrire `_UINotifications` après coup ne
+les faisait pas apparaître. Le bloc a été **retiré** d'`ui-api.ts` — il n'y reste qu'un commentaire
+qui porte le post-mortem — et les sept membres sont désormais posés par `setupUIKernel()` dans
+`packages/core/src/globals/globals.ui.ts`, en **délégation paresseuse** : même patron que
+`ui.notify`, donc ils existent même quand la capacité est absente de l'entrée et dégradent en no-op
+au lieu de jeter. C'est ce qui fait de `GeoLeaf.UI.Notifications` / `UI.show*` une **quatrième voie**
+vers le même singleton, avec exactement le comportement de la troisième ligne du tableau ci-dessus.
+
+📌 **Ce que le correctif a rendu vérifiable** : `packages/core/__tests__/ui/b60-notifications-mounted.test.js`
+éprouve les trois états dans cet ordre — l'état de départ (rien monté), le montage **sans** écrivain
+de `_UINotifications` (le cas qui distingue un vrai montage d'une simple ré-exposition de la
+capacité), puis la délégation effective quand la capacité est là. Le deuxième est le cœur : c'est
+celui qui échouait.
+
+Les plugins n'ont jamais été touchés : ils passent par `GeoLeaf._UINotifications` via
+`getUINotifications()` de `@geoleaf/host-runtime`, qui, lui, résolvait déjà.
 
 ### Trois autres clés montées par l'installeur
 
@@ -300,11 +336,28 @@ grep -rn "readonly dependencies" packages/core/src/capabilities/
 **La fenêtre où les notifications ne sont pas visibles** s'étend donc du premier code qui s'exécute
 jusqu'à `ToastRendererModule.init()`, c'est-à-dire jusqu'à la fin de l'initialisation du module
 `config`. Elle ne recouvre **plus** le chargement des couches. Ce qui est émis dans cette fenêtre
-suit le tableau des trois surfaces ci-dessus : rejoué pour la primitive, perdu pour les deux autres.
+suit le tableau des trois surfaces ci-dessus : rejoué pour la primitive, **et drainé pour les deux
+autres** dès que `init()` réussit.
+
+⚠️ **Cette phrase disait « perdu pour les deux autres », et elle a survécu au correctif qu'elle
+contredit** : le §Contrat exposé de cette même fiche décrivait déjà le drain du 17/08/2026, la puce
+du §Périmètre aussi. Deux endroits corrigés, un troisième oublié — la forme la plus discrète d'une
+fiche fausse, parce qu'elle se contredit elle-même sans qu'aucune gate ne puisse le voir.
 
 Position dans `presets/manifest.full.ts` : dans le lot multi-couches, **avant `legend`**, ce qui
 reproduit l'ordre relatif historique de leurs déclarations. Aucun consommateur ne dépend de cet
-ordre global — seules `legend` et `share` déclarent une icône de barre d'outils mobile.
+ordre global.
+
+⚠️ **Le motif écrit ici — « seules `legend` et `share` déclarent une icône de barre d'outils
+mobile » — a cessé d'être le motif, alors que le fait, lui, reste vrai.** L'ordre des pastilles de
+la barre mobile est aujourd'hui un `mobileIcon.order` **explicite** (`legend` puis `share`), lu par
+un tri stable dans `kernel/ui/mobile/mobile-toolbar-pill.ts` : la barre ne lit plus du tout l'ordre
+de ce manifeste. La position de `toast-renderer` est libre pour une raison plus simple qu'avant, et
+le manifeste porte l'avertissement sur place. Le fait se re-mesure :
+
+```bash
+grep -rn "mobileIcon" packages/core/src/capabilities/
+```
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
@@ -339,16 +392,16 @@ fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartie
 concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
 décisions de la refonte documentaire V3.
 
-| Énoncé du CDC                                                                                       | Ce que dit le code                                                                                                                                                                                 |
-| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »                              | ✅ Vrai des **trois** surfaces depuis le 17/08/2026. Ce l'était **de la primitive seule** jusque-là — les deux autres perdaient leur message sans trace, et c'est le trou d'où le défaut est sorti |
-| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre)                       | **Faux depuis le 28/07** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive »                        |
-| `renderer/notifications.ts` · `css/notifications.css`                                               | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                                                  |
-| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `packages/core/src/app/boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `packages/core/src/app/boot.ts`                       |
-| `@import` de la feuille depuis `packages/core/src/css/geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                                                      |
-| « rendu **byte-identique**, `maxPersistent: 2` »                                                    | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées                                         |
-| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API                             | **Ils n'existent pas au runtime** — mesuré sur le bundle livré, avec contre-épreuve — versé au registre                                                                                            |
-| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur »                       | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme                             |
+| Énoncé du CDC                                                                                       | Ce que dit le code                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »                              | ✅ Vrai des **trois** surfaces depuis le 17/08/2026. Ce l'était **de la primitive seule** jusque-là — les deux autres perdaient leur message sans trace, et c'est le trou d'où le défaut est sorti                                                   |
+| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre)                       | **Faux depuis le 28/07** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive »                                                                          |
+| `renderer/notifications.ts` · `css/notifications.css`                                               | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                                                                                                    |
+| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `packages/core/src/app/boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `packages/core/src/app/boot.ts`                                                                         |
+| `@import` de la feuille depuis `packages/core/src/css/geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                                                                                                        |
+| « rendu **byte-identique**, `maxPersistent: 2` »                                                    | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées                                                                                           |
+| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API                             | **Le CDC avait raison, le code ne l'avait pas** — mesurés absents du bundle livré (condition de corps de module toujours fausse), les 7 membres sont posés depuis le 29/07/2026 par `setupUIKernel()` en délégation paresseuse. Voir §Contrat exposé |
+| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur »                       | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme                                                                               |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : la frontière primitive/renderer et son
 motif (les plugins appellent `notify()` avant `boot()`), la raison du choix in-core plutôt que

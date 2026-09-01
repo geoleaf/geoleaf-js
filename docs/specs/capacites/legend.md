@@ -4,14 +4,14 @@ title: legend — la légende cartographique, déduite des fichiers de style
 capability_id: legend
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 00e6bdd7
-date: 28 juillet 2026
+verifie_contre: fab770b1
+date: 1er septembre 2026
 ---
 
 # legend — la légende cartographique, déduite des fichiers de style
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/legend/` ·
-**Vérifié contre :** `00e6bdd7` (28/07/2026)
+**Vérifié contre :** `fab770b1` (01/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -62,7 +62,7 @@ catégories, les couleurs et les icônes. Elle **reflète** la visibilité ; ell
 | LG-01  | Montage différé au démarrage complet                     | `geoleaf:app:ready`                               | Le contrôle est construit et ajouté à la carte. Écouteur `{ once: true }` — un seul montage par cycle de vie                                                                                                                                                                                                                                                                                                         | `lifecycle.ts` → `init`                                                              |
 | LG-02  | Gate tardif sur la configuration **fusionnée**           | `modules.legend.enabled` d'un profil              | Le gate de boot tourne sur la configuration d'**avant** la fusion du profil ; la décision réelle se prend ici — voir §Configuration                                                                                                                                                                                                                                                                                  | `lifecycle.ts` → `_onAppReady`                                                       |
 | LG-03  | Registre des couches issu du profil                      | Profil actif                                      | Une entrée par couche déclarée, **dans l'ordre du profil** — c'est cet ordre qui ordonne les accordéons                                                                                                                                                                                                                                                                                                              | `legend.ts` → `_initializeAllLayers`                                                 |
-| LG-04  | Génération d'une légende depuis un style                 | `loadLayerLegend(layerId, styleId, layerConfig)`  | Le fichier de style est récupéré, converti en sections / items, et le panneau est reconstruit                                                                                                                                                                                                                                                                                                                        | `legend.ts`, `legend-generator.ts`                                                   |
+| LG-04  | Génération d'une légende depuis un style                 | `loadLayerLegend(layerId, styleId, layerConfig)`  | Le document de style est **d'abord cherché dans le magasin semé par le bundle de profil** (`styleDocumentStore`, clé `profileId:layerId:styleId`) et servi sans requête s'il y est ; **à défaut seulement** il est `fetch` — puis converti en sections / items, et le panneau est reconstruit                                                                                                                        | `legend.ts`, `legend-generator.ts`                                                   |
 | LG-05  | Reconstruction **anti-rebond**                           | Rafale d'appels de visibilité ou de chargement    | Une seule reconstruction, différée. Sans quoi un changement de thème en déclencherait une par couche                                                                                                                                                                                                                                                                                                                 | `legend.ts` → `_scheduleRebuild`                                                     |
 | LG-06  | Exclusion des couches hors échelle                       | Zoom                                              | L'accordéon disparaît. L'état vient du `VisibilityManager`, avec repli sur l'état local si le gestionnaire est absent                                                                                                                                                                                                                                                                                                | `legend.ts` → `_updateLegendContent`                                                 |
 | LG-07  | Retrait du contrôle quand il n'y a plus rien             | Registre vidé                                     | Le contrôle est retiré de la carte plutôt que laissé vide                                                                                                                                                                                                                                                                                                                                                            | `legend.ts` → `_rebuildDisplay`                                                      |
@@ -75,7 +75,7 @@ catégories, les couleurs et les icônes. Elle **reflète** la visibilité ; ell
 | LG-13  | Signal de montage du contrôle                            | Premier montage réussi                            | `geoleaf:legend:ready` — **une seule fois par cycle de vie** (la fonction sort tôt si le contrôle existe déjà)                                                                                                                                                                                                                                                                                                       | `legend.ts` → `_ensureLegendControl`                                                 |
 | LG-14  | Titre localisé, résolu à l'appel                         | `ui.language`                                     | Le titre suit la langue active. Résolu **par appel**, jamais figé à l'import — voir §Configuration                                                                                                                                                                                                                                                                                                                   | `config.ts` → `getLegendConfig`                                                      |
 | LG-15  | Démarrage autonome, hors configuration du core           | Aucun `Config` sur le namespace                   | Les défauts sont dupliqués sur ce chemin, **sauf le titre**, qui interroge le dictionnaire comme l'autre chemin                                                                                                                                                                                                                                                                                                      | `legend.ts` → `init`                                                                 |
-| LG-16  | Démontage complet                                        | `LegendModule.destroy()`                          | Les **trois** échéances en attente sont annulées, le contrôle retiré, le registre vidé, les références carte / profil / taxonomie relâchées                                                                                                                                                                                                                                                                          | `legend.ts` → `_reset`, `legend-overlay.ts`                                          |
+| LG-16  | Démontage complet                                        | `LegendModule.destroy()`                          | **Quatre** objets sont annulés — les trois échéances en attente **et le contrôleur des requêtes de style en vol** —, puis le contrôle est retiré, le registre vidé, les références carte / profil / taxonomie relâchées                                                                                                                                                                                              | `legend.ts` → `_reset`, `legend-overlay.ts`                                          |
 | LG-17  | Pastille de barre d'outils mobile                        | Barre mobile                                      | Icône de bascule, visible par défaut, gouvernée par la **même** clé que la capacité                                                                                                                                                                                                                                                                                                                                  | `module.ts` → `ui.mobileIcon`                                                        |
 | LG-18  | Membrane pour les appelants du kernel                    | Sélecteur de style, synchro d'interface du thème  | Ils appellent au travers d'un contrat gardé, sans dépendre du cycle de vie de la légende ni toucher au namespace global. La garde teste l'**init réelle**, pas la présence d'une méthode                                                                                                                                                                                                                             | `legend-seam.ts` → `LegendContract.isAvailable`, `legend.ts` → `isLegendInitialized` |
 | LG-19  | Silence quand la capacité est éteinte                    | `loadLayerLegend` sur une légende non initialisée | Aucun avertissement — le module **est** délibérément non initialisé. L'avertissement ne sort que si la capacité est censée être active, et depuis le 26/08/2026 il ne peut plus venir que d'un appel **direct d'intégrateur** : les appelants du kernel sont arrêtés en amont par LG-18                                                                                                                              | `legend.ts` → `loadLayerLegend`                                                      |
@@ -179,8 +179,14 @@ légende, **ni** le namespace global. Ses deux importateurs sont `kernel/layer-m
 et `kernel/themes/theme-applier/ui-sync`.
 
 ⚠️ Le seam importe la légende **par la façade ESM** (`api/geoleaf.legend.js`), pas par
-`public-api.ts`. `install.ts` fait de même. Ce n'est pas une irrégularité isolée : `filter` et
-`feature-info` importent aussi leur propre façade depuis leur installeur.
+`public-api.ts`. `install.ts` fait de même. Ce n'est pas une irrégularité, c'est **le patron général** des installeurs de capacité : la quasi-totalité
+d'entre eux importent leur propre façade `api/geoleaf.*.js`, les rares exceptions étant les capacités
+qui n'en publient pas. La proportion se mesure, elle ne se recopie pas :
+
+```bash
+grep -l 'api/geoleaf\.' packages/core/src/capabilities/*/install.ts | wc -l
+ls -d packages/core/src/capabilities/*/install.ts | wc -l
+```
 
 🛑 **`isAvailable()` teste l'INIT RÉELLE, et une garde qui testait la présence d'une méthode a
 coûté un avertissement par couche de thème à chaque boot, de S10/F1 au 26/08/2026.** Le fait qui
@@ -275,12 +281,14 @@ distingue d'une astuce silencieuse, mais c'est la même astuce.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
-| Import                                               | Statut vis-à-vis de R.8                                                |
-| ---------------------------------------------------- | ---------------------------------------------------------------------- |
-| `kernel/shared/index.js` (`getAllLayerConfigs`)      | **Baril de médiation** — la légende en est l'unique lecteur traversant |
-| `kernel/security/index.js` (`DOMSecurity`)           | **Baril**                                                              |
-| `kernel/ui/index.js` (bascule repliable, composants) | **Baril**                                                              |
-| `kernel/events/index.js`                             | **Baril**                                                              |
+| Import                                               | Statut vis-à-vis de R.8                                                                                                                                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kernel/shared/index.js` (`getAllLayerConfigs`)      | **Baril de médiation** — la légende en est l'unique lecteur traversant                                                                                                                                      |
+| `kernel/security/index.js` (`DOMSecurity`)           | **Baril**                                                                                                                                                                                                   |
+| `kernel/ui/index.js` (bascule repliable, composants) | **Baril**                                                                                                                                                                                                   |
+| `kernel/events/index.js`                             | **Baril**                                                                                                                                                                                                   |
+| `kernel/config/index.js` (`layerGeometry`)           | **Baril** — arête née le 07/08/2026, quand la résolution de l'alias `geometry` / `geometryType` a quitté la légende pour un résolveur unique (le baril a été élargi après avoir VU l'import profond rougir) |
+| `kernel/config/config-primitives.js` (`Config`)      | **Import profond, explicitement toléré** — le message de la règle nomme `config-primitives.js` parmi les formes qui restent directement importables, avec les hubs de types et les seams                    |
 
 Deux lectures échappent au typage et passent par le namespace global :
 `_GeoJSONLayerManager._loadLayerLegend` et `_LayerVisibilityManager.getVisibilityState`. Ce sont des
@@ -331,16 +339,34 @@ la refonte documentaire V3.
 | §2, §9 — « présente en Full **et** Lite », `boot-lite.ts`, `globals.ui-lite.ts`               | **Le build Lite n'existe plus.** Gisement documentaire connu                                                                                                                                     |
 | §8 — l'écart `fieldMappings` reste « à trancher (A/B/C) »                                     | **Tranché et exécuté** : option A, `TaxonomyDef.fieldMappings?`, la façade expose `getFieldMappings(ref)`. Ce qui **reste** ouvert est ailleurs — la référence de taxonomie codée en dur (B.36d) |
 | §2 — « la légende n'émet rien (`grep` = 0) »                                                  | ✅ **Vrai à sa date**, et l'événement promis existe — typé au contrat, ce que le CDC ne demandait pas                                                                                            |
-| §11 — risque « fuite d'état sur recreate »                                                    | ✅ **Traité** pour les trois échéances et les références. ⚠️ **Mais pas pour la requête réseau** — voir ci-dessous                                                                               |
+| §11 — risque « fuite d'état sur recreate »                                                    | ✅ **Traité** pour les trois échéances, les références **et la requête réseau** (`AbortController` + garde micro-tâche, 17/08/2026) — voir ci-dessous                                            |
 
-⚠️ **Un risque du §11 est traité pour les échéances et pas pour le réseau.** `_reset()` annule les
-trois `setTimeout`, mais `loadLayerLegend` émet son `fetch` **sans `AbortController`** et rien ne
-l'annule. Une réponse qui arrive après un démontage **repeuple** le registre qui vient d'être vidé ;
-et comme la ré-initialisation **préserve** les entrées déjà présentes, l'instance suivante démarre
-avec une légende produite par la précédente. C'est exactement le scénario que le TSDoc de la
-tentative de sprite nomme et se garde de — « reconstruire l'instance SUIVANTE depuis la fermeture de
-la précédente » —, laissé ouvert sur le seul chemin qui sort du processus. Versé au
-registre.
+✅ **Le risque du §11 est traité sur les quatre objets, réseau compris — et il ne l'était pas quand
+cette fiche a été écrite.** Le scénario qu'elle décrivait alors était réel : une réponse arrivant
+après un démontage **repeuplait** le registre qui venait d'être vidé, et comme la ré-initialisation
+**préserve** les entrées déjà présentes, l'instance suivante démarrait avec une légende produite par
+la précédente — exactement ce que le TSDoc de la tentative de sprite nomme et se garde de
+(« reconstruire l'instance SUIVANTE depuis la fermeture de la précédente »), laissé ouvert sur le
+seul chemin qui sortait du processus. Il a été fermé le 17/08/2026.
+
+**Ce que le code fait maintenant, et pourquoi chaque décision est portée** : `_reset()` annule les
+trois `setTimeout` **et** avorte les requêtes de style en vol. Le contrôleur est **unique pour le
+module** — un par appel annulerait la requête de la couche précédente au démarrage de la suivante,
+or deux couches veulent chacune leur style ; ce qu'on annule est « tout ce qui est en vol quand le
+module s'en va ». Il est créé **paresseusement**, et **remis à `null` après `abort()`** : un
+`AbortController` avorté l'est à vie, le garder ferait échouer d'emblée toute requête d'une instance
+ultérieure, c'est-à-dire précisément sur le chemin de recréation que les trois créneaux existent pour
+protéger. Le `.catch()` ignore `AbortError`, sinon chaque démontage normal journaliserait un échec de
+chargement.
+
+🛑 **Deux fenêtres, deux gardes, et le signal seul n'aurait fermé que la première.** Le `signal`
+ferme la fenêtre **réseau** (la réponse n'est pas arrivée) ; le `if (signal?.aborted) return;` en
+tête de continuation ferme la fenêtre **micro-tâche** (la réponse EST arrivée, sa continuation est
+déjà planifiée, `abort()` n'y peut plus rien, et elle écrirait dans un DOM disparu). Les deux ont été
+**vues rouges par deux mutations indépendantes**, chacune n'atteignant que le test qui la concerne :
+`packages/core/__tests__/capabilities/legend/legend-style-abort.guard.test.ts`, dont l'en-tête porte
+aussi le récit de l'oracle qu'il a fallu changer pour que le fichier cesse d'être vert sans rien
+éprouver.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif du choix in-core, la raison de
 la migration cassante depuis `ui.showLegend` et `legendConfig`, le fait que les trois clés d'affichage
